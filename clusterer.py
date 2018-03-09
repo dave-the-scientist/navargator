@@ -40,36 +40,42 @@ class VariantFinder(object):
         self.orig_dist = self.tree.dist
         self.dist = self.orig_dist.copy()
 
-        self._outgroup = set() # Accessible as self.outgroup
+        self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._distance_scale = 1.0 # Accessible as self.distance_scale
         # # #  Private attributes # # #
         self._ingroup_indices = set(range(len(self.leaves)))
         self._cluster_methods = set(['k medoids', 'brute force'])
         self._distance_scale_max = 1000
-        self._max_brute_force_attempts = 10000000 # Probably ~30 seconds to run a million.
+        self._max_brute_force_attempts = 10000000 # Approx 7 minutes for 10 million.
 
     # # # # #  Public methods  # # # # #
-    def find_variants(self, num_variants, distance_scale=None, method='k medoids'):
+    def find_variants(self, num_variants, distance_scale=None, method=None):
         num_avail = len(self.available)
         if not 1 <= num_variants <= num_avail:
             print('Error: num_variants must be an integer greater than 1 but less than or equal to the number of designated available nodes (currently: %i).' % num_avail)
-            exit()
-        method = method.lower()
-        if method not in self._cluster_methods:
-            print('Error: the given clustering method "%s" is not supported (must be one of: %s).' % ( method, ', '.join(sorted(self._cluster_methods)) ))
             exit()
         if distance_scale != None:
             self.distance_scale = distance_scale
         num_possible_combinations = binomial_coefficient(num_avail, num_variants)
         print('\nThere are %s possible combinations of variants.' % format_integer(num_possible_combinations))
+        if method == None:
+            if num_possible_combinations <= self._max_brute_force_attempts:
+                method = 'brute force'
+            else:
+                method = 'k medoids'
+        else:
+            method = method.lower()
+        if method not in self._cluster_methods:
+            print('Error: the given clustering method "%s" is not supported (must be one of: %s).' % ( method, ', '.join(sorted(self._cluster_methods)) ))
+            exit()
         init_time = time.time()
         if num_variants == num_avail:
             variants = list(self.available)
             scores = [0.0 for n in range(num_avail)]
-        elif method == 'brute force' or num_possible_combinations <= self._max_brute_force_attempts:
+        elif method == 'brute force':
             expected_runtime = int(round(num_possible_combinations * 0.000042, 0))
-            print('Choosing variants using brute force. This should take ~%i seconds...' % expected_runtime)
+            print('Finding globally optimal variants using brute force. This should take ~%i seconds...' % expected_runtime)
             variants, scores = self._brute_force_clustering(num_variants)
         elif method == 'k medoids':
             print('Choosing variants using k medoids...')
@@ -79,28 +85,80 @@ class VariantFinder(object):
             exit()
         finish_time = time.time()
         variant_names = ', '.join(self.leaves[v] for v in variants)
-        print('Finished finding %i variants in %.2f seconds.' % (num_variants, finish_time-init_time))
+        print('Found %i variants in %.2f seconds.' % (num_variants, finish_time-init_time))
         print('\nBest score: %f\nBest variants: %s' % (sum(scores), variant_names))
         return variants, scores
 
+    # # # # #  Clustering methods  # # # # #
+    def _brute_force_clustering(self, num_variants):
+        all_medoid_indices = sorted(self.index[n] for n in self.available)
+        best_med_inds, best_scores, best_score = None, None, float('inf')
+        for med_inds in itertools.combinations(all_medoid_indices, num_variants):
+            clusters = self._partition_nearest(med_inds)
+            scores = self._sum_dist_scores(med_inds, clusters)
+            score = sum(scores)
+            if score < best_score:
+                best_med_inds, best_scores, best_score = med_inds, scores, score
+        if best_med_inds == None:
+            print('Error: big problem in brute force clustering, no comparisons were made.')
+            exit()
+        return best_med_inds, best_scores
+    def _cluster_k_medoids(self, num_variants):
+        all_medoid_indices = sorted(self.index[n] for n in self.available)
+        best_med_inds = np.array(random.sample(all_medoid_indices, num_variants))
+        best_clusters = self._partition_nearest(best_med_inds)
+        best_scores = self._sum_dist_scores(best_med_inds, best_clusters)
+        best_score = sum(best_scores)
+        improvement = True
+        while improvement == True:
+            improvement = False
+            med_inds = best_med_inds.copy()
+            for i in range(num_variants):
+                for ind in all_medoid_indices:
+                    if ind in med_inds: continue
+                    med_inds[i] = ind
+                    clusters = self._partition_nearest(med_inds)
+                    scores = self._sum_dist_scores(med_inds, clusters)
+                    score = sum(scores)
+                    if score < best_score:
+                        best_med_inds, best_scores, best_score = med_inds.copy(), scores, score
+                        # just alter the 1 number in best_inds, instead of copy
+                        improvement = True
+                    else:
+                        med_inds[i] = best_med_inds[i]
+        return best_med_inds, best_scores
+    def _sum_dist_scores(self, medoids, clusters):
+        return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
+
+    # # # # #  Private methods  # # # # #
+    def _partition_nearest(self, medoids):
+        """Given an array of indices, returns a list of lists, where the ith sublist contains the indices of the nodes closest to the ith medoid in inds."""
+        # TODO: This should probably look for ties (or where the difference is below some threshold).
+        closest_medoid_ind = np.argmin(self.dist[:,medoids], 1) # If len(inds)==3, would look like [2,1,1,0,1,2,...].
+        clusts = [[] for i in medoids]
+        for node_ind, med_ind in enumerate(closest_medoid_ind):
+            if node_ind in self._ingroup_indices:
+                clusts[med_ind].append(node_ind)
+        return clusts
+
     # # # # #  Accessible attribute logic  # # # # #
     @property
-    def outgroup(self):
-        return self._outgroup
-    @outgroup.setter
-    def outgroup(self, names):
+    def ignored(self):
+        return self._ignored
+    @ignored.setter
+    def ignored(self, names):
         # should destroy any existing solution if this is changed.
-        new_outgroup = set()
+        new_ignored = set()
         new_ingroup_inds = set(range(len(self.leaves)))
         for node in names:
             if node not in self.index:
-                print('Error: could not add "%s" to the outgroup, as it was not found in the tree.' % node)
+                print('Error: could not add "%s" to the ignored set, as it was not found in the tree.' % node)
                 exit()
             if node in self._available:
                 self._available.remove(node)
             new_ingroup_inds.remove(self.index[node])
-            new_outgroup.add(node)
-        self._outgroup = new_outgroup
+            new_ignored.add(node)
+        self._ignored = new_ignored
         self._ingroup_indices = new_ingroup_inds
 
     @property
@@ -114,7 +172,7 @@ class VariantFinder(object):
             if node not in self.index:
                 print('Error: could not add "%s" as an available node, as it was not found in the tree.' % node)
                 exit()
-            if node not in self._outgroup:
+            if node not in self._ignored:
                 new_avail.add(node)
         self._available = new_avail
 
@@ -138,48 +196,15 @@ class VariantFinder(object):
         self._distance_scale = val
         self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
 
-    # # # # #  Clustering methods  # # # # #
-    def _brute_force_clustering(self, num_variants):
-        all_medoid_indices = sorted(self.index[n] for n in self.available)
-        best_med_inds, best_scores, best_score = None, None, float('inf')
-        for med_inds in itertools.combinations(all_medoid_indices, num_variants):
-            clusters = self._partition_nearest(med_inds)
-            scores = self._k_medoids_scores(med_inds, clusters)
-            score = sum(scores)
-            if score < best_score:
-                best_med_inds, best_scores, best_score = med_inds, scores, score
-        if best_med_inds == None:
-            print('Error: big problem in brute force clustering, no comparisons were made.')
-            exit()
-        return best_med_inds, best_scores
-    def _cluster_k_medoids(self, num_variants):
-        medoids = np.array([self.index[r] for r in random.sample(self.available, num_variants)])
-        clusters = self._partition_nearest(medoids)
-        scores = self._k_medoids_scores(medoids, clusters)
-        return [self.leaves[i] for i in medoids], scores
-    def _k_medoids_scores(self, medoids, clusters):
-        return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
-
-    # # # # #  Private methods  # # # # #
-    def _partition_nearest(self, medoids):
-        """Given an array of indices, returns a list of lists, where the ith sublist contains the indices of the nodes closest to the ith medoid in inds."""
-        # TODO: This should probably look for ties (or where the difference is below some threshold).
-        closest_medoid_ind = np.argmin(self.dist[:,medoids], 1) # If len(inds)==3, would look like [2,1,1,0,1,2,...].
-        clusts = [[] for i in medoids]
-        for node_ind, med_ind in enumerate(closest_medoid_ind):
-            if node_ind in self._ingroup_indices:
-                clusts[med_ind].append(node_ind)
-        return clusts
-
 
 
 tree_file = "/home/dave/Desktop/old_projects/porcine_diversity/ap_hp_tbpb_mcoffee.phylip_phyml_tree.txt"
 vfinder = VariantFinder(tree_file)
-vfinder.outgroup = ['L20[A.p]', 'Ap76[A.p]', 'ApJL03[A.p']
+vfinder.ignored = ['L20[A.p]', 'Ap76[A.p]', 'ApJL03[A.p']
 #vfinder.available = ['h87[A.p|sv', 'h49[A.p|sv', 'h57[A.suis', 'c15[H.p|nt']
-vfinder.available = vfinder.leaves[:20]
+#vfinder.available = vfinder.leaves[:20]
 
-vfinder.find_variants(6)
+vfinder.find_variants(28, method='k medoids')
 
 
 # When implementing the actual clustering, check number of combinations. If reasonable, just iterate over them and pick best.
