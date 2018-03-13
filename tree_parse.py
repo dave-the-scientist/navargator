@@ -2,10 +2,11 @@ import os, itertools
 import numpy as np
 
 class TreeParser(object):
-    def __init__(self, tree_file, tree_format):
+    def __init__(self, tree_file, tree_format, verbose=False):
         if not os.path.isfile(tree_file):
             print('Error: could not find the given tree file "%s"' % tree_file)
             exit()
+        self.verbose = verbose
         self.leaves = [] # List of all terminal leaves in tree_file
         self.index = {} # The index of each sequence name in self.leaves
         self.dist = None # Numpy distance matrix, where self.dist[i,j] is the distance between the ith and jth nodes from self.leaves.
@@ -16,13 +17,15 @@ class TreeParser(object):
             exit()
     # # # # #  Private methods  # # # # #
     def _parse_newick_tree_file(self, tree_file):
-        print('Reading tree file and calculating distance matrix...')
+        if self.verbose:
+            print('Reading tree file and calculating distance matrix...')
         self._root_node, self._nodes = None, set()
         with open(tree_file) as f:
             edges, parent = self._parse_newick_nodes_edges(f.read())
         leaf_paths = self._get_leaf_paths(parent)
         self._generate_dist_matrix(leaf_paths, edges)
-        print('Finished loading information from tree with %i nodes.' % len(self.leaves))
+        if self.verbose:
+            print('Finished loading information from tree with %i nodes.' % len(self.leaves))
     # # #  Parsing the tree file  # # #
     def _parse_newick_nodes_edges(self, newick_str):
         root_node = newick_str[newick_str.rindex(')')+1:-1]
