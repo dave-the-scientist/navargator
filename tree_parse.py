@@ -2,32 +2,42 @@ import os, itertools
 import numpy as np
 
 class TreeParser(object):
-    def __init__(self, tree_file, tree_format, verbose=False):
-        if not os.path.isfile(tree_file):
-            print('Error: could not find the given tree file "%s"' % tree_file)
-            exit()
+    def __init__(self, tree_file, tree_format, tree_as_string=None, verbose=False):
+        if tree_file == None:
+            if tree_as_string:
+                self.tree_data = tree_as_string
+            else:
+                print('Error: no tree file was given.')
+                exit()
+        else:
+            if not os.path.isfile(tree_file):
+                print('Error: could not find the given tree file "%s"' % tree_file)
+                exit()
+            else:
+                with open(tree_file) as f:
+                    self.tree_data = f.read()
         self.verbose = verbose
-        self.leaves = [] # List of all terminal leaves in tree_file
+        self.leaves = [] # List of all terminal leaves in the tree
         self.index = {} # The index of each sequence name in self.leaves
         self.dist = None # Numpy distance matrix, where self.dist[i,j] is the distance between the ith and jth nodes from self.leaves.
         if tree_format == 'newick':
-            self._parse_newick_tree_file(tree_file)
+            self._parse_newick_tree()
         else:
             print('Error: tree format "%s" not recognized.' % tree_format)
             exit()
     # # # # #  Private methods  # # # # #
-    def _parse_newick_tree_file(self, tree_file):
+    def _parse_newick_tree(self):
         if self.verbose:
-            print('Reading tree file and calculating distance matrix...')
+            print('Reading tree data and calculating distance matrix...')
         self._root_node, self._nodes = None, set()
-        with open(tree_file) as f:
-            edges, parent = self._parse_newick_nodes_edges(f.read())
+        edges, parent = self._parse_newick_nodes_edges()
         leaf_paths = self._get_leaf_paths(parent)
         self._generate_dist_matrix(leaf_paths, edges)
         if self.verbose:
             print('Finished loading information from tree with %i nodes.' % len(self.leaves))
     # # #  Parsing the tree file  # # #
-    def _parse_newick_nodes_edges(self, newick_str):
+    def _parse_newick_nodes_edges(self):
+        newick_str = self.tree_data
         root_node = newick_str[newick_str.rindex(')')+1:-1]
         if not root_node: root_node = 'root'
         self._root_node = root_node

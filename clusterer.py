@@ -1,9 +1,50 @@
-import itertools, random, time
+"""
+Defines the following public functions:
+  load_repvar_file(file_path)
+"""
+import os, itertools, random, time
 from math import log, exp
 import numpy as np
 from tree_parse import TreeParser
 
 # # # # #  Misc functions  # # # # #
+def load_repvar_file(file_path, verbose=True):
+    if not file_path.lower().endswith('.repvar'):
+        file_path += '.repvar'
+    if not os.path.isfile(file_path):
+        print('Error: could not find the given repvar file "%s"' % file_path)
+        exit()
+    if verbose:
+        print('Loading information from %s...' % file_path)
+    data = {}
+    def process_tag_data(tag, data_buff):
+        if tag in data:
+            print('Error: the repvar file %s has multiple sections labeled "[%s]".' % (file_path, tag))
+            exit()
+        if not data_buff:
+            return
+        data[tag] = data_buff
+    with open(file_path) as f:
+        tag, data_buff = '', []
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'): continue
+            if line.startswith('[') and line.endswith(']'):
+                process_tag_data(tag, data_buff)
+                tag, data_buff = line[1:-1], []
+            else:
+                data_buff.append(line)
+        process_tag_data(tag, data_buff)
+    vfinder = VariantFinder(data['newick tree'][0], tree_format='newick', tree_is_string=True, verbose=verbose)
+    avail = data.get('available variants')
+    if avail:
+        vfinder.available = avail[0].split(',')
+    ignor = data.get('ignored variants')
+    if ignor:
+        vfinder.ignored = ignor[0].split(',')
+    return vfinder
+
+
 def binomial_coefficient(n, k):
     """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions."""
     def log_factorial(num):
@@ -33,13 +74,15 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_file, tree_format='newick', verbose=True):
+    def __init__(self, tree_file, tree_format='newick', tree_is_string=False, verbose=True):
         self.verbose = bool(verbose)
-        self.tree = TreeParser(tree_file, tree_format, verbose=verbose)
+        if tree_is_string == True:
+            self.tree = TreeParser(None, tree_format, tree_as_string=tree_file, verbose=self.verbose)
+        else:
+            self.tree = TreeParser(tree_file, tree_format, verbose=self.verbose)
         self.leaves = self.tree.leaves # List of all terminal leaves in tree_file
         self.index = self.tree.index # The index of each sequence name in self.leaves
-        self.orig_dist = self.tree.dist
-        self.dist = self.orig_dist.copy()
+        self.dist = self.tree.dist.copy()
 
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
@@ -61,6 +104,7 @@ class VariantFinder(object):
         num_possible_combinations = binomial_coefficient(num_avail, num_variants)
         if self.verbose:
             print('\nThere are %s possible combinations of variants.' % format_integer(num_possible_combinations))
+            init_time = time.time()
         if method == None:
             if num_possible_combinations <= self._max_brute_force_attempts:
                 method = 'brute force'
@@ -71,30 +115,51 @@ class VariantFinder(object):
         if method not in self._cluster_methods:
             print('Error: the given clustering method "%s" is not supported (must be one of: %s).' % ( method, ', '.join(sorted(self._cluster_methods)) ))
             exit()
-        init_time = time.time()
         if num_variants == num_avail:
             variants = list(self.available)
             scores = [0.0 for n in range(num_avail)]
         elif method == 'brute force':
             if self.verbose:
                 expected_runtime = int(round(num_possible_combinations * 0.000042, 0))
-                print('Finding globally optimal variants using brute force. This should take ~%i seconds...' % expected_runtime)
-            variants, scores = self._brute_force_clustering(num_variants)
+                print('Finding optimal variants using brute force. This should take ~%i seconds...' % expected_runtime)
+            variants, scores, alt_variants = self._brute_force_clustering(num_variants)
         elif method == 'k medoids':
             if self.verbose:
                 print('Choosing variants using k medoids...')
             fxn, args = self._cluster_k_medoids, (num_variants,)
-            variants, scores = self._heuristic_rand_starts(fxn, args, bootstraps)
-            #variants, scores = self._cluster_k_medoids(num_variants)
+            variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, bootstraps)
         else:
             print('Error: clustering method "%s" is not recognized.' % method)
             exit()
         if self.verbose:
-            finish_time = time.time()
+            run_time = time.time() - init_time
+            if alt_variants:
+                print('Found %i equal sets of %i representative variants in %.1f seconds.' % (len(alt_variants)+1, num_variants, run_time))
+                alt_var_buff = []
+                for avars in alt_variants:
+                    alt_var_buff.append( 'Alternate variants: %s' % ', '.join(sorted(self.leaves[var_ind] for var_ind in avars)) )
+                print('\n%s' % ('\n'.join(alt_var_buff)))
+            else:
+                print('Found %i representative variants in %.1f seconds.' % (num_variants, run_time))
             variant_names = ', '.join(sorted(self.leaves[v] for v in variants))
-            print('Found %i variants in %.2f seconds.' % (num_variants, finish_time-init_time))
             print('\nBest score: %f\nBest variants: %s' % (sum(scores), variant_names))
         return variants, scores
+
+    def save_repvar_file(self, file_path):
+        if not file_path.lower().endswith('.repvar'):
+            file_path += '.repvar'
+        buff = []
+        if self.ignored:
+            ignor_names = ', '.join(sorted(self.ignored))
+            buff.append('[ignored variants]\n%s' % ignor_names)
+        if len(self.available) != len(self._ingroup_indices):
+            avail_names = ', '.join(sorted(self.available))
+            buff.append('[available variants]\n%s' % avail_names)
+        buff.append('[newick tree]\n%s' % self.tree.tree_data)
+        with open(file_path, 'w') as f:
+            f.write('\n\n'.join(buff))
+        if self.verbose:
+            print('\nData saved to %s' % file_path)
 
     # # # # #  Clustering methods  # # # # #
     def _heuristic_rand_starts(self, fxn, args, bootstraps):
@@ -105,43 +170,45 @@ class VariantFinder(object):
             if var_tup in optima:
                 optima[var_tup]['count'] += 1
             else:
-                score = sum(scores)
-                optima[var_tup] = {'count':1, 'score':score, 'variants':variants, 'scores':scores}
+                optima[var_tup] = {'count':1, 'score':sum(scores), 'variants':variants, 'scores':scores}
         ranked_vars = sorted(optima.keys(), key=lambda opt: optima[opt]['score'])
         best_variants, best_scores = optima[ranked_vars[0]]['variants'], optima[ranked_vars[0]]['scores']
-        if self.verbose and bootstraps > 1:
-            equal_optima = 0
-            for rv in ranked_vars:
+        alt_optima, alt_variants, opt_count = 0, [], optima[ranked_vars[0]]['count']
+        if bootstraps > 1:
+            for rv in ranked_vars[1:]:
                 if optima[rv]['score'] == sum(best_scores):
-                    equal_optima += 1
+                    alt_optima += 1
+                    alt_variants.append(optima[rv]['variants'])
+                    opt_count += optima[rv]['count']
                 else:
                     break
-            if len(ranked_vars) == 1:
-                print('Only 1 solution found after %i bootstraps.' % (bootstraps))
-            elif equal_optima == 1:
-                best_percent = round(optima[ranked_vars[0]]['count'] * 100.0 / bootstraps, 0)
-                imprv_percent = round((optima[ranked_vars[1]]['score'] - optima[ranked_vars[0]]['score']) * 100.0 / optima[ranked_vars[0]]['score'], 1)
-                print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (%.1f%% improvement over solution #2).' % (len(ranked_vars), bootstraps, best_percent, imprv_percent))
-            else:
-                best_percent = round(sum(optima[rv]['count'] for rv in ranked_vars[:equal_optima]) * 100.0 / bootstraps, 0)
-                print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (from %i equivalent solutions):' % (len(ranked_vars), bootstraps, best_percent, equal_optima))
-                for rv in ranked_vars[1:equal_optima]:
-                    alt_vars = ', '.join(sorted( self.leaves[med_ind] for med_ind in optima[rv]['variants'] ))
-                    print('Alternate variants: %s' % (alt_vars))
-        return best_variants, best_scores
+            optima_percent = round(opt_count * 100.0 / bootstraps, 0)
+            if self.verbose:
+                if len(ranked_vars) == 1:
+                    print('One unique solution found after %i bootstraps.' % (bootstraps))
+                elif alt_optima == 0:
+                    imprv_percent = round((optima[ranked_vars[1]]['score'] - optima[ranked_vars[0]]['score']) * 100.0 / optima[ranked_vars[0]]['score'], 1)
+                    print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (%.1f%% improvement over solution #2).' % (len(ranked_vars), bootstraps, optima_percent, imprv_percent))
+                else:
+                    print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (from %i equivalent solutions).' % (len(ranked_vars), bootstraps, optima_percent, alt_optima+1))
+        return best_variants, best_scores, alt_variants
     def _brute_force_clustering(self, num_variants):
         all_medoid_indices = sorted(self.index[n] for n in self.available)
         best_med_inds, best_scores, best_score = None, None, float('inf')
+        alt_variants = []
         for med_inds in itertools.combinations(all_medoid_indices, num_variants):
             clusters = self._partition_nearest(med_inds)
             scores = self._sum_dist_scores(med_inds, clusters)
             score = sum(scores)
-            if score < best_score:
+            if score == best_score:
+                alt_variants.append(med_inds)
+            elif score < best_score:
                 best_med_inds, best_scores, best_score = med_inds, scores, score
+                alt_variants = []
         if best_med_inds == None:
             print('Error: big problem in brute force clustering, no comparisons were made.')
             exit()
-        return best_med_inds, best_scores
+        return best_med_inds, best_scores, alt_variants
     def _cluster_k_medoids(self, num_variants):
         all_medoid_indices = sorted(self.index[n] for n in self.available)
         best_med_inds = np.array(random.sample(all_medoid_indices, num_variants))
@@ -167,8 +234,7 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
     def _sum_dist_scores(self, medoids, clusters):
-        return [((sum(self.dist[med,inds])+1.0)**(self.test_distance_scale)-1.0) for med,inds in zip(medoids,clusters)]
-        #return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
+        return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
 
     # # # # #  Private methods  # # # # #
     def _partition_nearest(self, medoids):
@@ -188,9 +254,12 @@ class VariantFinder(object):
     @ignored.setter
     def ignored(self, names):
         # should destroy any existing solution if this is changed.
+        if isinstance(names, basestring):
+            names = [names]
         new_ignored = set()
         new_ingroup_inds = set(range(len(self.leaves)))
         for node in names:
+            node = node.strip()
             if node not in self.index:
                 print('Error: could not add "%s" to the ignored set, as it was not found in the tree.' % node)
                 exit()
@@ -207,8 +276,11 @@ class VariantFinder(object):
     @available.setter
     def available(self, names):
         # should destroy any existing solution if this is changed.
+        if isinstance(names, basestring):
+            names = [names]
         new_avail = set()
         for node in names:
+            node = node.strip()
             if node not in self.index:
                 print('Error: could not add "%s" as an available node, as it was not found in the tree.' % node)
                 exit()
@@ -234,17 +306,20 @@ class VariantFinder(object):
             print('Error: distance_scale must be less than %i.' % self._distance_scale_max)
             exit()
         self._distance_scale = val
-        self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
+        self.dist = np.power(self.tree.dist.copy()+1.0, val) - 1.0
 
 
-
+#vfinder = load_repvar_file('results/tbpb59_av-20')
+vfinder = load_repvar_file('results/tbpb59_av-all')
+"""
 tree_file = "/home/dave/Desktop/old_projects/porcine_diversity/ap_hp_tbpb_mcoffee.phylip_phyml_tree.txt"
 vfinder = VariantFinder(tree_file)
 vfinder.ignored = ['L20[A.p]', 'Ap76[A.p]', 'ApJL03[A.p']
 #vfinder.available = ['h87[A.p|sv', 'h49[A.p|sv', 'h57[A.suis', 'c15[H.p|nt']
 #vfinder.available = vfinder.leaves[:20]
-vfinder.test_distance_scale = 0.1
-vfinder.find_variants(10, method='k medoids', bootstraps=10)
+vfinder.save_repvar_file('results/tbpb59_av-all')
+"""
+vfinder.find_variants(4, method='k medoids')
 
 
 # TODO:
