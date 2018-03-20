@@ -1,3 +1,5 @@
+// core.js is loaded before this file, and defines the functions daemonURL, processError, maintainServer, closeInstance
+
 // =====  Page settings:
 var server_url='http://'+window.location.host, session_id='',
     maintain_wait=2000, instance_closed=false, maintain_interval;

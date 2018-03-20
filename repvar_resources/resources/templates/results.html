@@ -37,9 +37,11 @@
     </div>
 
     <script>
-      var timestamp = +new Date;
-      var url = "static/js/results.js?t=" + timestamp;
-      $.getScript(url);
+    var timestamp = +new Date;
+    var corejsurl = "static/js/core.js?t=" + timestamp;
+    var pagejsurl = "static/js/results.js?t=" + timestamp;
+    $.getScript(corejsurl);
+    $.getScript(pagejsurl);
     </script>
   </body>
 </html>
