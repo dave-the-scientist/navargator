@@ -1,4 +1,4 @@
-import os, sys, threading
+import os, sys, time, threading
 from collections import deque
 from random import randint
 from flask import Flask, request, render_template
@@ -15,6 +15,10 @@ else: # Python 2.x imports
         from StringIO import StringIO
     from Tkinter import Tk as tk_root
     from tkFileDialog import asksaveasfilename as saveAs
+
+def daemonURL(url):
+    """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in the page's javascript."""
+    return '/daemon' + url
 
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
@@ -42,6 +46,8 @@ class RepvarDaemon(object):
             self.maintain_wait = 9
             self.allowed_wait = {'after_instance':120, 'page_load':300, 'between_checks':30}
         # # #  Activity and error logging:
+        self.local_input_id = 'local_input_page' # Should match setupPage in input.js
+        self.local_input_last_maintain = None
         self.should_quit = threading.Event()
         self.buff_lock = threading.Lock()
         self.log_buffer = StringIO()
@@ -58,10 +64,34 @@ class RepvarDaemon(object):
         @self.server.before_first_request
         def setup_tasks():
             if self.web_server: # Setup tasks to start for the web version.
-                t = threading.Thread(target=self.web_tasks)
+                t = threading.Thread(target=self.start_web_server)
                 t.daemon = True; t.start()
             else: # Setup tasks to begin for the local version.
                 pass
+        @self.server.route(daemonURL('/maintain-server'), methods=['POST'])
+        def maintain_server():
+            vf, idnum, msg = self.get_instance()
+            if idnum == self.local_input_id:
+                self.local_input_last_maintain = time.time()
+                return 'local input page maintained.'
+            elif vf == None:
+                return msg
+            vf.maintain()
+            return 'maintain-server successful.'
+        @self.server.route(daemonURL('/instance-closed'), methods=['POST'])
+        def instance_closed():
+            vf, idnum, msg = self.get_instance()
+            if idnum == self.local_input_id:
+                self.local_input_last_maintain = None
+                if len(self.sessions) == 0:
+                    self.should_quit.set()
+                return 'local input page closed.'
+            elif vf == None:
+                return msg
+            del self.sessions[idnum]
+            if not self.web_server and len(self.sessions) == 0:
+                self.should_quit.set()
+            return 'instance-closed successful.'
         # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():
@@ -79,9 +109,11 @@ class RepvarDaemon(object):
         return idnum
     def process_instance(self, idnum, num_variants, method=None, distance_scale=None, bootstraps=10):
         self.sessions[idnum].processed(num_variants, method=method, distance_scale=distance_scale, bootstraps=bootstraps)
+    # # # # #  Running the server  # # # # #
     def start_server(self):
         if self.web_server:
             return False # Only used for local version.
+        self.local_input_last_maintain = time.time() # Ensures the server doesn't close on input page
         olderr = sys.stderr
         sys.stderr = self.log_buffer
         t = threading.Thread(target=self.server.run,
@@ -104,6 +136,12 @@ class RepvarDaemon(object):
             # raise
         finally:
             sys.stderr = olderr
+    def start_web_server(self):
+        if not self.web_server:
+            return False # Only used for web version.
+        while not self.should_quit.is_set():
+            self.should_quit.wait(self.check_interval)
+            self.collect_garbage()
 
     # # # # #  Private methods  # # # # #
     def get_instance(self, should_fail=False):
@@ -120,6 +158,7 @@ class RepvarDaemon(object):
         while idnum in self.sessions:
             idnum = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return idnum
+    # # #  Server maintainence  # # #
     def collect_garbage(self):
         to_remove = []
         for idnum, vf in self.sessions.items():
@@ -129,15 +168,12 @@ class RepvarDaemon(object):
         for idnum in to_remove:
             del self.sessions[idnum]
         if not self.web_server: # if personal server with no live instances.
-            if len(self.sessions) == 0:
+            if self.local_input_last_maintain != None and \
+            time.time() - self.local_input_last_maintain > self.allowed_wait['between_checks']:
+                self.local_input_last_maintain = None
+            if self.local_input_last_maintain == None and len(self.sessions) == 0:
                 print('last Repvar instance closed, shutting down server.')
                 self.should_quit.set()
-    def web_tasks(self):
-        if not self.web_server:
-            return False # Only used for web version.
-        while not self.should_quit.is_set():
-            self.should_quit.wait(self.check_interval)
-            self.collect_garbage()
     def close(self):
         """Careful with this; the web version should probably never have this
         method actually used."""

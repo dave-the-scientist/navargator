@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, webbrowser
 from repvar_resources.variant_finder import load_repvar_file, VariantFinder
 from repvar_resources import repvar_daemon
 """
@@ -26,9 +26,24 @@ if __name__ == '__main__':
 
     daemon = repvar_daemon.RepvarDaemon(server_port)
 
-    idnum = daemon.new_instance(tree_data, available, ignored)
-    daemon.process_instance(idnum, num_variants, method=method)
+    #idnum = daemon.new_instance(tree_data, available, ignored)
+    #daemon.process_instance(idnum, num_variants, method=method)
     # These 2 will not be called here, but by the input page once the user presses 'Run'.
-    #By default, this should open to the input page. If the user specifies a repvar file, that data should be loaded into the input page.
+    # By default, this should open to the input page.
+    # If the user specifies a repvar file, that data should be loaded into the input page.
+    #   Add method to add existing vfinder to daemon, return idnum. Then on input page, if it's opened with an idnum, it requests data from daemon to display. Otherwise it loads blank.
+
+    load_existing = False
+    if load_existing:
+        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, idnum)
+    else:
+        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_id)
+    old_stderr = os.dup(2)
+    os.close(2)
+    os.open(os.devnull, os.O_RDWR)
+    try:
+        webbrowser.open(input_url)
+    finally:
+        os.dup2(old_stderr, 2)
 
     daemon.start_server()

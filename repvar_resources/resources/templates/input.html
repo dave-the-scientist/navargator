@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Repvar input page">
+    <meta name="author" content="Dave Curran">
+    <title>Repvar input</title>
+    <script src="static/libs/jquery-1.11.1.min.js"></script>
+    <script src="static/libs/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="static/libs/jquery-ui.min.css">
+    <link rel="stylesheet" href="static/libs/jquery-ui.theme.min.css">
+    <script>
+      var timestamp = +new Date;
+      var corecssurl = 'static/css/core.css?v=' + timestamp;
+      var pagecssurl = 'static/css/input.css?v=' + timestamp;
+      var iconurl = 'static/images/favicon.ico?v=' + timestamp;
+      $('<link>')
+        .appendTo('head')
+        .attr({type : 'text/css', rel : 'stylesheet'})
+        .attr('href', corecssurl);
+      $('<link>')
+        .appendTo('head')
+        .attr({type : 'text/css', rel : 'stylesheet'})
+        .attr('href', pagecssurl);
+      $('<link>')
+        .appendTo('head')
+        .attr({rel : 'icon'})
+        .attr('href', iconurl);
+    </script>
+  </head>
+  <body>
+    <div id="pageDiv">
+      <div id="headerDiv">
+        <h1>Header</h1>
+        <p>Navbar and whatnot goes here.</p>
+      </div>
+      <div id="bodyMainDiv">
+        <div id="bodyTreeDiv">
+          <h2>Tree goes here.</h2>
+        </div>
+        <div id="bodyRightDiv">
+          <h2>Right pane.</h2>
+        </div>
+      </div>
+      <div id="footerDiv">
+        <h2>Page footer.</h2>
+      </div>
+    </div>
+
+    <script>
+      var timestamp = +new Date;
+      var corejsurl = "static/js/core.js?t=" + timestamp;
+      var pagejsurl = "static/js/input.js?t=" + timestamp;
+      $.getScript(corejsurl);
+      $.getScript(pagejsurl);
+    </script>
+  </body>
+</html>
