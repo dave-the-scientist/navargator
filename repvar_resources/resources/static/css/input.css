@@ -1,0 +1,12 @@
+#bodyTreeDiv {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border: 1px solid #000000;
+}
+#bodyRightDiv {
+  margin-left: 620px;
+  width: 400px;
+  height: 600px;
+  border: 1px solid #000000;
+}

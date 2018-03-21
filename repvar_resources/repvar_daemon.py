@@ -72,6 +72,7 @@ class RepvarDaemon(object):
         def maintain_server():
             vf, idnum, msg = self.get_instance()
             if idnum == self.local_input_id:
+                print 'maintain local input called' # TEST
                 self.local_input_last_maintain = time.time()
                 return 'local input page maintained.'
             elif vf == None:
@@ -168,6 +169,7 @@ class RepvarDaemon(object):
         for idnum in to_remove:
             del self.sessions[idnum]
         if not self.web_server: # if personal server with no live instances.
+            #print 'in GC. last maintain', self.local_input_last_maintain # TEST
             if self.local_input_last_maintain != None and \
             time.time() - self.local_input_last_maintain > self.allowed_wait['between_checks']:
                 self.local_input_last_maintain = None

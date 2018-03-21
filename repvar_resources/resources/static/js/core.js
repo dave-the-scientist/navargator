@@ -42,6 +42,7 @@ function closeInstance() {
     url: daemonURL('/instance-closed'),
     type: 'POST',
     data: {'session_id': session_id},
+    async: false, // Makes a huge difference ensuring that this ajax call actually happens
     error: function(error) {
       console.log("Error closing your instance:");
       console.log(error);

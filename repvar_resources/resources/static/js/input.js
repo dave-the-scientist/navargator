@@ -7,9 +7,14 @@ var server_url='http://'+window.location.host, session_id='',
 // =====  Page setup:
 function setupPage() {
   session_id = location.search.slice(1);
+  console.log('start of setupPage', session_id);
   if (session_id != '') {
     // Only '' for non-pre-loaded web version. That doesn't get a maintain.
+    console.log('pre interval');
     maintain_interval = setInterval(maintainServer, maintain_wait);
+    // Sometimes this silently doesn't return.
+    // One other time I got an error saying maintainServer was not defined.
+    console.log('post interval');
     if (session_id != 'local_input_page') {
       // getData ajax call here.
       console.log('non-blank input from local version.');
@@ -17,11 +22,11 @@ function setupPage() {
   }
   console.log('session id is ', session_id);
 }
-// Called once the document has loaded.
 $(document).ready(function(){
-  setupPage();
+  // Called once the document has loaded.
+  setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens.
 });
-// Lets the background server know this instance has been closed.
 $(window).bind('beforeunload', function() {
+  // Lets the background server know this instance has been closed.
   closeInstance();
 });
