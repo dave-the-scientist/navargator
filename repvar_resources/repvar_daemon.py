@@ -1,7 +1,7 @@
 import os, sys, time, threading
 from collections import deque
 from random import randint
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, json
 from repvar_resources.variant_finder import VariantFinder
 
 if sys.version_info >= (3,0): # Python 3.x imports
@@ -72,7 +72,6 @@ class RepvarDaemon(object):
         def maintain_server():
             vf, idnum, msg = self.get_instance()
             if idnum == self.local_input_id:
-                print 'maintain local input called' # TEST
                 self.local_input_last_maintain = time.time()
                 return 'local input page maintained.'
             elif vf == None:
@@ -93,6 +92,16 @@ class RepvarDaemon(object):
             if not self.web_server and len(self.sessions) == 0:
                 self.should_quit.set()
             return 'instance-closed successful.'
+        @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
+        def upload_newick_tree():
+            try:
+                tree_data = request.files['upload-file'].read()
+            except Exception as err:
+                return (str(err), 552)
+            print 'tree data read'
+            print tree_data
+            return json.dumps({'some var':'some val', 'a num':42})
+
         # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():
@@ -169,7 +178,6 @@ class RepvarDaemon(object):
         for idnum in to_remove:
             del self.sessions[idnum]
         if not self.web_server: # if personal server with no live instances.
-            #print 'in GC. last maintain', self.local_input_last_maintain # TEST
             if self.local_input_last_maintain != None and \
             time.time() - self.local_input_last_maintain > self.allowed_wait['between_checks']:
                 self.local_input_last_maintain = None

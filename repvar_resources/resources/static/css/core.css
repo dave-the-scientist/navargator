@@ -1,0 +1,107 @@
+/* ======  CSS variables  ====== */
+:root {
+  --dark-background-colour: #C1C1C1;
+  --light-background-colour: #F5F5F5;
+  --style-box-background-colour: #FFFFFF;
+  --min-page-width: 700px;
+}
+
+/* ======  General formatting options  ====== */
+html, body {
+  height: 100%;
+  margin: 0px;
+}
+body {
+  font-size: 100%;  /* Needed for IE. */
+}
+p, h1, h2, h3, li, table, button, label, span {
+  color: black;
+  text-align: left;
+  font-family: Helvetica, Arial, sans-serif;
+}
+p {
+  margin: 12px auto 10px auto;
+}
+h1 {
+  font-size: 2.5em;
+  color: #212121;
+  margin: 0px;
+}
+h2 {
+  font-size: 1.2em;
+  color: #212121;
+  margin: 0px;
+  padding: 5px;
+  width: 100%;
+}
+h3 {
+  font-size: 1.0em;
+  text-decoration: underline;
+  margin: 16px auto 0px auto;
+}
+p, li, table, label {
+  font-size: 1.0em;
+}
+ul {
+    list-style: none;
+}
+button {
+  font-size: 0.9em;
+  margin: 2px auto 5px auto;
+  text-align: center;
+}
+label {
+  margin-right: 15px;
+}
+
+/* ======  The basic layout, header, navigation bar, and footer  ====== */
+#headerDiv {
+  background-color: var(--dark-background-colour);
+  width: 100%;
+  min-width: var(--min-page-width);
+  margin: 0px;
+  padding: 0px;
+  text-align: center;
+  box-shadow: 1px 1px 2px #555555;
+}
+#headerInnerDiv {
+  display: inline-block;
+  margin: 10px auto 10px auto;
+}
+#bodyMainDiv {
+  padding: 5px;
+}
+#footerDiv {
+  background-color: var(--light-background-colour);
+  width: 100%;
+  min-width: var(--min-page-width);
+  margin: 0px 0px 5px 0px;
+  padding: 10px 0px;
+}
+#footerDiv p {
+  text-align: center;
+}
+.clearfix {
+  clear: both;
+}
+
+/* ======  Common style classes  ====== */
+.style-box {
+  display: inline-block;
+  vertical-align: top;
+  background-color: var(--style-box-background-colour);
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 2px #555555;
+  margin: 5px 5px 5px 5px;
+  padding: 5px;
+}
+.style-box p {
+  margin: 5px;
+}
+.style-box h2 {
+  margin: 10px 0px 2px 0px;
+}
+.style-box > *:not(svg):not(p):not(h2):not(h3) {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}

@@ -33,19 +33,26 @@
   <body>
     <div id="pageDiv">
       <div id="headerDiv">
-        <h1>Header</h1>
-        <p>Navbar and whatnot goes here.</p>
+        <div id="headerInnerDiv">
+          <h1>Header</h1>
+          <p>Navbar and whatnot goes here.</p>
+        </div>
       </div>
       <div id="bodyMainDiv">
-        <div id="bodyTreeDiv">
-          <h2>Tree goes here.</h2>
+        <div id="bodyTreeDiv" class="style-box">
+          <h2>Phylogenetic tree</h2>
         </div>
-        <div id="bodyRightDiv">
-          <h2>Right pane.</h2>
+        <div id="bodyRightDiv" class="style-box">
+          <h2>Input options</h2>
+          <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
+            <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
+            <input id="uploadFileInput" name="upload-file" type="file">
+          </form>
+          <button id="uploadFileButton" type="button"><b>Load tree</b></button>
         </div>
       </div>
       <div id="footerDiv">
-        <h2>Page footer.</h2>
+        <p>&copy; 2018 David Curran</p>
       </div>
     </div>
 
