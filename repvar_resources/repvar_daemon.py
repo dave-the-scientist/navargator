@@ -98,9 +98,12 @@ class RepvarDaemon(object):
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 552)
-            print 'tree data read'
-            print tree_data
-            return json.dumps({'some var':'some val', 'a num':42})
+            idnum = self.new_instance(tree_data)
+
+            self.sessions[idnum].been_processed = True
+            self.sessions[idnum].html_loaded = True # TESTING these atts should be removed, or made more appropriate for repvar.
+
+            return json.dumps({'phyloxml_data':self.sessions[idnum].tree.phylo_xml_data, 'idnum':idnum})
 
         # #  Serving the pages locally
         @self.server.route('/input')
@@ -111,7 +114,7 @@ class RepvarDaemon(object):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         idnum = self.generateSessionID()
-        vf = VariantFinder(tree_data, tree_format='newick', tree_is_string=True, allowed_wait=self.allowed_wait, verbose=True) # TEST verbose=False
+        vf = VariantFinder(tree_data, tree_format='newick', allowed_wait=self.allowed_wait, verbose=True) # TEST verbose=False
         vf.available = available
         vf.ignored = ignored
         vf.distance_scale = distance_scale
@@ -181,6 +184,7 @@ class RepvarDaemon(object):
             if self.local_input_last_maintain != None and \
             time.time() - self.local_input_last_maintain > self.allowed_wait['between_checks']:
                 self.local_input_last_maintain = None
+            print len(self.sessions), self.local_input_last_maintain
             if self.local_input_last_maintain == None and len(self.sessions) == 0:
                 print('last Repvar instance closed, shutting down server.')
                 self.should_quit.set()

@@ -9,6 +9,9 @@
     <title>Repvar input</title>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
     <script src="static/libs/jquery-ui.min.js"></script>
+    <script src="static/libs/raphael-min.js"></script>
+    <script src="static/libs/jsphylosvg-DC.js"></script>
+    <script src="static/libs/svg-pan-zoom.min.js"></script>
     <link rel="stylesheet" href="static/libs/jquery-ui.min.css">
     <link rel="stylesheet" href="static/libs/jquery-ui.theme.min.css">
     <script>
@@ -38,10 +41,16 @@
           <p>Navbar and whatnot goes here.</p>
         </div>
       </div>
+
       <div id="bodyMainDiv">
         <div id="bodyTreeDiv" class="style-box">
           <h2>Phylogenetic tree</h2>
+          <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
+            <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
+          </svg>
+          <div id="svgCanvas"></div>
         </div>
+
         <div id="bodyRightDiv" class="style-box">
           <h2>Input options</h2>
           <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
@@ -51,6 +60,7 @@
           <button id="uploadFileButton" type="button"><b>Load tree</b></button>
         </div>
       </div>
+
       <div id="footerDiv">
         <p>&copy; 2018 David Curran</p>
       </div>

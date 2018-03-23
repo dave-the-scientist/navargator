@@ -1,21 +1,14 @@
 import os, itertools
 import numpy as np
+import xml.etree.ElementTree as ET
+from repvar_resources.convert import NewickToPhyloxml
 
 class TreeParser(object):
-    def __init__(self, tree_file, tree_format, tree_as_string=None, verbose=False):
-        if tree_file == None:
-            if tree_as_string:
-                self.tree_data = tree_as_string
-            else:
-                print('Error: no tree file was given.')
-                exit()
+    def __init__(self, tree_input, tree_format, verbose=False):
+        if os.path.isfile(tree_input):
+            self.tree_data = open(tree_input).read()
         else:
-            if not os.path.isfile(tree_file):
-                print('Error: could not find the given tree file "%s"' % tree_file)
-                exit()
-            else:
-                with open(tree_file) as f:
-                    self.tree_data = f.read()
+            self.tree_data = tree_input
         self.verbose = verbose
         self.leaves = [] # List of all terminal leaves in the tree
         self.index = {} # The index of each sequence name in self.leaves
@@ -25,6 +18,7 @@ class TreeParser(object):
         else:
             print('Error: tree format "%s" not recognized.' % tree_format)
             exit()
+        self.phylo_xml_data = self._convert_newick_phyloxml()
     # # # # #  Private methods  # # # # #
     def _parse_newick_tree(self):
         if self.verbose:
@@ -35,7 +29,30 @@ class TreeParser(object):
         self._generate_dist_matrix(leaf_paths, edges)
         if self.verbose:
             print('Finished loading information from tree with %i nodes.' % len(self.leaves))
-    # # #  Parsing the tree file  # # #
+    def _convert_newick_phyloxml(self):
+        converter = NewickToPhyloxml(self.tree_data)
+        for child in converter.etree:
+            tag = child.tag.lower()
+            if 'phylogeny' in tag:
+                phylogeny = child
+                ns = child.tag[ : tag.find('phylogeny')] # xml namespace
+                break
+        else:
+            print('Error parsing phyloxml file of tree')
+            exit()
+        # Clean out render, charts, styles, if any data was present.
+        render = self._xmlSubElement(phylogeny, 'render')
+        charts = self._xmlSubElement(render, 'charts')
+        styles = self._xmlSubElement(render, 'styles')
+        for clade in converter.etree.findall(".//%sname/.." % ns):
+            seqID = clade.find("%sname" % ns).text
+            for child in clade:
+                if child.tag in ('annotation', "%sannotation" % ns):
+                    clade.remove(child)
+            chrt = self._xmlSubElement(clade, 'chart')
+        return converter.tostring()
+
+    # # #  Parsing the tree data  # # #
     def _parse_newick_nodes_edges(self):
         newick_str = self.tree_data
         root_node = newick_str[newick_str.rindex(')')+1:-1]
@@ -78,6 +95,11 @@ class TreeParser(object):
         j = n_str.find(')')
         i = n_str[:j].rfind('(')
         return i, j
+    def _xmlSubElement(self, parent, tag):
+        for child in parent:
+            if child.tag == tag:
+                return child
+        return ET.SubElement(parent, tag)
     # # #  Calculating the distance matrix  # # #
     def _get_leaf_paths(self, parent):
         leaf_paths = {}

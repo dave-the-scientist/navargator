@@ -47,7 +47,7 @@ def load_repvar_file(file_path, verbose=True):
             else:
                 data_buff.append(line)
         process_tag_data(tag, data_buff)
-    vfinder = VariantFinder(data[tree_data_tag], tree_format='newick', tree_is_string=True, verbose=verbose)
+    vfinder = VariantFinder(data[tree_data_tag], tree_format='newick', verbose=verbose)
     avail = data.get(available_nodes_tag)
     if avail:
         vfinder.available = avail
@@ -84,12 +84,9 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_file, tree_format='newick', tree_is_string=False, allowed_wait=None, verbose=True):
+    def __init__(self, tree_input, tree_format='newick', allowed_wait=None, verbose=True):
         self.verbose = bool(verbose)
-        if tree_is_string == True:
-            self.tree = TreeParser(None, tree_format, tree_as_string=tree_file, verbose=self.verbose)
-        else:
-            self.tree = TreeParser(tree_file, tree_format, verbose=self.verbose)
+        self.tree = TreeParser(tree_input, tree_format=tree_format, verbose=self.verbose)
         self.leaves = self.tree.leaves # List of all terminal leaves in tree_file
         self.index = self.tree.index # The index of each sequence name in self.leaves
         self.dist = self.tree.dist.copy()
