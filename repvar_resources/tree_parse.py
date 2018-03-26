@@ -5,6 +5,7 @@ from repvar_resources.convert import NewickToPhyloxml
 
 class TreeParser(object):
     def __init__(self, tree_input, tree_format, verbose=False):
+        # The code in _parse_newick_nodes_edges is basically the same as in NewickToPhyloxml from convert.py. Combine them, so work isn't duplicated, and to ensure both methods are parsing the same.
         if os.path.isfile(tree_input):
             self.tree_data = open(tree_input).read()
         else:
@@ -64,24 +65,26 @@ class TreeParser(object):
         edges, parent = {}, {}
         while True:
             i, j = self._find_parentheses(newick_str)
-            if i == nodes_start: pnode = root_node
+            if i == nodes_start:
+                pnode = root_node
             else:
                 k = min(x for x in [newick_str.find(c,j+1) for c in ':,)'] if x>j)
                 pnode = newick_str[j+1 : k]
-            # pnode in parents or pnode in parent doesn't seem to happen on normal trees; what am I checking for?
+                # If : is the closest, there is a branch length. If that's true, newick_str[j+1:k] will contain the bootstrap/SH/etc value, if there is one. pnode will be that value if present.
             if not pnode or pnode in parents or pnode in parent:
+                # This does occur, so is needed.
                 pnode += '_%i' % node_gen_int
                 node_gen_int += 1
             self._nodes.add(pnode); parents.add(pnode)
             for datum in newick_str[i+1:j].split(','):
                 node, _, weight = datum.partition(':')
+                node = node.strip()
                 if not node or node in parent:
                     node += '_%i' % node_gen_int
                     node_gen_int += 1
-                if not weight:
-                    weight = default_weight
-                else:
-                    weight = float(weight)
+                if node[0] == node[-1] == "'":
+                    node = node[1:-1] # Removes quotes added by Figtree.
+                weight = float(weight)
                 edges[pnode, node] = weight
                 parent[node] = pnode
                 self._nodes.add(node)

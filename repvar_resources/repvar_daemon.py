@@ -33,6 +33,7 @@ class RepvarDaemon(object):
         self.web_server = web_server
         self.verbose = verbose
         self.sessions = {} # Holds the repvar instances, with session IDs as keys.
+        self._page_loaded = False # set to True when input.html finishes loading, so that the daemon will not start timing out any session until after that point.
         if not web_server: # Running locally.
             self.sessionID_length = 5 # Length of the unique session ID used.
             self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
@@ -103,7 +104,7 @@ class RepvarDaemon(object):
             self.sessions[idnum].been_processed = True
             self.sessions[idnum].html_loaded = True # TESTING these atts should be removed, or made more appropriate for repvar.
 
-            return json.dumps({'phyloxml_data':self.sessions[idnum].tree.phylo_xml_data, 'idnum':idnum})
+            return json.dumps({'idnum':idnum, 'leaves':self.sessions[idnum].leaves, 'phyloxml_data':self.sessions[idnum].tree.phylo_xml_data})
 
         # #  Serving the pages locally
         @self.server.route('/input')
