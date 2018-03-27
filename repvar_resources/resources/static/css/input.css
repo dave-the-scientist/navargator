@@ -1,10 +1,13 @@
+#bodyLeftDiv {
+  width: 250px;
+}
 #bodyTreeDiv {
   --tree-width: 700px;
   width: var(--tree-width);
   height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
 }
 #bodyRightDiv {
-  width: 400px;
+  width: 250px;
 }
 #uploadFileButton {
 

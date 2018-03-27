@@ -20,35 +20,41 @@ def daemonURL(url):
     """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in the page's javascript."""
     return '/daemon' + url
 
+# TODO:
+# - Finish upload_repvar_file(), as well as adding a method to add an existing vfinder instance to self.sessions.
+# - Display of previously specified avail and ignored seqs.
+# - GUI for picking/editing both sets.
+#   - Want a pane to appear to the right of 'choose' button listing strains with checkboxes (same one for avail and ignore). Select all box. Button at bottom for done, makes it disappear.
+#   - While pane is open, strains can be clicked on the tree. Be really nice if you could click on an internal node, and it would select all children.
+# - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
+
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
 
       This class defines several custom HTTP status codes used to signal errors:
     550 - Specific error validating the user's tree.
     """
-    def __init__(self, server_port, web_server=False, instance_timeout_inf=False, verbose=False):
+    def __init__(self, server_port, web_server=False, verbose=False):
         max_upload_size = 20*1024*1024 # 20 MB
         error_log_lines = 10000
         self.server_port = server_port
         self.web_server = web_server
         self.verbose = verbose
         self.sessions = {} # Holds the repvar instances, with session IDs as keys.
-        self._page_loaded = False # set to True when input.html finishes loading, so that the daemon will not start timing out any session until after that point.
         if not web_server: # Running locally.
             self.sessionID_length = 5 # Length of the unique session ID used.
             self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
-            self.maintain_wait = 2 # Interval that the page sends a signal to maintain the repvar instance.
-            self.allowed_wait = {'after_instance':300, 'page_load':300, 'between_checks':10} # Waits before timing out repvar instances.
-            if instance_timeout_inf:
-                self.allowed_wait['page_load'] = float('inf')
+            self.maintain_interval = 2 # Interval that the page sends a signal to maintain the repvar instance.
+            self.allowed_wait = 10 # Waits before timing out repvar instances.
         else: # Live, hosted web server.
             self.sessionID_length = 20
             self.check_interval = 10
-            self.maintain_wait = 9
-            self.allowed_wait = {'after_instance':120, 'page_load':300, 'between_checks':30}
+            self.maintain_interval = 9
+            self.allowed_wait = 30
         # # #  Activity and error logging:
         self.local_input_id = 'local_input_page' # Should match setupPage in input.js
         self.local_input_last_maintain = None
+        self.page_has_loaded = False # Session timeouts are only allowed after this is set to True.
         self.should_quit = threading.Event()
         self.buff_lock = threading.Lock()
         self.log_buffer = StringIO()
@@ -71,6 +77,7 @@ class RepvarDaemon(object):
                 pass
         @self.server.route(daemonURL('/maintain-server'), methods=['POST'])
         def maintain_server():
+            print 'maintain'
             vf, idnum, msg = self.get_instance()
             if idnum == self.local_input_id:
                 self.local_input_last_maintain = time.time()
@@ -93,6 +100,11 @@ class RepvarDaemon(object):
             if not self.web_server and len(self.sessions) == 0:
                 self.should_quit.set()
             return 'instance-closed successful.'
+        @self.server.route(daemonURL('/get-input-data'), methods=['POST'])
+        def get_input_data():
+            self.page_has_loaded = True
+            idnum = request.form['session_id']
+            return json.dumps({'maintain_interval':self.maintain_interval, 'idnum':idnum, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]})
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
             try:
@@ -100,11 +112,10 @@ class RepvarDaemon(object):
             except Exception as err:
                 return (str(err), 552)
             idnum = self.new_instance(tree_data)
-
-            self.sessions[idnum].been_processed = True
-            self.sessions[idnum].html_loaded = True # TESTING these atts should be removed, or made more appropriate for repvar.
-
             return json.dumps({'idnum':idnum, 'leaves':self.sessions[idnum].leaves, 'phyloxml_data':self.sessions[idnum].tree.phylo_xml_data})
+        @self.server.route(daemonURL('/upload-repvar-file'), methods=['POST'])
+        def upload_repvar_file():
+            pass
 
         # #  Serving the pages locally
         @self.server.route('/input')
@@ -121,8 +132,7 @@ class RepvarDaemon(object):
         vf.distance_scale = distance_scale
         self.sessions[idnum] = vf
         return idnum
-    def process_instance(self, idnum, num_variants, method=None, distance_scale=None, bootstraps=10):
-        self.sessions[idnum].processed(num_variants, method=method, distance_scale=distance_scale, bootstraps=bootstraps)
+
     # # # # #  Running the server  # # # # #
     def start_server(self):
         if self.web_server:
@@ -182,10 +192,12 @@ class RepvarDaemon(object):
         for idnum in to_remove:
             del self.sessions[idnum]
         if not self.web_server: # if personal server with no live instances.
-            if self.local_input_last_maintain != None and \
-            time.time() - self.local_input_last_maintain > self.allowed_wait['between_checks']:
-                self.local_input_last_maintain = None
-            print len(self.sessions), self.local_input_last_maintain
+            if self.local_input_last_maintain != None:
+                if self.page_has_loaded:
+                    if time.time() - self.local_input_last_maintain > self.allowed_wait:
+                        self.local_input_last_maintain = None
+                else:
+                    self.local_input_last_maintain = time.time()
             if self.local_input_last_maintain == None and len(self.sessions) == 0:
                 print('last Repvar instance closed, shutting down server.')
                 self.should_quit.set()

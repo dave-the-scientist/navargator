@@ -7,8 +7,8 @@ var server_url='http://'+window.location.host, session_id='',
 // =====  Page setup:
 function setupPage() {
   session_id = location.search.slice(1);
+  maintain_interval = setInterval(maintainServer, maintain_wait); // This should be called before waiting for the getData ajax call.
   // getData ajax call here. Put this interval call in the ajax fxn.
-  maintain_interval = setInterval(maintainServer, maintain_wait);
 
 }
 // Called once the document has loaded.

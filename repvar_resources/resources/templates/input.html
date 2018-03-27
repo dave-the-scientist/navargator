@@ -43,6 +43,15 @@
       </div>
 
       <div id="bodyMainDiv">
+        <div id="bodyLeftDiv" class="style-box">
+          <h2>Input options</h2>
+          <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
+            <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
+            <input id="uploadFileInput" name="upload-file" type="file">
+          </form>
+          <button id="uploadFileButton" type="button"><b>Load tree</b></button>
+        </div>
+
         <div id="bodyTreeDiv" class="style-box">
           <h2>Phylogenetic tree</h2>
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
@@ -52,12 +61,26 @@
         </div>
 
         <div id="bodyRightDiv" class="style-box">
-          <h2>Input options</h2>
-          <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
-            <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
-            <input id="uploadFileInput" name="upload-file" type="file">
-          </form>
-          <button id="uploadFileButton" type="button"><b>Load tree</b></button>
+          <h2>Run options</h2>
+          <table id="runOptionsTable"><tbody>
+            <tr>
+              <td><label for="availButton">0 available sequences</label></td>
+              <td><button id="availButton" type="button">Choose</button></td>
+            </tr>
+            <tr>
+              <td><label for="ignoreButton">0 ignored sequences</label></td>
+              <td><button id="ignoreButton" type="button">Choose</button></td>
+            </tr>
+            <tr>
+              <td><label for="numVarSpinner">Number of variants</label></td>
+              <td><input id="numVarSpinner" class="param-spinner" /></td>
+            </tr>
+            <tr>
+              <td><label><input id="rangeCheckbox" type="checkbox" />Variant range</label></td>
+              <td><input id="rangeSpinner" class="param-spinner" /></td>
+            </tr>
+          </tbody></table>
+          <button id="runButton">Find variants</button>
         </div>
       </div>
 

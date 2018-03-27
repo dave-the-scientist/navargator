@@ -2,11 +2,12 @@
 
 // =====  Page settings:
 var page = {
-  'server_url':'http://'+window.location.host, 'session_id':'', 'maintain_wait':2000, 'instance_closed':false, 'maintain_interval':null, 'max_upload_size':20000000
+  'server_url':'http://'+window.location.host, 'session_id':'', 'maintain_interval':2000, 'instance_closed':false, 'maintain_interval_obj':null, 'max_upload_size':20000000
 };
 // =====  Tree objects and options:
 var repvar = {
-  'leaves':[], 'r_paper':null, 'tree_data':null, 'panZoom':null,
+  'leaves':[], 'available':[], 'ignored':[],
+  'r_paper':null, 'tree_data':null, 'panZoom':null,
   'opts' : {
     'fonts' : {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
@@ -23,7 +24,29 @@ function setupPage() {
   var tree_width_str = getComputedStyle(document.getElementById("bodyTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
 
+  $("#numVarSpinner").spinner({
+    min: 2, max: null,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 3);
+  $("#rangeSpinner").spinner({
+    min: 2, max: null,
+    numberFormat: 'N0', step: 1,
+    disabled: true
+  }).spinner('value', 3);
+  $("#rangeCheckbox")[0].checked = false;
+  repvar.panZoom = svgPanZoom('#figureSvg', {
+    fit: false,
+    center: false
+  });
+
   // ===  Button callbacks
+  $("#rangeCheckbox").change(function() {
+    if ($(this).is(':checked')) {
+      $("#rangeSpinner").spinner('enable');
+    } else {
+      $("#rangeSpinner").spinner('disable');
+    }
+  });
   $("#uploadFileButton").click(function() {
     var file_obj = $("#uploadFileInput")[0].files[0];
     if (!file_obj) {
@@ -48,12 +71,10 @@ function setupPage() {
       cache: false,
       processData: false,
       success: function(data_obj) {
-        parseDataObj(data_obj);
-
-        repvar.panZoom = svgPanZoom('#figureSvg', {
-          fit: false,
-          center: false
-        });
+        parseUploadDataObj(data_obj);
+        clearInterval(page.maintain_interval_obj);
+        page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+        updateRunOptions();
         drawTree();
       },
       error: function(error) {
@@ -63,17 +84,33 @@ function setupPage() {
   });
 
   if (page.session_id != '') {
-    // Only '' for non-pre-loaded web version. That doesn't get a maintain.
-    console.log('pre interval');
-    page.maintain_interval = setInterval(maintainServer, page.maintain_wait);
-    // Sometimes this silently doesn't return.
-    // One other time I got an error saying maintainServer was not defined.
-    console.log('post interval');
-    if (page.session_id != 'local_input_page') {
-      // getData ajax call here.
-      console.log('non-blank input from local version.');
-    }
+    // This is only run for the local version.
+    $.ajax({
+      url: daemonURL('/get-input-data'),
+      type: 'POST',
+      data: {'session_id': page.session_id},
+      success: function(data_obj) {
+        console.log('get input success');
+        parseRepvarData(data_obj);
+        page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+        if (repvar.tree_data) {
+          drawTree();
+          // visualize available and ignored vars.
+        }
+      },
+      error: function(error) { processError(error, "Error loading input data from the server"); }
+    });
   }
+}
+function updateRunOptions() {
+  var maxVars = repvar.leaves.length - repvar.ignored.length;
+  if (maxVars == 0) {
+    maxVars = null;
+  } else if (repvar.available.length >= 2) {
+    maxVars = repvar.available.length;
+  }
+  $("#numVarSpinner").spinner('option', 'max', maxVars);
+  $("#rangeSpinner").spinner('option', 'max', maxVars);
 }
 $(document).ready(function(){
   // Called once the document has loaded.
@@ -85,9 +122,19 @@ $(window).bind('beforeunload', function() {
 });
 
 // =====  Data parsing:
-function parseDataObj(data_obj) {
+function parseRepvarData(data_obj) {
   var data = $.parseJSON(data_obj);
-  console.log('data is', data);
+  page.session_id = data.idnum;
+  repvar.tree_data = data.phyloxml_data;
+  repvar.leaves = data.leaves;
+  repvar.available = data.available;
+  repvar.ignored = data.ignored;
+  if (data.hasOwnProperty('maintain_interval')) {
+    page.maintain_interval = data.maintain_interval * 1000;
+  }
+}
+function parseUploadDataObj(data_obj) {
+  var data = $.parseJSON(data_obj);
   page.session_id = data.idnum;
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
@@ -103,7 +150,7 @@ function drawTree() {
 
   var canvas_size = repvar.opts.sizes.tree;
   var maxLabelLength = getMaxLabelLength(repvar.leaves);
-  var total_label_size = (repvar.opts.sizes.marker_radius + repvar.opts.sizes.inner_label_buffer - 1 + maxLabelLength + Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels) * 2.0;
+  var total_label_size = (maxLabelLength + Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels + repvar.opts.sizes.marker_radius + repvar.opts.sizes.inner_label_buffer - 1) * 2.0;
 
   Smits.PhyloCanvas.Render.Style.connectedDash['stroke'] = 'none';
   Smits.PhyloCanvas.Render.Parameters.Circular.bufferRadius = total_label_size/canvas_size;
@@ -121,7 +168,7 @@ function drawTree() {
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
   $("#treeSvg").attr({'x':0, 'y':0});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
-  $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in stack.
+  $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
 }
 //   ===  Misc tree drawing functions:
 function getMaxLabelLength(orig_names) {

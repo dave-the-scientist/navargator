@@ -30,14 +30,14 @@ function maintainServer() {
       error: function(error) {
         console.log('connection to Repvar server lost.');
         page.instance_closed = true;
-        clearInterval(page.maintain_interval);
+        clearInterval(page.maintain_interval_obj);
       }
     });
   }
 }
 function closeInstance() {
   page.instance_closed = true;
-  clearInterval(page.maintain_interval);
+  clearInterval(page.maintain_interval_obj);
   $.ajax({
     url: daemonURL('/instance-closed'),
     type: 'POST',

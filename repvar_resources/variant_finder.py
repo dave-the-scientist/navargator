@@ -84,7 +84,7 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='newick', allowed_wait=None, verbose=True):
+    def __init__(self, tree_input, tree_format='newick', allowed_wait=10, verbose=True):
         self.verbose = bool(verbose)
         self.tree = TreeParser(tree_input, tree_format=tree_format, verbose=self.verbose)
         self.leaves = self.tree.leaves # List of all terminal leaves in tree_file
@@ -101,7 +101,6 @@ class VariantFinder(object):
         self._distance_scale_max = 1000
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
         # # Code to clean dead instances:
-        self.been_processed, self.html_loaded = False, False
         self._allowed_wait = allowed_wait # Only used by collect_garbage() in repvar_daemon.py
         self.last_maintained = time.time()
 
@@ -331,32 +330,12 @@ class VariantFinder(object):
         self.dist = np.power(self.tree.dist.copy()+1.0, val) - 1.0
 
     # # # # #  Methods for cleaning up dead instances  # # # # #
-    def processed(self, num_variants, method=None, distance_scale=None, bootstraps=10):
-        if self.been_processed or self.html_loaded:
-            raise RepvarRuntimeError('repvar instance cannot be processed twice, and must be processed before being loaded by the results page.')
-        self.find_variants(num_variants, distance_scale=distance_scale, method=method, bootstraps=bootstraps)
-        self.been_processed = True
-        self.last_maintained = time.time()
-    def page_loaded(self):
-        if not self.been_processed:
-            raise RepvarRuntimeError('repvar instance cannot be loaded by the results page before being processed.')
-        self.html_loaded = True
-        self.last_maintained = time.time()
     def maintain(self):
-        if not self.been_processed or not self.html_loaded:
-            raise RepvarRuntimeError('repvar instance should not be maintained before being processed and loaded by the results page.')
         self.last_maintained = time.time()
     def still_alive(self):
         age = time.time() - self.last_maintained
-        if not self.been_processed:
-            if age >= self._allowed_wait['after_instance']:
-                return False
-        elif not self.html_loaded:
-            if age >= self._allowed_wait['page_load']:
-                return False
-        else:
-            if age >= self._allowed_wait['between_checks']:
-                return False
+        if age >= self._allowed_wait:
+            return False
         return True
 
 class RepvarValidationError(ValueError):
