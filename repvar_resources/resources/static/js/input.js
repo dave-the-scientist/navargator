@@ -6,7 +6,7 @@ var page = {
 };
 // =====  Tree objects and options:
 var repvar = {
-  'leaves':[], 'available':[], 'ignored':[],
+  'leaves':[], 'available':[], 'ignored':[], 'nodes':{},
   'r_paper':null, 'tree_data':null, 'panZoom':null,
   'opts' : {
     'fonts' : {
@@ -14,6 +14,9 @@ var repvar = {
     },
     'sizes' : {
       'tree':700, 'marker_radius':4, 'inner_label_buffer':3
+    },
+    'colours' : {
+      'node':'#E8E8E8', 'available':'#24F030', 'ignored':'#5D5D5D'
     }
   }
 };
@@ -71,7 +74,7 @@ function setupPage() {
       cache: false,
       processData: false,
       success: function(data_obj) {
-        parseUploadDataObj(data_obj);
+        parseRepvarData(data_obj);
         clearInterval(page.maintain_interval_obj);
         page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
         updateRunOptions();
@@ -90,10 +93,10 @@ function setupPage() {
       type: 'POST',
       data: {'session_id': page.session_id},
       success: function(data_obj) {
-        console.log('get input success');
         parseRepvarData(data_obj);
         page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
         if (repvar.tree_data) {
+          updateRunOptions();
           drawTree();
           // visualize available and ignored vars.
         }
@@ -133,15 +136,10 @@ function parseRepvarData(data_obj) {
     page.maintain_interval = data.maintain_interval * 1000;
   }
 }
-function parseUploadDataObj(data_obj) {
-  var data = $.parseJSON(data_obj);
-  page.session_id = data.idnum;
-  repvar.tree_data = data.phyloxml_data;
-  repvar.leaves = data.leaves;
-}
 
 // =====  Tree drawing functions:
 function drawTree() {
+  clearTree();
   loadPhyloSVG(); // Reloads jsPhyloSVG.
 
   Smits.PhyloCanvas.Render.Parameters.jsOverride = 1;
@@ -164,11 +162,41 @@ function drawTree() {
   );
   $("#svgCanvas > svg").attr("id", "treeSvg");
   repvar.r_paper = phylocanvas.getSvg().svg;
+  setupVariantMarkers();
   // If adding other elements, can modify figure size here, and set the offset of the tree as well.
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
   $("#treeSvg").attr({'x':0, 'y':0});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
+}
+function clearTree() {
+  if (repvar.r_paper) {
+    repvar.r_paper.remove();
+  }
+  $("#svgCanvas").empty();
+  $("#treeGroup").empty();
+}
+function setupVariantMarkers() {
+  repvar.nodes = {};
+  var text_obj, var_name, var_coords, var_node;
+  $("#treeSvg").find("text").each(function() {
+    text_obj = $(this);
+    var_name = text_obj.text();
+    var_coords = parseLeafTextCoords(text_obj);
+    var_node = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.marker_radius);
+    var_node.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
+    //$(var_node.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
+    repvar.nodes[var_name] = {'circle': var_node, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y};
+  });
+  // TODO: move the below code to fxn updateAvailableIgnored or something. Also, should raise the z-index of the available and ignored nodes above the regular ones.
+  for (var i=0; i<repvar.available.length; ++i) {
+    var_name = repvar.available[i];
+    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
+  }
+  for (var i=0; i<repvar.ignored.length; ++i) {
+    var_name = repvar.ignored[i];
+    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored});
+  }
 }
 //   ===  Misc tree drawing functions:
 function getMaxLabelLength(orig_names) {
@@ -186,4 +214,12 @@ function getMaxLabelLength(orig_names) {
   }
   paper.remove();
   return max;
+}
+function parseLeafTextCoords(a_obj) {
+  var coordsStr = $(a_obj).prev().attr("d");
+  var L_ind = coordsStr.indexOf("L");
+  var nodeCoords = coordsStr.slice(1, L_ind).split(",");
+  var labelCoords = coordsStr.slice(L_ind+1).split(",");
+  return {'node_x':parseFloat(nodeCoords[0]), 'node_y':parseFloat(nodeCoords[1]),
+      'label_x':parseFloat(labelCoords[0]), 'label_y':parseFloat(labelCoords[1])};
 }

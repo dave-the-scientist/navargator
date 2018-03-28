@@ -2,7 +2,7 @@ import os, sys, time, threading
 from collections import deque
 from random import randint
 from flask import Flask, request, render_template, json
-from repvar_resources.variant_finder import VariantFinder
+from repvar_resources.variant_finder import VariantFinder, repvar_from_data
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
@@ -17,11 +17,11 @@ else: # Python 2.x imports
     from tkFileDialog import asksaveasfilename as saveAs
 
 def daemonURL(url):
-    """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in the page's javascript."""
+    """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js."""
     return '/daemon' + url
 
 # TODO:
-# - Finish upload_repvar_file(), as well as adding a method to add an existing vfinder instance to self.sessions.
+# - Ensure js can load repvar files.
 # - Display of previously specified avail and ignored seqs.
 # - GUI for picking/editing both sets.
 #   - Want a pane to appear to the right of 'choose' button listing strains with checkboxes (same one for avail and ignore). Select all box. Button at bottom for done, makes it disappear.
@@ -77,7 +77,6 @@ class RepvarDaemon(object):
                 pass
         @self.server.route(daemonURL('/maintain-server'), methods=['POST'])
         def maintain_server():
-            print 'maintain'
             vf, idnum, msg = self.get_instance()
             if idnum == self.local_input_id:
                 self.local_input_last_maintain = time.time()
@@ -104,25 +103,36 @@ class RepvarDaemon(object):
         def get_input_data():
             self.page_has_loaded = True
             idnum = request.form['session_id']
-            return json.dumps({'maintain_interval':self.maintain_interval, 'idnum':idnum, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]})
+            if idnum in self.sessions:
+                data_dict = self.get_vf_data_dict(idnum)
+            else:
+                data_dict = {'idnum':idnum, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
+            data_dict.update({'maintain_interval':self.maintain_interval})
+            return json.dumps(data_dict)
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
             try:
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 552)
-            idnum = self.new_instance(tree_data)
-            return json.dumps({'idnum':idnum, 'leaves':self.sessions[idnum].leaves, 'phyloxml_data':self.sessions[idnum].tree.phylo_xml_data})
+            idnum = self.new_variant_finder(tree_data)
+            return json.dumps(self.get_vf_data_dict(idnum))
         @self.server.route(daemonURL('/upload-repvar-file'), methods=['POST'])
         def upload_repvar_file():
-            pass
+            try:
+                repvar_data = request.files['upload-file'].read()
+            except Exception as err:
+                return (str(err), 552)
+            vf = repvar_from_data(repvar_data.splitlines(), verbose=False)
+            idnum = self.add_variant_finder(vf)
+            return json.dumps(self.get_vf_data_dict(idnum))
 
         # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():
             return render_template('input.html')
     # # # # #  Public methods  # # # # #
-    def new_instance(self, tree_data, available=[], ignored=[], distance_scale=1.0):
+    def new_variant_finder(self, tree_data, available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         idnum = self.generateSessionID()
@@ -131,6 +141,10 @@ class RepvarDaemon(object):
         vf.ignored = ignored
         vf.distance_scale = distance_scale
         self.sessions[idnum] = vf
+        return idnum
+    def add_variant_finder(self, vfinder):
+        idnum = self.generateSessionID()
+        self.sessions[idnum] = vfinder
         return idnum
 
     # # # # #  Running the server  # # # # #
@@ -182,6 +196,9 @@ class RepvarDaemon(object):
         while idnum in self.sessions:
             idnum = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return idnum
+    def get_vf_data_dict(self, idnum):
+        vf = self.sessions[idnum]
+        return {'idnum':idnum, 'leaves':vf.leaves, 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.tree.phylo_xml_data}
     # # #  Server maintainence  # # #
     def collect_garbage(self):
         to_remove = []

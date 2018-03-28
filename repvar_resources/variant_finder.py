@@ -21,6 +21,11 @@ def load_repvar_file(file_path, verbose=True):
         exit()
     if verbose:
         print('Loading information from %s...' % file_path)
+    with open(file_path) as f:
+        vfinder = repvar_from_data(f, verbose=verbose)
+    return vfinder
+def repvar_from_data(data_lines, verbose=False):
+    """Expects data as an iterable of lines. Should be either a file object or a str.splitlines()."""
     data = {}
     def process_tag_data(tag, data_buff):
         if tag in data:
@@ -28,7 +33,7 @@ def load_repvar_file(file_path, verbose=True):
             exit()
         if not data_buff:
             return
-        if tag in (ignore_nodes_tag, available_nodes_tag):
+        if tag in (ignore_nodes_tag, available_nodes_tag): # These data to be split into lists
             val = ','.join(data_buff)
             val_list = val.split(',')
             data[tag] = val_list
@@ -36,17 +41,17 @@ def load_repvar_file(file_path, verbose=True):
             data[tag] = data_buff[0]
         else:
             data[tag] = data_buff
-    with open(file_path) as f:
-        tag, data_buff = '', []
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'): continue
-            if line.startswith('[') and line.endswith(']'):
-                process_tag_data(tag, data_buff)
-                tag, data_buff = line[1:-1], []
-            else:
-                data_buff.append(line)
-        process_tag_data(tag, data_buff)
+    tag, data_buff = '', []
+    for line in data_lines:
+        line = line.strip()
+        if not line or line.startswith('#'): continue
+        if line.startswith('[') and line.endswith(']'):
+            process_tag_data(tag, data_buff)
+            tag, data_buff = line[1:-1], []
+        else:
+            data_buff.append(line)
+    process_tag_data(tag, data_buff)
+    # data is now filled out
     vfinder = VariantFinder(data[tree_data_tag], tree_format='newick', verbose=verbose)
     avail = data.get(available_nodes_tag)
     if avail:
@@ -56,7 +61,7 @@ def load_repvar_file(file_path, verbose=True):
         vfinder.ignored = ignor
     return vfinder
 def binomial_coefficient(n, k):
-    """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions."""
+    """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions, but is close enough for my purposes."""
     def log_factorial(num):
         _sum = 0
         for i in xrange(2, num+1):
