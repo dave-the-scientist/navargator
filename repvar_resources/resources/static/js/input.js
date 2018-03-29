@@ -23,33 +23,18 @@ var repvar = {
 
 // =====  Page setup:
 function setupPage() {
+  $("button").button(); // Converts all html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
   page.session_id = location.search.slice(1);
   var tree_width_str = getComputedStyle(document.getElementById("bodyTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-
-  $("#numVarSpinner").spinner({
-    min: 2, max: null,
-    numberFormat: 'N0', step: 1
-  }).spinner('value', 3);
-  $("#rangeSpinner").spinner({
-    min: 2, max: null,
-    numberFormat: 'N0', step: 1,
-    disabled: true
-  }).spinner('value', 3);
-  $("#rangeCheckbox")[0].checked = false;
   repvar.panZoom = svgPanZoom('#figureSvg', {
     fit: false,
     center: false
   });
+  setupRunOptions();
+  setupNodeSelection();
 
   // ===  Button callbacks
-  $("#rangeCheckbox").change(function() {
-    if ($(this).is(':checked')) {
-      $("#rangeSpinner").spinner('enable');
-    } else {
-      $("#rangeSpinner").spinner('disable');
-    }
-  });
   $("#uploadFileButton").click(function() {
     var file_obj = $("#uploadFileInput")[0].files[0];
     if (!file_obj) {
@@ -77,8 +62,9 @@ function setupPage() {
         parseRepvarData(data_obj);
         clearInterval(page.maintain_interval_obj);
         page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
-        updateRunOptions();
         drawTree();
+        updateRunOptions();
+        updateNodeSelection();
       },
       error: function(error) {
         processError(error, "Error uploading files");
@@ -96,16 +82,111 @@ function setupPage() {
         parseRepvarData(data_obj);
         page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
         if (repvar.tree_data) {
-          updateRunOptions();
           drawTree();
-          // visualize available and ignored vars.
+          updateRunOptions();
+          updateNodeSelection();
         }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
   }
 }
+function setupRunOptions() {
+  $("#numVarSpinner").spinner({
+    min: 2, max: null,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 3);
+  $("#rangeSpinner").spinner({
+    min: 2, max: null,
+    numberFormat: 'N0', step: 1,
+    disabled: true
+  }).spinner('value', 3);
+  $("#rangeCheckbox")[0].checked = false;
+  // Button callbacks:
+  $("#rangeCheckbox").change(function() {
+    if ($(this).is(':checked')) {
+      $("#rangeSpinner").spinner('enable');
+    } else {
+      $("#rangeSpinner").spinner('disable');
+    }
+  });
+
+  $("#availButton").click(function() {
+    $("#nodeSelectSpan").html('available');
+    $("#availButton").button('disable');
+    $("#ignoreButton").button('disable');
+    // Prepare the node selection checkboxes:
+    if (repvar.available.length == repvar.leaves.length) { $("#nodeSelectAll").prop('checked', true); }
+    else { $("#nodeSelectAll").prop('checked', false); }
+    $(".node-select-checkbox").each(function() {
+      var checkbox = $(this);
+      var name = checkbox.prop('name');
+      if (repvar.available.indexOf(name) != -1) {
+        checkbox.prop('checked', true);
+      } else {
+        checkbox.prop('checked', false);
+      }
+      if (repvar.ignored.indexOf(name) != -1) {
+        checkbox.attr('disabled', true);
+      } else {
+        checkbox.attr('disabled', false);
+      }
+    });
+    $("#bodyNodeSelectDiv").show();
+  });
+
+  $("#ignoreButton").click(function() {
+    $("#nodeSelectSpan").html('ignored');
+    $("#ignoreButton").button('disable');
+    $("#availButton").button('disable');
+    // Prepare the node selection checkboxes:
+    $("#nodeSelectAll").prop('checked', false);
+    $(".node-select-checkbox").each(function() {
+      var checkbox = $(this);
+      var name = checkbox.prop('name');
+      checkbox.attr('disabled', false);
+      if (repvar.ignored.indexOf(name) != -1) {
+        checkbox.prop('checked', true);
+      } else {
+        checkbox.prop('checked', false);
+      }
+    });
+    $("#bodyNodeSelectDiv").show();
+  });
+  $("#availButton").button('disable');
+  $("#ignoreButton").button('disable');
+}
+function setupNodeSelection() {
+  $("#nodeSelectAll").change(function() {
+    if ($(this).is(':checked')) {
+      $(".node-select-checkbox").filter(':enabled').prop('checked', true);
+    } else {
+      $(".node-select-checkbox").filter(':enabled').prop('checked', false);
+    }
+  });
+  $("#nodeSelectSaveButton").click(function() {
+    var node_list = [];
+    $(".node-select-checkbox").filter(':checked').each(function() {
+      node_list.push($(this).prop('name'));
+    });
+    var node_type = $("#nodeSelectSpan").html();
+    if (node_type == 'available') {
+      repvar.available = node_list;
+    } else if (node_type == 'ignored') {
+      repvar.available = $.grep(repvar.available, function(n, i) { return (node_list.indexOf(n) == -1) });
+      repvar.ignored = node_list;
+    } else {
+      alert("Error updating node selection.");
+    }
+    $("#bodyNodeSelectDiv").hide();
+    updateRunOptions();
+  });
+  $("#nodeSelectCancelButton").click(function() {
+    $("#bodyNodeSelectDiv").hide();
+  });
+}
 function updateRunOptions() {
+  // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
   var maxVars = repvar.leaves.length - repvar.ignored.length;
   if (maxVars == 0) {
     maxVars = null;
@@ -114,6 +195,20 @@ function updateRunOptions() {
   }
   $("#numVarSpinner").spinner('option', 'max', maxVars);
   $("#rangeSpinner").spinner('option', 'max', maxVars);
+  $("#numAvailSpan").html(repvar.available.length);
+  $("#numIgnoredSpan").html(repvar.ignored.length);
+  $("#availButton").button('enable');
+  $("#ignoreButton").button('enable');
+  updateVariantMarkers();
+}
+function updateNodeSelection() {
+  // Updates the list of variant checkboxes in the node selection pane. Should be called every time the phylogenetic tree is modified.
+  for (var i=0; i<repvar.leaves.length; ++i) {
+    var checkbox = $('<label><input type="checkbox" class="node-select-checkbox" />'+repvar.leaves[i]+'</label>');
+    checkbox.children().prop('name', repvar.leaves[i]);
+    $("#nodeSelectCheckboxes").append(checkbox);
+  }
+
 }
 $(document).ready(function(){
   // Called once the document has loaded.
@@ -188,14 +283,18 @@ function setupVariantMarkers() {
     //$(var_node.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
     repvar.nodes[var_name] = {'circle': var_node, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y};
   });
-  // TODO: move the below code to fxn updateAvailableIgnored or something. Also, should raise the z-index of the available and ignored nodes above the regular ones.
-  for (var i=0; i<repvar.available.length; ++i) {
-    var_name = repvar.available[i];
-    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
-  }
-  for (var i=0; i<repvar.ignored.length; ++i) {
-    var_name = repvar.ignored[i];
-    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored});
+}
+function updateVariantMarkers() {
+  var var_name;
+  for (var i=0; i<repvar.leaves.length; ++i) {
+    var_name = repvar.leaves[i];
+    if (repvar.available.indexOf(var_name) != -1) {
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
+    } else if (repvar.ignored.indexOf(var_name) != -1) {
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored});
+    } else {
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.node});
+    }
   }
 }
 //   ===  Misc tree drawing functions:

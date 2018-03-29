@@ -49,7 +49,7 @@
             <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
             <input id="uploadFileInput" name="upload-file" type="file">
           </form>
-          <button id="uploadFileButton" type="button"><b>Load tree</b></button>
+          <button id="uploadFileButton"><b>Load file</b></button>
         </div>
 
         <div id="bodyTreeDiv" class="style-box">
@@ -64,23 +64,30 @@
           <h2>Run options</h2>
           <table id="runOptionsTable"><tbody>
             <tr>
-              <td><label for="availButton">0 available sequences</label></td>
-              <td><button id="availButton" type="button">Choose</button></td>
+              <td><label for="availButton"><span id="numAvailSpan">0</span> available variants</label></td>
+              <td><button id="availButton">Choose</button></td>
             </tr>
             <tr>
-              <td><label for="ignoreButton">0 ignored sequences</label></td>
-              <td><button id="ignoreButton" type="button">Choose</button></td>
+              <td><label for="ignoreButton"><span id="numIgnoredSpan">0</span> ignored variants</label></td>
+              <td><button id="ignoreButton">Choose</button></td>
             </tr>
             <tr>
-              <td><label for="numVarSpinner">Number of variants</label></td>
+              <td><label for="numVarSpinner">Variants to find</label></td>
               <td><input id="numVarSpinner" class="param-spinner" /></td>
             </tr>
             <tr>
-              <td><label><input id="rangeCheckbox" type="checkbox" />Variant range</label></td>
+              <td><label><input id="rangeCheckbox" type="checkbox" />Range of variants</label></td>
               <td><input id="rangeSpinner" class="param-spinner" /></td>
             </tr>
           </tbody></table>
-          <button id="runButton">Find variants</button>
+          <button id="runButton"><b>Find variants</b></button>
+        </div>
+        <div id="bodyNodeSelectDiv" class="style-box" style="display:none">
+          <h2>Choose <span id="nodeSelectSpan"></span> variants</h2>
+          <label><input id="nodeSelectAll" type="checkbox" /><b>Select all</b></label>
+          <div id="nodeSelectCheckboxes"></div>
+          <button id="nodeSelectSaveButton">Save selection</button>
+          <button id="nodeSelectCancelButton">Cancel</button>
         </div>
       </div>
 
