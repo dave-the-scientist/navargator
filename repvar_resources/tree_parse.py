@@ -24,6 +24,8 @@ class TreeParser(object):
     def _parse_newick_tree(self):
         if self.verbose:
             print('Reading tree data and calculating distance matrix...')
+        if '\n' in self.tree_data: # In case it's split over multiple lines for some reason.
+            self.tree_data = ''.join(self.tree_data.split())
         self._root_node, self._nodes = None, set()
         edges, parent = self._parse_newick_nodes_edges()
         leaf_paths = self._get_leaf_paths(parent)

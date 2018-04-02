@@ -16,7 +16,7 @@ var repvar = {
       'tree':700, 'marker_radius':4, 'inner_label_buffer':3
     },
     'colours' : {
-      'node':'#E8E8E8', 'available':'#24F030', 'ignored':'#5D5D5D'
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D'
     }
   }
 };
@@ -116,8 +116,11 @@ function setupRunOptions() {
     $("#availButton").button('disable');
     $("#ignoreButton").button('disable');
     // Prepare the node selection checkboxes:
-    if (repvar.available.length == repvar.leaves.length) { $("#nodeSelectAll").prop('checked', true); }
-    else { $("#nodeSelectAll").prop('checked', false); }
+    if (repvar.available.length == repvar.leaves.length) {
+      $("#nodeSelectAll").prop('checked', true);
+    } else {
+      $("#nodeSelectAll").prop('checked', false);
+    }
     $(".node-select-checkbox").each(function() {
       var checkbox = $(this);
       var name = checkbox.prop('name');

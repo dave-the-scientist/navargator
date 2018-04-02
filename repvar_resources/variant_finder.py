@@ -8,8 +8,9 @@ import numpy as np
 from tree_parse import TreeParser
 
 # # # # #  Variables  # # # # #
-ignore_nodes_tag = 'ignored variants'
+chosen_nodes_tag = 'chosen variants'
 available_nodes_tag = 'available variants'
+ignore_nodes_tag = 'ignored variants'
 tree_data_tag = 'newick tree'
 
 # # # # #  Misc functions  # # # # #
@@ -33,11 +34,11 @@ def repvar_from_data(data_lines, verbose=False):
             exit()
         if not data_buff:
             return
-        if tag in (ignore_nodes_tag, available_nodes_tag): # These data to be split into lists
+        if tag in (chosen_nodes_tag, available_nodes_tag, ignore_nodes_tag): # These data to be split into lists
             val = ','.join(data_buff)
             val_list = val.split(',')
             data[tag] = val_list
-        elif tag == tree_data_tag:
+        elif tag == tree_data_tag: # These data are stored as a single string
             data[tag] = data_buff[0]
         else:
             data[tag] = data_buff
@@ -53,6 +54,9 @@ def repvar_from_data(data_lines, verbose=False):
     process_tag_data(tag, data_buff)
     # data is now filled out
     vfinder = VariantFinder(data[tree_data_tag], tree_format='newick', verbose=verbose)
+    chsn = data.get(chosen_nodes_tag)
+    if chsn:
+        vfinder.chosen = chsn
     avail = data.get(available_nodes_tag)
     if avail:
         vfinder.available = avail
@@ -99,9 +103,10 @@ class VariantFinder(object):
 
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
+        self._chosen = set() # Accessible as self.chosen
         self._distance_scale = 1.0 # Accessible as self.distance_scale
         # # #  Private attributes # # #
-        self._ingroup_indices = set(range(len(self.leaves)))
+        self._not_ignored_inds = set(range(len(self.leaves)))
         self._cluster_methods = set(['k medoids', 'brute force'])
         self._distance_scale_max = 1000
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
@@ -111,33 +116,23 @@ class VariantFinder(object):
 
     # # # # #  Public methods  # # # # #
     def find_variants(self, num_variants, distance_scale=None, method=None, bootstraps=10):
-        num_avail = len(self.available)
-        if not 1 <= num_variants <= num_avail:
-            print('Error: num_variants must be an integer greater than 1 but less than or equal to the number of designated available nodes (currently: %i).' % num_avail)
+        num_avail, num_chsn = len(self.available), len(self.chosen)
+        if not num_chsn <= num_variants <= num_avail + num_chsn:
+            print('Error: num_variants must be an integer greater than the number of chosen nodes (currently: %i) but less than or equal to the number of available + chosen nodes (currently: %i).' % (num_chsn, num_avail + num_chsn))
             exit()
         if distance_scale != None:
             self.distance_scale = distance_scale
-        params = (num_variants, self.distance_scale)
-        if params in self.cache:
-            variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
-            return variants, scores, alt_variants
-        num_possible_combinations = binomial_coefficient(num_avail, num_variants)
+        num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
         if self.verbose:
             print('\nThere are %s possible combinations of variants.' % format_integer(num_possible_combinations))
             init_time = time.time()
-        if method == None:
-            if num_possible_combinations <= self._max_brute_force_attempts:
-                method = 'brute force'
-            else:
-                method = 'k medoids'
-        else:
-            method = method.lower()
-        if method not in self._cluster_methods:
-            print('Error: the given clustering method "%s" is not supported (must be one of: %s).' % ( method, ', '.join(sorted(self._cluster_methods)) ))
-            exit()
-        if num_variants == num_avail:
-            variants = list(self.available)
-            scores = [0.0 for n in range(num_avail)]
+        method = self._validate_clustering_method(method, num_possible_combinations)
+        params = (num_variants, self.distance_scale)
+        if params in self.cache:
+            variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
+        elif num_variants == num_avail + num_chsn:
+            variants = sorted(list(self.available) + list(self.chosen))
+            scores = [0.0 for n in range(num_avail + num_chsn)]
             alt_variants = []
         elif method == 'brute force':
             if self.verbose:
@@ -153,17 +148,7 @@ class VariantFinder(object):
             print('Error: clustering method "%s" is not recognized.' % method)
             exit()
         if self.verbose:
-            run_time = time.time() - init_time
-            if alt_variants:
-                print('Found %i equal sets of %i representative variants in %.1f seconds.' % (len(alt_variants)+1, num_variants, run_time))
-                alt_var_buff = []
-                for avars in alt_variants:
-                    alt_var_buff.append( 'Alternate variants: %s' % ', '.join(sorted(self.leaves[var_ind] for var_ind in avars)) )
-                print('\n%s' % ('\n'.join(alt_var_buff)))
-            else:
-                print('Found %i representative variants in %.1f seconds.' % (num_variants, run_time))
-            variant_names = ', '.join(sorted(self.leaves[v] for v in variants))
-            print('\nBest score: %f\nBest variants: %s' % (sum(scores), variant_names))
+            self._print_clustering_results(num_variants, init_time, variants, scores, alt_variants)
         self.cache[params] = {'variants':variants, 'scores':scores, 'alt_variants':alt_variants}
         return variants, scores, alt_variants
 
@@ -174,7 +159,10 @@ class VariantFinder(object):
         if self.ignored:
             ignor_names = ', '.join(sorted(self.ignored))
             buff.append('[%s]\n%s' % (ignore_nodes_tag, ignor_names))
-        if len(self.available) != len(self._ingroup_indices):
+        if self.chosen:
+            chsn_names = ', '.join(sorted(self.chosen))
+            buff.append('[%s]\n%s' % (chosen_nodes_tag, chsn_names))
+        if len(self.available) != len(self._not_ignored_inds):
             avail_names = ', '.join(sorted(self.available))
             buff.append('[%s]\n%s' % (available_nodes_tag, avail_names))
         buff.append('[%s]\n%s' % (tree_data_tag, self.tree.tree_data))
@@ -204,21 +192,16 @@ class VariantFinder(object):
                     opt_count += optima[rv]['count']
                 else:
                     break
-            optima_percent = round(opt_count * 100.0 / bootstraps, 0)
             if self.verbose:
-                if len(ranked_vars) == 1:
-                    print('One unique solution found after %i bootstraps.' % (bootstraps))
-                elif alt_optima == 0:
-                    imprv_percent = round((optima[ranked_vars[1]]['score'] - optima[ranked_vars[0]]['score']) * 100.0 / optima[ranked_vars[0]]['score'], 1)
-                    print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (%.1f%% improvement over solution #2).' % (len(ranked_vars), bootstraps, optima_percent, imprv_percent))
-                else:
-                    print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (from %i equivalent solutions).' % (len(ranked_vars), bootstraps, optima_percent, alt_optima+1))
+                self._print_alt_variant_results(bootstraps, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, best_scores, alt_variants
     def _brute_force_clustering(self, num_variants):
-        all_medoid_indices = sorted(self.index[n] for n in self.available)
+        avail_medoid_indices = sorted(self.index[n] for n in self.available)
+        chsn_tup = tuple(self.index[n] for n in self.chosen)
         best_med_inds, best_scores, best_score = None, None, float('inf')
         alt_variants = []
-        for med_inds in itertools.combinations(all_medoid_indices, num_variants):
+        for avail_inds in itertools.combinations(avail_medoid_indices, num_variants-len(chsn_tup)):
+            med_inds = avail_inds + chsn_tup
             clusters = self._partition_nearest(med_inds)
             scores = self._sum_dist_scores(med_inds, clusters)
             score = sum(scores)
@@ -232,17 +215,20 @@ class VariantFinder(object):
             exit()
         return best_med_inds, best_scores, alt_variants
     def _cluster_k_medoids(self, num_variants):
-        all_medoid_indices = sorted(self.index[n] for n in self.available)
-        best_med_inds = np.array(random.sample(all_medoid_indices, num_variants))
+        avail_medoid_indices = sorted(self.index[n] for n in self.available)
+        chsn_indices = list(self.index[n] for n in self.chosen)
+        num_chsn = len(chsn_indices)
+        best_med_inds = np.array(chsn_indices + random.sample(avail_medoid_indices, num_variants-num_chsn))
         best_clusters = self._partition_nearest(best_med_inds)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters)
         best_score = sum(best_scores)
+        # Using a simple greedy algorithm:
         improvement = True
         while improvement == True:
             improvement = False
             med_inds = best_med_inds.copy()
-            for i in range(num_variants):
-                for ind in all_medoid_indices:
+            for i in range(num_chsn, num_variants):
+                for ind in avail_medoid_indices:
                     if ind in med_inds: continue
                     med_inds[i] = ind
                     clusters = self._partition_nearest(med_inds)
@@ -255,19 +241,61 @@ class VariantFinder(object):
                     else:
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
-    def _sum_dist_scores(self, medoids, clusters):
-        return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
 
-    # # # # #  Private methods  # # # # #
     def _partition_nearest(self, medoids):
         """Given an array of indices, returns a list of lists, where the ith sublist contains the indices of the nodes closest to the ith medoid in inds."""
         # TODO: This should probably look for ties (or where the difference is below some threshold).
         closest_medoid_ind = np.argmin(self.dist[:,medoids], 1) # If len(inds)==3, would look like [2,1,1,0,1,2,...].
         clusts = [[] for i in medoids]
         for node_ind, med_ind in enumerate(closest_medoid_ind):
-            if node_ind in self._ingroup_indices:
+            if node_ind in self._not_ignored_inds:
                 clusts[med_ind].append(node_ind)
         return clusts
+    def _sum_dist_scores(self, medoids, clusters):
+        return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
+
+    # # # # #  Private methods  # # # # #
+    def _print_clustering_results(self, num_variants, init_time, variants, scores, alt_variants):
+        run_time = time.time() - init_time
+        if alt_variants:
+            print('Found %i equal sets of %i representative variants in %.1f seconds.' % (len(alt_variants)+1, num_variants, run_time))
+            alt_var_buff = []
+            for avars in alt_variants:
+                alt_var_buff.append( 'Alternate variants: %s' % ', '.join(sorted(self.leaves[var_ind] for var_ind in avars)) )
+            print('\n%s' % ('\n'.join(alt_var_buff)))
+        else:
+            print('Found %i representative variants in %.1f seconds.' % (num_variants, run_time))
+        variant_names = ', '.join(sorted(self.leaves[v] for v in variants))
+        print('\nBest score: %f\nBest variants: %s' % (sum(scores), variant_names))
+    def _print_alt_variant_results(self, bootstraps, optima, ranked_vars, alt_optima, opt_count):
+        optima_percent = round(opt_count * 100.0 / bootstraps, 0)
+        if len(ranked_vars) == 1:
+            print('One unique solution found after %i bootstraps.' % (bootstraps))
+        elif alt_optima == 0:
+            imprv_percent = round((optima[ranked_vars[1]]['score'] - optima[ranked_vars[0]]['score']) * 100.0 / optima[ranked_vars[0]]['score'], 1)
+            print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (%.1f%% improvement over solution #2).' % (len(ranked_vars), bootstraps, optima_percent, imprv_percent))
+        else:
+            print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (from %i equivalent solutions).' % (len(ranked_vars), bootstraps, optima_percent, alt_optima+1))
+
+    # # # # #  Variable validation methods  # # # # #
+    def _validate_clustering_method(self, method, num_possible_combinations):
+        if method == None:
+            if num_possible_combinations <= self._max_brute_force_attempts:
+                method = 'brute force'
+            else:
+                method = 'k medoids'
+        else:
+            method = method.lower()
+        if method not in self._cluster_methods:
+            print('Error: the given clustering method "%s" is not supported (must be one of: %s).' % ( method, ', '.join(sorted(self._cluster_methods)) ))
+            exit()
+        return method
+    def _validate_node_name(self, node):
+        node = node.strip()
+        if node not in self.index:
+            print('Error: could not add "%s" to the ignored set, as it was not found in the tree.' % node)
+            exit()
+        return node
 
     # # # # #  Accessible attribute logic  # # # # #
     @property
@@ -280,19 +308,18 @@ class VariantFinder(object):
         new_ignored = set()
         new_ingroup_inds = set(range(len(self.leaves)))
         for node in names:
-            node = node.strip()
-            if node not in self.index:
-                print('Error: could not add "%s" to the ignored set, as it was not found in the tree.' % node)
-                exit()
-            if node in self._available:
+            node = self._validate_node_name(node)
+            if node in self.available:
                 self._available.remove(node)
+            if node in self.chosen:
+                print('Error: cannot set "%s" as both ignored and chosen.' % node)
+                exit()
             new_ingroup_inds.remove(self.index[node])
             new_ignored.add(node)
         if new_ignored != self._ignored:
             self._ignored = new_ignored
-            self._ingroup_indices = new_ingroup_inds
+            self._not_ignored_inds = new_ingroup_inds
             self.cache = {}
-
     @property
     def available(self):
         return self._available
@@ -305,16 +332,31 @@ class VariantFinder(object):
         else:
             new_avail = set()
             for node in names:
-                node = node.strip()
-                if node not in self.index:
-                    print('Error: could not add "%s" as an available node, as it was not found in the tree.' % node)
-                    exit()
-                if node not in self._ignored:
+                node = self._validate_node_name(node)
+                if node not in self.ignored and node not in self.chosen:
                     new_avail.add(node)
         if new_avail != self._available:
             self._available = new_avail
             self.cache = {}
-
+    @property
+    def chosen(self):
+        return self._chosen
+    @chosen.setter
+    def chosen(self, names):
+        if isinstance(names, basestring):
+            names = [names]
+        new_chosen = set()
+        for node in names:
+            node = self._validate_node_name(node)
+            if node in self.ignored:
+                print('Error: cannot set "%s" as both ignored and chosen.' % node)
+                exit()
+            if node in self.available:
+                self._available.remove(node)
+            new_chosen.add(node)
+        if new_chosen != self._chosen:
+            self._chosen = new_chosen
+            self.cache = {}
     @property
     def distance_scale(self):
         return self._distance_scale
