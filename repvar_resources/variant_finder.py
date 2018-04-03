@@ -299,6 +299,25 @@ class VariantFinder(object):
 
     # # # # #  Accessible attribute logic  # # # # #
     @property
+    def chosen(self):
+        return self._chosen
+    @chosen.setter
+    def chosen(self, names):
+        if isinstance(names, basestring):
+            names = [names]
+        new_chosen = set()
+        for node in names:
+            node = self._validate_node_name(node)
+            if node in self.ignored:
+                print('Error: cannot set "%s" as both ignored and chosen.' % node)
+                exit()
+            if node in self.available:
+                self._available.remove(node)
+            new_chosen.add(node)
+        if new_chosen != self._chosen:
+            self._chosen = new_chosen
+            self.cache = {}
+    @property
     def ignored(self):
         return self._ignored
     @ignored.setter
@@ -328,34 +347,15 @@ class VariantFinder(object):
         if isinstance(names, basestring):
             names = [names]
         if not names:
-            new_avail = set(node for node in self.leaves if node not in self.ignored)
+            new_avail = set(node for node in self.leaves if node not in self.ignored|self.chosen)
         else:
             new_avail = set()
             for node in names:
                 node = self._validate_node_name(node)
-                if node not in self.ignored and node not in self.chosen:
+                if node not in self.ignored|self.chosen:
                     new_avail.add(node)
         if new_avail != self._available:
             self._available = new_avail
-            self.cache = {}
-    @property
-    def chosen(self):
-        return self._chosen
-    @chosen.setter
-    def chosen(self, names):
-        if isinstance(names, basestring):
-            names = [names]
-        new_chosen = set()
-        for node in names:
-            node = self._validate_node_name(node)
-            if node in self.ignored:
-                print('Error: cannot set "%s" as both ignored and chosen.' % node)
-                exit()
-            if node in self.available:
-                self._available.remove(node)
-            new_chosen.add(node)
-        if new_chosen != self._chosen:
-            self._chosen = new_chosen
             self.cache = {}
     @property
     def distance_scale(self):

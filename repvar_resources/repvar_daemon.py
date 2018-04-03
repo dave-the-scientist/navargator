@@ -126,6 +126,22 @@ class RepvarDaemon(object):
             vf = repvar_from_data(repvar_data.splitlines(), verbose=False)
             idnum = self.add_variant_finder(vf)
             return json.dumps(self.get_vf_data_dict(idnum))
+        @self.server.route(daemonURL('/save-repvar-file'), methods=['POST'])
+        def save_repvar_file():
+            idnum = request.form['session_id']
+            self.update_vf_attributes(idnum)
+            vf = self.sessions[idnum]
+            if self.web_server:
+                saved_locally = False
+                repvar_str = ''
+            else:
+                root = tk_root()
+                filename = saveAs()
+                root.destroy()
+                if filename:
+                    vf.save_repvar_file(filename)
+                saved_locally, repvar_str = True, ''
+            return json.dumps({'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
 
         # #  Serving the pages locally
         @self.server.route('/input')
@@ -144,6 +160,7 @@ class RepvarDaemon(object):
         return idnum
     def add_variant_finder(self, vfinder):
         idnum = self.generateSessionID()
+        vfinder._allowed_wait = self.allowed_wait
         self.sessions[idnum] = vfinder
         return idnum
 
@@ -198,7 +215,16 @@ class RepvarDaemon(object):
         return idnum
     def get_vf_data_dict(self, idnum):
         vf = self.sessions[idnum]
-        return {'idnum':idnum, 'leaves':vf.leaves, 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.tree.phylo_xml_data}
+        return {'idnum':idnum, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.tree.phylo_xml_data}
+    def update_vf_attributes(self, idnum):
+        """chosen and ignored must first be cleared of their original values before being set."""
+        # javascript returns an array of unicodes, not strs. But these seem to work interchangeably for some reason. If they don't probably just .encode('UTF-8') on each to convert it.
+        vf = self.sessions[idnum]
+        vf.chosen = []
+        vf.ignored = []
+        vf.available = request.form.getlist('available[]')
+        vf.chosen = request.form.getlist('chosen[]')
+        vf.ignored = request.form.getlist('ignored[]')
     # # #  Server maintainence  # # #
     def collect_garbage(self):
         to_remove = []

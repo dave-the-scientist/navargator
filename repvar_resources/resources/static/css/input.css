@@ -1,14 +1,23 @@
-#bodyLeftDiv {
+#bodyMainDiv {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+#mainLeftDiv {
+  display: inline-flex;
+  flex-direction: column;
+}
+#inputOptionsDiv, #runOptionsDiv {
   width: 250px;
 }
-#bodyTreeDiv {
+#mainTreeDiv {
   --tree-width: 700px;
   width: var(--tree-width);
   height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
 }
-#bodyRightDiv {
-  width: 250px;
+#mainNodeSelectDiv {
+  min-width: 200px;
 }
-#uploadFileButton {
-
+.node-select-checkbox-label {
+  display: inline-block;
 }

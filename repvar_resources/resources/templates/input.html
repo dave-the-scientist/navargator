@@ -43,16 +43,47 @@
       </div>
 
       <div id="bodyMainDiv">
-        <div id="bodyLeftDiv" class="style-box">
-          <h2>Input options</h2>
-          <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
-            <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
-            <input id="uploadFileInput" name="upload-file" type="file">
-          </form>
-          <button id="uploadFileButton"><b>Load file</b></button>
+        <div id="mainLeftDiv">
+          <div id="inputOptionsDiv" class="style-box">
+            <h2>Input file</h2>
+            <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
+              <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
+              <input id="uploadFileInput" name="upload-file" type="file">
+            </form>
+            <button id="uploadFileButton"><b>Load file</b></button>
+            <h2>Configuration options</h2>
+            <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
+            <button id="saveRepvarButton">Save config file</button>
+          </div>
+          <div id="runOptionsDiv" class="style-box">
+            <h2>Run options</h2>
+            <table id="runOptionsTable"><tbody>
+              <tr>
+                <td><label for="chosenButton"><span id="numChosenSpan">0</span> chosen variants</label></td>
+                <td><button id="chosenButton">Choose</button></td>
+              </tr>
+              <tr>
+                <td><label for="availButton"><span id="numAvailSpan">0</span> available variants</label></td>
+                <td><button id="availButton">Choose</button></td>
+              </tr>
+              <tr>
+                <td><label for="ignoreButton"><span id="numIgnoredSpan">0</span> ignored variants</label></td>
+                <td><button id="ignoreButton">Choose</button></td>
+              </tr>
+              <tr>
+                <td><label for="numVarSpinner">Variants to find</label></td>
+                <td><input id="numVarSpinner" class="param-spinner" /></td>
+              </tr>
+              <tr>
+                <td><label><input id="rangeCheckbox" type="checkbox" />Range of variants</label></td>
+                <td><input id="rangeSpinner" class="param-spinner" /></td>
+              </tr>
+            </tbody></table>
+            <button id="runButton"><b>Find variants</b></button>
+          </div>
         </div>
 
-        <div id="bodyTreeDiv" class="style-box">
+        <div id="mainTreeDiv" class="style-box">
           <h2>Phylogenetic tree</h2>
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
@@ -60,33 +91,7 @@
           <div id="svgCanvas"></div>
         </div>
 
-        <div id="bodyRightDiv" class="style-box">
-          <h2>Run options</h2>
-          <table id="runOptionsTable"><tbody>
-            <tr>
-              <td><label for="chosenButton"><span id="numChosenSpan">0</span> chosen variants</label></td>
-              <td><button id="chosenButton">Choose</button></td>
-            </tr>
-            <tr>
-              <td><label for="availButton"><span id="numAvailSpan">0</span> available variants</label></td>
-              <td><button id="availButton">Choose</button></td>
-            </tr>
-            <tr>
-              <td><label for="ignoreButton"><span id="numIgnoredSpan">0</span> ignored variants</label></td>
-              <td><button id="ignoreButton">Choose</button></td>
-            </tr>
-            <tr>
-              <td><label for="numVarSpinner">Variants to find</label></td>
-              <td><input id="numVarSpinner" class="param-spinner" /></td>
-            </tr>
-            <tr>
-              <td><label><input id="rangeCheckbox" type="checkbox" />Range of variants</label></td>
-              <td><input id="rangeSpinner" class="param-spinner" /></td>
-            </tr>
-          </tbody></table>
-          <button id="runButton"><b>Find variants</b></button>
-        </div>
-        <div id="bodyNodeSelectDiv" class="style-box" style="display:none">
+        <div id="mainNodeSelectDiv" class="style-box" style="display:none">
           <h2>Choose <span id="nodeSelectSpan"></span> variants</h2>
           <label><input id="nodeSelectAll" type="checkbox" /><b>Select all</b></label>
           <div id="nodeSelectCheckboxes"></div>
