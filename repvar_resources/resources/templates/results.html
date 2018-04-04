@@ -37,11 +37,13 @@
     </div>
 
     <script>
-    var timestamp = +new Date;
-    var corejsurl = "static/js/core.js?t=" + timestamp;
-    var pagejsurl = "static/js/results.js?t=" + timestamp;
-    $.getScript(corejsurl);
-    $.getScript(pagejsurl);
+      var timestamp = +new Date;
+      var core_js_url = "static/js/core.js?t=" + timestamp;
+      var core_tree_js_url = "static/js/core_tree_functions.js?t=" + timestamp;
+      var page_js_url = "static/js/results.js?t=" + timestamp;
+      $.getScript(core_js_url);
+      $.getScript(core_tree_js_url);
+      $.getScript(page_js_url);
     </script>
   </body>
 </html>

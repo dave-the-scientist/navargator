@@ -1,5 +1,5 @@
 /*Some edits by Dave Curran:
-	-- Wrapped the whole package in a function so that a tree can be re-drawn.
+	-- Wrapped the whole package in the function loadPhyloSVG() so that a tree can be re-drawn.
 	-- Created the 'treeDrawingParams' object, that stores several parameters required to modify the tree dynamically.
 	-- Commented out the code to draw a background behind the labels on circular trees. This is done by results.js.
 

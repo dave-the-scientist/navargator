@@ -1,21 +1,22 @@
-// core.js is loaded before this file, and defines the functions daemonURL, processError, maintainServer, closeInstance
+// core.js then core_tree_functions.js are loaded before this file.
 
 // =====  Page settings:
-var server_url='http://'+window.location.host, session_id='',
-    maintain_wait=2000, instance_closed=false, maintain_interval;
-
-// =====  Page setup:
-function setupPage() {
-  session_id = location.search.slice(1);
-  maintain_interval = setInterval(maintainServer, maintain_wait); // This should be called before waiting for the getData ajax call.
-  // getData ajax call here. Put this interval call in the ajax fxn.
-
-}
-// Called once the document has loaded.
-$(document).ready(function(){
-  setupPage();
-});
-// Lets the background server know this instance has been closed.
-$(window).bind('beforeunload', function() {
-  closeInstance();
-});
+var page = {
+  'server_url':'http://'+window.location.host, 'session_id':'', 'maintain_interval':2000, 'instance_closed':false, 'maintain_interval_obj':null, 'max_upload_size':20000000
+};
+// =====  Tree objects and options:
+var repvar = {
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'nodes':{},
+  'r_paper':null, 'tree_data':null, 'pan_zoom':null,
+  'opts' : {
+    'fonts' : {
+      'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
+    },
+    'sizes' : {
+      'tree':700, 'marker_radius':4, 'bar_chart_height':30, 'inner_label_buffer':3, 'bar_chart_buffer':3, 'search_buffer':5
+    },
+    'colours' : {
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5'
+    }
+  }
+};

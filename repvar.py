@@ -37,11 +37,14 @@ vfinder.chosen = ['Hps.Strain5.Unk']
 vfinder = load_repvar_file('results/tbpb82')
 vfinder.find_variants(8, method='k medoids')
 exit()"""
-# TODO: The tree needs controls (zoom, search, reset). Then need show/hide variant names (if too many or too long). Then set up results page.
+# TODO: Set up results page.
+# -- Figure out how to draw clusters
+# -- Need to calculate defaults like show/hide variant names (if too many or too long), and provide controls for display options.
 
 if __name__ == '__main__':
     server_port = new_random_port()
-    manual_browser = False
+    manually_open_browser = False
+    mute_opening_browser_warnings = True
 
     daemon = repvar_daemon.RepvarDaemon(server_port)
 
@@ -56,12 +59,18 @@ if __name__ == '__main__':
             idnum = daemon.new_variant_finder(input_file)
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, idnum)
 
-    old_stderr = os.dup(2)
-    os.close(2)
-    os.open(os.devnull, os.O_RDWR)
-    try:
-        webbrowser.open(input_url)
-    finally:
-        os.dup2(old_stderr, 2)
-
+    if manually_open_browser:
+        print('Open a browser to the following URL:\n%s' % input_url)
+        # Also set initial timeout to infinity
+    else:
+        if mute_opening_browser_warnings:
+            old_stderr = os.dup(2)
+            os.close(2)
+            os.open(os.devnull, os.O_RDWR)
+            try:
+                webbrowser.open(input_url)
+            finally:
+                os.dup2(old_stderr, 2)
+        else:
+            webbrowser.open(input_url)
     daemon.start_server()

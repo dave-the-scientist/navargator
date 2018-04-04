@@ -1,4 +1,4 @@
-// core.js is loaded before this file, and defines the functions daemonURL, processError, maintainServer, closeInstance
+// core.js then core_tree_functions.js are loaded before this file.
 
 // =====  Page settings:
 var page = {
@@ -7,30 +7,28 @@ var page = {
 // =====  Tree objects and options:
 var repvar = {
   'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'nodes':{},
-  'r_paper':null, 'tree_data':null, 'panZoom':null,
+  'r_paper':null, 'tree_data':null, 'pan_zoom':null,
   'opts' : {
     'fonts' : {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
     },
     'sizes' : {
-      'tree':700, 'marker_radius':4, 'inner_label_buffer':3
+      'tree':700, 'marker_radius':4, 'bar_chart_height':0, 'inner_label_buffer':3, 'bar_chart_buffer':0, 'search_buffer':5
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D'
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5'
     }
   }
 };
 
 // =====  Page setup:
 function setupPage() {
-  $("button").button(); // Converts all html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
+  $(".jq-ui-button").button(); // Converts these html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
   page.session_id = location.search.slice(1);
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-  repvar.panZoom = svgPanZoom('#figureSvg', {
-    fit: false,
-    center: false
-  });
+
+  setupTreeElements();
   setupRunOptions();
   setupNodeSelection();
   setupUploadSaveButtons();
@@ -269,95 +267,27 @@ function parseRepvarData(data_obj) {
   }
 }
 
-// =====  Tree drawing functions:
-function drawTree() {
-  clearTree();
-  loadPhyloSVG(); // Reloads jsPhyloSVG.
-
-  Smits.PhyloCanvas.Render.Parameters.jsOverride = 1;
-  Smits.PhyloCanvas.Render.Style.text["font-size"] = repvar.opts.fonts.tree_font_size;
-  Smits.PhyloCanvas.Render.Style.text["font-family"] = repvar.opts.fonts.family;
-
-  var canvas_size = repvar.opts.sizes.tree;
-  var maxLabelLength = getMaxLabelLength(repvar.leaves);
-  var total_label_size = (maxLabelLength + Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels + repvar.opts.sizes.marker_radius + repvar.opts.sizes.inner_label_buffer - 1) * 2.0;
-
-  Smits.PhyloCanvas.Render.Style.connectedDash['stroke'] = 'none';
-  Smits.PhyloCanvas.Render.Parameters.Circular.bufferRadius = total_label_size/canvas_size;
-  Smits.PhyloCanvas.Render.Parameters.Circular.bufferInnerLabels = repvar.opts.sizes.inner_label_buffer + repvar.opts.sizes.marker_radius + 1;
-  var dataObject = {phyloxml: repvar.tree_data};
-  var phylocanvas = new Smits.PhyloCanvas(
-    dataObject,
-    'svgCanvas',
-    canvas_size, canvas_size,
-    'circular'
-  );
-  $("#svgCanvas > svg").attr("id", "treeSvg");
-  repvar.r_paper = phylocanvas.getSvg().svg;
-  setupVariantMarkers();
-  // If adding other elements, can modify figure size here, and set the offset of the tree as well.
-  $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
-  $("#treeSvg").attr({'x':0, 'y':0});
-  $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
-  $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
-}
-function clearTree() {
-  if (repvar.r_paper) {
-    repvar.r_paper.remove();
-  }
-  $("#svgCanvas").empty();
-  $("#treeGroup").empty();
-}
-function setupVariantMarkers() {
-  repvar.nodes = {};
-  var text_obj, var_name, var_coords, var_node;
-  $("#treeSvg").find("text").each(function() {
-    text_obj = $(this);
-    var_name = text_obj.text();
-    var_coords = parseLeafTextCoords(text_obj);
-    var_node = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.marker_radius);
-    var_node.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
-    //$(var_node.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
-    repvar.nodes[var_name] = {'circle': var_node, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y};
+// =====  Tree setup functions:
+function setupTreeElements() {
+  repvar.pan_zoom = svgPanZoom('#figureSvg', {
+    fit: false,
+    center: false
   });
-}
-function updateVariantMarkers() {
-  var var_name;
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i];
-    if (repvar.chosen.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen});
-    } else if (repvar.available.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
-    } else if (repvar.ignored.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored});
-    } else {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.node});
-    }
-  }
-}
-//   ===  Misc tree drawing functions:
-function getMaxLabelLength(orig_names) {
-  // Creates a new Raphael object, and prints the 10 longest (by character count), measuring the width of each.
-  var names = orig_names.slice(), max = 0, toCheck = Math.min(names.length, 10);
-  if (toCheck == 10) {
-    names.sort(function(a, b) { return b.length - a.length; });
-  }
-  var paper = new Raphael('footerDiv', 1000,1000);
-  for (var i=0; i<toCheck; ++i) {
-    var t = paper.text(0,0, names[i]).attr(Smits.PhyloCanvas.Render.Style.text);
-    var w = t.getBBox().width;
-    t.remove();
-    if (w > max) { max = w; }
-  }
-  paper.remove();
-  return max;
-}
-function parseLeafTextCoords(a_obj) {
-  var coordsStr = $(a_obj).prev().attr("d");
-  var L_ind = coordsStr.indexOf("L");
-  var nodeCoords = coordsStr.slice(1, L_ind).split(",");
-  var labelCoords = coordsStr.slice(L_ind+1).split(",");
-  return {'node_x':parseFloat(nodeCoords[0]), 'node_y':parseFloat(nodeCoords[1]),
-      'label_x':parseFloat(labelCoords[0]), 'label_y':parseFloat(labelCoords[1])};
+  $('#varSearchButton').click(function() {
+    treeSearchFunction();
+  });
+  $("#clearVarSearchButton").click(function() {
+    $("#varSearchInput").attr('value', '');
+    treeSearchFunction();
+  });
+  $('#treeZoomOutButton').click(function() {
+    repvar.pan_zoom.zoomOut();
+  });
+  $('#treeZoomInButton').click(function() {
+    repvar.pan_zoom.zoomIn();
+  });
+  $('#treeZoomResetButton').click(function() {
+    repvar.pan_zoom.resetZoom();
+    repvar.pan_zoom.resetPan();
+  });
 }
