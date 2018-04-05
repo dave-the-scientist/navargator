@@ -3,19 +3,27 @@ function daemonURL(url) {
   // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in repvar_daemon.py
   return page.server_url + '/daemon' + url;
 }
+function showErrorPopup(message, title) {
+  $("#errorDialogText").text(message);
+  if (!title) {
+    title = "Repvar error";
+  }
+  $("#errorDialog").dialog("option", "title", title);
+  $("#errorDialog").dialog("open");
+}
 function processError(error, message) {
   console.log('Error occurred. The error object:');
   console.log(error);
   if (error.status == 559) {
-    alert(message+", as the server didn't recognize the given session ID. This generally means your session has timed out.");
+    showErrorPopup(message+", as the server didn't recognize the given session ID. This generally means your session has timed out.");
   } else if (error.status == 0) {
     if (web_version) {
-      alert(message+", as no response was received. This may mean the web server is down.");
+      showErrorPopup(message+", as no response was received. This may mean the web server is down.");
     } else {
-      alert(message+", as no response was received. This generally means the program has stopped.");
+      showErrorPopup(message+", as no response was received. This generally means the program has stopped.");
     }
   } else {
-    alert(message+"; the server returned code "+error.status);
+    showErrorPopup(message+"; the server returned code "+error.status);
   }
 }
 
@@ -48,4 +56,31 @@ function closeInstance() {
       console.log(error);
     }
   });
+}
+
+function saveDataString(data_str, file_name, file_type) {
+  // Uses javascript to save the string as a file to the client's download directory. This method works for >1MB svg files, for which other methods failed on Chrome.
+  var data_blob = new Blob([data_str], {type:file_type});
+  var data_url = URL.createObjectURL(data_blob);
+  var download_link = document.createElement("a");
+  download_link.href = data_url;
+  download_link.download = file_name;
+  document.body.appendChild(download_link);
+  download_link.click();
+  document.body.removeChild(download_link);
+}
+
+function validateSpinner(spinner, description) {
+  if (spinner.spinner("isValid")) {
+    return true;
+  } else {
+    var min = spinner.spinner("option", "min"),
+        max = spinner.spinner("option", "max"),
+        step = spinner.spinner("option", "step"), msg;
+    if (max) { msg = description+" must be between "+min+" and "+max; }
+    else { msg = description+" must be greater than "+min; }
+    msg = msg+", and be a multiple of "+step+".";
+    showErrorPopup(msg, "Parameter error");
+    return false;
+  }
 }

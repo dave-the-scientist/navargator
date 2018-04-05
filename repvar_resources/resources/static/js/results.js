@@ -1,5 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
+// This page is loaded, then continually checks with the server to see if the results are ready yet. It might be better to use a Flask socket, that allows either the server or client to initiate communication. Good explanation here https://www.shanelynn.ie/asynchronous-updates-to-a-webpage-with-flask-and-socket-io/
+
 // =====  Page settings:
 var page = {
   'server_url':'http://'+window.location.host, 'session_id':'', 'maintain_interval':2000, 'instance_closed':false, 'maintain_interval_obj':null, 'max_upload_size':20000000

@@ -24,6 +24,9 @@ var repvar = {
 // =====  Page setup:
 function setupPage() {
   $(".jq-ui-button").button(); // Converts these html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
+  $("#errorDialog").dialog({modal:true, autoOpen:false,
+    buttons:{Ok:function() { $(this).dialog("close"); }}
+  });
   page.session_id = location.search.slice(1);
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
@@ -76,17 +79,43 @@ function setupRunOptions() {
       $("#rangeSpinner").spinner('disable');
     }
   });
-
   $("#chosenButton").click(function() {
     showNodeSelection('chosen', repvar.chosen, repvar.ignored);
   });
-
   $("#availButton").click(function() {
     showNodeSelection('available', repvar.available, repvar.ignored.concat(repvar.chosen));
   });
-
   $("#ignoreButton").click(function() {
     showNodeSelection('ignored', repvar.ignored, repvar.chosen);
+  });
+  $("#findVariantsButton").click(function() {
+    if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
+      validateSpinner($("#rangeSpinner"), "Range of variants") )) {
+      return false;
+    }
+    var num_vars = $("#numVarSpinner").spinner('value'), vars_range = null;
+    if ($("#rangeCheckbox").is(':checked')) {
+      vars_range = $("#rangeSpinner").spinner('value');
+      if (vars_range <= num_vars) {
+        showErrorPopup("The 'Range of variants' value must be greater than the 'Variants to find' value.");
+        return false;
+      }
+    }
+    $.ajax({
+      url: daemonURL('/find-variants'),
+      type: 'POST',
+      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'num_vars':num_vars, 'vars_range':vars_range},
+      success: function(data_obj) {
+        var data = $.parseJSON(data_obj);
+        if (data.saved_locally == true) {
+          console.log('file saved locally');
+        } else {
+          saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
+        }
+      },
+      error: function(error) { processError(error, "Error saving repvar file"); }
+    });
+
   });
 }
 function setupNodeSelection() {
@@ -112,7 +141,7 @@ function setupNodeSelection() {
       repvar.available = $.grep(repvar.available, function(n, i) { return (node_list.indexOf(n) == -1) });
       repvar.ignored = node_list;
     } else {
-      alert("Error updating node selection.");
+      showErrorPopup("Error updating node selection.");
     }
     $("#mainNodeSelectDiv").hide();
     updateRunOptions();
@@ -135,10 +164,10 @@ function setupUploadSaveButtons() {
   $("#uploadFileButton").click(function() {
     var file_obj = $("#uploadFileInput")[0].files[0];
     if (!file_obj) {
-      alert("No file selected.");
+      showErrorPopup("No file selected.");
       return false;
     } else if (file_obj.size > page.max_upload_size) {
-      alert("The selected file exceeds the maximum upload size.");
+      showErrorPopup("The selected file exceeds the maximum upload size.");
       return false;
     }
     var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
@@ -173,17 +202,16 @@ function setupUploadSaveButtons() {
     });
   });
   $("#saveRepvarButton").click(function() {
-    console.log('clicked save');
     $.ajax({
       url: daemonURL('/save-repvar-file'),
       type: 'POST',
       data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        if (data.saved_locally == false) {
+        if (data.saved_locally == true) {
           console.log('file saved locally');
         } else {
-          console.log('saving the data:', data.repvar_as_string);
+          saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
         }
       },
       error: function(error) { processError(error, "Error saving repvar file"); }

@@ -93,14 +93,18 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='newick', allowed_wait=10, verbose=True):
+    def __init__(self, tree_input, tree_format='newick', allowed_wait=10, verbose=True, _blank_init=False):
         self.verbose = bool(verbose)
-        self.tree = TreeParser(tree_input, tree_format=tree_format, verbose=self.verbose)
-        self.leaves = self.tree.leaves # List of all terminal leaves in tree_file
-        self.index = self.tree.index # The index of each sequence name in self.leaves
-        self.dist = self.tree.dist.copy()
+        self.leaves = []
         self.cache = {}
-
+        if not _blank_init:
+            tree = TreeParser(tree_input, tree_format=tree_format, verbose=verbose)
+            self.leaves = tree.leaves # List of all terminal leaves in tree_file
+            self.index = tree.index # The index of each sequence name in self.leaves
+            self.orig_dist = tree.dist.copy()
+            self.dist = tree.dist.copy()
+            self.tree_data = tree.tree_data
+            self.phylo_xml_data = tree.phylo_xml_data
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
@@ -155,6 +159,13 @@ class VariantFinder(object):
     def save_repvar_file(self, file_path):
         if not file_path.lower().endswith('.repvar'):
             file_path += '.repvar'
+        repvar_str = self.get_repvar_string()
+        with open(file_path, 'w') as f:
+            f.write(repvar_str)
+        if self.verbose:
+            print('\nData saved to %s' % file_path)
+
+    def get_repvar_string(self):
         buff = []
         if self.ignored:
             ignor_names = ', '.join(sorted(self.ignored))
@@ -165,11 +176,23 @@ class VariantFinder(object):
         if len(self.available) != len(self._not_ignored_inds):
             avail_names = ', '.join(sorted(self.available))
             buff.append('[%s]\n%s' % (available_nodes_tag, avail_names))
-        buff.append('[%s]\n%s' % (tree_data_tag, self.tree.tree_data))
-        with open(file_path, 'w') as f:
-            f.write('\n\n'.join(buff))
-        if self.verbose:
-            print('\nData saved to %s' % file_path)
+        buff.append('[%s]\n%s' % (tree_data_tag, self.tree_data))
+        return '\n\n'.join(buff)
+
+    def copy(self):
+        """Returns a deep copy of self"""
+        vf = VariantFinder(tree_input='', allowed_wait=self._allowed_wait, verbose=self.verbose, _blank_init=True)
+        vf.leaves = self.leaves[::]
+        vf.index = self.index.copy()
+        vf.orig_dist = self.orig_dist.copy()
+        vf.dist = self.dist.copy()
+        vf.tree_data = self.tree_data
+        vf.phylo_xml_data = self.phylo_xml_data
+        vf._not_ignored_inds = self._not_ignored_inds.copy()
+        vf._ignored = self.ignored.copy()
+        vf._chosen = self.chosen.copy()
+        vf._available = self.available.copy()
+        vf._distance_scale = self.distance_scale
 
     # # # # #  Clustering methods  # # # # #
     def _heuristic_rand_starts(self, fxn, args, bootstraps):
@@ -374,7 +397,7 @@ class VariantFinder(object):
             print('Error: distance_scale must be less than %i.' % self._distance_scale_max)
             exit()
         self._distance_scale = val
-        self.dist = np.power(self.tree.dist.copy()+1.0, val) - 1.0
+        self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
 
     # # # # #  Methods for cleaning up dead instances  # # # # #
     def maintain(self):
