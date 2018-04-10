@@ -93,7 +93,7 @@ function setupRunOptions() {
       validateSpinner($("#rangeSpinner"), "Range of variants") )) {
       return false;
     }
-    var num_vars = $("#numVarSpinner").spinner('value'), vars_range = null;
+    var num_vars = $("#numVarSpinner").spinner('value'), vars_range = num_vars;
     if ($("#rangeCheckbox").is(':checked')) {
       vars_range = $("#rangeSpinner").spinner('value');
       if (vars_range <= num_vars) {
@@ -106,14 +106,12 @@ function setupRunOptions() {
       type: 'POST',
       data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'num_vars':num_vars, 'vars_range':vars_range},
       success: function(data_obj) {
-        var data = $.parseJSON(data_obj);
-        if (data.saved_locally == true) {
-          console.log('file saved locally');
-        } else {
-          saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
+        var new_idnum = $.parseJSON(data_obj);
+        for (var num=parseInt(num_vars); num<=parseInt(vars_range); ++num) {
+          console.log('open results for id', new_idnum, 'with clusters', num);
         }
       },
-      error: function(error) { processError(error, "Error saving repvar file"); }
+      error: function(error) { processError(error, "Server error in finding variants"); }
     });
 
   });

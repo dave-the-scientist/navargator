@@ -132,7 +132,8 @@ class VariantFinder(object):
             init_time = time.time()
         method = self._validate_clustering_method(method, num_possible_combinations)
         params = (num_variants, self.distance_scale)
-        if params in self.cache:
+        if self.cache.get(params, None):
+            # Needed because the daemon sets self.cache[params] = None before this method is called.
             variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
         elif num_variants == num_avail + num_chsn:
             variants = sorted(list(self.available) + list(self.chosen))
@@ -193,6 +194,7 @@ class VariantFinder(object):
         vf._chosen = self.chosen.copy()
         vf._available = self.available.copy()
         vf._distance_scale = self.distance_scale
+        return vf
 
     # # # # #  Clustering methods  # # # # #
     def _heuristic_rand_starts(self, fxn, args, bootstraps):

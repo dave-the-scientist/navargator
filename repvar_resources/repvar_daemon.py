@@ -3,6 +3,7 @@ from collections import deque
 from random import randint
 from flask import Flask, request, render_template, json
 from repvar_resources.variant_finder import VariantFinder, repvar_from_data
+from repvar_resources.job_queue import JobQueue
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
@@ -34,13 +35,14 @@ class RepvarDaemon(object):
       This class defines several custom HTTP status codes used to signal errors:
     550 - Specific error validating the user's tree.
     """
-    def __init__(self, server_port, web_server=False, verbose=False):
+    def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         max_upload_size = 20*1024*1024 # 20 MB
         error_log_lines = 10000
         self.server_port = server_port
         self.web_server = web_server
         self.verbose = verbose
         self.sessions = {} # Holds the repvar instances, with session IDs as keys.
+        self.job_queue = JobQueue(threads)
         if not web_server: # Running locally.
             self.sessionID_length = 5 # Length of the unique session ID used.
             self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
@@ -144,12 +146,22 @@ class RepvarDaemon(object):
             return json.dumps({'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
         @self.server.route(daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
+            """Copies the current variant finder, to ensure that subsequent modifications from the input page do not affect instances already open in results pages."""
             idnum = request.form['session_id']
             self.update_vf_attributes(idnum)
             vf = self.sessions[idnum].copy()
             new_idnum = self.add_variant_finder(vf)
-            # The clustering needs to be started in a new thread if I want to open results pages and have them wait for it to finish.
-            # The input.js will take this new idnum, and open x new tabs. the url for each will have to incorporate the num of variants too.
+            num_vars = int(request.form['num_vars'])
+            vars_range = int(request.form['vars_range'])
+            dist_scale = 1.0
+            method = 'brute force'
+            for num in range(num_vars, vars_range + 1):
+                params = (num, dist_scale)
+                if params not in vf.cache:
+                    vf.cache[params] = None
+                    args = (num, dist_scale, method)
+                    self.job_queue.addJob(vf.find_variants, args)
+            # The input.js will take this new idnum, and open x new tabs. the url for each will have to incorporate the num of variants too (and dist_scale if it's actually useful).
             return new_idnum
 
         # #  Serving the pages locally
@@ -218,8 +230,9 @@ class RepvarDaemon(object):
         else:
             return None, idnum, ("error, invalid session ID %s." % idnum, 559)
     def generateSessionID(self):
+        # Javascript has issues parsing a number if the string begins with a non-significant zero.
         idnum = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
-        while idnum in self.sessions:
+        while idnum in self.sessions or idnum[0] == '0':
             idnum = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return idnum
     def get_vf_data_dict(self, idnum):
