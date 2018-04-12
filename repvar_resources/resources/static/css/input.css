@@ -7,16 +7,25 @@
   display: inline-flex;
   flex-direction: column;
 }
-#inputOptionsDiv, #runOptionsDiv {
+#inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: 250px;
-}
-#mainTreeDiv {
-  --tree-width: 700px;
-  width: var(--tree-width);
-  height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
 }
 #mainNodeSelectDiv {
   min-width: 200px;
+}
+/* Various element settings */
+#clustMethodSelect {
+  width: 125px;
+}
+#findVariantsButton {
+  width: 100%;
+}
+#findVariantsButton > span {
+  font-size: 1.0em;
+}
+#resultsLinksList {
+  list-style-type: disc;
+  padding-left: 20px;
 }
 .node-select-checkbox-label {
   display: inline-block;

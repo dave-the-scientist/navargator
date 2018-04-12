@@ -4,6 +4,7 @@
   --light-background-colour: #F5F5F5;
   --style-box-background-colour: #FFFFFF;
   --min-page-width: 700px;
+  --tree-width: 700px;
 }
 
 /* ======  General formatting options  ====== */
@@ -43,15 +44,24 @@ p, li, table, label {
   font-size: 1.0em;
 }
 ul {
-    list-style: none;
+  list-style: none;
+  padding: 0px;
 }
 button {
-  font-size: 0.9em;
   margin: 2px auto 5px auto;
-  text-align: center;
 }
 label {
   margin-right: 15px;
+}
+/* Possible that these could break with future jQueryUI updates.*/
+.ui-button-text {
+  font-size: 0.9em;
+  text-align: center;
+  padding: 0.3em 0.6em !important;
+}
+.ui-selectmenu-text {
+  font-size: 0.9em;
+  padding: 0.2em 1.7em 0.2em 0.6em !important;
 }
 
 /* ======  The basic layout, header, navigation bar, and footer  ====== */
@@ -70,6 +80,10 @@ label {
 }
 #bodyMainDiv {
   padding: 5px;
+}
+#mainTreeDiv {
+  width: var(--tree-width);
+  height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
 }
 #footerDiv {
   background-color: var(--light-background-colour);

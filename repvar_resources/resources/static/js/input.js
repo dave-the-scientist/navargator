@@ -13,7 +13,7 @@ var repvar = {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
     },
     'sizes' : {
-      'tree':700, 'marker_radius':4, 'bar_chart_height':0, 'inner_label_buffer':3, 'bar_chart_buffer':0, 'search_buffer':5
+      'tree':null, 'marker_radius':4, 'bar_chart_height':0, 'inner_label_buffer':3, 'bar_chart_buffer':0, 'search_buffer':5
     },
     'colours' : {
       'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5'
@@ -43,18 +43,71 @@ function setupPage() {
       type: 'POST',
       data: {'session_id': page.session_id},
       success: function(data_obj) {
-        parseRepvarData(data_obj);
-        page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
-        if (repvar.tree_data) {
-          drawTree();
-          updateRunOptions();
-          updateNodeSelection();
-          $("#saveRepvarButton").button('enable');
-        }
+        newTreeLoaded(data_obj);
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
   }
+}
+function setupUploadSaveButtons() {
+  $("#uploadFileButton").button('disable');
+  $("#saveRepvarButton").button('disable');
+
+  $("#uploadFileInput").change(function() {
+    if ($("#uploadFileInput")[0].files[0]) {
+      $("#uploadFileButton").button('enable');
+    } else {
+      $("#uploadFileButton").button('disable');
+    }
+  });
+  $("#uploadFileButton").click(function() {
+    var file_obj = $("#uploadFileInput")[0].files[0];
+    if (!file_obj) {
+      showErrorPopup("No file selected.");
+      return false;
+    } else if (file_obj.size > page.max_upload_size) {
+      showErrorPopup("The selected file exceeds the maximum upload size.");
+      return false;
+    }
+    var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
+    // Should have a drop-down to allow user to specify file type. Upon picking file, filename should be examined to automatically guess file type. Initially repvar and newick, but probably add phyloXML, etc.
+    if (file_obj.name.toLowerCase().endsWith('.repvar')) {
+      upload_url = daemonURL('/upload-repvar-file');
+    } else {
+      upload_url = daemonURL('/upload-newick-tree');
+    }
+    $.ajax({
+      type: 'POST',
+      url: upload_url,
+      data: form_data,
+      contentType: false,
+      cache: false,
+      processData: false,
+      success: function(data_obj) {
+        // Change title of tree pane to filename = $("#uploadFileInput")[0].files[0].name
+        newTreeLoaded(data_obj);
+      },
+      error: function(error) {
+        processError(error, "Error uploading files");
+      }
+    });
+  });
+  $("#saveRepvarButton").click(function() {
+    $.ajax({
+      url: daemonURL('/save-repvar-file'),
+      type: 'POST',
+      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored},
+      success: function(data_obj) {
+        var data = $.parseJSON(data_obj);
+        if (data.saved_locally == true) {
+          console.log('file saved locally');
+        } else {
+          saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
+        }
+      },
+      error: function(error) { processError(error, "Error saving repvar file"); }
+    });
+  });
 }
 function setupRunOptions() {
   $("#numVarSpinner").spinner({
@@ -70,6 +123,8 @@ function setupRunOptions() {
   $("#chosenButton").button('disable');
   $("#availButton").button('disable');
   $("#ignoreButton").button('disable');
+  $("#clustMethodSelect").selectmenu();
+  //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
 
   // Button callbacks:
   $("#rangeCheckbox").change(function() {
@@ -101,15 +156,29 @@ function setupRunOptions() {
         return false;
       }
     }
+    var num_vars_int = parseInt(num_vars), vars_range_int = parseInt(vars_range),
+      cluster_method = $("#clustMethodSelect").val();
+    // Have to open the page directly from the user's click to avoid popup blockers.
+    var first_result_page = window.open('', '_blank');
+
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'num_vars':num_vars, 'vars_range':vars_range},
+      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'vars_range':vars_range},
       success: function(data_obj) {
-        var new_idnum = $.parseJSON(data_obj);
-        for (var num=parseInt(num_vars); num<=parseInt(vars_range); ++num) {
-          console.log('open results for id', new_idnum, 'with clusters', num);
+        var new_idnum = $.parseJSON(data_obj), result_description, result_link_obj,
+          results_url = page.server_url + '/results?' + new_idnum;
+        first_result_page.location.href = results_url;
+        for (var var_num=num_vars_int; var_num<=vars_range_int; ++var_num) {
+          // Have to provide links because Chrome only allows 1 tab to open from 1 click.
+          results_url = page.server_url + '/results?' + new_idnum;
+          result_description = var_num + ' representative variants';
+          result_link_obj = $('<a>', {
+            text:result_description, title:result_description, href:results_url, target:'_blank'
+          }).wrap('<li class="result-link-li">').parent();
+          $("#resultsLinksList").append(result_link_obj);
         }
+        $("#resultsLinksDiv").show();
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
     });
@@ -148,74 +217,6 @@ function setupNodeSelection() {
     $("#mainNodeSelectDiv").hide();
   });
 }
-function setupUploadSaveButtons() {
-  $("#uploadFileButton").button('disable');
-  $("#saveRepvarButton").button('disable');
-
-  $("#uploadFileInput").change(function() {
-    if ($("#uploadFileInput")[0].files[0]) {
-      $("#uploadFileButton").button('enable');
-    } else {
-      $("#uploadFileButton").button('disable');
-    }
-  });
-  $("#uploadFileButton").click(function() {
-    var file_obj = $("#uploadFileInput")[0].files[0];
-    if (!file_obj) {
-      showErrorPopup("No file selected.");
-      return false;
-    } else if (file_obj.size > page.max_upload_size) {
-      showErrorPopup("The selected file exceeds the maximum upload size.");
-      return false;
-    }
-    var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
-    // Should have a drop-down to allow user to specify file type. Upon picking file, filename should be examined to automatically guess file type. Initially repvar and newick, but probably add phyloXML, etc.
-    if (file_obj.name.toLowerCase().endsWith('.repvar')) {
-      upload_url = daemonURL('/upload-repvar-file');
-    } else {
-      upload_url = daemonURL('/upload-newick-tree');
-    }
-    $.ajax({
-      type: 'POST',
-      url: upload_url,
-      data: form_data,
-      contentType: false,
-      cache: false,
-      processData: false,
-      success: function(data_obj) {
-        parseRepvarData(data_obj);
-        clearInterval(page.maintain_interval_obj);
-        page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
-        drawTree();
-        updateRunOptions();
-        updateNodeSelection();
-        // Change title of tree pane to filename = $("#uploadFileInput")[0].files[0].name
-        $("#uploadFileInput").val('');
-        $("#saveRepvarButton").button('enable');
-        $("#uploadFileButton").button('disable');
-      },
-      error: function(error) {
-        processError(error, "Error uploading files");
-      }
-    });
-  });
-  $("#saveRepvarButton").click(function() {
-    $.ajax({
-      url: daemonURL('/save-repvar-file'),
-      type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored},
-      success: function(data_obj) {
-        var data = $.parseJSON(data_obj);
-        if (data.saved_locally == true) {
-          console.log('file saved locally');
-        } else {
-          saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
-        }
-      },
-      error: function(error) { processError(error, "Error saving repvar file"); }
-    });
-  });
-}
 $(document).ready(function(){
   // Called once the document has loaded.
   setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens.
@@ -226,6 +227,21 @@ $(window).bind('beforeunload', function() {
 });
 
 // =====  Page udating:
+function newTreeLoaded(data_obj) {
+  parseRepvarData(data_obj);
+  clearInterval(page.maintain_interval_obj);
+  page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+  if (repvar.tree_data) {
+    drawTree();
+    updateRunOptions();
+    updateNodeSelection();
+    $("#uploadFileInput").val('');
+    $("#saveRepvarButton").button('enable');
+    $("#uploadFileButton").button('disable');
+    $("#resultsLinksDiv").hide();
+    $(".result-link-li").remove();
+  }
+}
 function updateRunOptions() {
   // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
   var maxVars = repvar.chosen.length + repvar.available.length;
@@ -291,29 +307,4 @@ function parseRepvarData(data_obj) {
   if (data.hasOwnProperty('maintain_interval')) {
     page.maintain_interval = data.maintain_interval * 1000;
   }
-}
-
-// =====  Tree setup functions:
-function setupTreeElements() {
-  repvar.pan_zoom = svgPanZoom('#figureSvg', {
-    fit: false,
-    center: false
-  });
-  $('#varSearchButton').click(function() {
-    treeSearchFunction();
-  });
-  $("#clearVarSearchButton").click(function() {
-    $("#varSearchInput").attr('value', '');
-    treeSearchFunction();
-  });
-  $('#treeZoomOutButton').click(function() {
-    repvar.pan_zoom.zoomOut();
-  });
-  $('#treeZoomInButton').click(function() {
-    repvar.pan_zoom.zoomIn();
-  });
-  $('#treeZoomResetButton').click(function() {
-    repvar.pan_zoom.resetZoom();
-    repvar.pan_zoom.resetPan();
-  });
 }

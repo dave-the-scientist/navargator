@@ -69,7 +69,7 @@ class RepvarDaemon(object):
         static_dir = os.path.join(resources_dir, 'static')
         self.server = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
         self.server.config['MAX_CONTENT_LENGTH'] = max_upload_size
-        # # #  Server listening routes:
+        # # #  General server listening routes:
         @self.server.before_first_request
         def setup_tasks():
             if self.web_server: # Setup tasks to start for the web version.
@@ -111,6 +111,7 @@ class RepvarDaemon(object):
                 data_dict = {'idnum':idnum, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
             data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
+        # # #  Input page listening routes:
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
             try:
@@ -154,20 +155,26 @@ class RepvarDaemon(object):
             num_vars = int(request.form['num_vars'])
             vars_range = int(request.form['vars_range'])
             dist_scale = 1.0
-            method = 'brute force'
+            cluster_method = request.form['cluster_method']
             for num in range(num_vars, vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
                     vf.cache[params] = None
-                    args = (num, dist_scale, method)
+                    args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
             # The input.js will take this new idnum, and open x new tabs. the url for each will have to incorporate the num of variants too (and dist_scale if it's actually useful).
             return new_idnum
-
-        # #  Serving the pages locally
+        # # #  Results page listening routes:
+        @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
+        def get_cluster_results():
+            return 'results not ready'
+        # # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():
             return render_template('input.html')
+        @self.server.route('/results')
+        def render_results_page():
+            return render_template('results.html')
     # # # # #  Public methods  # # # # #
     def new_variant_finder(self, tree_data, available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:

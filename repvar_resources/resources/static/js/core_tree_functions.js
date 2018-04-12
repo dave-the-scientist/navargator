@@ -1,3 +1,28 @@
+// =====  Tree setup functions:
+function setupTreeElements() {
+  repvar.pan_zoom = svgPanZoom('#figureSvg', {
+    fit: false,
+    center: false
+  });
+  $('#varSearchButton').click(function() {
+    treeSearchFunction();
+  });
+  $("#clearVarSearchButton").click(function() {
+    $("#varSearchInput").attr('value', '');
+    treeSearchFunction();
+  });
+  $('#treeZoomOutButton').click(function() {
+    repvar.pan_zoom.zoomOut();
+  });
+  $('#treeZoomInButton').click(function() {
+    repvar.pan_zoom.zoomIn();
+  });
+  $('#treeZoomResetButton').click(function() {
+    repvar.pan_zoom.resetZoom();
+    repvar.pan_zoom.resetPan();
+  });
+}
+
 // =====  Tree use functions:
 function treeSearchFunction() {
   var query = $('#varSearchInput').attr('value').trim().toLowerCase();

@@ -5,8 +5,15 @@
 
 */
 // DAVE CURRAN EDITS BEGIN:
-var treeDrawingParams = {'seqs':[]};
+var treeDrawingParams = {};
 function loadPhyloSVG() {
+treeDrawingParams['seqs'] = [];
+treeDrawingParams['minBGRadius'] = null;
+treeDrawingParams['barChartRadius'] = null;
+treeDrawingParams['scaleAngle'] = null;
+treeDrawingParams['initStartAngle'] = null;
+treeDrawingParams['cx'] = null;
+treeDrawingParams['cy'] = null;
 // DAVE CURRAN EDITS END.
 Smits = {};Smits.Common = {
 	nodeIdIncrement : 0,
