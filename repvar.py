@@ -37,28 +37,25 @@ vfinder.chosen = ['Hps.Strain5.Unk']
 vfinder = load_repvar_file('results/tbpb82')
 vfinder.find_variants(8, method='k medoids')
 exit()"""
-# TODO: add dropdown method selection to input.
+# TODO:
 # -- Set up results page.
 #    -- issues an ajax call every x seconds to check if the clustering is done. daemon needs method to check if (num, dist_scale) in vf.cache == None, which means it's processing still.
 #    -- Figure out how to draw clusters
 # -- Need to calculate defaults like show/hide variant names (if too many or too long), and provide controls for display options.
-# -- If results page is opened, and the user then goes back to input and modifies availability or any of em, it will modify the underlying vfinder object. So subsequent analyses will not be on the vfinder object that is expected.
-#   -- Perhaps the vf should be copied
 
-# BUG to fix:
-# -- If the program is started after a fresh reboot, the browser takes a little while to load. The html loaded (though blank), but a 559 error is thrown, resulting in the server stopping.
-#    -- This means a request was received about a session ID that doesn't exist. Not sure how that's possible though (python doesn't wait for the browser to load). Maybe try implementing a long sleep call in javascript to simulate?
-#    -- Happened again. Is the daemon closing because it thinks it's empty?
+# BUG reports:
+
 
 if __name__ == '__main__':
     server_port = new_random_port()
     manually_open_browser = False
     mute_opening_browser_warnings = True
+    num_threads = 3
 
-    daemon = repvar_daemon.RepvarDaemon(server_port)
+    daemon = repvar_daemon.RepvarDaemon(server_port, threads=num_threads)
 
     if len(sys.argv) == 1:
-        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_id)
+        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_session_id)
     else:
         input_file = sys.argv[1].strip()
         if input_file.lower().endswith('.repvar'):

@@ -22,12 +22,10 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
-# - Ensure js can load repvar files.
-# - Display of previously specified avail and ignored seqs.
-# - GUI for picking/editing both sets.
-#   - Want a pane to appear to the right of 'choose' button listing strains with checkboxes (same one for avail and ignore). Select all box. Button at bottom for done, makes it disappear.
-#   - While pane is open, strains can be clicked on the tree. Be really nice if you could click on an internal node, and it would select all children.
+# - Should update maintain call in js, so that it calls right away, then starts timer. Otherwise if you find variants then quickly close the input page (before results has fired maintain), the whole thing closes.
+# - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
+# - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
@@ -47,16 +45,15 @@ class RepvarDaemon(object):
             self.sessionID_length = 5 # Length of the unique session ID used.
             self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
             self.maintain_interval = 2 # Interval that the page sends a signal to maintain the repvar instance.
-            self.allowed_wait = 10 # Waits before timing out repvar instances.
+            allowed_wait = 10 # Wait seconds before timing out repvar instances.
         else: # Live, hosted web server.
             self.sessionID_length = 20
             self.check_interval = 10
             self.maintain_interval = 9
-            self.allowed_wait = 30
-        # # #  Activity and error logging:
-        self.local_input_id = 'local_input_page' # Should match setupPage in input.js
-        self.local_input_last_maintain = None
-        self.page_has_loaded = False # Session timeouts are only allowed after this is set to True.
+            allowed_wait = 30
+        # # #  Server activity and error logging:
+        self.local_input_session_id = 'local_input_page' # Should match setupPage in input.js
+        self.connections = ConnectionManager(allowed_wait, self.local_input_session_id, web_server)
         self.should_quit = threading.Event()
         self.buff_lock = threading.Lock()
         self.log_buffer = StringIO()
@@ -79,61 +76,62 @@ class RepvarDaemon(object):
                 pass
         @self.server.route(daemonURL('/maintain-server'), methods=['POST'])
         def maintain_server():
-            vf, idnum, msg = self.get_instance()
-            if idnum == self.local_input_id:
-                self.local_input_last_maintain = time.time()
-                return 'local input page maintained.'
-            elif vf == None:
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
                 return msg
-            vf.maintain()
+            self.connections.maintain(s_id, b_id)
             return 'maintain-server successful.'
         @self.server.route(daemonURL('/instance-closed'), methods=['POST'])
         def instance_closed():
-            vf, idnum, msg = self.get_instance()
-            if idnum == self.local_input_id:
-                self.local_input_last_maintain = None
-                if len(self.sessions) == 0:
-                    self.should_quit.set()
-                return 'local input page closed.'
-            elif vf == None:
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
                 return msg
-            del self.sessions[idnum]
-            if not self.web_server and len(self.sessions) == 0:
+            elif s_id == '':
+                return 'web server input closed'
+            self.connections.close(s_id, b_id)
+            if vf and self.connections.is_dead(s_id):
+                del self.sessions[s_id]
+            if not self.web_server and self.connections.all_dead():
                 self.should_quit.set()
             return 'instance-closed successful.'
         @self.server.route(daemonURL('/get-input-data'), methods=['POST'])
         def get_input_data():
-            self.page_has_loaded = True
-            idnum = request.form['session_id']
-            if idnum in self.sessions:
-                data_dict = self.get_vf_data_dict(idnum)
+            s_id = request.form['session_id']
+            if s_id in self.sessions:
+                data_dict = self.get_vf_data_dict(s_id)
             else:
-                data_dict = {'idnum':idnum, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
+                data_dict = {'session_id':s_id, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
             data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
         # # #  Input page listening routes:
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
+            s_id = request.form['session_id']
             try:
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 552)
-            idnum = self.new_variant_finder(tree_data)
-            return json.dumps(self.get_vf_data_dict(idnum))
+            if s_id == self.local_input_session_id:
+                self.connections.close(s_id, None)
+            new_s_id = self.new_variant_finder(tree_data)
+            return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/upload-repvar-file'), methods=['POST'])
         def upload_repvar_file():
+            s_id = request.form['session_id']
             try:
                 repvar_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 552)
+            if s_id == self.local_input_session_id:
+                self.connections.close(s_id, None)
             vf = repvar_from_data(repvar_data.splitlines(), verbose=False)
-            idnum = self.add_variant_finder(vf)
-            return json.dumps(self.get_vf_data_dict(idnum))
+            new_s_id = self.add_variant_finder(vf)
+            return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/save-repvar-file'), methods=['POST'])
         def save_repvar_file():
-            idnum = request.form['session_id']
-            self.update_vf_attributes(idnum)
-            vf = self.sessions[idnum]
+            s_id = request.form['session_id']
+            s_id = self.update_or_copy_vf(s_id)
+            vf = self.sessions[s_id]
             if self.web_server:
                 saved_locally = False
                 repvar_str = vf.get_repvar_string()
@@ -144,14 +142,13 @@ class RepvarDaemon(object):
                 if filename:
                     vf.save_repvar_file(filename)
                 saved_locally, repvar_str = True, ''
-            return json.dumps({'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
         @self.server.route(daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
             """Copies the current variant finder, to ensure that subsequent modifications from the input page do not affect instances already open in results pages."""
-            idnum = request.form['session_id']
-            self.update_vf_attributes(idnum)
-            vf = self.sessions[idnum].copy()
-            new_idnum = self.add_variant_finder(vf)
+            s_id = request.form['session_id']
+            s_id = self.update_or_copy_vf(s_id)
+            vf = self.sessions[s_id]
             num_vars = int(request.form['num_vars'])
             vars_range = int(request.form['vars_range'])
             dist_scale = 1.0
@@ -162,8 +159,7 @@ class RepvarDaemon(object):
                     vf.cache[params] = None
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
-            # The input.js will take this new idnum, and open x new tabs. the url for each will have to incorporate the num of variants too (and dist_scale if it's actually useful).
-            return new_idnum
+            return s_id
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
@@ -179,24 +175,24 @@ class RepvarDaemon(object):
     def new_variant_finder(self, tree_data, available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
-        idnum = self.generateSessionID()
-        vf = VariantFinder(tree_data, tree_format='newick', allowed_wait=self.allowed_wait, verbose=True) # TEST verbose=False
+        s_id = self.generate_session_id()
+        vf = VariantFinder(tree_data, tree_format='newick', verbose=True) # TEST verbose=False
         vf.available = available
         vf.ignored = ignored
         vf.distance_scale = distance_scale
-        self.sessions[idnum] = vf
-        return idnum
+        self.connections.new_session(s_id)
+        self.sessions[s_id] = vf
+        return s_id
     def add_variant_finder(self, vfinder):
-        idnum = self.generateSessionID()
-        vfinder._allowed_wait = self.allowed_wait
-        self.sessions[idnum] = vfinder
-        return idnum
+        s_id = self.generate_session_id()
+        self.connections.new_session(s_id)
+        self.sessions[s_id] = vfinder
+        return s_id
 
     # # # # #  Running the server  # # # # #
     def start_server(self):
         if self.web_server:
             return False # Only used for local version.
-        self.local_input_last_maintain = time.time() # Ensures the server doesn't close on input page
         olderr = sys.stderr
         sys.stderr = self.log_buffer
         t = threading.Thread(target=self.server.run,
@@ -231,51 +227,48 @@ class RepvarDaemon(object):
         """HTTP status code 559 is used here to indicate a response was requested
         for a session ID that does not exist."""
         if should_fail: return None, 0, ('DEBUG ONLY: Intentional fail.', 588)
-        idnum = request.form['session_id']
-        if idnum in self.sessions:
-            return self.sessions[idnum], idnum, 'session ID is valid.'
+        s_id = request.form['session_id']
+        b_id = request.form['browser_id']
+        if s_id == self.local_input_session_id:
+            return None, s_id, b_id, 'session ID is local input page'
+        elif s_id in self.sessions:
+            return self.sessions[s_id], s_id, b_id, 'session ID is valid.'
         else:
-            return None, idnum, ("error, invalid session ID %s." % idnum, 559)
-    def generateSessionID(self):
+            return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
+    def generate_session_id(self):
         # Javascript has issues parsing a number if the string begins with a non-significant zero.
-        idnum = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
-        while idnum in self.sessions or idnum[0] == '0':
-            idnum = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
-        return idnum
-    def get_vf_data_dict(self, idnum):
-        vf = self.sessions[idnum]
-        return {'idnum':idnum, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data}
-    def update_vf_attributes(self, idnum):
-        """chosen and ignored must first be cleared of their original values before being set."""
+        s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
+        while s_id in self.sessions or s_id[0] == '0':
+            s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
+        return s_id
+    def get_vf_data_dict(self, s_id):
+        vf = self.sessions[s_id]
+        return {'session_id':s_id, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data}
+    def update_or_copy_vf(self, s_id):
+        """If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set."""
         # javascript returns an array of unicodes, not strs. But these seem to work interchangeably for some reason. If they don't probably just .encode('UTF-8') on each to convert it.
-        vf = self.sessions[idnum]
-        chsn = request.form.getlist('chosen[]')
-        ignrd = request.form.getlist('ignored[]')
-        avail = request.form.getlist('available[]')
-        if chsn != vf.chosen or ignrd != vf.ignored:
-            vf.chosen = []; vf.ignored = []
-            vf.chosen = chsn; vf.ignored = ignrd
-        if avail != vf.available:
-            vf.available = avail
+        vf = self.sessions[s_id]
+        chsn = set(request.form.getlist('chosen[]'))
+        ignrd = set(request.form.getlist('ignored[]'))
+        avail = set(request.form.getlist('available[]'))
+        if chsn != vf.chosen or ignrd != vf.ignored or avail != vf.available:
+            vf = vf.copy()
+            vf.chosen = []; vf.ignored = []; vf.available = []
+            vf.chosen = chsn; vf.ignored = ignrd; vf.available = avail
+            return self.add_variant_finder(vf)
+        else:
+            return s_id
 
     # # #  Server maintainence  # # #
     def collect_garbage(self):
-        to_remove = []
-        for idnum, vf in self.sessions.items():
-            alive = vf.still_alive()
-            if not alive:
-                to_remove.append(idnum)
-        for idnum in to_remove:
-            del self.sessions[idnum]
+        print 'Connections:', self.connections.session_connections
+        self.connections.clean_dead()
+        for s_id in self.sessions.keys():
+            if self.connections.is_dead(s_id):
+                del self.sessions[s_id]
         if not self.web_server: # if personal server with no live instances.
-            if self.local_input_last_maintain != None:
-                if self.page_has_loaded:
-                    if time.time() - self.local_input_last_maintain > self.allowed_wait:
-                        self.local_input_last_maintain = None
-                else:
-                    self.local_input_last_maintain = time.time()
-            if self.local_input_last_maintain == None and len(self.sessions) == 0:
-                print('last Repvar instance closed, shutting down server.')
+            if self.connections.all_dead():
+                print('Last Repvar instance closed, shutting down server.')
                 self.should_quit.set()
     def close(self):
         """Careful with this; the web version should probably never have this
@@ -293,3 +286,82 @@ class RepvarDaemon(object):
                     self.error_occurred = True
                     print('\nError encountered:\n%s' % line.strip())
                 self.error_log.append(line)
+
+class ConnectionManager(object):
+    """New instances that do exist but have not yet been maintained are identified by self.session_connections[s_id] = None. This should only happen when a new VariantFinder is instanciated."""
+    def __init__(self, allowed_wait, local_input_session_id, web_server):
+        self.allowed_wait = allowed_wait
+        self.local_input_session_id = local_input_session_id
+        self.session_connections = {}
+        self.lock = threading.Lock()
+        self.local_input_dead = web_server
+        self.local_input_maintained = None # None means it hasn't been maintained yet, False means it's been closed or timed out. Otherwise is a time.
+
+    def new_session(self, session_id):
+        with self.lock:
+            if session_id in self.session_connections:
+                print('Error: something weird. A new session was added to the connection manager that already existed.')
+                exit()
+            if self.local_input_dead != True:
+                self.local_input_maintained = False
+                self.local_input_dead = True
+            self.session_connections[session_id] = None
+
+    def maintain(self, session_id, browser_id):
+        with self.lock:
+            if session_id == self.local_input_session_id:
+                self.local_input_maintained = time.time()
+            elif self.session_connections.get(session_id, None) == None:
+                self.session_connections[session_id] = {browser_id: time.time()}
+            else:
+                self.session_connections[session_id][browser_id] = time.time()
+
+    def close(self, session_id, browser_id):
+        with self.lock:
+            if session_id == self.local_input_session_id:
+                self.local_input_maintained = False
+                self.local_input_dead = True
+            elif session_id in self.session_connections:
+                if self.session_connections[session_id] == None:
+                    del self.session_connections[session_id]
+                else:
+                    if browser_id in self.session_connections[session_id]:
+                        del self.session_connections[session_id][browser_id]
+                    if len(self.session_connections[session_id]) == 0:
+                        del self.session_connections[session_id]
+
+    def is_dead(self, session_id):
+        """Assumes self.clean_dead has just been called, and so does not check if the connections are live again. If a new VariantFinder has just been created, but not yet maintained, this returns False."""
+        if session_id == self.local_input_session_id:
+            return self.local_input_dead
+        elif session_id in self.session_connections:
+            return False
+        return True
+
+    def all_dead(self):
+        """Returns False if any connections are live, True if none are. Does not check for timed out connections."""
+        if len(self.session_connections) > 0 or not self.local_input_dead:
+            return False
+        return True
+
+    def clean_dead(self):
+        """Removes any browserIDs that have timed out, and then any sessionIDs that no longer have any live browserIDs."""
+        with self.lock:
+            cur_time = time.time()
+            if self.local_input_maintained and cur_time - self.local_input_maintained > self.allowed_wait:
+                self.local_input_maintained = False
+                self.local_input_dead = True
+            s_ids_to_remove = []
+            for s_id, connections in self.session_connections.items():
+                if connections == None:
+                    continue
+                b_ids_to_remove = []
+                for b_id, last_maintain in connections.items():
+                    if cur_time - last_maintain > self.allowed_wait:
+                        b_ids_to_remove.append(b_id)
+                for b_id in b_ids_to_remove:
+                    del self.session_connections[s_id][b_id]
+                if len(self.session_connections[s_id]) == 0:
+                    s_ids_to_remove.append(s_id)
+            for s_id in s_ids_to_remove:
+                del self.session_connections[s_id]

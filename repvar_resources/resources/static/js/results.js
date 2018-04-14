@@ -37,6 +37,9 @@ function setupPage() {
     buttons:{Ok:function() { $(this).dialog("close"); }}
   });
   page.session_id = location.search.slice(1);
+  page.browser_id = generateBrowserId(10);
+  console.log('browser ID:', page.browser_id); // TEST
+
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -80,7 +83,7 @@ function checkForClusteringResults() {
 // =====  Data parsing:
 function parseRepvarData(data_obj) {
   var data = $.parseJSON(data_obj);
-  page.session_id = data.idnum;
+  page.session_id = data.session_id;
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
   repvar.chosen = data.chosen;

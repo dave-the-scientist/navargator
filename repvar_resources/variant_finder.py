@@ -93,7 +93,7 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='newick', allowed_wait=10, verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='newick', verbose=True, _blank_init=False):
         self.verbose = bool(verbose)
         self.leaves = []
         self.cache = {}
@@ -114,9 +114,6 @@ class VariantFinder(object):
         self._cluster_methods = set(['k medoids', 'brute force'])
         self._distance_scale_max = 1000
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
-        # # Code to clean dead instances:
-        self._allowed_wait = allowed_wait # Only used by collect_garbage() in repvar_daemon.py
-        self.last_maintained = time.time()
 
     # # # # #  Public methods  # # # # #
     def find_variants(self, num_variants, distance_scale=None, method=None, bootstraps=10):
@@ -182,7 +179,7 @@ class VariantFinder(object):
 
     def copy(self):
         """Returns a deep copy of self"""
-        vf = VariantFinder(tree_input='', allowed_wait=self._allowed_wait, verbose=self.verbose, _blank_init=True)
+        vf = VariantFinder(tree_input='', verbose=self.verbose, _blank_init=True)
         vf.leaves = self.leaves[::]
         vf.index = self.index.copy()
         vf.orig_dist = self.orig_dist.copy()
@@ -401,14 +398,6 @@ class VariantFinder(object):
         self._distance_scale = val
         self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
 
-    # # # # #  Methods for cleaning up dead instances  # # # # #
-    def maintain(self):
-        self.last_maintained = time.time()
-    def still_alive(self):
-        age = time.time() - self.last_maintained
-        if age >= self._allowed_wait:
-            return False
-        return True
 
 class RepvarValidationError(ValueError):
     def __init__(self, *args, **kwargs):

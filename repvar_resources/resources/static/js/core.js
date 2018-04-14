@@ -1,8 +1,4 @@
 // =====  Convenience and error handling:
-function daemonURL(url) {
-  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in repvar_daemon.py
-  return page.server_url + '/daemon' + url;
-}
 function showErrorPopup(message, title) {
   $("#errorDialogText").text(message);
   if (!title) {
@@ -28,13 +24,24 @@ function processError(error, message) {
 }
 
 // =====  Page maintainance and management:
+function generateBrowserId(length) {
+  var b_id = 'b';
+  for (var i=0; i<length; ++i) {
+    b_id += Math.floor(Math.random() * 10); // Adds an integer from [0,9].
+  }
+  return b_id;
+}
+function daemonURL(url) {
+  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in repvar_daemon.py
+  return page.server_url + '/daemon' + url;
+}
 function maintainServer() {
   // This is continually called to maintain the background server.
   if (!page.instance_closed) {
     $.ajax({
       url: daemonURL('/maintain-server'),
       type: 'POST',
-      data: {'session_id': page.session_id},
+      data: {'session_id': page.session_id, 'browser_id': page.browser_id},
       error: function(error) {
         console.log('connection to Repvar server lost.');
         page.instance_closed = true;
@@ -49,7 +56,7 @@ function closeInstance() {
   $.ajax({
     url: daemonURL('/instance-closed'),
     type: 'POST',
-    data: {'session_id': page.session_id},
+    data: {'session_id': page.session_id, 'browser_id': page.browser_id},
     async: false, // Makes a huge difference ensuring that this ajax call actually happens
     error: function(error) {
       console.log("Error closing your instance:");

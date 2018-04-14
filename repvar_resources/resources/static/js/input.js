@@ -2,7 +2,7 @@
 
 // =====  Page settings:
 var page = {
-  'server_url':'http://'+window.location.host, 'session_id':'', 'maintain_interval':2000, 'instance_closed':false, 'maintain_interval_obj':null, 'max_upload_size':20000000
+  'server_url':'http://'+window.location.host, 'session_id':'', 'browser_id':'', 'maintain_interval':2000, 'instance_closed':false, 'maintain_interval_obj':null, 'max_upload_size':20000000
 };
 // =====  Tree objects and options:
 var repvar = {
@@ -28,6 +28,7 @@ function setupPage() {
     buttons:{Ok:function() { $(this).dialog("close"); }}
   });
   page.session_id = location.search.slice(1);
+  page.browser_id = generateBrowserId(10);
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
 
@@ -70,6 +71,7 @@ function setupUploadSaveButtons() {
       return false;
     }
     var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
+    form_data.append('session_id', page.session_id);
     // Should have a drop-down to allow user to specify file type. Upon picking file, filename should be examined to automatically guess file type. Initially repvar and newick, but probably add phyloXML, etc.
     if (file_obj.name.toLowerCase().endsWith('.repvar')) {
       upload_url = daemonURL('/upload-repvar-file');
@@ -99,6 +101,7 @@ function setupUploadSaveButtons() {
       data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
+        page.session_id = data.session_id;
         if (data.saved_locally == true) {
           console.log('file saved locally');
         } else {
@@ -166,12 +169,12 @@ function setupRunOptions() {
       type: 'POST',
       data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'vars_range':vars_range},
       success: function(data_obj) {
-        var new_idnum = $.parseJSON(data_obj), result_description, result_link_obj,
-          results_url = page.server_url + '/results?' + new_idnum;
+        page.session_id = $.parseJSON(data_obj);
+        var results_url = page.server_url + '/results?' + page.session_id, result_description, result_link_obj;
         first_result_page.location.href = results_url;
         for (var var_num=num_vars_int; var_num<=vars_range_int; ++var_num) {
           // Have to provide links because Chrome only allows 1 tab to open from 1 click.
-          results_url = page.server_url + '/results?' + new_idnum;
+          results_url = page.server_url + '/results?' + page.session_id;
           result_description = var_num + ' representative variants';
           result_link_obj = $('<a>', {
             text:result_description, title:result_description, href:results_url, target:'_blank'
@@ -298,7 +301,7 @@ function showNodeSelection(selecting_for, checked_if_in, disabled_if_in) {
 // =====  Data parsing:
 function parseRepvarData(data_obj) {
   var data = $.parseJSON(data_obj);
-  page.session_id = data.idnum;
+  page.session_id = data.session_id;
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
   repvar.chosen = data.chosen;
