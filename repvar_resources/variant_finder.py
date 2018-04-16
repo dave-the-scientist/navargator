@@ -151,7 +151,7 @@ class VariantFinder(object):
             exit()
         if self.verbose:
             self._print_clustering_results(num_variants, init_time, variants, scores, alt_variants)
-        self.cache[params] = {'variants':variants, 'scores':scores, 'alt_variants':alt_variants}
+        self._calculate_cache_values(params, variants, scores, alt_variants)
         return variants, scores, alt_variants
 
     def save_repvar_file(self, file_path):
@@ -277,6 +277,15 @@ class VariantFinder(object):
         return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
 
     # # # # #  Private methods  # # # # #
+    def _calculate_cache_values(self, params, variant_inds, scores, alt_variants):
+        cluster_inds = self._partition_nearest(variant_inds)
+        variants = [self.leaves[i] for i in variant_inds]
+        clusters = [[self.leaves[i] for i in clst] for clst in cluster_inds]
+        variant_distance = {}
+        for rep_ind, clst_inds in zip(variant_inds, cluster_inds):
+            for var_ind in clst_inds:
+                variant_distance[self.leaves[var_ind]] = self.dist[rep_ind, var_ind]
+        self.cache[params] = {'variants':variants, 'scores':scores, 'clusters':clusters, 'variant_distance':variant_distance, 'alt_variants':alt_variants}
     def _print_clustering_results(self, num_variants, init_time, variants, scores, alt_variants):
         run_time = time.time() - init_time
         if alt_variants:

@@ -26,6 +26,8 @@ def daemonURL(url):
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
+# - Should have a method to get session_id from the form, that throws an appropriate error if not found. Also a method to get other attrs, again so an error can be thrown if they're not found.
+# - update_or_copy_vf() can find it's own s_id, doesn't need it as an arg. might need to rename the fxn
 
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
@@ -124,7 +126,7 @@ class RepvarDaemon(object):
                 return (str(err), 552)
             if s_id == self.local_input_session_id:
                 self.connections.close(s_id, None)
-            vf = repvar_from_data(repvar_data.splitlines(), verbose=False)
+            vf = repvar_from_data(repvar_data.splitlines(), verbose=self.verbose)
             new_s_id = self.add_variant_finder(vf)
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/save-repvar-file'), methods=['POST'])
@@ -145,7 +147,6 @@ class RepvarDaemon(object):
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
         @self.server.route(daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
-            """Copies the current variant finder, to ensure that subsequent modifications from the input page do not affect instances already open in results pages."""
             s_id = request.form['session_id']
             s_id = self.update_or_copy_vf(s_id)
             vf = self.sessions[s_id]
@@ -153,17 +154,32 @@ class RepvarDaemon(object):
             vars_range = int(request.form['vars_range'])
             dist_scale = 1.0
             cluster_method = request.form['cluster_method']
+            runs_began = []
             for num in range(num_vars, vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
+                    runs_began.append(num)
                     vf.cache[params] = None
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
-            return s_id
+            return json.dumps({'session_id':s_id, 'runs_began':runs_began})
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
-            return 'results not ready'
+            s_id = request.form['session_id']
+            num_vars = int(request.form['num_vars'])
+            vf = self.sessions[s_id]
+            dist_scale = 1.0
+            params = (num_vars, dist_scale)
+            if params not in vf.cache:
+                print('Error: attempting to retrieve results for a clustering run that was never started.')
+                exit()
+            results = vf.cache[params]
+            if results == None:
+                ret = {'variants': False}
+            else:
+                ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':max(results['variant_distance'].values())}
+            return json.dumps(ret)
         # # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():
@@ -176,7 +192,7 @@ class RepvarDaemon(object):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         s_id = self.generate_session_id()
-        vf = VariantFinder(tree_data, tree_format='newick', verbose=True) # TEST verbose=False
+        vf = VariantFinder(tree_data, tree_format='newick', verbose=self.verbose)
         vf.available = available
         vf.ignored = ignored
         vf.distance_scale = distance_scale
@@ -261,7 +277,6 @@ class RepvarDaemon(object):
 
     # # #  Server maintainence  # # #
     def collect_garbage(self):
-        print 'Connections:', self.connections.session_connections
         self.connections.clean_dead()
         for s_id in self.sessions.keys():
             if self.connections.is_dead(s_id):

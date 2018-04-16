@@ -45,6 +45,13 @@ function treeSearchFunction() {
 }
 
 // =====  Tree drawing functions:
+function clearTree() {
+  if (repvar.r_paper) {
+    repvar.r_paper.remove();
+  }
+  $("#svgCanvas").empty();
+  $("#treeGroup").empty();
+}
 function drawTree() {
   clearTree();
   loadPhyloSVG(); // Reloads jsPhyloSVG.
@@ -60,10 +67,10 @@ function drawTree() {
 
   var canvas_size = sizes.tree;
   var maxLabelLength = getMaxLabelLength(repvar.leaves);
-  var total_label_size = (maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.marker_radius + sizes.inner_label_buffer + sizes.bar_chart_buffer + sizes.bar_chart_height - 1) * 2.0;
+  var total_label_size = (maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.bar_chart_buffer + sizes.bar_chart_height - 1) * 2.0;
 
   tree_params.Circular.bufferRadius = total_label_size/canvas_size;
-  tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.marker_radius + 1;
+  tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.big_marker_radius + 1;
   var data_object = {phyloxml: repvar.tree_data};
   var phylocanvas = new Smits.PhyloCanvas(
     data_object,
@@ -73,21 +80,15 @@ function drawTree() {
   );
   $("#svgCanvas > svg").attr("id", "treeSvg");
   repvar.r_paper = phylocanvas.getSvg().svg;
-  setupVariantObjects();
+  drawVariantObjects();
+  drawSearchHighlights();
   // If adding other elements, can modify figure size here, and set the offset of the tree as well.
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
   $("#treeSvg").attr({'x':0, 'y':0});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
 }
-function clearTree() {
-  if (repvar.r_paper) {
-    repvar.r_paper.remove();
-  }
-  $("#svgCanvas").empty();
-  $("#treeGroup").empty();
-}
-function setupVariantObjects() {
+function drawVariantObjects() {
   // Collects coordinates and angles for nodes and their names, and creates their markers and highlights.
   repvar.nodes = {};
   var text_obj, var_name, var_coords, var_marker;
@@ -95,16 +96,18 @@ function setupVariantObjects() {
     text_obj = $(this);
     var_name = text_obj.text();
     var_coords = parseLeafTextCoords(text_obj);
-    var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.marker_radius);
+    var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.small_marker_radius);
     var_marker.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
     //$(var_marker.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
     repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y};
   });
-  var var_angle, label_path_str, var_highlight_set, label_highlight, marker_highlight, var_line_highlight, node_x, node_y, label_x, label_y;
+}
+function drawSearchHighlights() {
+  var var_name, var_angle, label_path_str, var_highlight_set, label_highlight, marker_highlight, var_line_highlight, node_x, node_y, label_x, label_y;
   var angle_offset = treeDrawingParams.scaleAngle / 2,
-    label_highlight_start_radius = treeDrawingParams.minBGRadius+repvar.opts.sizes.marker_radius+1,
+    label_highlight_start_radius = treeDrawingParams.minBGRadius+repvar.opts.sizes.big_marker_radius+1,
     label_highlight_end_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer + repvar.opts.sizes.bar_chart_height + repvar.opts.sizes.search_buffer,
-    marker_highlight_radius = repvar.opts.sizes.marker_radius * 1.5 + 1;
+    marker_highlight_radius = repvar.opts.sizes.big_marker_radius * 1.5 + 1;
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
@@ -128,19 +131,53 @@ function setupVariantObjects() {
     repvar.nodes[var_name]['search_highlight'] = var_highlight_set;
   }
 }
-function updateVariantMarkers() {
+function drawBarGraphs() {
+  var var_name, var_angle, dist, tooltip, height, path_str, bar_chart;
+  var max_dist = repvar.max_variant_distance, max_height = repvar.opts.sizes.bar_chart_height,
+    min_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer,
+    angle_offset = treeDrawingParams.scaleAngle / 2.0;
+  for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
+    var_name = treeDrawingParams.seqs[i][0];
+    var_angle = treeDrawingParams.seqs[i][1];
+    if (!(var_name in repvar.variant_distance)) { continue; }
+    dist = repvar.variant_distance[var_name];
+    if (dist == 0) { continue; }
+    tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
+    height = roundFloat(dist/max_dist * max_height, 4);
+    path_str = sectorPathString(min_radius, min_radius+height,
+      var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
+    bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none', title:tooltip});
+    repvar.nodes[var_name]['bar_chart'] = bar_chart;
+  }
+}
+
+// =====  Tree updating functions:
+function updateCAIVariantMarkers() {
+  // CAI stands for chosen, available, ignored.
   var var_name;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i];
     if (repvar.chosen.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen});
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
     } else if (repvar.available.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available, 'r':repvar.opts.sizes.big_marker_radius});
     } else if (repvar.ignored.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored});
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
     } else {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.node});
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.node, 'r':repvar.opts.sizes.small_marker_radius});
     }
+  }
+}
+function updateClusteredVariantMarkers() {
+  // Colours the representative and ignored nodes.
+  var var_name;
+  for (var i=0; i<repvar.variants.length; ++i) {
+    var_name = repvar.variants[i];
+    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
+  }
+  for (var i=0; i<repvar.ignored.length; ++i) {
+    var_name = repvar.ignored[i];
+    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
   }
 }
 //   ===  Misc tree drawing functions:
@@ -166,7 +203,7 @@ function parseLeafTextCoords(a_obj) {
   var L_ind = coordsStr.indexOf("L");
   var nodeCoords = coordsStr.slice(1, L_ind).split(",");
   var labelCoords = coordsStr.slice(L_ind+1).split(",");
-  labelCoords = moveAwayFromCentre(labelCoords, repvar.opts.sizes.marker_radius+1);
+  labelCoords = moveAwayFromCentre(labelCoords, repvar.opts.sizes.big_marker_radius+1);
   return {'node_x':parseFloat(nodeCoords[0]), 'node_y':parseFloat(nodeCoords[1]),
       'label_x':parseFloat(labelCoords[0]), 'label_y':parseFloat(labelCoords[1])};
 }

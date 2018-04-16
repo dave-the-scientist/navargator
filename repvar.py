@@ -51,15 +51,16 @@ if __name__ == '__main__':
     manually_open_browser = False
     mute_opening_browser_warnings = True
     num_threads = 3
+    verbose = False
 
-    daemon = repvar_daemon.RepvarDaemon(server_port, threads=num_threads)
+    daemon = repvar_daemon.RepvarDaemon(server_port, threads=num_threads, verbose=verbose)
 
     if len(sys.argv) == 1:
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_session_id)
     else:
         input_file = sys.argv[1].strip()
         if input_file.lower().endswith('.repvar'):
-            vfinder = load_repvar_file(input_file)
+            vfinder = load_repvar_file(input_file, verbose=verbose)
             idnum = daemon.add_variant_finder(vfinder)
         else:
             idnum = daemon.new_variant_finder(input_file)
@@ -67,8 +68,8 @@ if __name__ == '__main__':
 
     if manually_open_browser:
         print('Open a browser to the following URL:\n%s' % input_url)
-        # Also set initial timeout to infinity
     else:
+        #print('Opening browser...')
         if mute_opening_browser_warnings:
             old_stderr = os.dup(2)
             os.close(2)

@@ -1,25 +1,8 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
-// =====  Page settings:
-var page = {
-  'server_url':'http://'+window.location.host, 'session_id':'', 'browser_id':'', 'maintain_interval':2000, 'instance_closed':false, 'maintain_interval_obj':null, 'max_upload_size':20000000
-};
-// =====  Tree objects and options:
-var repvar = {
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'nodes':{},
-  'r_paper':null, 'tree_data':null, 'pan_zoom':null,
-  'opts' : {
-    'fonts' : {
-      'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
-    },
-    'sizes' : {
-      'tree':null, 'marker_radius':4, 'bar_chart_height':0, 'inner_label_buffer':3, 'bar_chart_buffer':0, 'search_buffer':5
-    },
-    'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5'
-    }
-  }
-};
+// =====  Modified common variables:
+repvar.result_links = {};
+repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
 
 // =====  Page setup:
 function setupPage() {
@@ -31,7 +14,6 @@ function setupPage() {
   page.browser_id = generateBrowserId(10);
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-
   setupTreeElements();
   setupRunOptions();
   setupNodeSelection();
@@ -160,28 +142,37 @@ function setupRunOptions() {
       }
     }
     var num_vars_int = parseInt(num_vars), vars_range_int = parseInt(vars_range),
-      cluster_method = $("#clustMethodSelect").val();
-    // Have to open the page directly from the user's click to avoid popup blockers.
-    var first_result_page = window.open('', '_blank');
-
+      cluster_method = $("#clustMethodSelect").val(), do_find_vars = false, first_result_page = null;
+    for (var i=num_vars_int; i<=vars_range_int; ++i) {
+      if (!repvar.result_links.hasOwnProperty(i)) {
+        do_find_vars = true;
+      }
+    }
+    if (do_find_vars == false) {
+      return false;
+    }
+    var auto_open = ($("#autoOpenCheckbox").is(':checked'));
+    if (auto_open == true) {
+      // Have to open the page directly from the user's click to avoid popup blockers.
+      first_result_page = window.open('', '_blank');
+    }
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
       data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'vars_range':vars_range},
       success: function(data_obj) {
-        page.session_id = $.parseJSON(data_obj);
-        var results_url = page.server_url + '/results?' + page.session_id, result_description, result_link_obj;
-        first_result_page.location.href = results_url;
-        for (var var_num=num_vars_int; var_num<=vars_range_int; ++var_num) {
-          // Have to provide links because Chrome only allows 1 tab to open from 1 click.
-          results_url = page.server_url + '/results?' + page.session_id;
-          result_description = var_num + ' representative variants';
-          result_link_obj = $('<a>', {
-            text:result_description, title:result_description, href:results_url, target:'_blank'
-          }).wrap('<li class="result-link-li">').parent();
-          $("#resultsLinksList").append(result_link_obj);
+        var data = $.parseJSON(data_obj);
+        var new_s_id = data.session_id, runs_began = data.runs_began;
+        if (new_s_id != page.session_id) {
+          page.session_id = new_s_id;
+          clearHideResultsPane();
         }
-        $("#resultsLinksDiv").show();
+        if (runs_began.length > 0) {
+          updateResultsPane(runs_began);
+          if (auto_open == true && first_result_page != null) {
+            first_result_page.location.href = repvar.result_links[runs_began[0]];
+          }
+        }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
     });
@@ -203,15 +194,28 @@ function setupNodeSelection() {
     });
     var node_type = $("#nodeSelectSpan").html();
     if (node_type == 'available') {
-      repvar.available = node_list;
+      if (repvar.available != node_list) {
+        clearHideResultsPane();
+        repvar.available = node_list;
+      }
     } else if (node_type == 'chosen') {
-      repvar.available = $.grep(repvar.available, function(n, i) { return (node_list.indexOf(n) == -1) });
-      repvar.chosen = node_list;
+      if (repvar.chosen != node_list) {
+        clearHideResultsPane();
+        repvar.available = $.grep(repvar.available, function(n, i) {
+          return (node_list.indexOf(n) == -1)
+        });
+        repvar.chosen = node_list;
+      }
     } else if (node_type == 'ignored') {
-      repvar.available = $.grep(repvar.available, function(n, i) { return (node_list.indexOf(n) == -1) });
-      repvar.ignored = node_list;
+      if (repvar.ignored != node_list) {
+        clearHideResultsPane();
+        repvar.available = $.grep(repvar.available, function(n, i) {
+          return (node_list.indexOf(n) == -1)
+        });
+        repvar.ignored = node_list;
+      }
     } else {
-      showErrorPopup("Error updating node selection.");
+      showErrorPopup("Error updating node selection; node type '"+node_type+"' not recognized.");
     }
     $("#mainNodeSelectDiv").hide();
     updateRunOptions();
@@ -241,8 +245,7 @@ function newTreeLoaded(data_obj) {
     $("#uploadFileInput").val('');
     $("#saveRepvarButton").button('enable');
     $("#uploadFileButton").button('disable');
-    $("#resultsLinksDiv").hide();
-    $(".result-link-li").remove();
+    clearHideResultsPane();
   }
 }
 function updateRunOptions() {
@@ -259,7 +262,26 @@ function updateRunOptions() {
   $("#chosenButton").button('enable');
   $("#availButton").button('enable');
   $("#ignoreButton").button('enable');
-  updateVariantMarkers();
+  updateCAIVariantMarkers();
+}
+function clearHideResultsPane() {
+  repvar.result_links = {};
+  $("#resultsLinksDiv").hide();
+  $(".result-link-li").remove();
+}
+function updateResultsPane(runs_began) {
+  var var_num, results_url, result_description, result_link_obj;
+  for (var i=0; i<runs_began.length; ++i) {
+    var_num = runs_began[i];
+    results_url = page.server_url + '/results?' + page.session_id + '_' + var_num;
+    result_description = var_num + ' representative variants';
+    result_link_obj = $('<a>', {
+      text:result_description, title:result_description, href:results_url, target:'_blank'
+    }).wrap('<li class="result-link-li">').parent();
+    $("#resultsLinksList").append(result_link_obj);
+    repvar.result_links[var_num] = results_url;
+  }
+  $("#resultsLinksDiv").show();
 }
 function updateNodeSelection() {
   // Updates the list of variant checkboxes in the node selection pane. Should be called every time the phylogenetic tree is modified.
@@ -307,7 +329,10 @@ function parseRepvarData(data_obj) {
   repvar.chosen = data.chosen;
   repvar.available = data.available;
   repvar.ignored = data.ignored;
-  if (data.hasOwnProperty('maintain_interval')) {
+  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != page.maintain_interval*1000) {
+    maintainServer();
     page.maintain_interval = data.maintain_interval * 1000;
+    clearInterval(page.maintain_interval_obj);
+    page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   }
 }
