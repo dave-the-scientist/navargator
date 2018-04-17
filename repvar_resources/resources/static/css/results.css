@@ -1,0 +1,28 @@
+#bodyMainDiv {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+#mainLeftDiv {
+  display: inline-flex;
+  flex-direction: column;
+}
+#summaryStatsDiv, #clustersListDiv {
+  width: 280px;
+}
+
+/* Various element settings: */
+.results-table {
+  text-align: center;
+  width: 100%;
+}
+.results-table > thead {
+  vertical-align: bottom;
+}
+.results-table td {
+  padding: 2px 20px;
+}
+.results-table td:nth-child(1) {
+  text-align: right;
+  padding: 1px 5px 1px 1px;
+}

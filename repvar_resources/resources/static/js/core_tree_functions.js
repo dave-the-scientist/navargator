@@ -80,8 +80,11 @@ function drawTree() {
   );
   $("#svgCanvas > svg").attr("id", "treeSvg");
   repvar.r_paper = phylocanvas.getSvg().svg;
+
   drawVariantObjects();
   drawSearchHighlights();
+  drawTreeBackgrounds(maxLabelLength);
+
   // If adding other elements, can modify figure size here, and set the offset of the tree as well.
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
   $("#treeSvg").attr({'x':0, 'y':0});
@@ -130,6 +133,20 @@ function drawSearchHighlights() {
     var_line_highlight.attr({'stroke-width':2, stroke:repvar.opts.colours.search});
     repvar.nodes[var_name]['search_highlight'] = var_highlight_set;
   }
+}
+function drawTreeBackgrounds(maxLabelLength) {
+  var labels_path_str, angle_offset = treeDrawingParams.scaleAngle / 2.0,
+    start_angle = treeDrawingParams.seqs[0][1] - angle_offset,
+    end_angle = treeDrawingParams.seqs[treeDrawingParams.seqs.length-1][1] + angle_offset;
+  if (repvar.opts.fonts.tree_font_size > 0) {
+    var inside_labels_radius = treeDrawingParams.barChartRadius - maxLabelLength - Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels;
+    labels_path_str = sectorPathString(inside_labels_radius, treeDrawingParams.barChartRadius, start_angle, end_angle);
+  } else {
+    var start_pos = secPosition(treeDrawingParams.barChartRadius, start_angle);
+    labels_path_str = [["M", start_pos[0], start_pos[1]], secant(treeDrawingParams.barChartRadius, start_angle, end_angle, 0)];
+  }
+  var labels_outline = repvar.r_paper.path(labels_path_str).attr({fill:'none', 'stroke-width':repvar.opts.sizes.labels_outline, stroke:'black'});
+  var tree_background = repvar.r_paper.circle(treeDrawingParams.cx, treeDrawingParams.cy, treeDrawingParams.barChartRadius).attr({fill:repvar.opts.colours.tree_background, stroke:'none', 'stroke-width':0}).toBack();
 }
 function drawBarGraphs() {
   var var_name, var_angle, dist, tooltip, height, path_str, bar_chart;

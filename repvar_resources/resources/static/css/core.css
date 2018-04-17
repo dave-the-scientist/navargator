@@ -203,3 +203,13 @@ label {
 .param-spinner {
   width: 21px;
 }
+/*table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {*/
+table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
+  content: " \25B4\25BE"
+}
+table.sortable th.sorttable_sorted:after {
+  content: "\25B4"
+}
+table.sortable th.sorttable_sorted_reverse:after {
+  content: "\25BE"
+}

@@ -10,10 +10,10 @@ var repvar = {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
     },
     'sizes' : {
-      'tree':null, 'small_marker_radius':2, 'big_marker_radius':4, 'bar_chart_height':30, 'inner_label_buffer':3, 'bar_chart_buffer':3, 'search_buffer':5
-    },
+      'tree':null, 'small_marker_radius':2, 'big_marker_radius':4, 'bar_chart_height':30, 'labels_outline':0.5, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
+    },//3
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5', 'bar_chart':'#585858'
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
     }
   }
 };

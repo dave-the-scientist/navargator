@@ -1,5 +1,8 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
+// TODO:
+// - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
+
 // =====  Modified common variables:
 repvar.result_links = {};
 repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;

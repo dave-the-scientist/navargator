@@ -9,6 +9,7 @@
     <title>Repvar results</title>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
     <script src="static/libs/jquery-ui.min.js"></script>
+    <script src="static/libs/sorttable.js"></script>
     <script src="static/libs/raphael-min.js"></script>
     <script src="static/libs/jsphylosvg-DC.js"></script>
     <script src="static/libs/svg-pan-zoom.min.js"></script>
@@ -47,6 +48,47 @@
       </div>
 
       <div id="bodyMainDiv">
+        <div id="mainLeftDiv">
+          <div id="summaryStatsDiv" class="style-box">
+            <h2>Summary statistics</h2>
+            <table id="summaryStatsTable" class="results-table"><tbody>
+              <thead><tr>
+                <th></th>
+                <th>Count</th>
+                <th>Average<br>distance</th>
+              </tr></thead>
+              <tr>
+                <td>Clusters:</td>
+                <td><b><span id="numClustersSpan">--</span></b></td>
+                <td><b><span id="distClustersSpan">--</span></b></td>
+              </tr>
+              <tr>
+                <td>Nodes:</td>
+                <td><b><span id="numNodesSpan">--</span></b></td>
+                <td><b><span id="distNodesSpan">--</span></b></td>
+              </tr>
+              <tr>
+                <td><b>Total distance:</b></td>
+                <td></td>
+                <td><b><span id="distTotalSpan">--</span></b></td>
+              </tr>
+            </tbody></table>
+          </div>
+
+          <div id="clustersListDiv" class="style-box">
+            <h2><span id="numClustersH2Span">--</span> clusters</h2>
+            <table id="clustersListTable" class="sortable results-table">
+              <thead>
+                <tr>
+                  <th>Variant</th>
+                  <th>Size</th>
+                  <th>Total<br>distance</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
 
         <div id="mainTreeDiv" class="style-box">
           <h2>Phylogenetic tree</h2>

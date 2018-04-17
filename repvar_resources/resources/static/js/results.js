@@ -9,7 +9,10 @@ repvar.num_variants = null, repvar.variants = [], repvar.scores = [], repvar.clu
 
 
 //TODO:
-// - Column on left of tree. Summary stats and list of clusters, much like miphy
+// - Draw clusters.
+//   - Mouseover on cluster list should highlight the cluster on the tree, as well as highlight the sequences themselves (clusters will often be non-contiguous).
+// - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache
+//   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
 
 // =====  Page setup:
 function setupPage() {
@@ -20,12 +23,12 @@ function setupPage() {
   var url_params = location.search.slice(1).split('_');
   page.session_id = url_params[0];
   repvar.num_variants = url_params[1];
-  document.title = '['+repvar.num_variants+'] '+document.title;
   page.browser_id = generateBrowserId(10);
   console.log('browser ID:', page.browser_id);
 
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  document.title = '['+repvar.num_variants+'] '+document.title;
 
   maintainServer();
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -37,6 +40,9 @@ function setupPage() {
     data: {'session_id': page.session_id},
     success: function(data_obj) {
       parseRepvarData(data_obj);
+      $("#numClustersH2Span").html(repvar.num_variants);
+      $("#numClustersSpan").html(repvar.num_variants);
+      $("#numNodesSpan").html(repvar.leaves.length);
       drawTree();
       checkForClusteringResults();
     },
@@ -67,10 +73,43 @@ function checkForClusteringResults() {
         updateClusteredVariantMarkers();
         //drawClusters();
         drawBarGraphs();
+        updateSummaryStats();
+        updateClusterList();
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
   });
+}
+function updateSummaryStats() {
+  var cluster_dist = 0.0, node_dist = 0.0;
+  for (var i=0; i<repvar.scores.length; ++i) {
+    cluster_dist += repvar.scores[i];
+  }
+  $("#distTotalSpan").html(roundFloat(cluster_dist, 4));
+  cluster_dist = roundFloat(cluster_dist/repvar.scores.length, 4);
+  $.each(repvar.variant_distance, function(var_name, dist) {
+    node_dist += dist;
+  });
+  node_dist = roundFloat(node_dist/Object.keys(repvar.variant_distance).length, 4);
+  $("#distClustersSpan").html(cluster_dist);
+  $("#distNodesSpan").html(node_dist);
+}
+function updateClusterList() {
+  var max_var_name_length = 15;
+  var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, avg_title, name_td, size_td, score_td,
+    table_body = $("#clustersListTable > tbody");
+  for (var i=0; i<repvar.variants.length; ++i) {
+    var_name = repvar.variants[i];
+    short_name = var_name.slice(0, max_var_name_length);
+    clstr_size = repvar.clusters[i].length;
+    clstr_score = roundFloat(repvar.scores[i], 4);
+    clstr_avg_score = roundFloat(repvar.scores[i]/clstr_size, 4);
+    avg_title = 'Average distance: '+clstr_avg_score;
+    name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
+    size_td = "<td title='"+avg_title+"'>"+clstr_size+"</td>";
+    score_td = "<td title='"+avg_title+"'>"+clstr_score+"</td>";
+    table_body.append("<tr>"+name_td+size_td+score_td+"</tr>");
+  }
 }
 
 // =====  Data parsing:
@@ -93,4 +132,7 @@ function parseClusteredData(data) {
   repvar.clusters = data.clusters;
   repvar.variant_distance = data.variant_distance;
   repvar.max_variant_distance = data.max_variant_distance;
+  if (repvar.variants.length != repvar.num_variants) {
+    showErrorPopup("Error: data appears to be corrupted (num_variants and variants disagree).");
+  }
 }
