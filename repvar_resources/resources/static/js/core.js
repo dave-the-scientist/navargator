@@ -4,16 +4,16 @@ var page = {
 };
 var repvar = {
   'leaves':[], 'chosen':[], 'available':[], 'ignored':[],
-  'result_links':{}, 'tree_data':null, 'nodes':{}, 'r_paper':null, 'pan_zoom':null,
+  'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null,
   'opts' : {
     'fonts' : {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
     },
     'sizes' : {
-      'tree':null, 'small_marker_radius':2, 'big_marker_radius':4, 'bar_chart_height':30, 'labels_outline':0.5, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
+      'tree':null, 'small_marker_radius':2, 'big_marker_radius':4, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
     },//3
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5', 'cluster_background':'#D2F4F7', 'cluster_outline':'#454747', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
     }
   }
 };

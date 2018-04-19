@@ -5,7 +5,7 @@
 
 // =====  Modified common variables:
 page.check_results_interval = 1000;
-repvar.num_variants = null, repvar.variants = [], repvar.scores = [], repvar.clusters = [], repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
+repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
 
 
 //TODO:
@@ -71,9 +71,9 @@ function checkForClusteringResults() {
       } else {
         parseClusteredData(data);
         updateClusteredVariantMarkers();
-        //drawClusters();
         drawBarGraphs();
         updateSummaryStats();
+        drawClusters();
         updateClusterList();
       }
     },
@@ -82,11 +82,11 @@ function checkForClusteringResults() {
 }
 function updateSummaryStats() {
   var cluster_dist = 0.0, node_dist = 0.0;
-  for (var i=0; i<repvar.scores.length; ++i) {
-    cluster_dist += repvar.scores[i];
+  for (var i=0; i<repvar.variants.length; ++i) {
+    cluster_dist += repvar.clusters[repvar.variants[i]].score;
   }
   $("#distTotalSpan").html(roundFloat(cluster_dist, 4));
-  cluster_dist = roundFloat(cluster_dist/repvar.scores.length, 4);
+  cluster_dist = roundFloat(cluster_dist/repvar.variants.length, 4);
   $.each(repvar.variant_distance, function(var_name, dist) {
     node_dist += dist;
   });
@@ -101,9 +101,10 @@ function updateClusterList() {
   for (var i=0; i<repvar.variants.length; ++i) {
     var_name = repvar.variants[i];
     short_name = var_name.slice(0, max_var_name_length);
-    clstr_size = repvar.clusters[i].length;
-    clstr_score = roundFloat(repvar.scores[i], 4);
-    clstr_avg_score = roundFloat(repvar.scores[i]/clstr_size, 4);
+    clstr_size = repvar.clusters[repvar.variants[i]].nodes.length;
+    clstr_score = repvar.clusters[repvar.variants[i]].score;
+    clstr_avg_score = roundFloat(clstr_score/clstr_size, 4);
+    clstr_score = roundFloat(clstr_score, 4);
     avg_title = 'Average distance: '+clstr_avg_score;
     name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
     size_td = "<td title='"+avg_title+"'>"+clstr_size+"</td>";
@@ -127,12 +128,15 @@ function parseRepvarData(data_obj) {
   }
 }
 function parseClusteredData(data) {
-  repvar.variants = data.variants;
-  repvar.scores = data.scores;
-  repvar.clusters = data.clusters;
+  if (data.variants.length != repvar.num_variants) {
+    showErrorPopup("Error: data appears to be corrupted (num_variants and variants disagree).");
+    return false;
+  }
   repvar.variant_distance = data.variant_distance;
   repvar.max_variant_distance = data.max_variant_distance;
-  if (repvar.variants.length != repvar.num_variants) {
-    showErrorPopup("Error: data appears to be corrupted (num_variants and variants disagree).");
+  repvar.variants = data.variants;
+  repvar.clusters = {};
+  for (var i=0; i<repvar.variants.length; ++i) {
+    repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i]};
   }
 }
