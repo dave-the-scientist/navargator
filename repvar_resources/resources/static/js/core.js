@@ -10,11 +10,11 @@ var repvar = {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
     },
     'sizes' : {
-      'tree':null, 'small_marker_radius':2, 'big_marker_radius':4, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
-    },//3
+      'tree':null, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
+    },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#F09624', 'ignored':'#5D5D5D', 'search':'#B0F1F5', 'cluster_background':'#D2F4F7', 'cluster_outline':'#454747', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
-    }
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#00BFCF', 'ignored':'#5D5D5D', 'search':'#FAB728', 'cluster_outline':'#454747', 'cluster_background':'#D2F4F7', 'cluster_highlight':'#71FED6', 'singleton_colour':'#F39701', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
+    } //71F4FF
   }
 };
 
@@ -85,6 +85,10 @@ function closeInstance() {
   });
 }
 
+function roundFloat(num, num_dec) {
+  var x = Math.pow(10, num_dec);
+  return Math.round(num * x) / x;
+}
 function saveDataString(data_str, file_name, file_type) {
   // Uses javascript to save the string as a file to the client's download directory. This method works for >1MB svg files, for which other methods failed on Chrome.
   var data_blob = new Blob([data_str], {type:file_type});

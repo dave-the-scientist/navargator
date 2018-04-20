@@ -67,7 +67,7 @@ function drawTree() {
 
   var canvas_size = sizes.tree;
   var maxLabelLength = getMaxLabelLength(repvar.leaves);
-  var total_label_size = (maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.bar_chart_buffer + sizes.bar_chart_height - 1) * 2.0;
+  var total_label_size = (maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.bar_chart_buffer + sizes.bar_chart_height + repvar.opts.sizes.search_buffer - 1) * 2.0;
 
   tree_params.Circular.bufferRadius = total_label_size/canvas_size;
   tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.big_marker_radius + 1;
@@ -102,24 +102,30 @@ function drawVariantObjects() {
     var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.small_marker_radius);
     var_marker.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
     //$(var_marker.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
-    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y};
+    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_highlight':null, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'search_highlight':null};
   });
 }
 function drawSearchHighlights() {
-  var var_name, var_angle, label_path_str, var_highlight_set, label_highlight, marker_highlight, var_line_highlight, node_x, node_y, label_x, label_y;
-  var angle_offset = treeDrawingParams.scaleAngle / 2,
+  var var_name, var_angle, label_path_str, search_label_path_str, var_highlight_set, label_highlight, search_label_highlight, marker_highlight, var_line_highlight, node_x, node_y, label_x, label_y;
+  var angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05,
     label_highlight_start_radius = treeDrawingParams.minBGRadius+repvar.opts.sizes.big_marker_radius+1,
-    label_highlight_end_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer + repvar.opts.sizes.bar_chart_height + repvar.opts.sizes.search_buffer,
+    label_highlight_end_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer + repvar.opts.sizes.bar_chart_height,
+    search_label_highlight_end_radius = label_highlight_end_radius + repvar.opts.sizes.search_buffer,
     marker_highlight_radius = repvar.opts.sizes.big_marker_radius * 1.5 + 1;
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
     node_x = repvar.nodes[var_name].node_x, node_y = repvar.nodes[var_name].node_y;
     label_x = repvar.nodes[var_name].label_x, label_y = repvar.nodes[var_name].label_y;
-    var_highlight_set = repvar.r_paper.set();
-    // Highlight around the sequence name.
+
     label_path_str = sectorPathString(label_highlight_start_radius, label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
-    label_highlight = repvar.r_paper.path(label_path_str);
+    label_highlight = repvar.r_paper.path(label_path_str).attr({fill:repvar.opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide();
+    repvar.nodes[var_name]['label_highlight'] = label_highlight;
+
+    var_highlight_set = repvar.r_paper.set();
+    // Highlights around the sequence name.
+    search_label_path_str = sectorPathString(label_highlight_start_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
+    search_label_highlight = repvar.r_paper.path(search_label_path_str);
     //$(label_highlight.node).attr("class","sequenceNode");
     //$(label_highlight.node).prop('seqID', seqID); // These 2 useful for mouseover events.
 
@@ -128,7 +134,7 @@ function drawSearchHighlights() {
     // Highlight connecting the tree node and the sequence name.
     var_line_highlight = repvar.r_paper.path('M'+node_x+','+node_y+' L'+label_x+','+label_y);
     // Grouping the highlights, and storing the object.
-    var_highlight_set.push(label_highlight, marker_highlight, var_line_highlight);
+    var_highlight_set.push(search_label_highlight, marker_highlight, var_line_highlight);
     var_highlight_set.attr({'stroke-width':0, fill:repvar.opts.colours.search}).toBack().hide();
     var_line_highlight.attr({'stroke-width':2, stroke:repvar.opts.colours.search});
     repvar.nodes[var_name]['search_highlight'] = var_highlight_set;
@@ -167,16 +173,6 @@ function drawBarGraphs() {
     repvar.nodes[var_name]['bar_chart'] = bar_chart;
   }
 }
-function drawClusters() {
-  var var_name, path_str;
-  for (var i=0; i<repvar.variants.length; ++i) {
-    var_name = repvar.variants[i];
-    console.log('== cluster path for', var_name);
-    path_str = calculateClusterPath(repvar.clusters[var_name].nodes);
-    repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background, stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.5}).toBack();
-  }
-  repvar.tree_background.toBack();
-}
 
 // =====  Tree updating functions:
 function updateCAIVariantMarkers() {
@@ -198,15 +194,165 @@ function updateCAIVariantMarkers() {
 function updateClusteredVariantMarkers() {
   // Colours the representative and ignored nodes.
   var var_name;
-  for (var i=0; i<repvar.variants.length; ++i) {
-    var_name = repvar.variants[i];
-    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
+  for (var i=0; i<repvar.available.length; ++i) {
+    var_name = repvar.available[i];
+    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
   }
   for (var i=0; i<repvar.ignored.length; ++i) {
     var_name = repvar.ignored[i];
     repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
   }
+  for (var i=0; i<repvar.variants.length; ++i) {
+    var_name = repvar.variants[i];
+    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
+  }
 }
+function drawClusterObject(nodes) {
+  // Adapted from http://stackoverflow.com/questions/13802203/draw-a-border-around-an-arbitrarily-positioned-set-of-shapes-with-raphaeljs
+  var points_list = [];
+  var var_name, x_coord, y_coord;
+  for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
+    var_name = treeDrawingParams.seqs[i][0];
+    if (nodes.indexOf(var_name) != -1) {
+      x_coord = repvar.nodes[var_name].node_x;
+      y_coord = repvar.nodes[var_name].node_y;
+      points_list.push({'name':var_name, 'tree_index':i, 'x':x_coord, 'y':y_coord});
+    }
+  }
+  var cluster_obj, singleton_radius = Math.max(repvar.opts.sizes.big_marker_radius, repvar.opts.sizes.cluster_expand);
+  if (points_list.length == 1) {
+    cluster_obj = repvar.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:repvar.opts.colours.singleton_colour});
+    cluster_obj['repvar-colour-key'] = 'singleton_colour';
+    return cluster_obj;
+  }
+  var hull, path_str;
+  if (points_list.length == 2) {
+    hull = expandHull(points_list);
+  } else {
+    hull = expandHull(convexHull(points_list));
+  }
+  path_str = bezierSplinePath(hull);
+  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.5}).toBack();
+  cluster_obj['repvar-colour-key'] = 'cluster_background';
+  return cluster_obj;
+}
+function convexHull(points_list) {
+  // Gift wrapping algorithm. Note that expandHull() relies on this returning in a specific order. The first node is the first of the hull found going clockwise from 12:00 on the tree, and the remaining nodes proceed clockwise around the hull (not necessarily in the clockwise order of the tree).
+  var left, point;
+  for (var i = 0; i < points_list.length; i++) {
+    point = points_list[i];
+    if (!left || point.x < left.x) {
+      left = point;
+    }
+  }
+  var hull = [left], p, q;
+  for (var i = 0; i < hull.length; i++) {
+    p = hull[i];
+    q = nextHullPoint(points_list, p);
+    if (q.x != hull[0].x || q.y != hull[0].y) {
+      hull.push(q);
+    }
+  }
+  var max_ind = 0, max_pos;
+  for (var i=0; i<hull.length; ++i) {
+    if (hull[i].tree_index > max_ind) {
+      max_ind = hull[i].tree_index;
+      max_pos = i;
+    }
+  }
+  return hull.slice(max_pos).concat(hull.slice(0, max_pos));
+}
+function expandHull(hull) {
+  var expand = repvar.opts.sizes.cluster_expand;
+  if (hull.length == 2) {
+    expand = Math.max(repvar.opts.sizes.small_marker_radius, expand, 1);
+  } else if (expand == 0) {
+    return hull;
+  }
+  var p1=hull[hull.length-1],p2=hull[0],p3, l1_len,l2_len,l_ratio,shift,scale,angle_ratio, new_p,scaled_p1,perp,extra_p1,extra_p2,
+    new_hull = [];
+  for (var i=0; i<hull.length; ++i) {
+    // The new coords are found for p2; p1 is the previous point, p3 is the next point.
+    if (i == hull.length - 1) {
+      p3 = hull[0];
+    } else {
+      p3 = hull[i+1];
+    }
+    if (!l1_len) {
+      l1_len = Math.sqrt(distSquared(p1, p2));
+    } else {
+      l1_len = l2_len;
+    }
+    l2_len = Math.sqrt(distSquared(p2, p3));
+    l_ratio = l1_len / l2_len;
+    // Calculate the transformation for p2:
+    shift = {'x':(p2.x-p3.x+(p2.x-p1.x)/l_ratio)/2.0, 'y':(p2.y-p3.y+(p2.y-p1.y)/l_ratio)/2.0};
+    scale = expand / Math.sqrt(distSquared(shift));
+    shift.x *= scale;
+    shift.y *= scale;
+    new_p = {'x':p2.x+shift.x, 'y':p2.y+shift.y, 'name':p2.name, 'tree_index':p2.tree_index};
+    // Check if the 2 additional points need to be added:
+    scaled_p1 = {'x':(p1.x-p2.x)/l_ratio+p2.x, 'y':(p1.y-p2.y)/l_ratio+p2.y};
+    angle_ratio = Math.sqrt(distSquared(scaled_p1, p3)) / l2_len;
+    if (angle_ratio < 1.414214) { // If the angle between p1p2 and p2p3 is less than 90 degrees:
+      perp = {'x':-shift.y, 'y':shift.x};
+      new_hull.push({'x':p2.x-perp.x, 'y':p2.y-perp.y});
+      new_hull.push(new_p);
+      new_hull.push({'x':p2.x+perp.x, 'y':p2.y+perp.y});
+    } else {
+      new_hull.push(new_p);
+    }
+    p1 = p2;
+    p2 = p3;
+  }
+  return new_hull;
+}
+function bezierSplinePath(hull) {
+  // Adapted from http://www.antigrain.com/research/bezier_interpolation/ I think it's essentially equating first derivatives of adjacent curves, not but the seconds. Looks better than an implementation that equates seconds. Calculates the 2 control points for p2.
+  var p1=hull[hull.length-1],p2=hull[0],p3, l1,l2,a1,a2,b,cp1,cp2, l_ratio,shift,
+    scale = repvar.opts.sizes.cluster_smooth, cp_sets=[];
+  for (var i=0; i<hull.length; ++i) {
+    if (i == hull.length - 1) {
+      p3 = hull[0];
+    } else {
+      p3 = hull[i+1];
+    }
+    if (!l1 && !a1) {
+      l1 = {'x':p2.x-p1.x, 'y':p2.y-p1.y}; // Line segment between the points
+      a1 = {'x':(p1.x+p2.x)/2.0, 'y':(p1.y+p2.y)/2.0}; // Midpoint of l1
+    } else {
+      l1 = l2;
+      a1 = a2;
+    }
+    l2 = {'x':p3.x-p2.x, 'y':p3.y-p2.y};
+    a2 = {'x':(p2.x+p3.x)/2.0, 'y':(p2.y+p3.y)/2.0};
+    l_ratio = Math.sqrt(distSquared(l1)) / (Math.sqrt(distSquared(l1)) + Math.sqrt(distSquared(l2)));
+    b = {'x':a1.x*(1-l_ratio) + a2.x*l_ratio, 'y':a1.y*(1-l_ratio) + a2.y*l_ratio}; // Point on the a1a2 line.
+    shift = {'x':p2.x-b.x, 'y':p2.y-b.y}; // How to get from b to p2.
+    cp1 = {'x':a1.x+shift.x, 'y':a1.y+shift.y}; // Transformation, so that the a1ba2 line intersects p2 at b.
+    cp2 = {'x':a2.x+shift.x, 'y':a2.y+shift.y}; // These are the control points for the curve.
+    if (scale != 1.0) {
+      cp1 = {'x':p2.x + (cp1.x-p2.x)*scale, 'y':p2.y + (cp1.y-p2.y)*scale};
+      cp2 = {'x':p2.x + (cp2.x-p2.x)*scale, 'y':p2.y + (cp2.y-p2.y)*scale};
+    }
+    cp_sets.push({'cp1':cp1, 'cp2':cp2});
+    p1 = p2;
+    p2 = p3;
+  }
+  var dest, path_str = "M"+hull[0].x+","+hull[0].y+" ";
+  for (var i=0; i<cp_sets.length - 1; ++i) {
+    dest = hull[i+1];
+    cp1 = cp_sets[i].cp2;
+    cp2 = cp_sets[i+1].cp1;
+    path_str += "C"+cp1.x+","+cp1.y+" "+cp2.x+","+cp2.y+" "+dest.x+","+dest.y+" ";
+  }
+  // Draw the final closing path
+  cp1 = cp_sets[cp_sets.length-1].cp2;
+  cp2 = cp_sets[0].cp1;
+  path_str += "C"+cp1.x+","+cp1.y+" "+cp2.x+","+cp2.y+" "+hull[0].x+","+hull[0].y+" ";
+  return path_str;
+}
+
 //   ===  Misc tree drawing functions:
 var radians_per_degree = (Math.PI / 180);
 function getMaxLabelLength(orig_names) {
@@ -234,30 +380,79 @@ function parseLeafTextCoords(a_obj) {
   return {'node_x':parseFloat(nodeCoords[0]), 'node_y':parseFloat(nodeCoords[1]),
       'label_x':parseFloat(labelCoords[0]), 'label_y':parseFloat(labelCoords[1])};
 }
-function calculateClusterPath(nodes) {
-  // Adapted from http://stackoverflow.com/questions/13802203/draw-a-border-around-an-arbitrarily-positioned-set-of-shapes-with-raphaeljs
-  var points_list = [], hull;
-  var var_name, x_coord, y_coord;
-  for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
-    var_name = treeDrawingParams.seqs[i][0];
-    if (nodes.indexOf(var_name) != -1) {
-      x_coord = repvar.nodes[var_name].node_x;
-      y_coord = repvar.nodes[var_name].node_y;
-      points_list.push({'name':var_name, 'tree_index':i, 'x':x_coord, 'y':y_coord});
+function normalizeAngle(ang){
+  while(ang > 360 || ang < 0) {
+    if(ang > 360){ ang -= 360; }
+    else if (ang < 0){ ang += 360; }
+  }
+  return ang;
+}
+
+// Basic drawing functions:
+function sectorPathString(r1, r2, y1, y2) {
+  // Adapted from sector() and secant() from jsphylosvg.js
+  var coords1 = secPosition(r1, y1), coords2 = secPosition(r2, y2);
+  return [["M", coords1[0], coords1[1]], secant(r1, y1, y2, 0),
+            ["L", coords2[0], coords2[1]], secant(r2, y2, y1, 1), ['Z']];
+}
+function secPosition(r, deg){
+  deg += treeDrawingParams.initStartAngle;
+  return [roundFloat(treeDrawingParams.cx + r * Math.sin(deg * radians_per_degree), 4),
+          roundFloat(treeDrawingParams.cy + r * Math.cos(deg * radians_per_degree), 4)];
+}
+function secant(r, startAngle, endAngle, invSecant){
+  var endPos = secPosition(r, endAngle);
+  var n, inv = 0;
+  if(Math.abs(normalizeAngle(endAngle-startAngle)) > 180) {
+    n = 1;
+  } else {
+    n = -1;
+  }
+  if(invSecant){
+    n *= -1;
+    inv = 1;
+  }
+  return ["A", r, r, 0, n < 1 ? 0 : 1, inv, endPos[0], endPos[1]];
+}
+function moveAwayFromCentre(point, distance) {
+  // Given point=[x,y], coordinates on the tree svg, returns the coordinates of a point
+  // on the line from that point to the centre, 'distance' further away. If a negative
+  // distance is given, the point will be closer to the centre.
+  var v, len, u, centreX = treeDrawingParams.cx, centreY = treeDrawingParams.cy;
+  v = [centreX-point[0], centreY-point[1]];
+  len = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
+  u = [v[0]/len, v[1]/len];
+  return [point[0]-distance*u[0], point[1]-distance*u[1]];
+}
+function nextHullPoint(points_list, p) {
+  // Could be sped up by removing a point from points_list after it's been accepted (as long as it's not 'left')
+  var q = p, r, t;
+  for (var i = 0; i < points_list.length; i++) {
+    r = points_list[i];
+    t = turn(p, q, r);
+    if (t == -1 || t == 0 && distSquared(p, r) > distSquared(p, q)) {
+      q = r;
     }
   }
-  if (points_list.length == 1) {
-    // deal with singletons.
-  } else if (points_list.length == 2) {
-    hull = points_list;
-  } else {
-    hull = convexHull(points_list);
-  }
-  if (repvar.opts.sizes.cluster_expand > 0) {
-    hull = expandHull(hull); // What's smallest cluster this works for?
-  }
-  return bezierSplinePath(hull);
+  return q;
 }
+function turn(p, q, r) {
+  var x = (q.x - p.x) * (r.y - p.y) - (r.x - p.x) * (q.y - p.y);
+  if (x > 0) { return 1; }
+  else if (x < 0) { return -1; }
+  else { return 0; }
+}
+function distSquared(p, q) {
+  if (!q) {
+    q = {'x':0.0, 'y':0.0};
+  }
+  var dx = q.x - p.x;
+  var dy = q.y - p.y;
+  return dx * dx + dy * dy;
+}
+
+
+// Unused functions:
 function arcsPath(hull) {
   // Simple and works, but pretty jagged.
   var p1,p2, r1,r2, path_str;
@@ -271,54 +466,6 @@ function arcsPath(hull) {
     }
     path_str += "A"+r1+","+r2+" 0 0,1 "+p2.x+","+p2.y+" ";
   }
-  return path_str;
-}
-function bezierSplinePath(hull) {
-  // Adapted from http://www.antigrain.com/research/bezier_interpolation/ I think it's essentially equating first derivatives of adjacent curves, not but the seconds. Calculates the 2 control points for p2.
-  var p1,p2,p3, l1,l2,a1,a2,b,cp1,cp2, l_ratio,shift, scale = repvar.opts.sizes.cluster_smooth,
-    cp_sets=[];
-  for (var i=0; i<hull.length; ++i) {
-    p2 = hull[i];
-    if (i == 0) {
-      p1 = hull[hull.length-1];
-      p3 = hull[i+1];
-    } else if (i == hull.length - 1) {
-      p1 = hull[i-1];
-      p3 = hull[0];
-    } else {
-      p1 = hull[i-1];
-      p3 = hull[i+1];
-    }
-    l1 = {'x':p2.x-p1.x, 'y':p2.y-p1.y}; // Line segments between the points
-    l2 = {'x':p3.x-p2.x, 'y':p3.y-p2.y};
-    a1 = {'x':(p1.x+p2.x)/2.0, 'y':(p1.y+p2.y)/2.0}; // Midpoints of l1 and l2
-    a2 = {'x':(p2.x+p3.x)/2.0, 'y':(p2.y+p3.y)/2.0};
-    l_ratio = Math.sqrt(distSquared(l1)) / (Math.sqrt(distSquared(l1)) + Math.sqrt(distSquared(l2)));
-    b = {'x':a1.x*(1-l_ratio) + a2.x*l_ratio, 'y':a1.y*(1-l_ratio) + a2.y*l_ratio}; // Point on the a1a2 line.
-    shift = {'x':p2.x-b.x, 'y':p2.y-b.y}; // How to get from b to p2.
-    cp1 = {'x':a1.x+shift.x, 'y':a1.y+shift.y}; // Transformation, so that the a1ba2 line intersects p2 at b.
-    cp2 = {'x':a2.x+shift.x, 'y':a2.y+shift.y}; // These are the control points for the curve.
-    if (scale != 1.0) {
-      cp1 = {'x':p2.x + (cp1.x-p2.x)*scale, 'y':p2.y + (cp1.y-p2.y)*scale};
-      cp2 = {'x':p2.x + (cp2.x-p2.x)*scale, 'y':p2.y + (cp2.y-p2.y)*scale};
-    }
-    cp_sets.push({'cp1':cp1, 'cp2':cp2});
-  }
-  var dest, path_str = "M"+hull[0].x+","+hull[0].y+" ";
-  for (var i=0; i<cp_sets.length - 1; ++i) {
-    dest = hull[i+1];
-    cp1 = cp_sets[i].cp2;
-    cp2 = cp_sets[i+1].cp1;
-    path_str += "C"+cp1.x+","+cp1.y+" "+cp2.x+","+cp2.y+" "+dest.x+","+dest.y+" ";
-    /*
-    repvar.r_paper.path("M"+hull[i].x+","+hull[i].y+" L"+cp1.x+","+cp1.y).attr({stroke:'black', 'stroke-width':0.25});
-    repvar.r_paper.path("M"+dest.x+","+dest.y+" L"+cp2.x+","+cp2.y).attr({stroke:'black', 'stroke-width':0.25});
-    repvar.r_paper.circle(cp1.x, cp1.y, 0.5).attr({fill:'purple', 'stroke-width':0});
-    repvar.r_paper.circle(cp2.x, cp2.y, 0.5).attr({fill:'green', 'stroke-width':0});*/
-  }
-  cp1 = cp_sets[cp_sets.length-1].cp2;
-  cp2 = cp_sets[0].cp1;
-  path_str += "C"+cp1.x+","+cp1.y+" "+cp2.x+","+cp2.y+" "+hull[0].x+","+hull[0].y+" ";
   return path_str;
 }
 function bezierSplinePath2(hull) {
@@ -368,142 +515,4 @@ function bezierSplinePath2(hull) {
     repvar.r_paper.circle(cp2.x, cp2.y, 0.5).attr({fill:'green', 'stroke-width':0});
   }
   return path_str;
-}
-function convexHull(points_list) {
-  // Gift wrapping algorithm. Note that expandHull() relies on this returning in a specific order. The first node is the first of the hull found going clockwise from 12:00 on the tree, and the remaining nodes proceed clockwise around the hull (not necessarily in the clockwise order of the tree).
-  var left, point;
-  for (var i = 0; i < points_list.length; i++) {
-    point = points_list[i];
-    if (!left || point.x < left.x) {
-      left = point;
-    }
-  }
-  var hull = [left], p, q;
-  for (var i = 0; i < hull.length; i++) {
-    p = hull[i];
-    q = nextHullPoint(points_list, p);
-    if (q.x != hull[0].x || q.y != hull[0].y) {
-      hull.push(q);
-    }
-  }
-  var max_ind = 0, max_pos;
-  for (var i=0; i<hull.length; ++i) {
-    if (hull[i].tree_index > max_ind) {
-      max_ind = hull[i].tree_index;
-      max_pos = i;
-    }
-  }
-  return hull.slice(max_pos).concat(hull.slice(0, max_pos));
-}
-function nextHullPoint(points_list, p) {
-  // Could be sped up by removing a point from points_list after it's been accepted (as long as it's not 'left')
-  var q = p, r, t;
-  for (var i = 0; i < points_list.length; i++) {
-    r = points_list[i];
-    t = turn(p, q, r);
-    if (t == -1 || t == 0 && distSquared(p, r) > distSquared(p, q)) {
-      q = r;
-    }
-  }
-  return q;
-}
-
-// Basic drawing functions:
-function sectorPathString(r1, r2, y1, y2) {
-  // Adapted from sector() and secant() from jsphylosvg.js
-  var coords1 = secPosition(r1, y1), coords2 = secPosition(r2, y2);
-  return [["M", coords1[0], coords1[1]], secant(r1, y1, y2, 0),
-            ["L", coords2[0], coords2[1]], secant(r2, y2, y1, 1), ['Z']];
-}
-function secPosition(r, deg){
-  deg += treeDrawingParams.initStartAngle;
-  return [roundFloat(treeDrawingParams.cx + r * Math.sin(deg * radians_per_degree), 4),
-          roundFloat(treeDrawingParams.cy + r * Math.cos(deg * radians_per_degree), 4)];
-}
-function secant(r, startAngle, endAngle, invSecant){
-  var endPos = secPosition(r, endAngle);
-  var n, inv = 0;
-  if(Math.abs(normalizeAngle(endAngle-startAngle)) > 180) {
-    n = 1;
-  } else {
-    n = -1;
-  }
-  if(invSecant){
-    n *= -1;
-    inv = 1;
-  }
-  return ["A", r, r, 0, n < 1 ? 0 : 1, inv, endPos[0], endPos[1]];
-}
-function moveAwayFromCentre(point, distance) {
-  // Given point=[x,y], coordinates on the tree svg, returns the coordinates of a point
-  // on the line from that point to the centre, 'distance' further away. If a negative
-  // distance is given, the point will be closer to the centre.
-  var v, len, u, centreX = treeDrawingParams.cx, centreY = treeDrawingParams.cy;
-  v = [centreX-point[0], centreY-point[1]];
-  len = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
-  u = [v[0]/len, v[1]/len];
-  return [point[0]-distance*u[0], point[1]-distance*u[1]];
-}
-function turn(p, q, r) {
-  var x = (q.x - p.x) * (r.y - p.y) - (r.x - p.x) * (q.y - p.y);
-  if (x > 0) { return 1; }
-  else if (x < 0) { return -1; }
-  else { return 0; }
-}
-function distSquared(p, q) {
-  if (!q) {
-    q = {'x':0.0, 'y':0.0};
-  }
-  var dx = q.x - p.x;
-  var dy = q.y - p.y;
-  return dx * dx + dy * dy;
-}
-function expandHull(hull) {
-  var p1,p2,p3,new_p, shift,scale, perp, expand = repvar.opts.sizes.cluster_expand,
-    new_hull = [];
-  for (var i=0; i<hull.length; ++i) {
-    // The new coords are found for p2; p1 is the previous point, p3 is the next point.
-    p2 = hull[i];
-    if (i == 0) {
-      p1 = hull[hull.length-1];
-      p3 = hull[i+1];
-    } else if (i == hull.length - 1) {
-      p1 = hull[i-1];
-      p3 = hull[0];
-    } else {
-      p1 = hull[i-1];
-      p3 = hull[i+1];
-    }
-    scale = Math.sqrt(distSquared(p1, p2)) / Math.sqrt(distSquared(p2, p3));
-    shift = {'x':(p2.x-p3.x+(p2.x-p1.x)/scale)/2.0, 'y':(p2.y-p3.y+(p2.y-p1.y)/scale)/2.0};
-    scale = expand / Math.sqrt(distSquared(shift));
-    shift.x *= scale;
-    shift.y *= scale;
-    new_p = {'x':p2.x+shift.x, 'y':p2.y+shift.y, 'name':p2.name, 'tree_index':p2.tree_index};
-    new_hull.push(new_p);
-
-    // The 2 points below should be added to new_hull if needed in the order: p2-perp, new_p, p2+perp.
-    // To check if needed, normalize line p1p2 to length of p2p3, then check the ratio of the distance between the new p1 and p3, to the length of p2p3. If the angle is very narrow, the ratio will be small, and if so, add these extra hull points.
-    // If the hull size is 2, the expanded hull should consist of only these 6 points.
-    // Then deal with singletons (just a circle).
-    // Then figure out how to concave any giant clusters (those that contain the centre point?)
-    perp = {'x':-shift.y, 'y':shift.x};
-    repvar.r_paper.circle(new_p.x, new_p.y, 0.5).attr({fill:'red', 'stroke-width':0});
-    repvar.r_paper.circle(p2.x+perp.x, p2.y+perp.y, 0.5).attr({fill:'green', 'stroke-width':0});
-    repvar.r_paper.circle(p2.x-perp.x, p2.y-perp.y, 0.5).attr({fill:'orange', 'stroke-width':0});
-  }
-  return new_hull;
-}
-
-// Misc functions:
-function roundFloat(num, num_dec) {
-  var x = Math.pow(10, num_dec);
-  return Math.round(num * x) / x;
-}
-function normalizeAngle(ang){
-  while(ang > 360 || ang < 0) {
-    if(ang > 360){ ang -= 360; }
-    else if (ang < 0){ ang += 360; }
-  }
-  return ang;
 }

@@ -8,7 +8,7 @@
   flex-direction: column;
 }
 #summaryStatsDiv, #clustersListDiv {
-  width: 280px;
+  /*width: 380px; let it pick automatically*/
 }
 
 /* Various element settings: */

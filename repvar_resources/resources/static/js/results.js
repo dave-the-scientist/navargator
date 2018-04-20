@@ -94,10 +94,24 @@ function updateSummaryStats() {
   $("#distClustersSpan").html(cluster_dist);
   $("#distNodesSpan").html(node_dist);
 }
+function drawClusters() {
+  var var_names, var_name, cluster_obj;
+  var_names = repvar.variants.slice();
+  var_names.sort(function(a,b) {
+    return repvar.clusters[a].nodes.length - repvar.clusters[b].nodes.length;
+  });
+  for (var i=0; i<var_names.length; ++i) {
+    var_name = var_names[i];
+    cluster_obj = drawClusterObject(repvar.clusters[var_name].nodes);
+    addClusterObjHandlers(cluster_obj, var_name);
+    repvar.clusters[var_name].cluster_obj = cluster_obj;
+  }
+  repvar.tree_background.toBack();
+}
 function updateClusterList() {
   var max_var_name_length = 15;
-  var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, avg_title, name_td, size_td, score_td,
-    table_body = $("#clustersListTable > tbody");
+  var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, name_td, size_td, avg_dist_td, score_td,
+    cluster_row, table_body = $("#clustersListTable > tbody");
   for (var i=0; i<repvar.variants.length; ++i) {
     var_name = repvar.variants[i];
     short_name = var_name.slice(0, max_var_name_length);
@@ -105,12 +119,50 @@ function updateClusterList() {
     clstr_score = repvar.clusters[repvar.variants[i]].score;
     clstr_avg_score = roundFloat(clstr_score/clstr_size, 4);
     clstr_score = roundFloat(clstr_score, 4);
-    avg_title = 'Average distance: '+clstr_avg_score;
     name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
-    size_td = "<td title='"+avg_title+"'>"+clstr_size+"</td>";
-    score_td = "<td title='"+avg_title+"'>"+clstr_score+"</td>";
-    table_body.append("<tr>"+name_td+size_td+score_td+"</tr>");
+    size_td = "<td>"+clstr_size+"</td>";
+    avg_dist_td = "<td>"+clstr_avg_score+"</td>";
+    score_td = "<td>"+clstr_score+"</td>";
+    cluster_row = $("<tr class='cluster-list-row' variant-name='"+var_name+"'>"+name_td+size_td+avg_dist_td+score_td+"</tr>");
+    table_body.append(cluster_row);
   }
+  addClusterRowHandlers();
+}
+
+// =====  Event handlers:
+function addClusterObjHandlers(cluster_obj, var_name) {
+  cluster_obj.mouseover(function() {
+    $('.cluster-list-row[variant-name="'+var_name+'"]').mouseenter();
+  }).mouseout(function() {
+    $('.cluster-list-row[variant-name="'+var_name+'"]').mouseleave();
+  }).click(function() {
+    $('.cluster-list-row[variant-name="'+var_name+'"]').click();
+  });
+}
+function addClusterRowHandlers() {
+  $('.cluster-list-row').on({
+    "click": function() {
+      console.log('click', this.getAttribute('variant-name'));
+    },
+    "mouseenter": function() {
+      var var_name = this.getAttribute('variant-name');
+      $(this).css('background-color', repvar.opts.colours.cluster_highlight);
+      repvar.clusters[var_name].cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
+      console.log(var_name, repvar.clusters[var_name].cluster_obj['repvar-colour-key']);
+      for (var i=0; i<repvar.clusters[var_name].nodes.length; ++i) {
+        repvar.nodes[repvar.clusters[var_name].nodes[i]].label_highlight.show();
+      }
+    },
+    "mouseleave": function() {
+      var var_name = this.getAttribute('variant-name'),
+        orig_colour = repvar.opts.colours[repvar.clusters[var_name].cluster_obj['repvar-colour-key']];
+      $(this).css('background-color', '');
+      repvar.clusters[var_name].cluster_obj.attr({fill:orig_colour});
+      for (var i=0; i<repvar.clusters[var_name].nodes.length; ++i) {
+        repvar.nodes[repvar.clusters[var_name].nodes[i]].label_highlight.hide();
+      }
+    }
+  });
 }
 
 // =====  Data parsing:
@@ -120,6 +172,7 @@ function parseRepvarData(data_obj) {
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
   repvar.ignored = data.ignored;
+  repvar.available = data.available;
   if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != page.maintain_interval*1000) {
     maintainServer();
     page.maintain_interval = data.maintain_interval * 1000;
@@ -137,6 +190,6 @@ function parseClusteredData(data) {
   repvar.variants = data.variants;
   repvar.clusters = {};
   for (var i=0; i<repvar.variants.length; ++i) {
-    repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i]};
+    repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null};
   }
 }
