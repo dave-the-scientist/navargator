@@ -9,8 +9,6 @@ repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.v
 
 
 //TODO:
-// - Draw clusters.
-//   - Mouseover on cluster list should highlight the cluster on the tree, as well as highlight the sequences themselves (clusters will often be non-contiguous).
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
 
@@ -70,11 +68,12 @@ function checkForClusteringResults() {
         setTimeout(checkForClusteringResults, page.check_results_interval);
       } else {
         parseClusteredData(data);
-        updateClusteredVariantMarkers();
         drawBarGraphs();
         updateSummaryStats();
         drawClusters();
         updateClusterList();
+        updateClusteredVariantMarkers();
+        // if updateclusteredvariantmarkers is after drawclusters, singleton clusters are not getting their proper colour. if it's before, the cluster mouseover objects are in front. Think I need to have it before, and rework the order of the mouseover objs. I also want to add a mouseover hover to the var markers, without encasing them in <a> (which is what setting title does).
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
@@ -95,15 +94,22 @@ function updateSummaryStats() {
   $("#distNodesSpan").html(node_dist);
 }
 function drawClusters() {
-  var var_names, var_name, cluster_obj;
+  var var_names;
   var_names = repvar.variants.slice();
   var_names.sort(function(a,b) {
     return repvar.clusters[a].nodes.length - repvar.clusters[b].nodes.length;
   });
+  var var_name, ret, cluster_obj, mouseover_obj;
   for (var i=0; i<var_names.length; ++i) {
     var_name = var_names[i];
-    cluster_obj = drawClusterObject(repvar.clusters[var_name].nodes);
-    addClusterObjHandlers(cluster_obj, var_name);
+    ret = drawClusterObject(repvar.clusters[var_name].nodes);
+    cluster_obj = ret[0];
+    mouseover_obj = ret[1];
+    if (mouseover_obj == false) { // Singleton cluster
+      addClusterObjHandlers(cluster_obj, var_name);
+    } else { // Non singleton cluster
+      addClusterObjHandlers(mouseover_obj, var_name);
+    }
     repvar.clusters[var_name].cluster_obj = cluster_obj;
   }
   repvar.tree_background.toBack();
@@ -148,7 +154,6 @@ function addClusterRowHandlers() {
       var var_name = this.getAttribute('variant-name');
       $(this).css('background-color', repvar.opts.colours.cluster_highlight);
       repvar.clusters[var_name].cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
-      console.log(var_name, repvar.clusters[var_name].cluster_obj['repvar-colour-key']);
       for (var i=0; i<repvar.clusters[var_name].nodes.length; ++i) {
         repvar.nodes[repvar.clusters[var_name].nodes[i]].label_highlight.show();
       }

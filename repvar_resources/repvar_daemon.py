@@ -22,7 +22,6 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
-# - Should update maintain call in js, so that it calls right away, then starts timer. Otherwise if you find variants then quickly close the input page (before results has fired maintain), the whole thing closes.
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.

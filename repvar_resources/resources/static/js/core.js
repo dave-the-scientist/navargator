@@ -14,7 +14,7 @@ var repvar = {
     },
     'colours' : {
       'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#00BFCF', 'ignored':'#5D5D5D', 'search':'#FAB728', 'cluster_outline':'#454747', 'cluster_background':'#D2F4F7', 'cluster_highlight':'#71FED6', 'singleton_colour':'#F39701', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
-    } //71F4FF
+    }
   }
 };
 

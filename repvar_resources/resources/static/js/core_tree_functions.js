@@ -162,16 +162,51 @@ function drawBarGraphs() {
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
-    if (!(var_name in repvar.variant_distance)) { continue; }
     dist = repvar.variant_distance[var_name];
-    if (dist == 0) { continue; }
-    tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
-    height = roundFloat(dist/max_dist * max_height, 4);
-    path_str = sectorPathString(min_radius, min_radius+height,
-      var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
-    bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none', title:tooltip});
-    repvar.nodes[var_name]['bar_chart'] = bar_chart;
+    if (!(var_name in repvar.variant_distance)) {
+      tooltip = '[Ignored] ' + var_name;
+    } else if (dist == 0) {
+      tooltip = '[Representative] ' + var_name;
+    } else {
+      tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
+      height = roundFloat(dist/max_dist * max_height, 4);
+      path_str = sectorPathString(min_radius, min_radius+height,
+        var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
+      bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none', title:tooltip});
+      repvar.nodes[var_name]['bar_chart'] = bar_chart;
+    }
+    //repvar.nodes[var_name].circle.attr({title:tooltip});
   }
+}
+function drawClusterObject(nodes) {
+  // Adapted from http://stackoverflow.com/questions/13802203/draw-a-border-around-an-arbitrarily-positioned-set-of-shapes-with-raphaeljs
+  var points_list = [];
+  var var_name, x_coord, y_coord;
+  for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
+    var_name = treeDrawingParams.seqs[i][0];
+    if (nodes.indexOf(var_name) != -1) {
+      x_coord = repvar.nodes[var_name].node_x;
+      y_coord = repvar.nodes[var_name].node_y;
+      points_list.push({'name':var_name, 'tree_index':i, 'x':x_coord, 'y':y_coord});
+    }
+  }
+  var cluster_obj, singleton_radius = Math.max(repvar.opts.sizes.big_marker_radius, repvar.opts.sizes.cluster_expand);
+  if (points_list.length == 1) {
+    cluster_obj = repvar.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:repvar.opts.colours.singleton_colour});
+    cluster_obj['repvar-colour-key'] = 'singleton_colour';
+    return [cluster_obj, false];
+  }
+  var hull, path_str, mouseover_obj;
+  if (points_list.length == 2) {
+    hull = expandHull(points_list);
+  } else {
+    hull = expandHull(convexHull(points_list));
+  }
+  path_str = bezierSplinePath(hull);
+  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.5}).toBack();
+  cluster_obj['repvar-colour-key'] = 'cluster_background';
+  mouseover_obj = repvar.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
+  return [cluster_obj, mouseover_obj];
 }
 
 // =====  Tree updating functions:
@@ -194,6 +229,18 @@ function updateCAIVariantMarkers() {
 function updateClusteredVariantMarkers() {
   // Colours the representative and ignored nodes.
   var var_name;
+  for (var i=0; i<repvar.leaves.length; ++i) {
+    var_name = repvar.leaves[i];
+    if (repvar.variants.indexOf(var_name) != -1) {
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
+    } else if (repvar.available.indexOf(var_name) != -1) {
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
+    } else if (repvar.ignored.indexOf(var_name) != -1) {
+      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
+    }
+    repvar.nodes[var_name].circle.toFront();
+  }
+  /*
   for (var i=0; i<repvar.available.length; ++i) {
     var_name = repvar.available[i];
     repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
@@ -205,37 +252,10 @@ function updateClusteredVariantMarkers() {
   for (var i=0; i<repvar.variants.length; ++i) {
     var_name = repvar.variants[i];
     repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
-  }
+  }*/
 }
-function drawClusterObject(nodes) {
-  // Adapted from http://stackoverflow.com/questions/13802203/draw-a-border-around-an-arbitrarily-positioned-set-of-shapes-with-raphaeljs
-  var points_list = [];
-  var var_name, x_coord, y_coord;
-  for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
-    var_name = treeDrawingParams.seqs[i][0];
-    if (nodes.indexOf(var_name) != -1) {
-      x_coord = repvar.nodes[var_name].node_x;
-      y_coord = repvar.nodes[var_name].node_y;
-      points_list.push({'name':var_name, 'tree_index':i, 'x':x_coord, 'y':y_coord});
-    }
-  }
-  var cluster_obj, singleton_radius = Math.max(repvar.opts.sizes.big_marker_radius, repvar.opts.sizes.cluster_expand);
-  if (points_list.length == 1) {
-    cluster_obj = repvar.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:repvar.opts.colours.singleton_colour});
-    cluster_obj['repvar-colour-key'] = 'singleton_colour';
-    return cluster_obj;
-  }
-  var hull, path_str;
-  if (points_list.length == 2) {
-    hull = expandHull(points_list);
-  } else {
-    hull = expandHull(convexHull(points_list));
-  }
-  path_str = bezierSplinePath(hull);
-  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.5}).toBack();
-  cluster_obj['repvar-colour-key'] = 'cluster_background';
-  return cluster_obj;
-}
+
+//   === Cluster drawing functions:
 function convexHull(points_list) {
   // Gift wrapping algorithm. Note that expandHull() relies on this returning in a specific order. The first node is the first of the hull found going clockwise from 12:00 on the tree, and the remaining nodes proceed clockwise around the hull (not necessarily in the clockwise order of the tree).
   var left, point;

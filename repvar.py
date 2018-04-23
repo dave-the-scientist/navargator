@@ -38,9 +38,6 @@ vfinder = load_repvar_file('results/tbpb82')
 vfinder.find_variants(8, method='k medoids')
 exit()"""
 # TODO:
-# -- Set up results page.
-#    -- issues an ajax call every x seconds to check if the clustering is done. daemon needs method to check if (num, dist_scale) in vf.cache == None, which means it's processing still.
-#    -- Figure out how to draw clusters
 # -- Need to calculate defaults like show/hide variant names (if too many or too long), and provide controls for display options.
 
 # BUG reports:
