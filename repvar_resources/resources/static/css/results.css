@@ -11,6 +11,15 @@
   /*width: 380px; let it pick automatically*/
 }
 
+/* Histogram settings: */
+.histo-bar rect {
+  fill: #5DE71D;
+}
+.histo-bar text {
+  fill: #000;
+  font: 10px sans-serif;
+}
+
 /* Various element settings: */
 .results-table {
   text-align: center;

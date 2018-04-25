@@ -2,7 +2,8 @@
 function setupTreeElements() {
   repvar.pan_zoom = svgPanZoom('#figureSvg', {
     fit: false,
-    center: false
+    center: false,
+    dblClickZoomEnabled: false
   });
   $('#varSearchButton').click(function() {
     treeSearchFunction();
@@ -102,7 +103,7 @@ function drawVariantObjects() {
     var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.small_marker_radius);
     var_marker.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
     //$(var_marker.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
-    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_highlight':null, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'search_highlight':null};
+    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'tooltip':'', 'label_highlight':null, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'search_highlight':null};
   });
 }
 function drawSearchHighlights() {
@@ -175,6 +176,7 @@ function drawBarGraphs() {
       bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none', title:tooltip});
       repvar.nodes[var_name]['bar_chart'] = bar_chart;
     }
+    repvar.nodes[var_name].tooltip = tooltip;
     //repvar.nodes[var_name].circle.attr({title:tooltip});
   }
 }
@@ -207,52 +209,6 @@ function drawClusterObject(nodes) {
   cluster_obj['repvar-colour-key'] = 'cluster_background';
   mouseover_obj = repvar.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];
-}
-
-// =====  Tree updating functions:
-function updateCAIVariantMarkers() {
-  // CAI stands for chosen, available, ignored.
-  var var_name;
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i];
-    if (repvar.chosen.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
-    } else if (repvar.available.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available, 'r':repvar.opts.sizes.big_marker_radius});
-    } else if (repvar.ignored.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
-    } else {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.node, 'r':repvar.opts.sizes.small_marker_radius});
-    }
-  }
-}
-function updateClusteredVariantMarkers() {
-  // Colours the representative and ignored nodes.
-  var var_name;
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i];
-    if (repvar.variants.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
-    } else if (repvar.available.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
-    } else if (repvar.ignored.indexOf(var_name) != -1) {
-      repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
-    }
-    repvar.nodes[var_name].circle.toFront();
-  }
-  /*
-  for (var i=0; i<repvar.available.length; ++i) {
-    var_name = repvar.available[i];
-    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.available});
-  }
-  for (var i=0; i<repvar.ignored.length; ++i) {
-    var_name = repvar.ignored[i];
-    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
-  }
-  for (var i=0; i<repvar.variants.length; ++i) {
-    var_name = repvar.variants[i];
-    repvar.nodes[var_name].circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
-  }*/
 }
 
 //   === Cluster drawing functions:

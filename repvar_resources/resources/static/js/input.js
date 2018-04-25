@@ -251,6 +251,23 @@ function newTreeLoaded(data_obj) {
     clearHideResultsPane();
   }
 }
+function updateCAIVariantMarkers() {
+  // CAI stands for chosen, available, ignored.
+  var var_name, circle;
+  for (var i=0; i<repvar.leaves.length; ++i) {
+    var_name = repvar.leaves[i];
+    circle = repvar.nodes[var_name].circle;
+    if (repvar.chosen.indexOf(var_name) != -1) {
+      circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
+    } else if (repvar.available.indexOf(var_name) != -1) {
+      circle.attr({fill:repvar.opts.colours.available, 'r':repvar.opts.sizes.big_marker_radius});
+    } else if (repvar.ignored.indexOf(var_name) != -1) {
+      circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
+    } else {
+      circle.attr({fill:repvar.opts.colours.node, 'r':repvar.opts.sizes.small_marker_radius});
+    }
+  }
+}
 function updateRunOptions() {
   // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
   var maxVars = repvar.chosen.length + repvar.available.length;

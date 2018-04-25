@@ -6,11 +6,17 @@
 // =====  Modified common variables:
 page.check_results_interval = 1000;
 repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
+repvar.opts.histo = {
+  'height':150, 'margin':{top:10, right:30, bottom:20, left:20},
+  'bar_padding':4, 'bins':10 //Approximately
+};
 
 
 //TODO:
+// - In the histogram, add y axis (just the line). When adding column g, make it the whole height (it will be listening for mouseover events); will probably need to re-formulate how i set text heights and whatnot.
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
+//   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
 
 // =====  Page setup:
 function setupPage() {
@@ -48,8 +54,10 @@ function setupPage() {
   });
 }
 $(document).ready(function(){
+  console.log('setting up');
   // Called once the document has loaded.
   setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens.
+  console.log('called setup');
 });
 $(window).bind('beforeunload', function() {
   // Lets the background server know this instance has been closed.
@@ -72,8 +80,8 @@ function checkForClusteringResults() {
         updateSummaryStats();
         drawClusters();
         updateClusterList();
-        updateClusteredVariantMarkers();
-        // if updateclusteredvariantmarkers is after drawclusters, singleton clusters are not getting their proper colour. if it's before, the cluster mouseover objects are in front. Think I need to have it before, and rework the order of the mouseover objs. I also want to add a mouseover hover to the var markers, without encasing them in <a> (which is what setting title does).
+        updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
+        drawDistanceHistogram();
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
@@ -134,6 +142,25 @@ function updateClusterList() {
   }
   addClusterRowHandlers();
 }
+function updateClusteredVariantMarkers() {
+  // Colours the representative, available, and ignored nodes.
+  var var_name, circle, colour_key;
+  for (var i=0; i<repvar.leaves.length; ++i) {
+    var_name = repvar.leaves[i];
+    circle = repvar.nodes[var_name].circle;
+    if (repvar.variants.indexOf(var_name) != -1) {
+      colour_key = circle['repvar-colour-key'] ? circle['repvar-colour-key'] : 'chosen';
+      circle.attr({fill:repvar.opts.colours[colour_key], 'r':repvar.opts.sizes.big_marker_radius});
+    } else if (repvar.available.indexOf(var_name) != -1) {
+      circle.attr({fill:repvar.opts.colours.available});
+    } else if (repvar.ignored.indexOf(var_name) != -1) {
+      circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
+    }
+    circle.toFront();
+    circle.attr({title:repvar.nodes[var_name].tooltip});
+    addNodeObjHandlers(circle, var_name);
+  }
+}
 
 // =====  Event handlers:
 function addClusterObjHandlers(cluster_obj, var_name) {
@@ -168,6 +195,71 @@ function addClusterRowHandlers() {
       }
     }
   });
+}
+function addNodeObjHandlers(circle, var_name) {
+  circle.mouseover(function() {
+    repvar.nodes[var_name].label_highlight.show();
+  }).mouseout(function() {
+    repvar.nodes[var_name].label_highlight.hide();
+  }).click(function() {
+    console.log('clicked', var_name);
+  });
+}
+
+// =====  Graph functions:
+function drawDistanceHistogram() {
+  repvar.variant_distance['Hps.174.SV7'] = 0.24;
+  repvar.max_variant_distance = repvar.variant_distance['Hps.174.SV7'];
+
+  var margin = repvar.opts.histo.margin;
+  var total_width_str = getComputedStyle(document.getElementById("summaryStatsDiv")).getPropertyValue("width"),
+    total_width = parseInt(total_width_str.slice(0,-2)), width = total_width - margin.right - margin.left,
+    total_height = repvar.opts.histo.height, height = total_height - margin.top - margin.bottom;
+  // Set up svg objects:
+  var svg = d3.select("#histoSvg")
+    .attr("width", total_width)
+    .attr("height", total_height);
+  var g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  // Set up scales and data objects:
+  var x = d3.scaleLinear()
+    .domain([0, repvar.max_variant_distance])
+    .rangeRound([0, width]);
+  var x_ticks = x.ticks(repvar.opts.histo.bins),
+    max_x_tick = x_ticks[x_ticks.length-1] + x_ticks[1];
+  x_ticks.push(max_x_tick);
+  x.domain([0, max_x_tick]); // Needed so that the final bin is included in the graph.
+  var bins = d3.histogram()
+    .domain([0, repvar.max_variant_distance]) // Cannot be x.domain()
+    .thresholds(x.ticks(repvar.opts.histo.bins))
+    (Object.values(repvar.variant_distance));
+  var y = d3.scaleLinear()
+    .domain([0, d3.max(bins, function(d) { return d.length; })])
+    .range([height, 0]);
+  // Add a parental g to hold each bar:
+  var bar = g.selectAll(".histo-bar")
+  .data(bins)
+  .enter().append("g")
+    .attr("class", "histo-bar")
+    .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; });
+  // Draw the bars and label them:
+  var formatCount = d3.format(",.0f"),
+    bin_range = bins[0].x1 - bins[0].x0,
+    bar_width = x(bin_range) - repvar.opts.histo.bar_padding;
+  bar.append("rect")
+    .attr("x", repvar.opts.histo.bar_padding / 2)
+    .attr("width", bar_width)
+    .attr("height", function(d) { return height - y(d.length); });
+  bar.append("text")
+    .attr("dy", ".75em")
+    .attr("y", function(d) { return 6 + Math.min(0, height - y(d.length) - 18); }) // So low values dont overlap axis
+    .attr("x", x(bin_range) / 2)
+    .attr("text-anchor", "middle")
+    .text(function(d) { return formatCount(d.length); });
+  g.append("g")
+    .attr("class", "axis axis--x")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x).tickValues(x_ticks));
 }
 
 // =====  Data parsing:
