@@ -3,6 +3,7 @@
   --dark-background-colour: #C1C1C1;
   --light-background-colour: #F5F5F5;
   --style-box-background-colour: #FFFFFF;
+  --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
   --tree-width: 700px;
 }
@@ -18,7 +19,7 @@ body {
 p, h1, h2, h3, li, table, button, label, span {
   color: black;
   text-align: left;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
 }
 p {
   margin: 12px auto 10px auto;

@@ -12,10 +12,18 @@
 }
 
 /* Histogram settings: */
-.histo-bar rect {
+#histoSvg {
+  margin: 10px 0px 0px 0px;
+}
+.histo-title {
+  fill: #000;
+  font: 16px var(--font-family);
+  font-weight: bold;
+}
+.histo-bar {
   fill: #5DE71D;
 }
-.histo-bar text {
+.histo-text {
   fill: #000;
   font: 10px sans-serif;
 }

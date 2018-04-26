@@ -7,14 +7,20 @@
 page.check_results_interval = 1000;
 repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
 repvar.opts.histo = {
-  'height':150, 'margin':{top:10, right:30, bottom:20, left:20},
-  'bar_padding':4, 'bins':10 //Approximately
+  'height':150, 'margin':{top:17, right:17, bottom:30, left:7},
+  'bar_margin_ratio':0.15, 'bins':15 //Approximately //10
 };
 
 
 //TODO:
-// - In the histogram, add y axis (just the line). When adding column g, make it the whole height (it will be listening for mouseover events); will probably need to re-formulate how i set text heights and whatnot.
-// - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache
+// - Consider removing histo title, and instead use a <h2>.
+// - In cluster list, only long names that have been cropped should have a mouseover hover text. otherwise it's annoying.
+// - On mouseover of histo, might want to highlight the node too, not just the label.
+// - Below histo, I want a selection area.
+//   - There's a slider the width of the histo, with a button on either end. Click the left button, and it selects everything with a score lower than the slider (and highlights em). Click right button, and it's everything with a higher score. Or perhaps the slider just has 2 handles. That would let you pick a middle selection for some reason.
+//   - Clicking on a histo bar should select those sequences.
+//   - Should display how many seqs are currently selected, have a 'clear' button, and an option to save them to file.
+// - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
 //   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
 
@@ -151,6 +157,7 @@ function updateClusteredVariantMarkers() {
     if (repvar.variants.indexOf(var_name) != -1) {
       colour_key = circle['repvar-colour-key'] ? circle['repvar-colour-key'] : 'chosen';
       circle.attr({fill:repvar.opts.colours[colour_key], 'r':repvar.opts.sizes.big_marker_radius});
+      repvar.nodes[var_name].label_highlight.attr({fill: repvar.opts.colours.chosen});
     } else if (repvar.available.indexOf(var_name) != -1) {
       circle.attr({fill:repvar.opts.colours.available});
     } else if (repvar.ignored.indexOf(var_name) != -1) {
@@ -208,9 +215,6 @@ function addNodeObjHandlers(circle, var_name) {
 
 // =====  Graph functions:
 function drawDistanceHistogram() {
-  repvar.variant_distance['Hps.174.SV7'] = 0.24;
-  repvar.max_variant_distance = repvar.variant_distance['Hps.174.SV7'];
-
   var margin = repvar.opts.histo.margin;
   var total_width_str = getComputedStyle(document.getElementById("summaryStatsDiv")).getPropertyValue("width"),
     total_width = parseInt(total_width_str.slice(0,-2)), width = total_width - margin.right - margin.left,
@@ -231,35 +235,77 @@ function drawDistanceHistogram() {
   x.domain([0, max_x_tick]); // Needed so that the final bin is included in the graph.
   var bins = d3.histogram()
     .domain([0, repvar.max_variant_distance]) // Cannot be x.domain()
-    .thresholds(x.ticks(repvar.opts.histo.bins))
+    .thresholds(x.ticks(x_ticks.length))
     (Object.values(repvar.variant_distance));
   var y = d3.scaleLinear()
     .domain([0, d3.max(bins, function(d) { return d.length; })])
-    .range([height, 0]);
-  // Add a parental g to hold each bar:
+    .range([0, height]);
+  var var_names = Object.keys(repvar.variant_distance).sort(function(a,b) {
+    return repvar.variant_distance[a] - repvar.variant_distance[b];
+  }), prev_ind = 0, cur_len;
+  for (var i=0; i<bins.length; ++i) {
+    cur_len = bins[i].length;
+    bins[i]['names'] = var_names.slice(prev_ind, prev_ind+cur_len);
+    prev_ind += cur_len;
+  }
+  // Add a column g to hold each bar:
   var bar = g.selectAll(".histo-bar")
   .data(bins)
   .enter().append("g")
-    .attr("class", "histo-bar")
-    .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; });
+    .attr("transform", function(d) { return "translate(" + x(d.x0) + ",0)"; });
   // Draw the bars and label them:
   var formatCount = d3.format(",.0f"),
     bin_range = bins[0].x1 - bins[0].x0,
-    bar_width = x(bin_range) - repvar.opts.histo.bar_padding;
+    bar_width = x(bin_range),
+    bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
   bar.append("rect")
-    .attr("x", repvar.opts.histo.bar_padding / 2)
-    .attr("width", bar_width)
-    .attr("height", function(d) { return height - y(d.length); });
+    .attr("class", "histo-bar")
+    .attr("x", bar_margin / 2)
+    .attr("width", bar_width - bar_margin)
+    .attr("height", function(d) { return y(d.length); })
+    .attr("transform", function(d) { return "translate(0,"+(height - y(d.length))+")"; });
   bar.append("text")
-    .attr("dy", ".75em")
-    .attr("y", function(d) { return 6 + Math.min(0, height - y(d.length) - 18); }) // So low values dont overlap axis
-    .attr("x", x(bin_range) / 2)
+    .attr("class", "histo-text")
+    .attr("dy", ".35em")
+    .attr("y", function(d) { return height - Math.max(y(d.length)-10, 10); }) // So text doesn't overlap axis
+    .attr("x", bar_width / 2)
     .attr("text-anchor", "middle")
-    .text(function(d) { return formatCount(d.length); });
+    .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
+  bar.append("rect")
+    .attr("width", bar_width)
+    .attr("height", height)
+    .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
+    .on("mouseover", function(d) {
+      for (var i=0; i<d.names.length; ++i) {
+        repvar.nodes[d.names[i]].label_highlight.show();
+      }
+    })
+    .on("mouseout", function(d) {
+      for (var i=0; i<d.names.length; ++i) {
+        repvar.nodes[d.names[i]].label_highlight.hide();
+      }
+    })
+    .on("click", function(d) {
+      console.log('clicked', d.names);
+    });
+  // Draw the title and axes:
+  svg.append("text")
+    .attr("class", "histo-title")
+    .attr("dy", "0.8em") //.attr("dy", ".35em")
+    .attr("x", total_width / 2)
+    .attr("text-anchor", "middle")
+    .text("Distribution of distances");
   g.append("g")
-    .attr("class", "axis axis--x")
     .attr("transform", "translate(0," + height + ")")
-    .call(d3.axisBottom(x).tickValues(x_ticks));
+    .call(d3.axisBottom(x).tickValues(x_ticks))
+    .selectAll("text")
+      .style("text-anchor", "start")
+      .attr("x", 7)
+      .attr("y", 5)
+      .attr("dy", ".35em")
+      .attr("transform", "rotate(55)");
+  g.append("g")
+    .call(d3.axisLeft(y).tickValues([]).tickSize(0));
 }
 
 // =====  Data parsing:

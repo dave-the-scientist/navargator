@@ -38,7 +38,9 @@ vfinder = load_repvar_file('results/tbpb82')
 vfinder.find_variants(8, method='k medoids')
 exit()"""
 # TODO:
-# -- Need to calculate defaults like show/hide variant names (if too many or too long), and provide controls for display options.
+# -- Need to calculate defaults like show/hide variant names (if too many or too long).
+# -- Provide controls for display options (font sizes, colours, etc). I think I want this in a collapsable style-box
+# -- Change repvar file format. A sequence name could start with '[', which would mess it up. However, '[(' cannot happen in a newick tree, so that's how I should format my tag lines. A seq name could start with '#', so I think '//' is probably a better way to format comment lines.
 
 # BUG reports:
 
