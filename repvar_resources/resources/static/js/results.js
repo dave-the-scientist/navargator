@@ -8,7 +8,7 @@ page.check_results_interval = 1000;
 repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
 repvar.opts.histo = {
   'height':150, 'margin':{top:17, right:17, bottom:30, left:7},
-  'bar_margin_ratio':0.15, 'bins':15 //Approximately //10
+  'bar_margin_ratio':0.15, 'bins':15 //Approximately
 };
 
 
