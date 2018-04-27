@@ -129,7 +129,7 @@ function drawClusters() {
   repvar.tree_background.toBack();
 }
 function updateClusterList() {
-  var max_var_name_length = 15;
+  var max_var_name_length = 14;
   var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, name_td, size_td, avg_dist_td, score_td,
     cluster_row, table_body = $("#clustersListTable > tbody");
   for (var i=0; i<repvar.variants.length; ++i) {
@@ -139,7 +139,11 @@ function updateClusterList() {
     clstr_score = repvar.clusters[repvar.variants[i]].score;
     clstr_avg_score = roundFloat(clstr_score/clstr_size, 4);
     clstr_score = roundFloat(clstr_score, 4);
-    name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
+    if (var_name == short_name) {
+      name_td = "<td>"+short_name+"</td>";
+    } else {
+      name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
+    }
     size_td = "<td>"+clstr_size+"</td>";
     avg_dist_td = "<td>"+clstr_avg_score+"</td>";
     score_td = "<td>"+clstr_score+"</td>";

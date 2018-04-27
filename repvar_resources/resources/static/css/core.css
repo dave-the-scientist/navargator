@@ -44,6 +44,10 @@ h3 {
 p, li, table, label {
   font-size: 1.0em;
 }
+table {
+  border: none;
+  border-collapse: collapse;
+}
 ul {
   list-style: none;
   padding: 0px;

@@ -8,7 +8,7 @@
   flex-direction: column;
 }
 #summaryStatsDiv, #clustersListDiv {
-  /*width: 380px; let it pick automatically*/
+  max-width: 400px;
 }
 
 /* Histogram settings: */
@@ -37,7 +37,7 @@
   vertical-align: bottom;
 }
 .results-table td {
-  padding: 2px 20px;
+  padding: 2px 23px;
 }
 .results-table td:nth-child(1) {
   text-align: right;
