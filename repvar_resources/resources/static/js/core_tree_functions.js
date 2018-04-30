@@ -3,7 +3,8 @@ function setupTreeElements() {
   repvar.pan_zoom = svgPanZoom('#figureSvg', {
     fit: false,
     center: false,
-    dblClickZoomEnabled: false
+    dblClickZoomEnabled: false,
+    mouseWheelZoomEnabled: false
   });
   $('#varSearchButton').click(function() {
     treeSearchFunction();
@@ -21,6 +22,15 @@ function setupTreeElements() {
   $('#treeZoomResetButton').click(function() {
     repvar.pan_zoom.resetZoom();
     repvar.pan_zoom.resetPan();
+  });
+  $('#scrollZoomButton').click(function() {
+    if (repvar.pan_zoom.isMouseWheelZoomEnabled() == true) {
+      $("#scrollZoomStatus").html('Off');
+      repvar.pan_zoom.disableMouseWheelZoom();
+    } else {
+      $("#scrollZoomStatus").html('<b>On</b>');
+      repvar.pan_zoom.enableMouseWheelZoom();
+    }
   });
 }
 
@@ -205,7 +215,7 @@ function drawClusterObject(nodes) {
     hull = expandHull(convexHull(points_list));
   }
   path_str = bezierSplinePath(hull);
-  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.5}).toBack();
+  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
   cluster_obj['repvar-colour-key'] = 'cluster_background';
   mouseover_obj = repvar.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];

@@ -14,7 +14,6 @@ repvar.opts.histo = {
 
 //TODO:
 // - Consider removing histo title, and instead use a <h2>.
-// - In cluster list, only long names that have been cropped should have a mouseover hover text. otherwise it's annoying.
 // - On mouseover of histo, might want to highlight the node too, not just the label.
 // - Below histo, I want a selection area.
 //   - There's a slider the width of the histo, with a button on either end. Click the left button, and it selects everything with a score lower than the slider (and highlights em). Click right button, and it's everything with a higher score. Or perhaps the slider just has 2 handles. That would let you pick a middle selection for some reason.
@@ -113,7 +112,7 @@ function drawClusters() {
   var_names.sort(function(a,b) {
     return repvar.clusters[a].nodes.length - repvar.clusters[b].nodes.length;
   });
-  var var_name, ret, cluster_obj, mouseover_obj;
+  var var_name, ret, cluster_obj, mouseover_obj, to_front = [];
   for (var i=0; i<var_names.length; ++i) {
     var_name = var_names[i];
     ret = drawClusterObject(repvar.clusters[var_name].nodes);
@@ -123,22 +122,31 @@ function drawClusters() {
       addClusterObjHandlers(cluster_obj, var_name);
     } else { // Non singleton cluster
       addClusterObjHandlers(mouseover_obj, var_name);
+      to_front.push(mouseover_obj);
     }
     repvar.clusters[var_name].cluster_obj = cluster_obj;
+  }
+  for (var i=to_front.length-1; i>=0; --i) {
+    to_front[i].toFront(); // Puts the smallest invisible mouseover objects in front of the larger ones.
   }
   repvar.tree_background.toBack();
 }
 function updateClusterList() {
-  var max_var_name_length = 14;
-  var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, name_td, size_td, avg_dist_td, score_td,
-    cluster_row, table_body = $("#clustersListTable > tbody");
-  for (var i=0; i<repvar.variants.length; ++i) {
-    var_name = repvar.variants[i];
+  var max_var_name_length = 15, dec_precision = 4;
+  var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, score_90th,
+    name_td, size_td, avg_dist_td, score_td, cluster_row,
+    table_body = $("#clustersListTable > tbody"),
+    var_names = repvar.variants.slice();
+  var_names.sort().sort(function(a,b) {
+    return repvar.clusters[a].score - repvar.clusters[b].score;
+  });
+  for (var i=0; i<var_names.length; ++i) {
+    var_name = var_names[i];
     short_name = var_name.slice(0, max_var_name_length);
-    clstr_size = repvar.clusters[repvar.variants[i]].nodes.length;
-    clstr_score = repvar.clusters[repvar.variants[i]].score;
-    clstr_avg_score = roundFloat(clstr_score/clstr_size, 4);
-    clstr_score = roundFloat(clstr_score, 4);
+    clstr_size = repvar.clusters[var_name].nodes.length;
+    clstr_score = repvar.clusters[var_name].score;
+    clstr_avg_score = roundFloat(clstr_score/clstr_size, dec_precision);
+    score_90th = roundFloat(calculate90Percentile(repvar.clusters[var_name].nodes), dec_precision);
     if (var_name == short_name) {
       name_td = "<td>"+short_name+"</td>";
     } else {
@@ -146,7 +154,7 @@ function updateClusterList() {
     }
     size_td = "<td>"+clstr_size+"</td>";
     avg_dist_td = "<td>"+clstr_avg_score+"</td>";
-    score_td = "<td>"+clstr_score+"</td>";
+    score_td = "<td>"+score_90th+"</td>";
     cluster_row = $("<tr class='cluster-list-row' variant-name='"+var_name+"'>"+name_td+size_td+avg_dist_td+score_td+"</tr>");
     table_body.append(cluster_row);
   }

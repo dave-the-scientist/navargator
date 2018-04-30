@@ -136,6 +136,21 @@ label {
   border: 0px solid #000000;
   padding: 0px;
 }
+#scrollZoomButton {
+  line-height: 8px;
+}
+#scrollZoomText {
+  display: table-cell;
+  vertical-align: middle;
+  font-family: var(--font-family);
+  font-size: 9px;
+}
+#scrollZoomStatus {
+  display: table-cell;
+  vertical-align: middle;
+  padding-left: 3px;
+  width: 22px;
+}
 #varSearchHitsText {
   margin: 0px;
   vertical-align: middle;
@@ -151,7 +166,7 @@ label {
   background-color: #ffffff;
   text-align: left;
 }
-#clearVarSearchButton { /*why did I use a class for this? why not ID? get working then test.*/
+#clearVarSearchButton {
   width: 20px;
 	height: 21px;
   position: absolute;
@@ -190,6 +205,7 @@ label {
   font-size: 14px;
   text-align: center;
   line-height: normal;
+  outline: none;
 }
 .control-pair-left {
   border-right: 0px;

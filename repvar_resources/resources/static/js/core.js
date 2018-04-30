@@ -13,7 +13,7 @@ var repvar = {
       'tree':null, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#00BFCF', 'ignored':'#5D5D5D', 'search':'#FAB728', 'cluster_outline':'#454747', 'cluster_background':'#D2F4F7', 'cluster_highlight':'#71FED6', 'singleton_colour':'#F39701', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#00BFCF', 'ignored':'#5D5D5D', 'search':'#FAB728', 'cluster_outline':'#000', 'cluster_background':'#D2F4F7', 'cluster_highlight':'#71FED6', 'singleton_colour':'#F39701', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
     }
   }
 };
@@ -88,6 +88,17 @@ function closeInstance() {
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
   return Math.round(num * x) / x;
+}
+function calculate90Percentile(orig_var_names) {
+  if (orig_var_names.length == 1) {
+    return 0.0;
+  }
+  var var_names = orig_var_names.slice();
+  var_names.sort(function(a, b) {
+    return repvar.variant_distance[a] - repvar.variant_distance[b];
+  });
+  var ind = roundFloat(var_names.length * 0.9, 0) - 1;
+  return repvar.variant_distance[var_names[ind]];
 }
 function saveDataString(data_str, file_name, file_type) {
   // Uses javascript to save the string as a file to the client's download directory. This method works for >1MB svg files, for which other methods failed on Chrome.
