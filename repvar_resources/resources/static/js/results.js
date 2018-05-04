@@ -119,8 +119,10 @@ function drawClusters() {
     cluster_obj = ret[0];
     mouseover_obj = ret[1];
     if (mouseover_obj == false) { // Singleton cluster
+      repvar.clusters[var_name].colour_key = 'singleton_cluster_background';
       addClusterObjHandlers(cluster_obj, var_name);
     } else { // Non singleton cluster
+      repvar.clusters[var_name].colour_key = 'cluster_background';
       addClusterObjHandlers(mouseover_obj, var_name);
       to_front.push(mouseover_obj);
     }
@@ -162,14 +164,15 @@ function updateClusterList() {
 }
 function updateClusteredVariantMarkers() {
   // Colours the representative, available, and ignored nodes.
-  var var_name, circle, colour_key;
+  var var_name, circle, circle_colour_key;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i];
     circle = repvar.nodes[var_name].circle;
     if (repvar.variants.indexOf(var_name) != -1) {
-      colour_key = circle['repvar-colour-key'] ? circle['repvar-colour-key'] : 'chosen';
-      circle.attr({fill:repvar.opts.colours[colour_key], 'r':repvar.opts.sizes.big_marker_radius});
+      circle_colour_key = (repvar.clusters[var_name].nodes.length > 1) ? 'chosen' : repvar.clusters[var_name].colour_key;
+      circle.attr({fill:repvar.opts.colours[circle_colour_key], 'r':repvar.opts.sizes.big_marker_radius});
       repvar.nodes[var_name].label_highlight.attr({fill: repvar.opts.colours.chosen});
+      repvar.nodes[var_name].colour_key = 'chosen';
     } else if (repvar.available.indexOf(var_name) != -1) {
       circle.attr({fill:repvar.opts.colours.available});
     } else if (repvar.ignored.indexOf(var_name) != -1) {
@@ -197,20 +200,20 @@ function addClusterRowHandlers() {
       console.log('click', this.getAttribute('variant-name'));
     },
     "mouseenter": function() {
-      var var_name = this.getAttribute('variant-name');
+      var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name];
       $(this).css('background-color', repvar.opts.colours.cluster_highlight);
-      repvar.clusters[var_name].cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
-      for (var i=0; i<repvar.clusters[var_name].nodes.length; ++i) {
-        repvar.nodes[repvar.clusters[var_name].nodes[i]].label_highlight.show();
+      cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
+      for (var i=0; i<cluster.nodes.length; ++i) {
+        repvar.nodes[cluster.nodes[i]].label_highlight.show();
       }
     },
     "mouseleave": function() {
-      var var_name = this.getAttribute('variant-name'),
-        orig_colour = repvar.opts.colours[repvar.clusters[var_name].cluster_obj['repvar-colour-key']];
+      var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name],
+        orig_colour = repvar.opts.colours[cluster.colour_key];
       $(this).css('background-color', '');
-      repvar.clusters[var_name].cluster_obj.attr({fill:orig_colour});
-      for (var i=0; i<repvar.clusters[var_name].nodes.length; ++i) {
-        repvar.nodes[repvar.clusters[var_name].nodes[i]].label_highlight.hide();
+      cluster.cluster_obj.attr({fill:orig_colour});
+      for (var i=0; i<cluster.nodes.length; ++i) {
+        repvar.nodes[cluster.nodes[i]].label_highlight.hide();
       }
     }
   });
@@ -345,6 +348,6 @@ function parseClusteredData(data) {
   repvar.variants = data.variants;
   repvar.clusters = {};
   for (var i=0; i<repvar.variants.length; ++i) {
-    repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null};
+    repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null, 'colour_key':''};
   }
 }

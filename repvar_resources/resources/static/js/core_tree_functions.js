@@ -1,3 +1,8 @@
+// TODO:
+// - In drawLabelHighlight(), add some highlight to the marker node itself. could be adding a new circle, or just changing the colour of the marker to the label highlight colour
+//   - That means each repvar.node needs to know it's current colour. Actually probably needed anyways, for the input strain selection colouring (future feature).
+//     - Change the standard cluster colour. When i mouseover a label and change the marker colour, I want it to stand out from the cluster colour.
+
 // =====  Tree setup functions:
 function setupTreeElements() {
   repvar.pan_zoom = svgPanZoom('#figureSvg', {
@@ -93,7 +98,7 @@ function drawTree() {
   repvar.r_paper = phylocanvas.getSvg().svg;
 
   drawVariantObjects();
-  drawSearchHighlights();
+  drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
 
   // If adding other elements, can modify figure size here, and set the offset of the tree as well.
@@ -113,11 +118,11 @@ function drawVariantObjects() {
     var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.small_marker_radius);
     var_marker.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
     //$(var_marker.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
-    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'tooltip':'', 'label_highlight':null, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'search_highlight':null};
+    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'tooltip':'', 'colour_key':'', 'label_highlight':null, 'search_highlight':null};
   });
 }
-function drawSearchHighlights() {
-  var var_name, var_angle, label_path_str, search_label_path_str, var_highlight_set, label_highlight, search_label_highlight, marker_highlight, var_line_highlight, node_x, node_y, label_x, label_y;
+function drawLabelAndSearchHighlights() {
+  var var_name, var_angle;
   var angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05,
     label_highlight_start_radius = treeDrawingParams.minBGRadius+repvar.opts.sizes.big_marker_radius+1,
     label_highlight_end_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer + repvar.opts.sizes.bar_chart_height,
@@ -126,30 +131,42 @@ function drawSearchHighlights() {
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
-    node_x = repvar.nodes[var_name].node_x, node_y = repvar.nodes[var_name].node_y;
-    label_x = repvar.nodes[var_name].label_x, label_y = repvar.nodes[var_name].label_y;
-
-    label_path_str = sectorPathString(label_highlight_start_radius, label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
-    label_highlight = repvar.r_paper.path(label_path_str).attr({fill:repvar.opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide();
-    repvar.nodes[var_name]['label_highlight'] = label_highlight;
-
-    var_highlight_set = repvar.r_paper.set();
-    // Highlights around the sequence name.
-    search_label_path_str = sectorPathString(label_highlight_start_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
-    search_label_highlight = repvar.r_paper.path(search_label_path_str);
-    //$(label_highlight.node).attr("class","sequenceNode");
-    //$(label_highlight.node).prop('seqID', seqID); // These 2 useful for mouseover events.
-
-    // Highlight around the tree node.
-    marker_highlight = repvar.r_paper.circle(node_x, node_y, marker_highlight_radius);
-    // Highlight connecting the tree node and the sequence name.
-    var_line_highlight = repvar.r_paper.path('M'+node_x+','+node_y+' L'+label_x+','+label_y);
-    // Grouping the highlights, and storing the object.
-    var_highlight_set.push(search_label_highlight, marker_highlight, var_line_highlight);
-    var_highlight_set.attr({'stroke-width':0, fill:repvar.opts.colours.search}).toBack().hide();
-    var_line_highlight.attr({'stroke-width':2, stroke:repvar.opts.colours.search});
-    repvar.nodes[var_name]['search_highlight'] = var_highlight_set;
+    // Sets up highlight and mouseover around sequence name:
+    repvar.nodes[var_name]['label_highlight'] = drawLabelHighlight(var_name, label_highlight_start_radius, label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
+    // Sets up highlight around node, sequence name, and a line between them:
+    repvar.nodes[var_name]['search_highlight'] = drawSearchHighlight(var_name, label_highlight_start_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset, marker_highlight_radius);
   }
+}
+function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end_angle) {
+  var label_path_str = sectorPathString(start_radius, end_radius, start_angle, end_angle),
+    label_highlight = repvar.r_paper.path(label_path_str).attr({fill:repvar.opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide(),
+    label_mouseover = repvar.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
+  label_mouseover.mouseover(function() {
+    label_highlight.show();
+  }).mouseout(function() {
+    label_highlight.hide();
+  }).click(function() {
+    console.log('clicked', var_name);
+  });
+  repvar.nodes[var_name].colour_key = 'cluster_highlight';
+  return label_highlight;
+}
+function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, end_angle, marker_highlight_radius) {
+  var node_x = repvar.nodes[var_name].node_x, node_y = repvar.nodes[var_name].node_y,
+    label_x = repvar.nodes[var_name].label_x, label_y = repvar.nodes[var_name].label_y;
+  var var_highlight_set = repvar.r_paper.set();
+  // Highlights around the sequence name:
+  var search_label_path_str = sectorPathString(start_radius, end_radius, start_angle, end_angle),
+    search_label_highlight = repvar.r_paper.path(search_label_path_str);
+  // Highlight around the tree node:
+  var marker_highlight = repvar.r_paper.circle(node_x, node_y, marker_highlight_radius);
+  // Highlight connecting the tree node and the sequence name:
+  var var_line_highlight = repvar.r_paper.path('M'+node_x+','+node_y+' L'+label_x+','+label_y);
+  // Grouping the highlights, and storing the object:
+  var_highlight_set.push(search_label_highlight, marker_highlight, var_line_highlight);
+  var_highlight_set.attr({'stroke-width':0, fill:repvar.opts.colours.search}).toBack().hide();
+  var_line_highlight.attr({'stroke-width':2, stroke:repvar.opts.colours.search});
+  return var_highlight_set;
 }
 function drawTreeBackgrounds(maxLabelLength) {
   var labels_path_str, angle_offset = treeDrawingParams.scaleAngle / 2.0,
@@ -187,7 +204,6 @@ function drawBarGraphs() {
       repvar.nodes[var_name]['bar_chart'] = bar_chart;
     }
     repvar.nodes[var_name].tooltip = tooltip;
-    //repvar.nodes[var_name].circle.attr({title:tooltip});
   }
 }
 function drawClusterObject(nodes) {
@@ -204,8 +220,7 @@ function drawClusterObject(nodes) {
   }
   var cluster_obj, singleton_radius = Math.max(repvar.opts.sizes.big_marker_radius, repvar.opts.sizes.cluster_expand);
   if (points_list.length == 1) {
-    cluster_obj = repvar.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:repvar.opts.colours.singleton_colour});
-    cluster_obj['repvar-colour-key'] = 'singleton_colour';
+    cluster_obj = repvar.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:repvar.opts.colours.singleton_cluster_background});
     return [cluster_obj, false];
   }
   var hull, path_str, mouseover_obj;
@@ -216,7 +231,6 @@ function drawClusterObject(nodes) {
   }
   path_str = bezierSplinePath(hull);
   cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
-  cluster_obj['repvar-colour-key'] = 'cluster_background';
   mouseover_obj = repvar.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];
 }
