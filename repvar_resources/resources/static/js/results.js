@@ -14,10 +14,8 @@ repvar.opts.histo = {
 
 //TODO:
 // - Consider removing histo title, and instead use a <h2>.
-// - On mouseover of histo, might want to highlight the node too, not just the label.
 // - Below histo, I want a selection area.
 //   - There's a slider the width of the histo, with a button on either end. Click the left button, and it selects everything with a score lower than the slider (and highlights em). Click right button, and it's everything with a higher score. Or perhaps the slider just has 2 handles. That would let you pick a middle selection for some reason.
-//   - Clicking on a histo bar should select those sequences.
 //   - Should display how many seqs are currently selected, have a 'clear' button, and an option to save them to file.
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
@@ -169,18 +167,20 @@ function updateClusteredVariantMarkers() {
     var_name = repvar.leaves[i];
     circle = repvar.nodes[var_name].circle;
     if (repvar.variants.indexOf(var_name) != -1) {
-      circle_colour_key = (repvar.clusters[var_name].nodes.length > 1) ? 'chosen' : repvar.clusters[var_name].colour_key;
-      circle.attr({fill:repvar.opts.colours[circle_colour_key], 'r':repvar.opts.sizes.big_marker_radius});
-      repvar.nodes[var_name].label_highlight.attr({fill: repvar.opts.colours.chosen});
-      repvar.nodes[var_name].colour_key = 'chosen';
+      circle_colour_key = (repvar.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
+      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
+      changeNodeStateColour(var_name, repvar.nodes[var_name].label_highlight, 'label_mouseover', 'chosen');
     } else if (repvar.available.indexOf(var_name) != -1) {
-      circle.attr({fill:repvar.opts.colours.available});
+      circle_colour_key = 'available';
     } else if (repvar.ignored.indexOf(var_name) != -1) {
-      circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
+      circle_colour_key = 'ignored';
+      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
+    } else {
+      circle_colour_key = 'node';
     }
+    changeNodeStateColour(var_name, circle, 'node_rest', circle_colour_key);
     circle.toFront();
     circle.attr({title:repvar.nodes[var_name].tooltip});
-    addNodeObjHandlers(circle, var_name);
   }
 }
 
@@ -191,20 +191,25 @@ function addClusterObjHandlers(cluster_obj, var_name) {
   }).mouseout(function() {
     $('.cluster-list-row[variant-name="'+var_name+'"]').mouseleave();
   }).click(function() {
+    if (!repvar.allow_select) { return false; }
     $('.cluster-list-row[variant-name="'+var_name+'"]').click();
   });
 }
 function addClusterRowHandlers() {
   $('.cluster-list-row').on({
     "click": function() {
-      console.log('click', this.getAttribute('variant-name'));
+      // cluster_variant = this.getAttribute('variant-name');
+      var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name];
+      for (var i=0; i<cluster.nodes.length; ++i) {
+        nodeLabelMouseclickHandler(cluster.nodes[i]);
+      }
     },
     "mouseenter": function() {
       var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name];
       $(this).css('background-color', repvar.opts.colours.cluster_highlight);
       cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
       for (var i=0; i<cluster.nodes.length; ++i) {
-        repvar.nodes[cluster.nodes[i]].label_highlight.show();
+        nodeLabelMouseoverHandler(cluster.nodes[i]);
       }
     },
     "mouseleave": function() {
@@ -213,18 +218,9 @@ function addClusterRowHandlers() {
       $(this).css('background-color', '');
       cluster.cluster_obj.attr({fill:orig_colour});
       for (var i=0; i<cluster.nodes.length; ++i) {
-        repvar.nodes[cluster.nodes[i]].label_highlight.hide();
+        nodeLabelMouseoutHandler(cluster.nodes[i]);
       }
     }
-  });
-}
-function addNodeObjHandlers(circle, var_name) {
-  circle.mouseover(function() {
-    repvar.nodes[var_name].label_highlight.show();
-  }).mouseout(function() {
-    repvar.nodes[var_name].label_highlight.hide();
-  }).click(function() {
-    console.log('clicked', var_name);
   });
 }
 
@@ -291,17 +287,13 @@ function drawDistanceHistogram() {
     .attr("height", height)
     .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
     .on("mouseover", function(d) {
-      for (var i=0; i<d.names.length; ++i) {
-        repvar.nodes[d.names[i]].label_highlight.show();
-      }
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i], true); }
     })
     .on("mouseout", function(d) {
-      for (var i=0; i<d.names.length; ++i) {
-        repvar.nodes[d.names[i]].label_highlight.hide();
-      }
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i], true); }
     })
     .on("click", function(d) {
-      console.log('clicked', d.names);
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseclickHandler(d.names[i]); }
     });
   // Draw the title and axes:
   svg.append("text")

@@ -258,13 +258,17 @@ function updateCAIVariantMarkers() {
     var_name = repvar.leaves[i];
     circle = repvar.nodes[var_name].circle;
     if (repvar.chosen.indexOf(var_name) != -1) {
-      circle.attr({fill:repvar.opts.colours.chosen, 'r':repvar.opts.sizes.big_marker_radius});
+      changeNodeStateColour(var_name, circle, 'node_rest', 'chosen');
+      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
     } else if (repvar.available.indexOf(var_name) != -1) {
-      circle.attr({fill:repvar.opts.colours.available, 'r':repvar.opts.sizes.big_marker_radius});
+      changeNodeStateColour(var_name, circle, 'node_rest', 'available');
+      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
     } else if (repvar.ignored.indexOf(var_name) != -1) {
-      circle.attr({fill:repvar.opts.colours.ignored, 'r':repvar.opts.sizes.big_marker_radius});
+      changeNodeStateColour(var_name, circle, 'node_rest', 'ignored');
+      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
     } else {
-      circle.attr({fill:repvar.opts.colours.node, 'r':repvar.opts.sizes.small_marker_radius});
+      changeNodeStateColour(var_name, circle, 'node_rest', 'node');
+      circle.attr({'r':repvar.opts.sizes.small_marker_radius});
     }
   }
 }

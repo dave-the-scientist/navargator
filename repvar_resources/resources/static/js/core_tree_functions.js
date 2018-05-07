@@ -1,7 +1,6 @@
 // TODO:
-// - In drawLabelHighlight(), add some highlight to the marker node itself. could be adding a new circle, or just changing the colour of the marker to the label highlight colour
-//   - That means each repvar.node needs to know it's current colour. Actually probably needed anyways, for the input strain selection colouring (future feature).
-//     - Change the standard cluster colour. When i mouseover a label and change the marker colour, I want it to stand out from the cluster colour.
+// - Ensure bar graph is below the label mouseover object. Add the tooltip to that object.
+// - For histo selection, think I want one slider (with input box), with buttons on either edge. Initially left says 'add to selection' and adds all nodes in range (visualized by mouseover) to selection; right says 'switch to above' and on press it changes to 'add to selection' and causes left to change to 'switch to below', and updates the range (visualized with mouseover).
 
 // =====  Tree setup functions:
 function setupTreeElements() {
@@ -9,7 +8,8 @@ function setupTreeElements() {
     fit: false,
     center: false,
     dblClickZoomEnabled: false,
-    mouseWheelZoomEnabled: false
+    mouseWheelZoomEnabled: false,
+    onPan: preventSelections
   });
   $('#varSearchButton').click(function() {
     treeSearchFunction();
@@ -37,6 +37,26 @@ function setupTreeElements() {
       repvar.pan_zoom.enableMouseWheelZoom();
     }
   });
+  $("#figureSvg").mousedown(function(e) {
+    repvar.allow_select = true;
+  }).mouseleave(function() {
+    repvar.allow_select = true;
+  });
+}
+function preventSelections(newPan) {
+  repvar.allow_select = false;
+}
+
+// Node attributes creation and updates:
+function newRepvarNodeObject() {
+  return {'circle':null, 'label_highlight':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
+}
+function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
+  var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
+  if (new_colour == false) { new_colour = repvar.opts.colours[colour_key]; }
+  repvar.nodes[var_name][state_key_name] = colour_key;
+  repvar.nodes[var_name][state_colour_name] = new_colour;
+  raphael_ele.attr({fill:new_colour});
 }
 
 // =====  Tree use functions:
@@ -117,8 +137,11 @@ function drawVariantObjects() {
     var_coords = parseLeafTextCoords(text_obj);
     var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.small_marker_radius);
     var_marker.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
-    //$(var_marker.node).attr("class","sequenceNode"); // Useful if I want mouseover actions.
-    repvar.nodes[var_name] = {'circle': var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'tooltip':'', 'colour_key':'', 'label_highlight':null, 'search_highlight':null};
+    repvar.nodes[var_name] = newRepvarNodeObject();
+    $.extend(repvar.nodes[var_name], {
+      'circle':var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y
+    });
+    addNodeLabelEventHandlers(var_name, var_marker);
   });
 }
 function drawLabelAndSearchHighlights() {
@@ -141,14 +164,7 @@ function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end
   var label_path_str = sectorPathString(start_radius, end_radius, start_angle, end_angle),
     label_highlight = repvar.r_paper.path(label_path_str).attr({fill:repvar.opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide(),
     label_mouseover = repvar.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
-  label_mouseover.mouseover(function() {
-    label_highlight.show();
-  }).mouseout(function() {
-    label_highlight.hide();
-  }).click(function() {
-    console.log('clicked', var_name);
-  });
-  repvar.nodes[var_name].colour_key = 'cluster_highlight';
+  addNodeLabelEventHandlers(var_name, label_mouseover);
   return label_highlight;
 }
 function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, end_angle, marker_highlight_radius) {
@@ -233,6 +249,59 @@ function drawClusterObject(nodes) {
   cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
   mouseover_obj = repvar.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];
+}
+
+//   === Event handlers:
+function addNodeLabelEventHandlers(var_name, raphael_element) {
+  raphael_element.mouseover(function() {
+    nodeLabelMouseoverHandler(var_name, true);
+  }).mouseout(function() {
+    nodeLabelMouseoutHandler(var_name, true);
+  }).click(function() {
+    nodeLabelMouseclickHandler(var_name);
+  });
+}
+function nodeLabelMouseoverHandler(var_name, change_node_colour) {
+  if (change_node_colour == true) {
+    repvar.nodes[var_name].circle.attr({fill:repvar.nodes[var_name].node_mouseover_colour});
+  }
+  if (repvar.nodes[var_name].selected) {
+    repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_mouseover_colour});
+  } else {
+    repvar.nodes[var_name].label_highlight.show();
+  }
+}
+function nodeLabelMouseoutHandler(var_name, change_node_colour) {
+  if (change_node_colour == true) {
+    repvar.nodes[var_name].circle.attr({fill:repvar.nodes[var_name].node_rest_colour});
+  }
+  if (repvar.nodes[var_name].selected) {
+    repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_selected_colour});
+  } else if (repvar.nodes[var_name].label_rest_colour != '') {
+    repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_rest_colour});
+  } else {
+    repvar.nodes[var_name].label_highlight.hide();
+  }
+}
+function nodeLabelMouseclickHandler(var_name, set_selection_state) {
+  // If set_selection_state is not given, toggles the selection status of the node.
+  if (!repvar.allow_select) { return false; }
+  var cur_state = (typeof set_selection_state != "undefined") ? !set_selection_state : repvar.nodes[var_name].selected;
+  if (cur_state) { // Currently true, change to false.
+    delete repvar.selected[var_name];
+    repvar.nodes[var_name].selected = false;
+    if (repvar.nodes[var_name].label_rest_colour != '') {
+      repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_rest_colour});
+    } else {
+      repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_mouseover_colour});
+      repvar.nodes[var_name].label_highlight.hide();
+    }
+  } else { // Currently false, change to true.
+    repvar.selected[var_name] = repvar.nodes[var_name].label_selected_colour;
+    repvar.nodes[var_name].selected = true;
+    repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_selected_colour});
+    repvar.nodes[var_name].label_highlight.show();
+  }
 }
 
 //   === Cluster drawing functions:
