@@ -3,17 +3,15 @@
 // This page is loaded, then continually checks with the server to see if the results are ready yet. It might be better (probably not) to use a Flask socket, that allows either the server or client to initiate communication. Good explanation here https://www.shanelynn.ie/asynchronous-updates-to-a-webpage-with-flask-and-socket-io/
 
 
-// =====  Modified common variables:
+// =====  Modified / additional common variables:
 page.check_results_interval = 1000;
 repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
 repvar.opts.histo = {
-  'height':150, 'margin':{top:17, right:17, bottom:30, left:7},
-  'bar_margin_ratio':0.15, 'bins':15 //Approximately
+  'height':null, 'margin':{top:0, right:17, bottom:30, left:7}, // top:17 if generating a title
+  'bar_margin_ratio':0.15, 'bins':15 // Approximate # bins.
 };
 
-
 //TODO:
-// - Consider removing histo title, and instead use a <h2>.
 // - Below histo, I want a selection area.
 //   - There's a slider the width of the histo, with a button on either end. Click the left button, and it selects everything with a score lower than the slider (and highlights em). Click right button, and it's everything with a higher score. Or perhaps the slider just has 2 handles. That would let you pick a middle selection for some reason.
 //   - Should display how many seqs are currently selected, have a 'clear' button, and an option to save them to file.
@@ -26,6 +24,16 @@ function setupPage() {
   $(".jq-ui-button").button(); // Converts these html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
   $("#errorDialog").dialog({modal:true, autoOpen:false,
     buttons:{Ok:function() { $(this).dialog("close"); }}
+  }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
+  $("#histoSlider").slider({
+    range: true,
+    min: 0,
+    max: 1,
+    step: 0.01,
+    values: [0, 1],
+    slide: function(event, ui) {
+      console.log('slider', ui.values[0], ui.values[1]);
+    }
   });
   var url_params = location.search.slice(1).split('_');
   page.session_id = url_params[0];
@@ -35,7 +43,9 @@ function setupPage() {
 
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-  document.title = '['+repvar.num_variants+'] '+document.title;
+  var histo_height = getComputedStyle(document.getElementById("histoSvg")).getPropertyValue("height");
+  repvar.opts.histo.height = parseInt(histo_height.slice(0,-2));
+  document.title = '['+repvar.num_variants+'] ' + document.title;
 
   maintainServer();
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -82,7 +92,6 @@ function checkForClusteringResults() {
         drawBarGraphs();
         updateSummaryStats();
         drawClusters();
-        updateClusterList();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
         drawDistanceHistogram();
       }
@@ -91,7 +100,7 @@ function checkForClusteringResults() {
   });
 }
 function updateSummaryStats() {
-  var cluster_dist = 0.0, node_dist = 0.0;
+  var cluster_dist = 0.0, node_dist = 0.0, num_nodes = 0;
   for (var i=0; i<repvar.variants.length; ++i) {
     cluster_dist += repvar.clusters[repvar.variants[i]].score;
   }
@@ -99,8 +108,9 @@ function updateSummaryStats() {
   cluster_dist = roundFloat(cluster_dist/repvar.variants.length, 4);
   $.each(repvar.variant_distance, function(var_name, dist) {
     node_dist += dist;
+    num_nodes += 1;
   });
-  node_dist = roundFloat(node_dist/Object.keys(repvar.variant_distance).length, 4);
+  node_dist = roundFloat(node_dist/num_nodes, 4);
   $("#distClustersSpan").html(cluster_dist);
   $("#distNodesSpan").html(node_dist);
 }
@@ -110,55 +120,47 @@ function drawClusters() {
   var_names.sort(function(a,b) {
     return repvar.clusters[a].nodes.length - repvar.clusters[b].nodes.length;
   });
-  var var_name, ret, cluster_obj, mouseover_obj, to_front = [];
+  var var_name, cluster_row, ret, cluster_obj, mouseover_obj, to_front = [],
+    table_body = $("#clustersListTable > tbody");
   for (var i=0; i<var_names.length; ++i) {
     var_name = var_names[i];
+    cluster_row = createClusterRow(var_name, table_body);
+    table_body.append(cluster_row);
     ret = drawClusterObject(repvar.clusters[var_name].nodes);
     cluster_obj = ret[0];
     mouseover_obj = ret[1];
+    repvar.clusters[var_name].cluster_obj = cluster_obj;
     if (mouseover_obj == false) { // Singleton cluster
       repvar.clusters[var_name].colour_key = 'singleton_cluster_background';
-      addClusterObjHandlers(cluster_obj, var_name);
+      addSingletonClusterObjRowHandlers(var_name, cluster_obj, cluster_row);
+      // The node markers are pushed to_front in updateClusteredVariantMarkers()
     } else { // Non singleton cluster
       repvar.clusters[var_name].colour_key = 'cluster_background';
-      addClusterObjHandlers(mouseover_obj, var_name);
+      addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row);
       to_front.push(mouseover_obj);
     }
-    repvar.clusters[var_name].cluster_obj = cluster_obj;
   }
   for (var i=to_front.length-1; i>=0; --i) {
     to_front[i].toFront(); // Puts the smallest invisible mouseover objects in front of the larger ones.
   }
   repvar.tree_background.toBack();
 }
-function updateClusterList() {
-  var max_var_name_length = 15, dec_precision = 4;
-  var var_name, short_name, clstr_size, clstr_score, clstr_avg_score, score_90th,
-    name_td, size_td, avg_dist_td, score_td, cluster_row,
-    table_body = $("#clustersListTable > tbody"),
-    var_names = repvar.variants.slice();
-  var_names.sort().sort(function(a,b) {
-    return repvar.clusters[a].score - repvar.clusters[b].score;
-  });
-  for (var i=0; i<var_names.length; ++i) {
-    var_name = var_names[i];
-    short_name = var_name.slice(0, max_var_name_length);
-    clstr_size = repvar.clusters[var_name].nodes.length;
-    clstr_score = repvar.clusters[var_name].score;
-    clstr_avg_score = roundFloat(clstr_score/clstr_size, dec_precision);
+function createClusterRow(var_name, table_body) {
+  var max_var_name_length = 15, dec_precision = 4, name_td;
+  var short_name = var_name.slice(0, max_var_name_length),
+    clstr_size = repvar.clusters[var_name].nodes.length,
+    clstr_score = repvar.clusters[var_name].score,
+    clstr_avg_score = roundFloat(clstr_score/clstr_size, dec_precision),
     score_90th = roundFloat(calculate90Percentile(repvar.clusters[var_name].nodes), dec_precision);
-    if (var_name == short_name) {
-      name_td = "<td>"+short_name+"</td>";
-    } else {
-      name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
-    }
-    size_td = "<td>"+clstr_size+"</td>";
-    avg_dist_td = "<td>"+clstr_avg_score+"</td>";
-    score_td = "<td>"+score_90th+"</td>";
-    cluster_row = $("<tr class='cluster-list-row' variant-name='"+var_name+"'>"+name_td+size_td+avg_dist_td+score_td+"</tr>");
-    table_body.append(cluster_row);
+  if (var_name == short_name) {
+    name_td = "<td>"+short_name+"</td>";
+  } else {
+    name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
   }
-  addClusterRowHandlers();
+  var size_td = "<td>"+clstr_size+"</td>",
+    avg_dist_td = "<td>"+clstr_avg_score+"</td>",
+    score_td = "<td>"+score_90th+"</td>";
+    return $("<tr class='cluster-list-row' variant-name='" +var_name+ "'>" +name_td +size_td +avg_dist_td +score_td+ "</tr>");
 }
 function updateClusteredVariantMarkers() {
   // Colours the representative, available, and ignored nodes.
@@ -185,43 +187,69 @@ function updateClusteredVariantMarkers() {
 }
 
 // =====  Event handlers:
-function addClusterObjHandlers(cluster_obj, var_name) {
-  cluster_obj.mouseover(function() {
-    $('.cluster-list-row[variant-name="'+var_name+'"]').mouseenter();
+function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
+  // Adds an additional handler to each circle.mouseover and .mouseout; doesn't replace the existing handlers.
+  /* TEST
+  cluster_obj.unmouseout(nodeLabelMouseoutHandler); // Doesn't work for some reason.
+  // Currently keeps the nodeLabel mouseover/out/click handlers. Use this to remove them:
+  for (var event_i=0; event_i<cluster_obj.events.length; ++event_i) {
+    cluster_obj.events[event_i].unbind();
+  }
+  delete cluster_obj.events;*/
+  circle_obj.mouseover(function() {
+    cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
   }).mouseout(function() {
-    $('.cluster-list-row[variant-name="'+var_name+'"]').mouseleave();
+    cluster_row.css('background-color', '');
+  });
+  cluster_row.mouseenter(function() {
+    cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
+    nodeLabelMouseoverHandler(var_name, true);
+  }).mouseleave(function() {
+    cluster_row.css('background-color', '');
+    nodeLabelMouseoutHandler(var_name, true);
   }).click(function() {
-    if (!repvar.allow_select) { return false; }
-    $('.cluster-list-row[variant-name="'+var_name+'"]').click();
+    nodeLabelMouseclickHandler(var_name);
   });
 }
-function addClusterRowHandlers() {
-  $('.cluster-list-row').on({
-    "click": function() {
-      // cluster_variant = this.getAttribute('variant-name');
-      var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name];
-      for (var i=0; i<cluster.nodes.length; ++i) {
-        nodeLabelMouseclickHandler(cluster.nodes[i]);
-      }
-    },
-    "mouseenter": function() {
-      var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name];
-      $(this).css('background-color', repvar.opts.colours.cluster_highlight);
-      cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
-      for (var i=0; i<cluster.nodes.length; ++i) {
-        nodeLabelMouseoverHandler(cluster.nodes[i]);
-      }
-    },
-    "mouseleave": function() {
-      var var_name = this.getAttribute('variant-name'), cluster = repvar.clusters[var_name],
-        orig_colour = repvar.opts.colours[cluster.colour_key];
-      $(this).css('background-color', '');
-      cluster.cluster_obj.attr({fill:orig_colour});
-      for (var i=0; i<cluster.nodes.length; ++i) {
-        nodeLabelMouseoutHandler(cluster.nodes[i]);
-      }
-    }
+function addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row) {
+  mouseover_obj.mouseover(function() {
+    clusterMouseoverHandler(var_name, cluster_row);
+  }).mouseout(function() {
+    clusterMouseoutHandler(var_name, cluster_row);
+  }).click(function() {
+    if (!repvar.allow_select) { return true; }
+    clusterMouseclickHandler(var_name);
   });
+  cluster_row.mouseenter(function() {
+    clusterMouseoverHandler(var_name, cluster_row);
+  }).mouseleave(function() {
+    clusterMouseoutHandler(var_name, cluster_row);
+  }).click(function() {
+    clusterMouseclickHandler(var_name);
+  });
+}
+function clusterMouseoverHandler(var_name, cluster_row) {
+  var cluster = repvar.clusters[var_name];
+  cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
+  cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
+  for (var i=0; i<cluster.nodes.length; ++i) {
+    nodeLabelMouseoverHandler(cluster.nodes[i]);
+  }
+}
+function clusterMouseoutHandler(var_name, cluster_row) {
+  var cluster = repvar.clusters[var_name],
+    orig_colour = repvar.opts.colours[cluster.colour_key];
+  cluster_row.css('background-color', '');
+  cluster.cluster_obj.attr({fill:orig_colour});
+  for (var i=0; i<cluster.nodes.length; ++i) {
+    nodeLabelMouseoutHandler(cluster.nodes[i]);
+  }
+}
+function clusterMouseclickHandler(var_name) {
+  var cluster = repvar.clusters[var_name];
+  for (var i=0; i<cluster.nodes.length; ++i) {
+    nodeLabelMouseclickHandler(cluster.nodes[i]);
+  }
 }
 
 // =====  Graph functions:
@@ -296,12 +324,12 @@ function drawDistanceHistogram() {
       for (var i=0; i<d.names.length; ++i) { nodeLabelMouseclickHandler(d.names[i]); }
     });
   // Draw the title and axes:
-  svg.append("text")
+  /*svg.append("text")
     .attr("class", "histo-title")
     .attr("dy", "0.8em") //.attr("dy", ".35em")
     .attr("x", total_width / 2)
     .attr("text-anchor", "middle")
-    .text("Distribution of distances");
+    .text("Distribution of distances");*/
   g.append("g")
     .attr("transform", "translate(0," + height + ")")
     .call(d3.axisBottom(x).tickValues(x_ticks))

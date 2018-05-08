@@ -49,7 +49,7 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newRepvarNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
+  return {'circle':null, 'label_highlight':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
@@ -272,35 +272,40 @@ function nodeLabelMouseoverHandler(var_name, change_node_colour) {
   }
 }
 function nodeLabelMouseoutHandler(var_name, change_node_colour) {
-  if (change_node_colour == true) {
-    repvar.nodes[var_name].circle.attr({fill:repvar.nodes[var_name].node_rest_colour});
-  }
+  var circle_colour = repvar.nodes[var_name].node_rest_colour;
   if (repvar.nodes[var_name].selected) {
+    circle_colour = repvar.nodes[var_name].node_selected_colour;
     repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_selected_colour});
   } else if (repvar.nodes[var_name].label_rest_colour != '') {
     repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_rest_colour});
   } else {
     repvar.nodes[var_name].label_highlight.hide();
   }
+  if (change_node_colour == true) {
+    repvar.nodes[var_name].circle.attr({fill:circle_colour});
+  }
 }
 function nodeLabelMouseclickHandler(var_name, set_selection_state) {
   // If set_selection_state is not given, toggles the selection status of the node.
-  if (!repvar.allow_select) { return false; }
-  var cur_state = (typeof set_selection_state != "undefined") ? !set_selection_state : repvar.nodes[var_name].selected;
+  if (!repvar.allow_select) { return false; } // Prevents selection when panning tree.
+  var node = repvar.nodes[var_name],
+    cur_state = (typeof set_selection_state != "undefined") ? !set_selection_state : node.selected;
   if (cur_state) { // Currently true, change to false.
     delete repvar.selected[var_name];
-    repvar.nodes[var_name].selected = false;
-    if (repvar.nodes[var_name].label_rest_colour != '') {
-      repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_rest_colour});
+    node.selected = false;
+    node.circle.attr({fill:node.node_rest_colour});
+    if (node.label_rest_colour != '') {
+      node.label_highlight.attr({fill:node.label_rest_colour});
     } else {
-      repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_mouseover_colour});
-      repvar.nodes[var_name].label_highlight.hide();
+      node.label_highlight.attr({fill:node.label_mouseover_colour});
+      node.label_highlight.hide();
     }
   } else { // Currently false, change to true.
-    repvar.selected[var_name] = repvar.nodes[var_name].label_selected_colour;
-    repvar.nodes[var_name].selected = true;
-    repvar.nodes[var_name].label_highlight.attr({fill:repvar.nodes[var_name].label_selected_colour});
-    repvar.nodes[var_name].label_highlight.show();
+    repvar.selected[var_name] = node.label_selected_colour; // Value unused. Implement selection group.
+    node.selected = true;
+    node.circle.attr({fill:node.node_selected_colour});
+    node.label_highlight.attr({fill:node.label_selected_colour});
+    node.label_highlight.show();
   }
 }
 

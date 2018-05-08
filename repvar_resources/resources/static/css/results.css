@@ -13,7 +13,8 @@
 
 /* Histogram settings: */
 #histoSvg {
-  margin: 10px 0px 0px 0px;
+  height: 135px;
+  margin: 0px 0px 0px 0px;
 }
 .histo-title {
   fill: #000;
@@ -26,6 +27,10 @@
 .histo-text {
   fill: #000;
   font: 10px sans-serif;
+}
+#histoSlider {
+  margin-right: 13px;
+  margin-left: 10px;
 }
 
 /* Various element settings: */
