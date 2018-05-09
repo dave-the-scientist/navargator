@@ -50,33 +50,31 @@
 
       <div id="bodyMainDiv">
         <div id="mainLeftDiv">
-          <div id="summaryStatsDiv" class="style-box">
-            <h2>Summary statistics</h2>
-            <table id="summaryStatsTable" class="results-table"><tbody>
-              <thead><tr>
-                <th></th>
-                <th>Count</th>
-                <th>Average<br>distance</th>
-              </tr></thead>
-              <tr>
-                <td>Clusters:</td>
-                <td><span id="numClustersSpan">--</span></td>
-                <td><span id="distClustersSpan">--</span></td>
-              </tr>
-              <tr>
-                <td>Nodes:</td>
-                <td><span id="numNodesSpan">--</span></td>
-                <td><span id="distNodesSpan">--</span></td>
-              </tr>
-              <tr>
-                <td><b>Total tree distance:</b></td>
-                <td></td>
-                <td><b><span id="distTotalSpan">--</span></b></td>
-              </tr>
-            </tbody></table>
+          <div id="selectionDiv" class="style-box">
             <h2>Distance to nearest chosen node</h2>
             <svg id="histoSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
-            <div id="histoSlider"></div>
+            <div id="histoSlider">
+              <div id="histoSliderHandle" class="ui-slider-handle"></div>
+            </div>
+            <div id="histoButtonsDiv">
+              <button id="leftSliderButton" class="control-element"><span id="leftSliderButtonSpan">Reset</span></button>
+              <button id="middleSliderButton" class="control-element">Add to<br>selection</button>
+              <button id="rightSliderButton" class="control-element"><span id="rightSliderButtonSpan">Select<br>above</span></button>
+            </div>
+
+            <h2>Selected nodes</h2>
+            <p>Currently selected nodes: <span id="currentSelectionNum">0</span></p>
+            <button id="selectAllButton" class="jq-ui-button">Select all</button>
+            <button id="clearSelectionButton" class="jq-ui-button">Clear selection</button>
+            <div id="colourSelectionDiv">
+              <label for="colourBySelect">Colour selection by:</label>
+              <select id="colourBySelect" onchange="colourSelectionChange(this.value)">
+                <option value="custom" selected >Custom</option>
+                <option value="distance">Distance</option>
+                <option value="threshold">Threshold</option>
+              </select>
+            </div>
+            <button id="clearColoursButton" class="jq-ui-button">Clear all colours</button>
           </div>
 
           <div id="clustersListDiv" class="style-box">
@@ -112,6 +110,39 @@
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
           </svg>
           <div id="svgCanvas"></div>
+        </div>
+
+        <div id="mainRightDiv">
+          <div id="summaryStatsDiv" class="style-box">
+            <h2>Summary statistics</h2>
+            <table id="summaryStatsTable" class="results-table"><tbody>
+              <thead><tr>
+                <th></th>
+                <th>Count</th>
+                <th>Average<br>distance</th>
+              </tr></thead>
+              <tr>
+                <td>Clusters:</td>
+                <td><span id="numClustersSpan">--</span></td>
+                <td><span id="distClustersSpan">--</span></td>
+              </tr>
+              <tr>
+                <td>Nodes:</td>
+                <td><span id="numNodesSpan">--</span></td>
+                <td><span id="distNodesSpan">--</span></td>
+              </tr>
+              <tr>
+                <td><b>Total tree distance:</b></td>
+                <td></td>
+                <td><b><span id="distTotalSpan">--</span></b></td>
+              </tr>
+            </tbody></table>
+          </div>
+
+          <div id="exportDataDiv" class="style-box">
+            <h2>Export data</h2>
+
+          </div>
         </div>
 
       </div>

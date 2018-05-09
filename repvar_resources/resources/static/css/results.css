@@ -7,9 +7,15 @@
   display: inline-flex;
   flex-direction: column;
 }
-#summaryStatsDiv, #clustersListDiv {
-  max-width: 400px;
+#selectionDiv, #clustersListDiv {
+  width: 400px;
 }
+#summaryStatsDiv, #exportDataDiv {
+  width: 350px;
+}
+
+/* Selection pane settings: */
+
 
 /* Histogram settings: */
 #histoSvg {
@@ -29,8 +35,46 @@
   font: 10px sans-serif;
 }
 #histoSlider {
-  margin-right: 13px;
-  margin-left: 10px;
+  margin-right: 18px;
+  margin-left: 16px;
+}
+#histoSliderHandle {
+  width: 3em;
+  height: 1.5em;
+  top: 50%;
+  margin-top: -0.75em;
+  margin-left: -1.5em;
+  text-align: center;
+  line-height: 1.6em;
+  font-size: 12px;
+}
+#histoButtonsDiv {
+  --button-width: 55px;
+  --button-height: 25px;
+  width: 100%;
+  height: calc(var(--button-height) + var(--control-element-vert-margin) * 2);
+}
+#leftSliderButton, #middleSliderButton, #rightSliderButton {
+  width: var(--button-width);
+  height: var(--button-height);
+  line-height: 9px;
+  font-size: 10px;
+  position: absolute;
+  text-align: center;
+}
+#leftSliderButton {
+  left: 10px;
+  font-size: 12px;
+}
+#middleSliderButton {
+  left: calc(50% - var(--button-width) / 2);
+}
+#rightSliderButton {
+  right: 10px;
+}
+#middleSliderButton text, #rightSliderButton text {
+  /*vertical-align: middle;*/
+  font-size: 9px;
 }
 
 /* Various element settings: */

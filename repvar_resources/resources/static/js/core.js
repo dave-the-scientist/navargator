@@ -3,17 +3,17 @@ var page = {
   'server_url':'http://'+window.location.host, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
 };
 var repvar = {
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'selected':{}, 'allow_select':true,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'selected':{}, 'allow_select':true, 'prevent_mouseout':{},
   'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null,
   'opts' : {
     'fonts' : {
       'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
     },
     'sizes' : {
-      'tree':null, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':5
+      'tree':null, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#9DB6F2', 'ignored':'#5D5D5D', 'search':'#FAB728', 'cluster_outline':'#000', 'cluster_background':'#F3E2B9', 'cluster_highlight':'#71FED6', 'singleton_cluster_background':'#015DF3', 'selection':'#FDB15C', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#9DB6F2', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#F3E2B9', 'cluster_highlight':'#71FED6', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
     }//singleton F39701 selection 8EFCFF FDCF5C
   }
 };

@@ -5,16 +5,20 @@
 
 // =====  Modified / additional common variables:
 page.check_results_interval = 1000;
-repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0;
+repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0, repvar.nice_max_var_dist = 0.0;
 repvar.opts.histo = {
   'height':null, 'margin':{top:0, right:17, bottom:30, left:7}, // top:17 if generating a title
   'bar_margin_ratio':0.15, 'bins':15 // Approximate # bins.
 };
 
 //TODO:
-// - Below histo, I want a selection area.
-//   - There's a slider the width of the histo, with a button on either end. Click the left button, and it selects everything with a score lower than the slider (and highlights em). Click right button, and it's everything with a higher score. Or perhaps the slider just has 2 handles. That would let you pick a middle selection for some reason.
-//   - Should display how many seqs are currently selected, have a 'clear' button, and an option to save them to file.
+// - Get selection buttons working, add export buttons.
+// - I need to put an options pane. Probably between summary and export panes.
+//   - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
+// - I want the histo slider to update in real-time.
+//   - Ready now, just need a more efficient selectNamesByThreshold().
+//   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
+//   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
 //   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
@@ -25,22 +29,12 @@ function setupPage() {
   $("#errorDialog").dialog({modal:true, autoOpen:false,
     buttons:{Ok:function() { $(this).dialog("close"); }}
   }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
-  $("#histoSlider").slider({
-    range: true,
-    min: 0,
-    max: 1,
-    step: 0.01,
-    values: [0, 1],
-    slide: function(event, ui) {
-      console.log('slider', ui.values[0], ui.values[1]);
-    }
-  });
+
   var url_params = location.search.slice(1).split('_');
   page.session_id = url_params[0];
   repvar.num_variants = url_params[1];
   page.browser_id = generateBrowserId(10);
   console.log('browser ID:', page.browser_id);
-
   var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   var histo_height = getComputedStyle(document.getElementById("histoSvg")).getPropertyValue("height");
@@ -49,6 +43,8 @@ function setupPage() {
 
   maintainServer();
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+  setupHistoSliderPane();
+  setupSelectionPane();
   setupTreeElements();
 
   $.ajax({
@@ -66,6 +62,66 @@ function setupPage() {
     error: function(error) { processError(error, "Error loading input data from the server"); }
   });
 }
+function setupHistoSliderPane() {
+  var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), right = $("#rightSliderButton"),
+    slider_handle = $("#histoSliderHandle");
+  var slider = $("#histoSlider").slider({
+    range: "min",
+    min: 0, max: 1.0,
+    value: 0, step: 0.001,
+    create: function() {
+      $("#histoSliderHandle").text($(this).slider("value"));
+    },
+    slide: function(event, ui) {
+      $("#histoSliderHandle").text(ui.value);
+    },
+    stop: function(event, ui) {
+      selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min');
+    }
+  });
+  var small_font = middle.css('font-size'), big_font = left.css('font-size');
+  left.click(function() {
+    var select_below = slider.slider('option', 'range') == 'min',
+      threshold = 0;
+    if (select_below) { // Reset to zero
+      slider.slider('value', threshold);
+      slider_handle.text(threshold);
+    } else { // Switch to below
+      slider.slider('option', 'range', 'min');
+      left.html('Reset');
+      left.css('font-size', big_font);
+      right.html('Select<br>above');
+      right.css('font-size', small_font);
+      threshold = slider.slider('value');
+      select_below = !select_below;
+    }
+    selectNamesByThreshold(threshold, select_below);
+  });
+  middle.click(function() {
+    console.log('names', repvar.prevent_mouseout);
+  });
+  right.click(function() {
+    var select_below = slider.slider('option', 'range') == 'min',
+      threshold = repvar.nice_max_var_dist;
+    if (select_below) { // Switch to above
+      slider.slider('option', 'range', 'max');
+      left.html('Select<br>below');
+      left.css('font-size', small_font);
+      right.html('Reset');
+      right.css('font-size', big_font);
+      threshold = slider.slider('value');
+      select_below = !select_below;
+    } else { // Reset to max
+      slider.slider('value', threshold);
+      slider_handle.text(threshold);
+    }
+    selectNamesByThreshold(threshold, select_below);
+  });
+}
+function setupSelectionPane() {
+
+}
+
 $(document).ready(function(){
   console.log('setting up');
   // Called once the document has loaded.
@@ -94,6 +150,7 @@ function checkForClusteringResults() {
         drawClusters();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
         drawDistanceHistogram();
+        updateHistoSlider(); // Must be after drawDistanceHistogram
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
@@ -113,6 +170,11 @@ function updateSummaryStats() {
   node_dist = roundFloat(node_dist/num_nodes, 4);
   $("#distClustersSpan").html(cluster_dist);
   $("#distNodesSpan").html(node_dist);
+}
+function updateHistoSlider() {
+  $("#histoSlider").slider({
+    max:repvar.nice_max_var_dist
+  });
 }
 function drawClusters() {
   var var_names;
@@ -251,11 +313,40 @@ function clusterMouseclickHandler(var_name) {
     nodeLabelMouseclickHandler(cluster.nodes[i]);
   }
 }
+function selectNamesByThreshold(threshold, select_below) {
+  // Could implement a short-circuit in case the threshold hasn't changed.
+  var threshold_val = [threshold, select_below];
+  if ( !(select_below && threshold == 0) &&
+       !(!select_below && threshold == repvar.nice_max_var_dist) ) {
+    $.each(repvar.variant_distance, function(var_name, dist) {
+      if (select_below && dist <= threshold || !select_below && dist >= threshold) {
+        if (repvar.prevent_mouseout[var_name] == undefined) {
+          nodeLabelMouseoverHandler(var_name, true);
+        }
+        repvar.prevent_mouseout[var_name] = threshold_val; // Add / update var_name in prevent_mouseout.
+      }
+    });
+  }
+  var slider_keys = Object.keys(repvar.prevent_mouseout), var_name;
+  for (var i=0; i<slider_keys.length; ++i) {
+    var_name = slider_keys[i];
+    if (repvar.prevent_mouseout[var_name] != threshold_val) {
+      delete repvar.prevent_mouseout[var_name];
+      nodeLabelMouseoutHandler(var_name, true);
+    }
+  }
+}
+function colourSelectionChange(choice) {
+  console.log('picked', choice);
+}
+function colourSelectPicked(jscol) {
+  console.log('chose', '#'+jscol);
+}
 
 // =====  Graph functions:
 function drawDistanceHistogram() {
   var margin = repvar.opts.histo.margin;
-  var total_width_str = getComputedStyle(document.getElementById("summaryStatsDiv")).getPropertyValue("width"),
+  var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
     total_width = parseInt(total_width_str.slice(0,-2)), width = total_width - margin.right - margin.left,
     total_height = repvar.opts.histo.height, height = total_height - margin.top - margin.bottom;
   // Set up svg objects:
@@ -270,6 +361,7 @@ function drawDistanceHistogram() {
     .rangeRound([0, width]);
   var x_ticks = x.ticks(repvar.opts.histo.bins),
     max_x_tick = x_ticks[x_ticks.length-1] + x_ticks[1];
+  repvar.nice_max_var_dist = roundFloat(max_x_tick, 4);
   x_ticks.push(max_x_tick);
   x.domain([0, max_x_tick]); // Needed so that the final bin is included in the graph.
   var bins = d3.histogram()

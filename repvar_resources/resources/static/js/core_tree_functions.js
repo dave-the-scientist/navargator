@@ -272,6 +272,7 @@ function nodeLabelMouseoverHandler(var_name, change_node_colour) {
   }
 }
 function nodeLabelMouseoutHandler(var_name, change_node_colour) {
+  if (repvar.prevent_mouseout[var_name] != undefined) { return false; }
   var circle_colour = repvar.nodes[var_name].node_rest_colour;
   if (repvar.nodes[var_name].selected) {
     circle_colour = repvar.nodes[var_name].node_selected_colour;
