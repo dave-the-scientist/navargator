@@ -37,7 +37,7 @@
   </head>
   <body>
     <div id="errorDialog" title="Repvar error">
-      <p id="errorDialogText">Error text.<p>
+      <p id="errorDialogText">Error loading JQuery.</p>
     </div>
 
     <div id="pageDiv">
@@ -57,9 +57,10 @@
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
             </div>
             <div id="histoButtonsDiv">
-              <button id="leftSliderButton" class="control-element"><span id="leftSliderButtonSpan">Reset</span></button>
-              <button id="middleSliderButton" class="control-element">Add to<br>selection</button>
-              <button id="rightSliderButton" class="control-element"><span id="rightSliderButtonSpan">Select<br>above</span></button>
+              <button id="leftSliderButton" class="control-element"><span id="leftSliderButtonSpan">Add to<br>selection</span></button>
+              <span id="numSliderSpan">-- nodes</span>
+              <button id="middleSliderButton" class="control-element">Nodes<br>below</button>
+              <button id="rightSliderButton" class="control-element">Reset</button>
             </div>
 
             <h2>Selected nodes</h2>
@@ -141,7 +142,10 @@
 
           <div id="exportDataDiv" class="style-box">
             <h2>Export data</h2>
-
+            <button id="exportRepsButton" class="jq-ui-button">Export representatives</button>
+            <button id="exportClustersButton" class="jq-ui-button">Export clusters</button>
+            <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
+            <button id="exportTreeButton" class="jq-ui-button">Export tree image</button>
           </div>
         </div>
 

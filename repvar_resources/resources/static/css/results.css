@@ -51,26 +51,33 @@
 #histoButtonsDiv {
   --button-width: 55px;
   --button-height: 25px;
+  --div-padding: 5px;
+  position: relative;
   width: 100%;
   height: calc(var(--button-height) + var(--control-element-vert-margin) * 2);
 }
 #leftSliderButton, #middleSliderButton, #rightSliderButton {
+  position: absolute;
   width: var(--button-width);
   height: var(--button-height);
   line-height: 9px;
   font-size: 10px;
-  position: absolute;
-  text-align: center;
 }
 #leftSliderButton {
-  left: 10px;
-  font-size: 12px;
+  left: var(--div-padding);
+}
+#numSliderSpan {
+  position: absolute;
+  left: calc(var(--button-width) + 2 * var(--div-padding));
+  top: calc(var(--button-height) / 2 - 0.375em);
+  font-size: 14px;
 }
 #middleSliderButton {
   left: calc(50% - var(--button-width) / 2);
 }
 #rightSliderButton {
-  right: 10px;
+  right: var(--div-padding);
+  font-size: 12px;
 }
 #middleSliderButton text, #rightSliderButton text {
   /*vertical-align: middle;*/

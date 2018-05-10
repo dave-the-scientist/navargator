@@ -343,6 +343,9 @@ function showNodeSelection(selecting_for, checked_if_in, disabled_if_in) {
   });
   $("#mainNodeSelectDiv").show();
 }
+function numSelectedCallback() {
+  // Called when a node is selected.
+}
 
 // =====  Data parsing:
 function parseRepvarData(data_obj) {

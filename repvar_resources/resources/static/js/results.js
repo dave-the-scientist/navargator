@@ -12,11 +12,15 @@ repvar.opts.histo = {
 };
 
 //TODO:
-// - Get selection buttons working, add export buttons.
+// - Get export buttons working.
 // - I need to put an options pane. Probably between summary and export panes.
 //   - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
+// - Update histo slider buttons.
+//   - Left should not toggle selection, but force into selection. Once pressed, should switch to 'Remove from selection': # nodes. Should revert back to 'Add' once the set of indicated (prevent_mouseout) nodes changes.
+//   - Middle button should be 'Nodes below' or 'Nodes above'. Would be nice for it to animate on change (have text move slightly to the right, and '<<' arrow appear on left; just like at https://www.w3schools.com/howto/howto_css_animate_buttons.asp).
+//   - Right button is 'Reset'
 // - I want the histo slider to update in real-time.
-//   - Ready now, just need a more efficient selectNamesByThreshold().
+//   - Ready now, just want a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
@@ -45,6 +49,7 @@ function setupPage() {
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   setupHistoSliderPane();
   setupSelectionPane();
+  setupExportPane();
   setupTreeElements();
 
   $.ajax({
@@ -79,50 +84,78 @@ function setupHistoSliderPane() {
       selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min');
     }
   });
-  var small_font = middle.css('font-size'), big_font = left.css('font-size');
   left.click(function() {
-    var select_below = slider.slider('option', 'range') == 'min',
-      threshold = 0;
-    if (select_below) { // Reset to zero
-      slider.slider('value', threshold);
-      slider_handle.text(threshold);
-    } else { // Switch to below
-      slider.slider('option', 'range', 'min');
-      left.html('Reset');
-      left.css('font-size', big_font);
-      right.html('Select<br>above');
-      right.css('font-size', small_font);
-      threshold = slider.slider('value');
-      select_below = !select_below;
+    var slider_keys = Object.keys(repvar.prevent_mouseout), var_name;
+    for (var i=0; i<slider_keys.length; ++i) {
+      var_name = slider_keys[i];
+      nodeLabelMouseclickHandler(var_name, false);
     }
-    selectNamesByThreshold(threshold, select_below);
+    numSelectedCallback();
   });
   middle.click(function() {
-    console.log('names', repvar.prevent_mouseout);
+    var select_below = slider.slider('option', 'range') == 'min',
+      slider_val = slider.slider('value');
+    if (slider_val == 0) { slider_val = repvar.nice_max_var_dist; }
+    else if (slider_val == repvar.nice_max_var_dist) { slider_val = 0; }
+    if (select_below) { // Switch to above
+      slider.slider('option', 'range', 'max');
+      middle.html('Nodes<br>above');
+    } else { // Switch to below
+      slider.slider('option', 'range', 'min');
+      middle.html('Nodes<br>below');
+    }
+    slider.slider('value', slider_val);
+    slider_handle.text(slider_val);
+    selectNamesByThreshold(slider_val, !select_below);
   });
   right.click(function() {
     var select_below = slider.slider('option', 'range') == 'min',
-      threshold = repvar.nice_max_var_dist;
-    if (select_below) { // Switch to above
-      slider.slider('option', 'range', 'max');
-      left.html('Select<br>below');
-      left.css('font-size', small_font);
-      right.html('Reset');
-      right.css('font-size', big_font);
-      threshold = slider.slider('value');
-      select_below = !select_below;
-    } else { // Reset to max
-      slider.slider('value', threshold);
-      slider_handle.text(threshold);
-    }
-    selectNamesByThreshold(threshold, select_below);
+      slider_val = (select_below) ? 0 : repvar.nice_max_var_dist;
+    slider.slider('value', slider_val);
+    slider_handle.text(slider_val);
+    selectNamesByThreshold(slider_val, select_below);
   });
+  $("#numSliderSpan").hide();
 }
 function setupSelectionPane() {
+  $("#selectAllButton").click(function() {
+    $.each(repvar.variant_distance, function(var_name, dist) {
+      nodeLabelMouseclickHandler(var_name, false, true);
+    });
+    numSelectedCallback();
+  });
+  $("#clearSelectionButton").click(function() {
+    $.each(repvar.selected, function(var_name, colour) {
+      nodeLabelMouseclickHandler(var_name, false, false);
+    });
+    numSelectedCallback();
+  });
+  $("#clearColoursButton").click(function() {
 
+  });
+}
+function setupExportPane() {
+  $("#exportRepsButton").click(function() {
+
+  });
+  $("#exportClustersButton").click(function() {
+
+  });
+  $("#exportSelectionButton").click(function() {
+
+  });
+  $("#exportTreeButton").click(function() {
+
+  });
 }
 
+console.log('results.js has been loaded');
+$(window).on("load", function() {
+  // Sometimes $(document).ready is triggered, but this is not.
+  console.log('window loaded');
+});
 $(document).ready(function(){
+  // Occassionally this is never called (no 'setting up' in log; also, no errors). If it was because jQuery wasn't loaded in time, I should get an error. Instead, I think the page is loading too quickly, and the 'ready' event fires before results.js has finished loading. $(window).on("load") doesn't get called either.
   console.log('setting up');
   // Called once the document has loaded.
   setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens.
@@ -248,7 +281,7 @@ function updateClusteredVariantMarkers() {
   }
 }
 
-// =====  Event handlers:
+// =====  Event handlers and callbacks:
 function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
   // Adds an additional handler to each circle.mouseover and .mouseout; doesn't replace the existing handlers.
   /* TEST
@@ -265,10 +298,10 @@ function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
   });
   cluster_row.mouseenter(function() {
     cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
-    nodeLabelMouseoverHandler(var_name, true);
+    nodeLabelMouseoverHandler(var_name);
   }).mouseleave(function() {
     cluster_row.css('background-color', '');
-    nodeLabelMouseoutHandler(var_name, true);
+    nodeLabelMouseoutHandler(var_name);
   }).click(function() {
     nodeLabelMouseclickHandler(var_name);
   });
@@ -295,7 +328,7 @@ function clusterMouseoverHandler(var_name, cluster_row) {
   cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
   cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
   for (var i=0; i<cluster.nodes.length; ++i) {
-    nodeLabelMouseoverHandler(cluster.nodes[i]);
+    nodeLabelMouseoverHandler(cluster.nodes[i], false);
   }
 }
 function clusterMouseoutHandler(var_name, cluster_row) {
@@ -310,18 +343,23 @@ function clusterMouseoutHandler(var_name, cluster_row) {
 function clusterMouseclickHandler(var_name) {
   var cluster = repvar.clusters[var_name];
   for (var i=0; i<cluster.nodes.length; ++i) {
-    nodeLabelMouseclickHandler(cluster.nodes[i]);
+    nodeLabelMouseclickHandler(cluster.nodes[i], false);
   }
+  numSelectedCallback();
+}
+function numSelectedCallback() {
+  $("#currentSelectionNum").html(repvar.num_selected);
 }
 function selectNamesByThreshold(threshold, select_below) {
   // Could implement a short-circuit in case the threshold hasn't changed.
-  var threshold_val = [threshold, select_below];
+  var threshold_val = [threshold, select_below], num_picked = 0;
   if ( !(select_below && threshold == 0) &&
        !(!select_below && threshold == repvar.nice_max_var_dist) ) {
     $.each(repvar.variant_distance, function(var_name, dist) {
       if (select_below && dist <= threshold || !select_below && dist >= threshold) {
+        num_picked += 1;
         if (repvar.prevent_mouseout[var_name] == undefined) {
-          nodeLabelMouseoverHandler(var_name, true);
+          nodeLabelMouseoverHandler(var_name);
         }
         repvar.prevent_mouseout[var_name] = threshold_val; // Add / update var_name in prevent_mouseout.
       }
@@ -332,8 +370,14 @@ function selectNamesByThreshold(threshold, select_below) {
     var_name = slider_keys[i];
     if (repvar.prevent_mouseout[var_name] != threshold_val) {
       delete repvar.prevent_mouseout[var_name];
-      nodeLabelMouseoutHandler(var_name, true);
+      nodeLabelMouseoutHandler(var_name);
     }
+  }
+  if (num_picked == 0) {
+    $("#numSliderSpan").hide();
+  } else {
+    $("#numSliderSpan").html(num_picked+' nodes');
+    $("#numSliderSpan").show();
   }
 }
 function colourSelectionChange(choice) {
@@ -407,13 +451,16 @@ function drawDistanceHistogram() {
     .attr("height", height)
     .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
     .on("mouseover", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i], true); }
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
     })
     .on("mouseout", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i], true); }
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i]); }
     })
     .on("click", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseclickHandler(d.names[i]); }
+      for (var i=0; i<d.names.length; ++i) {
+        nodeLabelMouseclickHandler(d.names[i], false);
+      }
+      numSelectedCallback();
     });
   // Draw the title and axes:
   /*svg.append("text")
