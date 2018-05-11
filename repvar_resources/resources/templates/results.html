@@ -57,9 +57,9 @@
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
             </div>
             <div id="histoButtonsDiv">
-              <button id="leftSliderButton" class="control-element"><span id="leftSliderButtonSpan">Add to<br>selection</span></button>
+              <button id="leftSliderButton" class="control-element">Add to<br>selection</button>
               <span id="numSliderSpan">-- nodes</span>
-              <button id="middleSliderButton" class="control-element">Nodes<br>below</button>
+              <button id="middleSliderButton" class="control-element"><span id="midLeftArrow">&lt;&lt;</span><span id="middleSliderButtonSpan">Nodes<br>below</span><span id="midRightArrow">&gt;&gt;</span></button>
               <button id="rightSliderButton" class="control-element">Reset</button>
             </div>
 
@@ -138,6 +138,13 @@
                 <td><b><span id="distTotalSpan">--</span></b></td>
               </tr>
             </tbody></table>
+          </div>
+
+          <div id="displayOptionsDiv" class="style-box">
+            <h2>Display options</h2>
+            <label><input id="globalNormCheckbox" type="checkbox" />Normalize across runs</label>
+            <p>Font sizes, colour pickers</p>
+            <button id="redrawResultsButton" class="jq-ui-button">Redraw</button>
           </div>
 
           <div id="exportDataDiv" class="style-box">

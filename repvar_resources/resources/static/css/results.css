@@ -10,7 +10,7 @@
 #selectionDiv, #clustersListDiv {
   width: 400px;
 }
-#summaryStatsDiv, #exportDataDiv {
+#summaryStatsDiv, #displayOptionsDiv, #exportDataDiv {
   width: 350px;
 }
 
@@ -79,12 +79,25 @@
   right: var(--div-padding);
   font-size: 12px;
 }
-#middleSliderButton text, #rightSliderButton text {
-  /*vertical-align: middle;*/
-  font-size: 9px;
+#middleSliderButtonSpan {
+  position: relative;
+  left: 5px;
+}
+#midLeftArrow {
+  position: absolute;
+  /*top: 30.5%;*/
+  top: calc(var(--button-height) / 2 - 0.55em);
+  left: 3px;
+  opacity: 1;
+}
+#midRightArrow {
+  position: absolute;
+  top: calc(var(--button-height) / 2 - 0.55em);
+  right: 3px;
+  opacity: 0;
 }
 
-/* Various element settings: */
+/* Table settings: */
 .results-table {
   text-align: center;
   width: 100%;

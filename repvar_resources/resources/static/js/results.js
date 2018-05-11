@@ -13,8 +13,7 @@ repvar.opts.histo = {
 
 //TODO:
 // - Get export buttons working.
-// - I need to put an options pane. Probably between summary and export panes.
-//   - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
+// - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
 // - Update histo slider buttons.
 //   - Left should not toggle selection, but force into selection. Once pressed, should switch to 'Remove from selection': # nodes. Should revert back to 'Add' once the set of indicated (prevent_mouseout) nodes changes.
 //   - Middle button should be 'Nodes below' or 'Nodes above'. Would be nice for it to animate on change (have text move slightly to the right, and '<<' arrow appear on left; just like at https://www.w3schools.com/howto/howto_css_animate_buttons.asp).
@@ -68,8 +67,17 @@ function setupPage() {
   });
 }
 function setupHistoSliderPane() {
-  var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), right = $("#rightSliderButton"),
-    slider_handle = $("#histoSliderHandle");
+  var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), right = $("#rightSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
+  do_remove = false;
+  var mid_offset = middle_span.css('left'), animation_speed = 150, mid_left_arrow = $("#midLeftArrow"), mid_right_arrow = $("#midRightArrow");
+  function setButtonAddToSelection() {
+    if (do_remove == true) { left.html('Add to<br>selection'); }
+    do_remove = false;
+  }
+  function setButtonRemoveFromSelection() {
+    do_remove = true;
+    left.html('Cut from<br>selection');
+  }
   var slider = $("#histoSlider").slider({
     range: "min",
     min: 0, max: 1.0,
@@ -79,18 +87,30 @@ function setupHistoSliderPane() {
     },
     slide: function(event, ui) {
       $("#histoSliderHandle").text(ui.value);
+      if (selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min') == true
+          && do_remove == true) {
+        setButtonAddToSelection();
+      }
     },
     stop: function(event, ui) {
-      selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min');
+      /*if (selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min') == true
+          && do_remove == true) {
+        setButtonAddToSelection();
+      }*/
     }
   });
   left.click(function() {
     var slider_keys = Object.keys(repvar.prevent_mouseout), var_name;
     for (var i=0; i<slider_keys.length; ++i) {
       var_name = slider_keys[i];
-      nodeLabelMouseclickHandler(var_name, false);
+      nodeLabelMouseclickHandler(var_name, false, !do_remove);
     }
     numSelectedCallback();
+    if (do_remove == false) {
+      setButtonRemoveFromSelection();
+    } else {
+      setButtonAddToSelection();
+    }
   });
   middle.click(function() {
     var select_below = slider.slider('option', 'range') == 'min',
@@ -99,13 +119,20 @@ function setupHistoSliderPane() {
     else if (slider_val == repvar.nice_max_var_dist) { slider_val = 0; }
     if (select_below) { // Switch to above
       slider.slider('option', 'range', 'max');
-      middle.html('Nodes<br>above');
+      middle_span.html('Nodes<br>above');
+      middle_span.animate({left: '-'+mid_offset}, animation_speed);
+      mid_left_arrow.animate({opacity:0}, animation_speed);
+      mid_right_arrow.animate({opacity:1}, animation_speed);
     } else { // Switch to below
       slider.slider('option', 'range', 'min');
-      middle.html('Nodes<br>below');
+      middle_span.html('Nodes<br>below');
+      middle_span.animate({left: mid_offset}, animation_speed);
+      mid_left_arrow.animate({opacity:1}, animation_speed);
+      mid_right_arrow.animate({opacity:0}, animation_speed);
     }
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
+    setButtonAddToSelection();
     selectNamesByThreshold(slider_val, !select_below);
   });
   right.click(function() {
@@ -116,6 +143,7 @@ function setupHistoSliderPane() {
     selectNamesByThreshold(slider_val, select_below);
   });
   $("#numSliderSpan").hide();
+  setButtonAddToSelection();
 }
 function setupSelectionPane() {
   $("#selectAllButton").click(function() {
@@ -352,7 +380,7 @@ function numSelectedCallback() {
 }
 function selectNamesByThreshold(threshold, select_below) {
   // Could implement a short-circuit in case the threshold hasn't changed.
-  var threshold_val = [threshold, select_below], num_picked = 0;
+  var threshold_val = [threshold, select_below], num_picked = 0, has_changed = false;
   if ( !(select_below && threshold == 0) &&
        !(!select_below && threshold == repvar.nice_max_var_dist) ) {
     $.each(repvar.variant_distance, function(var_name, dist) {
@@ -360,6 +388,7 @@ function selectNamesByThreshold(threshold, select_below) {
         num_picked += 1;
         if (repvar.prevent_mouseout[var_name] == undefined) {
           nodeLabelMouseoverHandler(var_name);
+          has_changed = true;
         }
         repvar.prevent_mouseout[var_name] = threshold_val; // Add / update var_name in prevent_mouseout.
       }
@@ -371,6 +400,7 @@ function selectNamesByThreshold(threshold, select_below) {
     if (repvar.prevent_mouseout[var_name] != threshold_val) {
       delete repvar.prevent_mouseout[var_name];
       nodeLabelMouseoutHandler(var_name);
+      has_changed = true;
     }
   }
   if (num_picked == 0) {
@@ -379,6 +409,7 @@ function selectNamesByThreshold(threshold, select_below) {
     $("#numSliderSpan").html(num_picked+' nodes');
     $("#numSliderSpan").show();
   }
+  return has_changed;
 }
 function colourSelectionChange(choice) {
   console.log('picked', choice);
