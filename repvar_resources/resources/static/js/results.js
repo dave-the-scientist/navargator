@@ -14,10 +14,6 @@ repvar.opts.histo = {
 //TODO:
 // - Get export buttons working.
 // - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
-// - Update histo slider buttons.
-//   - Left should not toggle selection, but force into selection. Once pressed, should switch to 'Remove from selection': # nodes. Should revert back to 'Add' once the set of indicated (prevent_mouseout) nodes changes.
-//   - Middle button should be 'Nodes below' or 'Nodes above'. Would be nice for it to animate on change (have text move slightly to the right, and '<<' arrow appear on left; just like at https://www.w3schools.com/howto/howto_css_animate_buttons.asp).
-//   - Right button is 'Reset'
 // - I want the histo slider to update in real-time.
 //   - Ready now, just want a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
@@ -25,6 +21,8 @@ repvar.opts.histo = {
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
 //   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
+// - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
+// - Change mention of 'node' to 'variant'.
 
 // =====  Page setup:
 function setupPage() {

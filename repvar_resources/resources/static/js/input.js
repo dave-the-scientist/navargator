@@ -1,6 +1,10 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - If there are none selected, the chosen etc update buttons should read 'clear' instead. Unless the chosen list is empty, at which it should still say update.
+//   - Or, if the user clicks on the chosen label, then the button switches to 'clear'. Which is more intuitive?
+//   - Put the logic in numSelectedCallback().
+// - Mouseover the main chosen etc label should mouseover all current chosen vars, and clicking it should force the current chosen vars into selected. Have some variable that is reset by numSelectedCallback(), and set to str 'chosen' after clicking chosen; then if chosen label clicked again while it's still 'chosen', it force removes those vars from selected.
 // - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
 
 // =====  Modified common variables:
@@ -19,7 +23,7 @@ function setupPage() {
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   setupTreeElements();
   setupRunOptions();
-  setupNodeSelection();
+  setupVariantSelection();
   setupUploadSaveButtons();
 
   if (page.session_id != '') {
@@ -108,9 +112,6 @@ function setupRunOptions() {
     disabled: true
   }).spinner('value', 3);
   $("#rangeCheckbox")[0].checked = false;
-  $("#chosenButton").button('disable');
-  $("#availButton").button('disable');
-  $("#ignoreButton").button('disable');
   $("#clustMethodSelect").selectmenu();
   //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
 
@@ -121,15 +122,6 @@ function setupRunOptions() {
     } else {
       $("#rangeSpinner").spinner('disable');
     }
-  });
-  $("#chosenButton").click(function() {
-    showNodeSelection('chosen', repvar.chosen, repvar.ignored);
-  });
-  $("#availButton").click(function() {
-    showNodeSelection('available', repvar.available, repvar.ignored.concat(repvar.chosen));
-  });
-  $("#ignoreButton").click(function() {
-    showNodeSelection('ignored', repvar.ignored, repvar.chosen);
   });
   $("#findVariantsButton").click(function() {
     if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
@@ -182,49 +174,44 @@ function setupRunOptions() {
 
   });
 }
-function setupNodeSelection() {
-  $("#nodeSelectAll").change(function() {
-    if ($(this).is(':checked')) {
-      $(".node-select-checkbox").filter(':enabled').prop('checked', true);
-    } else {
-      $(".node-select-checkbox").filter(':enabled').prop('checked', false);
+function setupVariantSelection() {
+  $("#selectAllButton").click(function() {
+    var var_name;
+    for (var i=0; i<repvar.leaves.length; ++i) {
+      var_name = repvar.leaves[i];
+      nodeLabelMouseclickHandler(var_name, false, true);
     }
+    numSelectedCallback();
   });
-  $("#nodeSelectSaveButton").click(function() {
-    var node_list = [];
-    $(".node-select-checkbox").filter(':checked').each(function() {
-      node_list.push($(this).prop('name'));
-    });
-    var node_type = $("#nodeSelectSpan").html();
-    if (node_type == 'available') {
-      if (repvar.available != node_list) {
-        clearHideResultsPane();
-        repvar.available = node_list;
-      }
-    } else if (node_type == 'chosen') {
-      if (repvar.chosen != node_list) {
-        clearHideResultsPane();
-        repvar.available = $.grep(repvar.available, function(n, i) {
-          return (node_list.indexOf(n) == -1)
-        });
-        repvar.chosen = node_list;
-      }
-    } else if (node_type == 'ignored') {
-      if (repvar.ignored != node_list) {
-        clearHideResultsPane();
-        repvar.available = $.grep(repvar.available, function(n, i) {
-          return (node_list.indexOf(n) == -1)
-        });
-        repvar.ignored = node_list;
-      }
-    } else {
-      showErrorPopup("Error updating node selection; node type '"+node_type+"' not recognized.");
+  $("#clearSelectionButton").click(function() {
+    var var_name;
+    for (var i=0; i<repvar.leaves.length; ++i) {
+      var_name = repvar.leaves[i];
+      nodeLabelMouseclickHandler(var_name, false, false);
     }
-    $("#mainNodeSelectDiv").hide();
+    numSelectedCallback();
+  });
+
+  $("#chosenUpdateButton").click(function() {
+    repvar.chosen = Object.keys(repvar.selected);
+    repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+    repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+    $("#clearSelectionButton").click();
     updateRunOptions();
   });
-  $("#nodeSelectCancelButton").click(function() {
-    $("#mainNodeSelectDiv").hide();
+  $("#availUpdateButton").click(function() {
+    repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
+    repvar.available = Object.keys(repvar.selected);
+    repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+    $("#clearSelectionButton").click();
+    updateRunOptions();
+  });
+  $("#ignoreUpdateButton").click(function() {
+    repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
+    repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+    repvar.ignored = Object.keys(repvar.selected);
+    $("#clearSelectionButton").click();
+    updateRunOptions();
   });
 }
 $(document).ready(function(){
@@ -243,34 +230,29 @@ function newTreeLoaded(data_obj) {
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   if (repvar.tree_data) {
     drawTree();
+    updateVarSelectList();
     updateRunOptions();
-    updateNodeSelection();
     $("#uploadFileInput").val('');
     $("#saveRepvarButton").button('enable');
     $("#uploadFileButton").button('disable');
     clearHideResultsPane();
   }
 }
-function updateCAIVariantMarkers() {
-  // CAI stands for chosen, available, ignored.
-  var var_name, circle;
+function updateVarSelectList() {
+  // Updates the list of variants in the selection pane. Should be called every time the phylogenetic tree is modified.
+  $('#varSelectDiv > .var-select-label').remove();
+  var var_name, label;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i];
-    circle = repvar.nodes[var_name].circle;
-    if (repvar.chosen.indexOf(var_name) != -1) {
-      changeNodeStateColour(var_name, circle, 'node_rest', 'chosen');
-      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
-    } else if (repvar.available.indexOf(var_name) != -1) {
-      changeNodeStateColour(var_name, circle, 'node_rest', 'available');
-      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
-    } else if (repvar.ignored.indexOf(var_name) != -1) {
-      changeNodeStateColour(var_name, circle, 'node_rest', 'ignored');
-      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
-    } else {
-      changeNodeStateColour(var_name, circle, 'node_rest', 'node');
-      circle.attr({'r':repvar.opts.sizes.small_marker_radius});
-    }
+    label = $('<label name="'+var_name+'" class="var-select-label">'+var_name+'</label>');
+    $("#varSelectDiv").append(label);
+    callNodeLabelCallbacks(label, var_name);
   }
+  $("#chosenLabel").css('border-color', repvar.opts.colours['chosen']);
+  $("#availLabel").css('border-color', repvar.opts.colours['available']);
+  $("#ignoredLabel").css('border-color', repvar.opts.colours['ignored']);
+  $("#numVariantsSpan").html(repvar.leaves.length);
+  $("#mainVariantSelectDiv").show();
 }
 function updateRunOptions() {
   // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
@@ -283,10 +265,29 @@ function updateRunOptions() {
   $("#numChosenSpan").html(repvar.chosen.length);
   $("#numAvailSpan").html(repvar.available.length);
   $("#numIgnoredSpan").html(repvar.ignored.length);
-  $("#chosenButton").button('enable');
-  $("#availButton").button('enable');
-  $("#ignoreButton").button('enable');
   updateCAIVariantMarkers();
+}
+function updateCAIVariantMarkers() {
+  // CAI stands for chosen, available, ignored.
+  var var_name, circle, circle_radius, colour_key;
+  for (var i=0; i<repvar.leaves.length; ++i) {
+    var_name = repvar.leaves[i];
+    circle = repvar.nodes[var_name].circle;
+    circle_radius = repvar.opts.sizes.big_marker_radius;
+    if (repvar.chosen.indexOf(var_name) != -1) {
+      colour_key = 'chosen';
+    } else if (repvar.available.indexOf(var_name) != -1) {
+      colour_key = 'available';
+    } else if (repvar.ignored.indexOf(var_name) != -1) {
+      colour_key = 'ignored';
+    } else {
+      colour_key = 'node';
+      circle_radius = repvar.opts.sizes.small_marker_radius;
+    }
+    changeNodeStateColour(var_name, circle, 'node_rest', colour_key);
+    circle.attr({'r':circle_radius});
+    $(".var-select-label[name='"+var_name+"'").css('border-color', repvar.opts.colours[colour_key]);
+  }
 }
 function clearHideResultsPane() {
   repvar.result_links = {};
@@ -307,44 +308,30 @@ function updateResultsPane(runs_began) {
   }
   $("#resultsLinksDiv").show();
 }
-function updateNodeSelection() {
-  // Updates the list of variant checkboxes in the node selection pane. Should be called every time the phylogenetic tree is modified.
-  $('#nodeSelectCheckboxes > .node-select-checkbox-label').remove();
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var checkbox = $('<label class="node-select-checkbox-label"><input type="checkbox" class="node-select-checkbox" />'+repvar.leaves[i]+'</label>');
-    checkbox.children().prop('name', repvar.leaves[i]);
-    $("#nodeSelectCheckboxes").append(checkbox);
-  }
-}
-function showNodeSelection(selecting_for, checked_if_in, disabled_if_in) {
-  $("#nodeSelectSpan").html(selecting_for);
-  $("#chosenButton").button('disable');
-  $("#availButton").button('disable');
-  $("#ignoreButton").button('disable');
-  // Prepare the node selection checkboxes:
-  if (checked_if_in.length == repvar.leaves.length) {
-    $("#nodeSelectAll").prop('checked', true);
-  } else {
-    $("#nodeSelectAll").prop('checked', false);
-  }
-  $(".node-select-checkbox").each(function() {
-    var checkbox = $(this);
-    var name = checkbox.prop('name');
-    if (checked_if_in.indexOf(name) != -1) {
-      checkbox.prop('checked', true);
-    } else {
-      checkbox.prop('checked', false);
-    }
-    if (disabled_if_in.indexOf(name) != -1) {
-      checkbox.attr('disabled', true);
-    } else {
-      checkbox.attr('disabled', false);
-    }
-  });
-  $("#mainNodeSelectDiv").show();
-}
+
+// =====  Callback and event handlers:
 function numSelectedCallback() {
-  // Called when a node is selected.
+  $("#currentSelectionNum").html(repvar.num_selected);
+}
+function callNodeLabelCallbacks(jq_ele, var_name) {
+  var highlight_colour = repvar.nodes[var_name].label_mouseover_colour;
+  jq_ele.mouseenter(function() {
+    jq_ele.css('background', highlight_colour);
+    nodeLabelMouseoverHandler(var_name);
+  }).mouseleave(function() {
+    jq_ele.css('background', '');
+    nodeLabelMouseoutHandler(var_name);
+  });
+  repvar.nodes[var_name].circle.mouseover(function() {
+    jq_ele.css('background', highlight_colour);
+  }).mouseout(function() {
+    jq_ele.css('background', '');
+  });
+  repvar.nodes[var_name].label_mouseover.mouseover(function() {
+    jq_ele.css('background', highlight_colour);
+  }).mouseout(function() {
+    jq_ele.css('background', '');
+  });
 }
 
 // =====  Data parsing:

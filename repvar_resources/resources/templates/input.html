@@ -64,18 +64,6 @@
             <h2>Run options</h2>
             <table id="runOptionsTable"><tbody>
               <tr>
-                <td><label for="chosenButton"><span id="numChosenSpan">0</span> chosen variants</label></td>
-                <td><button id="chosenButton" class="jq-ui-button">Choose</button></td>
-              </tr>
-              <tr>
-                <td><label for="availButton"><span id="numAvailSpan">0</span> available variants</label></td>
-                <td><button id="availButton" class="jq-ui-button">Choose</button></td>
-              </tr>
-              <tr>
-                <td><label for="ignoreButton"><span id="numIgnoredSpan">0</span> ignored variants</label></td>
-                <td><button id="ignoreButton" class="jq-ui-button">Choose</button></td>
-              </tr>
-              <tr>
                 <td><label for="numVarSpinner">Variants to find</label></td>
                 <td><input id="numVarSpinner" class="param-spinner" /></td>
               </tr>
@@ -120,12 +108,26 @@
           <div id="svgCanvas"></div>
         </div>
 
-        <div id="mainNodeSelectDiv" class="style-box" style="display:none">
-          <h2>Choose <span id="nodeSelectSpan"></span> variants</h2>
-          <label><input id="nodeSelectAll" type="checkbox" /><b>Select all</b></label>
-          <div id="nodeSelectCheckboxes"></div>
-          <button id="nodeSelectSaveButton" class="jq-ui-button">Save selection</button>
-          <button id="nodeSelectCancelButton" class="jq-ui-button">Cancel</button>
+        <div id="mainVariantSelectDiv" class="style-box" style="display:none">
+          <h2><span id="numVariantsSpan"></span> variants</h2>
+          <p>Currently selected nodes: <span id="currentSelectionNum">0</span></p>
+          <button id="selectAllButton" class="jq-ui-button">Select all</button>
+          <button id="clearSelectionButton" class="jq-ui-button">Clear selection</button>
+          <table id="varAssignTable"><tbody>
+            <tr>
+              <td><label id="chosenLabel" class="var-assigned-label"><span id="numChosenSpan">0</span> chosen variants</label></td>
+              <td><button id="chosenUpdateButton" class="jq-ui-button" title="Updates from the current selection">Update</button></td>
+            </tr>
+            <tr>
+              <td><label id="availLabel" class="var-assigned-label"><span id="numAvailSpan">0</span> available variants</label></td>
+              <td><button id="availUpdateButton" class="jq-ui-button" title="Updates from the current selection">Update</button></td>
+            </tr>
+            <tr>
+              <td><label id="ignoredLabel" class="var-assigned-label"><span id="numIgnoredSpan">0</span> ignored variants</label></td>
+              <td><button id="ignoreUpdateButton" class="jq-ui-button" title="Updates from the current selection">Update</button></td>
+            </tr>
+          </tbody></table>
+          <div id="varSelectDiv"></div>
         </div>
       </div>
 

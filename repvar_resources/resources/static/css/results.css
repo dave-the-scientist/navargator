@@ -7,11 +7,11 @@
   display: inline-flex;
   flex-direction: column;
 }
+#summaryStatsDiv, #displayOptionsDiv, #exportDataDiv {
+  width: 250px;
+}
 #selectionDiv, #clustersListDiv {
   width: 400px;
-}
-#summaryStatsDiv, #displayOptionsDiv, #exportDataDiv {
-  width: 350px;
 }
 
 /* Selection pane settings: */

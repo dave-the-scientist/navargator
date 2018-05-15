@@ -49,7 +49,7 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newRepvarNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
+  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
@@ -155,9 +155,9 @@ function drawLabelAndSearchHighlights() {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
     // Sets up highlight and mouseover around sequence name:
-    repvar.nodes[var_name]['label_highlight'] = drawLabelHighlight(var_name, label_highlight_start_radius, label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
+    drawLabelHighlight(var_name, label_highlight_start_radius, label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
     // Sets up highlight around node, sequence name, and a line between them:
-    repvar.nodes[var_name]['search_highlight'] = drawSearchHighlight(var_name, label_highlight_start_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset, marker_highlight_radius);
+    drawSearchHighlight(var_name, label_highlight_start_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset, marker_highlight_radius);
   }
 }
 function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end_angle) {
@@ -165,7 +165,8 @@ function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end
     label_highlight = repvar.r_paper.path(label_path_str).attr({fill:repvar.opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide(),
     label_mouseover = repvar.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   addNodeLabelEventHandlers(var_name, label_mouseover);
-  return label_highlight;
+  repvar.nodes[var_name].label_highlight = label_highlight;
+  repvar.nodes[var_name].label_mouseover = label_mouseover;
 }
 function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, end_angle, marker_highlight_radius) {
   var node_x = repvar.nodes[var_name].node_x, node_y = repvar.nodes[var_name].node_y,
@@ -182,7 +183,7 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
   var_highlight_set.push(search_label_highlight, marker_highlight, var_line_highlight);
   var_highlight_set.attr({'stroke-width':0, fill:repvar.opts.colours.search}).toBack().hide();
   var_line_highlight.attr({'stroke-width':2, stroke:repvar.opts.colours.search});
-  return var_highlight_set;
+  repvar.nodes[var_name].search_highlight = var_highlight_set;
 }
 function drawTreeBackgrounds(maxLabelLength) {
   var labels_path_str, angle_offset = treeDrawingParams.scaleAngle / 2.0,

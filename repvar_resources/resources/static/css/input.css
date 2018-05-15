@@ -10,8 +10,26 @@
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: 250px;
 }
-#mainNodeSelectDiv {
-  min-width: 200px;
+#mainVariantSelectDiv {
+  min-width: 400px;
+}
+
+/* Variant selection settings: */
+.var-assigned-label {
+  margin: 0px 5px 0px 0px;
+  padding: 2px 6px 2px 2px;
+  border: 2px solid red;
+  border-style: hidden hidden solid solid;
+}
+#varSelectDiv {
+  font-size: 12px;
+}
+.var-select-label {
+  display: inline-block;
+  margin: 2px 2px 2px 0px;
+  padding: 3px;
+  border: 2px solid red;
+  border-style: hidden hidden solid solid;
 }
 
 /* Various element settings */
@@ -27,7 +45,4 @@
 #resultsLinksList {
   list-style-type: disc;
   padding-left: 20px;
-}
-.node-select-checkbox-label {
-  display: inline-block;
 }

@@ -14,7 +14,7 @@ var repvar = {
     },
     'colours' : {
       'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#9DB6F2', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#F3E2B9', 'cluster_highlight':'#71FED6', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
-    }//singleton F39701 selection 8EFCFF FDCF5C
+    }
   }
 };
 
