@@ -1,15 +1,17 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - Change #chosenLabel etc to divs containing the label as it is, plus another of "X". The X should be very faint on mouseout, turn to black on mouseover of the div, and turn to red (or border is red, w/e) on mouseover of itself. Clicking should clear that assigned group.
+//   - Nothing relies on #chosenLabel etc being labels, so there shouldnt be anything to do to switch it to a div.
+//   - This option also gives me a longer tail on the coloured underline, which looks good.
 // - If there are none selected, the chosen etc update buttons should read 'clear' instead. Unless the chosen list is empty, at which it should still say update.
 //   - Or, if the user clicks on the chosen label, then the button switches to 'clear'. Which is more intuitive?
-//   - Put the logic in numSelectedCallback().
-// - Mouseover the main chosen etc label should mouseover all current chosen vars, and clicking it should force the current chosen vars into selected. Have some variable that is reset by numSelectedCallback(), and set to str 'chosen' after clicking chosen; then if chosen label clicked again while it's still 'chosen', it force removes those vars from selected.
 // - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
 
 // =====  Modified common variables:
-repvar.result_links = {};
+repvar.result_links = {}, repvar.assigned_selected = '';
 repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
+// Adds repvar.nodes[var_name].variant_select_label
 
 // =====  Page setup:
 function setupPage() {
@@ -191,7 +193,9 @@ function setupVariantSelection() {
     }
     numSelectedCallback();
   });
-
+  addAssignedLabelHandlers($("#chosenLabel"), 'chosen');
+  addAssignedLabelHandlers($("#availLabel"), 'available');
+  addAssignedLabelHandlers($("#ignoredLabel"), 'ignored');
   $("#chosenUpdateButton").click(function() {
     repvar.chosen = Object.keys(repvar.selected);
     repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
@@ -241,12 +245,19 @@ function newTreeLoaded(data_obj) {
 function updateVarSelectList() {
   // Updates the list of variants in the selection pane. Should be called every time the phylogenetic tree is modified.
   $('#varSelectDiv > .var-select-label').remove();
-  var var_name, label;
+  var var_name, short_name, label;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i];
-    label = $('<label name="'+var_name+'" class="var-select-label">'+var_name+'</label>');
+
+    if (var_name.length > repvar.opts.sizes.max_variant_name_length) {
+      short_name = var_name.slice(0, repvar.opts.sizes.max_variant_name_length);
+      label = $('<label name="'+var_name+'" class="var-select-label" title="'+var_name+'">'+short_name+'</label>');
+    } else {
+      label = $('<label name="'+var_name+'" class="var-select-label">'+var_name+'</label>');
+    }
     $("#varSelectDiv").append(label);
-    callNodeLabelCallbacks(label, var_name);
+    repvar.nodes[var_name].variant_select_label = label;
+    addVariantLabelCallbacks(label, var_name);
   }
   $("#chosenLabel").css('border-color', repvar.opts.colours['chosen']);
   $("#availLabel").css('border-color', repvar.opts.colours['available']);
@@ -266,6 +277,7 @@ function updateRunOptions() {
   $("#numAvailSpan").html(repvar.available.length);
   $("#numIgnoredSpan").html(repvar.ignored.length);
   updateCAIVariantMarkers();
+  clearHideResultsPane();
 }
 function updateCAIVariantMarkers() {
   // CAI stands for chosen, available, ignored.
@@ -310,27 +322,66 @@ function updateResultsPane(runs_began) {
 }
 
 // =====  Callback and event handlers:
-function numSelectedCallback() {
-  $("#currentSelectionNum").html(repvar.num_selected);
+function addAssignedLabelHandlers(label_ele, assigned_key) {
+  label_ele.mouseenter(function() {
+    label_ele.css('background', repvar.opts.colours.cluster_highlight);
+    for (var i=0; i<repvar[assigned_key].length; ++i) {
+      nodeLabelMouseoverHandler(repvar[assigned_key][i]);
+    }
+  }).mouseleave(function() {
+    if (repvar.assigned_selected == assigned_key) {
+      label_ele.css('background', repvar.opts.colours.selection);
+    } else {
+      label_ele.css('background', '');
+    }
+    for (var i=0; i<repvar[assigned_key].length; ++i) {
+      nodeLabelMouseoutHandler(repvar[assigned_key][i]);
+    }
+  }).click(function() {
+    var full_select = (repvar.assigned_selected != assigned_key);
+    if (full_select) {
+      label_ele.css('background', repvar.opts.colours.selection);
+    } else {
+      label_ele.css('background', repvar.opts.colours.cluster_highlight);
+    }
+    for (var i=0; i<repvar[assigned_key].length; ++i) {
+      nodeLabelMouseclickHandler(repvar[assigned_key][i], false, full_select);
+    }
+    numSelectedCallback();
+    if (full_select) {
+      repvar.assigned_selected = assigned_key;
+    }
+  });
 }
-function callNodeLabelCallbacks(jq_ele, var_name) {
-  var highlight_colour = repvar.nodes[var_name].label_mouseover_colour;
+function nodeLabelMouseoverHandlerCallback(var_name, label_colour) {
+  repvar.nodes[var_name].variant_select_label.css('background', label_colour);
+}
+function nodeLabelMouseoutHandlerCallback(var_name, label_colour) {
+  repvar.nodes[var_name].variant_select_label.css('background', label_colour);
+}
+function nodeLabelMouseclickHandlerCallback(var_name, label_colour) {
+  repvar.nodes[var_name].variant_select_label.css('background', label_colour);
+}
+function numSelectedCallback() {
+  // Update span indicating number of selected variants:
+  $("#currentSelectionNum").html(repvar.num_selected);
+  // Update assigned labels and controlling variable:
+  if (repvar.assigned_selected == 'chosen') {
+    $("#chosenLabel").css('background', '');
+  } else if (repvar.assigned_selected == 'available') {
+    $("#availLabel").css('background', '');
+  } else if (repvar.assigned_selected == 'ignored') {
+    $("#ignoredLabel").css('background', '');
+  }
+  repvar.assigned_selected = '';
+}
+function addVariantLabelCallbacks(jq_ele, var_name) {
   jq_ele.mouseenter(function() {
-    jq_ele.css('background', highlight_colour);
     nodeLabelMouseoverHandler(var_name);
   }).mouseleave(function() {
-    jq_ele.css('background', '');
     nodeLabelMouseoutHandler(var_name);
-  });
-  repvar.nodes[var_name].circle.mouseover(function() {
-    jq_ele.css('background', highlight_colour);
-  }).mouseout(function() {
-    jq_ele.css('background', '');
-  });
-  repvar.nodes[var_name].label_mouseover.mouseover(function() {
-    jq_ele.css('background', highlight_colour);
-  }).mouseout(function() {
-    jq_ele.css('background', '');
+  }).click(function() {
+    nodeLabelMouseclickHandler(var_name);
   });
 }
 

@@ -141,20 +141,9 @@ span {
   border: 0px solid #000000;
   padding: 0px;
 }
-#scrollZoomButton {
-  line-height: 8px;
-}
-#scrollZoomText {
-  display: table-cell;
-  vertical-align: middle;
-  font-family: var(--font-family);
-  font-size: 9px;
-}
-#scrollZoomStatus {
-  display: table-cell;
-  vertical-align: middle;
-  padding-left: 3px;
-  width: 22px;
+#searchToSelectButton {
+  line-height: 9px;
+  font-size: 10px;
 }
 #varSearchHitsText {
   margin: 0px;
@@ -195,6 +184,21 @@ span {
 }
 #varSearchInput[value=""] ~ #clearVarSearchButton {
   display: none;
+}
+#scrollZoomButton {
+  line-height: 9px;
+}
+#scrollZoomText {
+  display: table-cell;
+  vertical-align: middle;
+  font-family: var(--font-family);
+  font-size: 10px;
+}
+#scrollZoomStatus {
+  display: table-cell;
+  vertical-align: middle;
+  padding-left: 3px;
+  width: 22px;
 }
 .control-element {
   vertical-align: middle;

@@ -11,8 +11,25 @@ function setupTreeElements() {
     mouseWheelZoomEnabled: false,
     onPan: preventSelections
   });
-  $('#varSearchButton').click(function() {
-    treeSearchFunction();
+  $('#searchToSelectButton').click(function() {
+    var var_name;
+    if (repvar.search_results.add_to_selection == false) { // Remove from selection
+      for (var i=0; i<repvar.search_results.length; ++i) {
+        var_name = repvar.search_results[i];
+        nodeLabelMouseclickHandler(var_name, false, false);
+      }
+      numSelectedCallback();
+      repvar.search_results.add_to_selection = true;
+      $("#searchToSelectButton").html('Add to<br>selection');
+    } else { // Add to selection
+      for (var i=0; i<repvar.search_results.length; ++i) {
+        var_name = repvar.search_results[i];
+        nodeLabelMouseclickHandler(var_name, false, true);
+      }
+      numSelectedCallback();
+      repvar.search_results.add_to_selection = false;
+      $("#searchToSelectButton").html('Cut from<br>selection');
+    }
   });
   $("#clearVarSearchButton").click(function() {
     $("#varSearchInput").attr('value', '');
@@ -49,7 +66,7 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newRepvarNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
+  return {'circle':null, 'label_highlight':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
@@ -63,6 +80,8 @@ function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, 
 function treeSearchFunction() {
   var query = $('#varSearchInput').attr('value').trim().toLowerCase();
   var name, num_hits = 0;
+  repvar.search_results.length = 0;
+  repvar.search_results.add_to_selection = true; // Resets so names will be added instead of removed.
   for (var i=0; i<repvar.leaves.length; ++i) {
     name = repvar.leaves[i];
     if (query == '' || name.toLowerCase().indexOf(query) == -1) {
@@ -70,12 +89,15 @@ function treeSearchFunction() {
     } else {
       num_hits += 1;
       repvar.nodes[name]['search_highlight'].show();
+      repvar.search_results.push(name);
     }
   }
   if (query == '') {
     $("#varSearchHitsText").text('');
+    $("#searchToSelectButton").hide();
   } else {
     $("#varSearchHitsText").text(num_hits+' hits');
+    $("#searchToSelectButton").show();
   }
   return false;
 }
@@ -166,7 +188,6 @@ function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end
     label_mouseover = repvar.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   addNodeLabelEventHandlers(var_name, label_mouseover);
   repvar.nodes[var_name].label_highlight = label_highlight;
-  repvar.nodes[var_name].label_mouseover = label_mouseover;
 }
 function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, end_angle, marker_highlight_radius) {
   var node_x = repvar.nodes[var_name].node_x, node_y = repvar.nodes[var_name].node_y,
@@ -263,38 +284,43 @@ function addNodeLabelEventHandlers(var_name, raphael_element) {
   });
 }
 function nodeLabelMouseoverHandler(var_name, change_node_colour=true) {
-  var node = repvar.nodes[var_name];
+  var node = repvar.nodes[var_name], label_colour = node.label_mouseover_colour;
   node.mouseover = true;
   if (node.selected) {
-    node.label_highlight.attr({fill:node.label_mouseover_colour});
+    node.label_highlight.attr({fill:label_colour});
   } else {
     node.label_highlight.show();
   }
   if (change_node_colour == true) {
     node.circle.attr({fill:node.node_mouseover_colour});
   }
+  nodeLabelMouseoverHandlerCallback(var_name, label_colour);
 }
 function nodeLabelMouseoutHandler(var_name, change_node_colour=true) {
   if (repvar.prevent_mouseout[var_name] != undefined) { return false; }
-  var node = repvar.nodes[var_name], circle_colour = node.node_rest_colour;
+  var node = repvar.nodes[var_name], circle_colour = node.node_rest_colour, label_colour = '';
   node.mouseover = false;
   if (node.selected) {
     circle_colour = node.node_selected_colour;
-    node.label_highlight.attr({fill:node.label_selected_colour});
+    label_colour = node.label_selected_colour;
+    node.label_highlight.attr({fill:label_colour});
   } else if (node.label_rest_colour != '') {
-    node.label_highlight.attr({fill:node.label_rest_colour});
+    label_colour = node.label_rest_colour;
+    node.label_highlight.attr({fill:label_colour});
   } else {
     node.label_highlight.hide();
   }
   if (change_node_colour == true) {
     node.circle.attr({fill:circle_colour});
   }
+  nodeLabelMouseoutHandlerCallback(var_name, label_colour);
 }
 function nodeLabelMouseclickHandler(var_name, call_num_selected=true, set_selection_state) {
   // If set_selection_state is not given, toggles the selection status of the node.
   if (!repvar.allow_select) { return false; } // Prevents selection when panning tree.
   var node = repvar.nodes[var_name],
-    cur_state = (typeof set_selection_state != "undefined") ? !set_selection_state : node.selected;
+    cur_state = (typeof set_selection_state != "undefined") ? !set_selection_state : node.selected,
+    label_colour = node.label_selected_colour;
   if (cur_state) { // Currently true, change to false.
     if (node.selected) { repvar.num_selected -= 1; }
     delete repvar.selected[var_name];
@@ -302,27 +328,35 @@ function nodeLabelMouseclickHandler(var_name, call_num_selected=true, set_select
     if (node.mouseover == false) {
       node.circle.attr({fill:node.node_rest_colour});
       if (node.label_rest_colour != '') {
-        node.label_highlight.attr({fill:node.label_rest_colour});
+        label_colour = node.label_rest_colour;
+        node.label_highlight.attr({fill:label_colour});
       } else {
+        label_colour = '';
         node.label_highlight.hide();
         node.label_highlight.attr({fill:node.label_mouseover_colour});
       }
     } else {
-      node.label_highlight.attr({fill:node.label_mouseover_colour});
+      label_colour = node.label_mouseover_colour;
+      node.label_highlight.attr({fill:label_colour});
       nodeLabelMouseoverHandler(var_name);
     }
   } else { // Currently false, change to true.
     if (!node.selected) { repvar.num_selected += 1; }
-    repvar.selected[var_name] = node.label_selected_colour; // Value unused. Implement selection group.
+    repvar.selected[var_name] = label_colour; // Value unused. Implement selection group.
     node.selected = true;
     node.circle.attr({fill:node.node_selected_colour});
-    node.label_highlight.attr({fill:node.label_selected_colour});
+    node.label_highlight.attr({fill:label_colour});
     node.label_highlight.show();
   }
   if (call_num_selected == true) {
     numSelectedCallback();
   }
+  nodeLabelMouseclickHandlerCallback(var_name, label_colour);
 }
+function nodeLabelMouseoverHandlerCallback(var_name, label_colour) { /* Overwrite if desired */ }
+function nodeLabelMouseoutHandlerCallback(var_name, label_colour) { /* Overwrite if desired */ }
+function nodeLabelMouseclickHandlerCallback(var_name, label_colour) { /* Overwrite if desired */ }
+function numSelectedCallback() { /* Overwrite if desired */ }
 
 //   === Cluster drawing functions:
 function convexHull(points_list) {

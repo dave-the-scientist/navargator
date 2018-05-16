@@ -35,7 +35,7 @@
   </head>
   <body>
     <div id="errorDialog" title="Repvar error">
-      <p id="errorDialogText">Error text.<p>
+      <p id="errorDialogText">Error loading page resources.</p>
     </div>
 
     <div id="pageDiv">
@@ -92,15 +92,16 @@
         <div id="mainTreeDiv" class="style-box">
           <h2>Phylogenetic tree</h2>
           <form id="treeControlsDiv" onsubmit="return treeSearchFunction();">
+            <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
             <label id="varSearchHitsText" class=""></label>
             <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button><!-- Needed to remove whitespace between this and the button. Because the parent uses a display:inline. name="searchInput"
             --><input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" />
             <button id="clearVarSearchButton" type="reset"><span class="ui-icon ui-icon-close"></span></button>
             <div style="clear:both;"></div>
-            <button id="treeZoomOutButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-minus"></button><!--
-            --><button id="treeZoomInButton" class="control-element"><span class="ui-icon ui-icon-plus"></button>
-            <button id="treeZoomResetButton" class="control-element control-pair-right">Reset</button>
-            <button id="scrollZoomButton" class="control-element"><span id="scrollZoomText">Scroll<br>Zoom</span><span id="scrollZoomStatus">Off</span></button>
+            <button id="treeZoomOutButton" class="control-element control-pair-left" type="button"><span class="ui-icon ui-icon-minus"></button><!--
+            --><button id="treeZoomInButton" class="control-element" type="button"><span class="ui-icon ui-icon-plus"></button>
+            <button id="treeZoomResetButton" class="control-element control-pair-right" type="button">Reset</button>
+            <button id="scrollZoomButton" class="control-element" type="button"><span id="scrollZoomText">Scroll<br>Zoom</span><span id="scrollZoomStatus">Off</span></button>
           </form>
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
@@ -115,7 +116,7 @@
           <button id="clearSelectionButton" class="jq-ui-button">Clear selection</button>
           <table id="varAssignTable"><tbody>
             <tr>
-              <td><label id="chosenLabel" class="var-assigned-label"><span id="numChosenSpan">0</span> chosen variants</label></td>
+              <td><label id="chosenLabel" class="var-assigned-label"><span id="numChosenSpan">0</span> chosen variants<label>X</label></label></td>
               <td><button id="chosenUpdateButton" class="jq-ui-button" title="Updates from the current selection">Update</button></td>
             </tr>
             <tr>
@@ -137,13 +138,16 @@
     </div>
 
     <script>
-      var timestamp = +new Date;
-      var core_js_url = "static/js/core.js?t=" + timestamp;
-      var core_tree_js_url = "static/js/core_tree_functions.js?t=" + timestamp;
-      var page_js_url = "static/js/input.js?t=" + timestamp;
-      $.getScript(core_js_url);
-      $.getScript(core_tree_js_url);
-      $.getScript(page_js_url);
+      // Using $.getScript is async, and you can't ensure the order is maintained. This does:
+      var scripts = ["static/js/core.js", "static/js/core_tree_functions.js", "static/js/input.js"];
+      for (var i=0; i<scripts.length; ++i) {
+        $.ajax({
+          url:scripts[i], async:false, cache:false, dataType:'script',
+          success: function() { console.log('loaded '+scripts[i]); },
+          error: function(e) { console.log('error loading '+scripts[i], e); }
+        });
+      }
+      // Could replace with a standard script call, but then you can't prevent caching.
     </script>
   </body>
 </html>

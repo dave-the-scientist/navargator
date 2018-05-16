@@ -267,21 +267,25 @@ function drawClusters() {
   repvar.tree_background.toBack();
 }
 function createClusterRow(var_name, table_body) {
-  var max_var_name_length = 15, dec_precision = 4, name_td;
-  var short_name = var_name.slice(0, max_var_name_length),
+  var dec_precision = 4,
     clstr_size = repvar.clusters[var_name].nodes.length,
     clstr_score = repvar.clusters[var_name].score,
-    clstr_avg_score = roundFloat(clstr_score/clstr_size, dec_precision),
+    clstr_avg_score = 0, score_90th = 0;
+  if (clstr_size > 1) {
+    clstr_avg_score = roundFloat(clstr_score/(clstr_size-1), dec_precision); // size-1 removes the rep var.
     score_90th = roundFloat(calculate90Percentile(repvar.clusters[var_name].nodes), dec_precision);
-  if (var_name == short_name) {
-    name_td = "<td>"+short_name+"</td>";
-  } else {
+  }
+  var name_td, short_name;
+  if (var_name.length > repvar.opts.sizes.max_variant_name_length) {
+    short_name = var_name.slice(0, repvar.opts.sizes.max_variant_name_length);
     name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
+  } else {
+    name_td = "<td>"+var_name+"</td>";
   }
   var size_td = "<td>"+clstr_size+"</td>",
     avg_dist_td = "<td>"+clstr_avg_score+"</td>",
     score_td = "<td>"+score_90th+"</td>";
-    return $("<tr class='cluster-list-row' variant-name='" +var_name+ "'>" +name_td +size_td +avg_dist_td +score_td+ "</tr>");
+  return $("<tr class='cluster-list-row' variant-name='" +var_name+ "'>" +name_td +size_td +avg_dist_td +score_td+ "</tr>");
 }
 function updateClusteredVariantMarkers() {
   // Colours the representative, available, and ignored nodes.

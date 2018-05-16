@@ -26,7 +26,7 @@
 }
 .var-select-label {
   display: inline-block;
-  margin: 2px 2px 2px 0px;
+  margin: 2px 4px 2px 0px;
   padding: 3px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
