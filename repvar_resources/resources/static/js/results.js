@@ -175,17 +175,9 @@ function setupExportPane() {
   });
 }
 
-console.log('results.js has been loaded');
-$(window).on("load", function() {
-  // Sometimes $(document).ready is triggered, but this is not.
-  console.log('window loaded');
-});
 $(document).ready(function(){
-  // Occassionally this is never called (no 'setting up' in log; also, no errors). If it was because jQuery wasn't loaded in time, I should get an error. Instead, I think the page is loading too quickly, and the 'ready' event fires before results.js has finished loading. $(window).on("load") doesn't get called either.
-  console.log('setting up');
   // Called once the document has loaded.
   setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens.
-  console.log('called setup');
 });
 $(window).bind('beforeunload', function() {
   // Lets the background server know this instance has been closed.
@@ -473,7 +465,7 @@ function drawDistanceHistogram() {
     .attr("height", function(d) { return y(d.length); })
     .attr("transform", function(d) { return "translate(0,"+(height - y(d.length))+")"; });
   bar.append("text")
-    .attr("class", "histo-text")
+    .attr("class", "histo-text prevent-text-selection")
     .attr("dy", ".35em")
     .attr("y", function(d) { return height - Math.max(y(d.length)-10, 10); }) // So text doesn't overlap axis
     .attr("x", bar_width / 2)

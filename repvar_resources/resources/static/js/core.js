@@ -1,3 +1,6 @@
+// TODO:
+// - Many of the opts.colours should be pulled from core.css; bar_chart is the dark background, chosen should be used as the histo bar colour (and I want to use it as an accent on the page), etc
+
 // =====  Common options and parameters
 var page = {
   'server_url':'http://'+window.location.host, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
@@ -13,8 +16,8 @@ var repvar = {
       'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#9DB6F2', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#F3E2B9', 'cluster_highlight':'#71FED6', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#585858', 'tree_background':'#FFFFFF'
-    }
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF'
+    }//cluster_background:F3E2B9(light tan) E4FDE5(light green) // cluster_highlight:71FED6(original cyan) 24F0C9(darker cyan) // available:9DB6F2(orig light purp)
   }
 };
 

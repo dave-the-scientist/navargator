@@ -1,7 +1,7 @@
 /* ======  CSS variables  ====== */
 :root {
-  --dark-background-colour: #C1C1C1;
-  --light-background-colour: #F5F5F5;
+  --dark-background-colour: #1B676B; /*#C1C1C1;*/
+  --light-background-colour: #E3ECEC; /*#F5F5F5;*/
   --style-box-background-colour: #FFFFFF;
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
@@ -16,6 +16,7 @@ html, body {
 }
 body {
   font-size: 100%;  /* Needed for IE. */
+  background-color: var(--light-background-colour);
 }
 p, h1, h2, h3, li, table, button, label, span {
   color: black;
@@ -76,13 +77,16 @@ span {
 
 /* ======  The basic layout, header, navigation bar, and footer  ====== */
 #headerDiv {
-  background-color: var(--dark-background-colour);
-  width: 100%;
-  min-width: var(--min-page-width);
   margin: 0px;
   padding: 0px;
+  width: 100%;
+  min-width: var(--min-page-width);
+  background-color: var(--dark-background-colour);
   text-align: center;
   box-shadow: 1px 1px 2px #555555;
+}
+#headerDiv p, #headerDiv h1 {
+  color: white;
 }
 #headerInnerDiv {
   display: inline-block;
@@ -96,17 +100,15 @@ span {
   height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
 }
 #footerDiv {
-  background-color: var(--light-background-colour);
+  background-color: var(--dark-background-colour);
   width: 100%;
   min-width: var(--min-page-width);
   margin: 0px 0px 5px 0px;
   padding: 10px 0px;
 }
 #footerDiv p {
+  color: white;
   text-align: center;
-}
-.clearfix {
-  clear: both;
 }
 
 /* ======  Main styled div  ====== */
@@ -232,6 +234,14 @@ button.control-element:active, #clearVarSearchButton:active {
 }
 
 /* ======  Other common style classes  ====== */
+.prevent-text-selection {
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+}
 .param-spinner {
   width: 21px;
 }

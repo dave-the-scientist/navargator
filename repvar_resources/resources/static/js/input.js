@@ -1,11 +1,10 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Change #chosenLabel etc to divs containing the label as it is, plus another of "X". The X should be very faint on mouseout, turn to black on mouseover of the div, and turn to red (or border is red, w/e) on mouseover of itself. Clicking should clear that assigned group.
-//   - Nothing relies on #chosenLabel etc being labels, so there shouldnt be anything to do to switch it to a div.
-//   - This option also gives me a longer tail on the coloured underline, which looks good.
 // - If there are none selected, the chosen etc update buttons should read 'clear' instead. Unless the chosen list is empty, at which it should still say update.
-//   - Or, if the user clicks on the chosen label, then the button switches to 'clear'. Which is more intuitive?
+// - Move much of setupRunOptions() into a validation function.
+// - See how the assigned_label and select_label elements look if the partial border is rounded.
+//   - Regardless of what looks best, I think I want to use this as a theme throughout (ex on style boxes).
 // - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
 
 // =====  Modified common variables:
@@ -193,9 +192,18 @@ function setupVariantSelection() {
     }
     numSelectedCallback();
   });
-  addAssignedLabelHandlers($("#chosenLabel"), 'chosen');
-  addAssignedLabelHandlers($("#availLabel"), 'available');
-  addAssignedLabelHandlers($("#ignoredLabel"), 'ignored');
+  addAssignedLabelHandlers($("#chosenAssignedDiv"), 'chosen');
+  addAssignedLabelHandlers($("#availAssignedDiv"), 'available');
+  addAssignedLabelHandlers($("#ignoredAssignedDiv"), 'ignored');
+  $("#clearChosenButton").click(function(event) {
+    addClearAssignedButtonHandler(event, 'chosen');
+  });
+  $("#clearAvailButton").click(function() {
+    addClearAssignedButtonHandler(event, 'available');
+  });
+  $("#clearIgnoredButton").click(function() {
+    addClearAssignedButtonHandler(event, 'ignored');
+  });
   $("#chosenUpdateButton").click(function() {
     repvar.chosen = Object.keys(repvar.selected);
     repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
@@ -248,20 +256,19 @@ function updateVarSelectList() {
   var var_name, short_name, label;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i];
-
     if (var_name.length > repvar.opts.sizes.max_variant_name_length) {
       short_name = var_name.slice(0, repvar.opts.sizes.max_variant_name_length);
-      label = $('<label name="'+var_name+'" class="var-select-label" title="'+var_name+'">'+short_name+'</label>');
+      label = $('<label name="'+var_name+'" class="var-select-label prevent-text-selection" title="'+var_name+'">'+short_name+'</label>');
     } else {
-      label = $('<label name="'+var_name+'" class="var-select-label">'+var_name+'</label>');
+      label = $('<label name="'+var_name+'" class="var-select-label prevent-text-selection">'+var_name+'</label>');
     }
     $("#varSelectDiv").append(label);
     repvar.nodes[var_name].variant_select_label = label;
     addVariantLabelCallbacks(label, var_name);
   }
-  $("#chosenLabel").css('border-color', repvar.opts.colours['chosen']);
-  $("#availLabel").css('border-color', repvar.opts.colours['available']);
-  $("#ignoredLabel").css('border-color', repvar.opts.colours['ignored']);
+  $("#chosenAssignedDiv").css('border-color', repvar.opts.colours['chosen']);
+  $("#availAssignedDiv").css('border-color', repvar.opts.colours['available']);
+  $("#ignoredAssignedDiv").css('border-color', repvar.opts.colours['ignored']);
   $("#numVariantsSpan").html(repvar.leaves.length);
   $("#mainVariantSelectDiv").show();
 }
@@ -324,27 +331,32 @@ function updateResultsPane(runs_began) {
 // =====  Callback and event handlers:
 function addAssignedLabelHandlers(label_ele, assigned_key) {
   label_ele.mouseenter(function() {
+    var assigned_len = repvar[assigned_key].length;
+    if (assigned_len == 0) { return false; }
     label_ele.css('background', repvar.opts.colours.cluster_highlight);
-    for (var i=0; i<repvar[assigned_key].length; ++i) {
+    for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseoverHandler(repvar[assigned_key][i]);
     }
   }).mouseleave(function() {
+    var assigned_len = repvar[assigned_key].length;
     if (repvar.assigned_selected == assigned_key) {
       label_ele.css('background', repvar.opts.colours.selection);
     } else {
       label_ele.css('background', '');
     }
-    for (var i=0; i<repvar[assigned_key].length; ++i) {
+    for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseoutHandler(repvar[assigned_key][i]);
     }
   }).click(function() {
+    var assigned_len = repvar[assigned_key].length;
+    if (assigned_len == 0) { return false; }
     var full_select = (repvar.assigned_selected != assigned_key);
     if (full_select) {
       label_ele.css('background', repvar.opts.colours.selection);
     } else {
       label_ele.css('background', repvar.opts.colours.cluster_highlight);
     }
-    for (var i=0; i<repvar[assigned_key].length; ++i) {
+    for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseclickHandler(repvar[assigned_key][i], false, full_select);
     }
     numSelectedCallback();
@@ -352,6 +364,17 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
       repvar.assigned_selected = assigned_key;
     }
   });
+}
+function addClearAssignedButtonHandler(event, assigned_key) {
+  event.stopPropagation();
+  var assigned_len = repvar[assigned_key].length;
+  if (assigned_len == 0) { return false; }
+  for (var i=0; i<assigned_len; ++i) {
+    nodeLabelMouseoutHandler(repvar[assigned_key][i]);
+  }
+  repvar[assigned_key] = [];
+  if (repvar.assigned_selected == assigned_key) { repvar.assigned_selected = ''; }
+  updateRunOptions();
 }
 function nodeLabelMouseoverHandlerCallback(var_name, label_colour) {
   repvar.nodes[var_name].variant_select_label.css('background', label_colour);
@@ -367,11 +390,11 @@ function numSelectedCallback() {
   $("#currentSelectionNum").html(repvar.num_selected);
   // Update assigned labels and controlling variable:
   if (repvar.assigned_selected == 'chosen') {
-    $("#chosenLabel").css('background', '');
+    $("#chosenAssignedDiv").css('background', '');
   } else if (repvar.assigned_selected == 'available') {
-    $("#availLabel").css('background', '');
+    $("#availAssignedDiv").css('background', '');
   } else if (repvar.assigned_selected == 'ignored') {
-    $("#ignoredLabel").css('background', '');
+    $("#ignoredAssignedDiv").css('background', '');
   }
   repvar.assigned_selected = '';
 }

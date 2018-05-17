@@ -14,22 +14,47 @@
   min-width: 400px;
 }
 
-/* Variant selection settings: */
-.var-assigned-label {
+/* Variant assignment and selection settings: */
+.var-assigned-div { /* Box containing holding "2 chosen variants" and clear button */
+  display: inline-block;
   margin: 0px 5px 0px 0px;
-  padding: 2px 6px 2px 2px;
+  padding: 2px 2px 2px 4px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
 }
-#varSelectDiv {
-  font-size: 12px;
+.var-assigned-label { /* The "2 chosen variants" text.*/
+  margin: 0px 5px 0px 0px;
 }
-.var-select-label {
+.var-assigned-clear { /* The clear button.*/
+  --clear-button-size: 19px;
+  display: inline-block;
+  opacity: 0.1;
+  width: var(--clear-button-size);
+  height: var(--clear-button-size);
+  margin: 0px;
+  padding: 0px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  font-size: 1.0em;
+  text-align: center;
+  line-height: var(--clear-button-size);
+}
+.var-assigned-div:hover .var-assigned-clear { /* Becomes more opaque when mouseover parent div.*/
+  opacity: 0.4;
+}
+.var-assigned-div .var-assigned-clear:hover { /* Final form when mouseover directly.*/
+  opacity: 1.0;
+  color: red;
+  background: white;
+  border-color: black;
+}
+.var-select-label { /* Element for each variant in the tree.*/
   display: inline-block;
   margin: 2px 4px 2px 0px;
   padding: 3px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
+  font-size: 12px;
 }
 
 /* Various element settings */
