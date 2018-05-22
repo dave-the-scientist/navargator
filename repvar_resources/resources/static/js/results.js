@@ -14,15 +14,14 @@ repvar.opts.histo = {
 //TODO:
 // - Get export buttons working.
 // - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
-// - I want the histo slider to update in real-time.
-//   - Ready now, just want a more efficient selectNamesByThreshold().
+// - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
 // - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
 //   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
 //   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
-// - Change mention of 'node' to 'variant'.
+// - Change mentions of 'node' to 'variant'.
 
 // =====  Page setup:
 function setupPage() {
@@ -58,7 +57,7 @@ function setupPage() {
       $("#numClustersH2Span").html(repvar.num_variants);
       $("#numClustersSpan").html(repvar.num_variants);
       $("#numNodesSpan").html(repvar.leaves.length);
-      drawTree();
+      drawTree(false);
       checkForClusteringResults();
     },
     error: function(error) { processError(error, "Error loading input data from the server"); }
@@ -280,15 +279,15 @@ function createClusterRow(var_name, table_body) {
   return $("<tr class='cluster-list-row' variant-name='" +var_name+ "'>" +name_td +size_td +avg_dist_td +score_td+ "</tr>");
 }
 function updateClusteredVariantMarkers() {
-  // Colours the representative, available, and ignored nodes.
+  // Colours the representative, available, and ignored nodes. Also adds tooltips to
   var var_name, circle, circle_colour_key;
   for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i];
-    circle = repvar.nodes[var_name].circle;
+    var_name = repvar.leaves[i], node = repvar.nodes[var_name];
+    circle = node.circle;
     if (repvar.variants.indexOf(var_name) != -1) {
       circle_colour_key = (repvar.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
       circle.attr({'r':repvar.opts.sizes.big_marker_radius});
-      changeNodeStateColour(var_name, repvar.nodes[var_name].label_highlight, 'label_mouseover', 'chosen');
+      changeNodeStateColour(var_name, node.label_highlight, 'label_mouseover', 'chosen');
     } else if (repvar.available.indexOf(var_name) != -1) {
       circle_colour_key = 'available';
     } else if (repvar.ignored.indexOf(var_name) != -1) {
@@ -299,20 +298,14 @@ function updateClusteredVariantMarkers() {
     }
     changeNodeStateColour(var_name, circle, 'node_rest', circle_colour_key);
     circle.toFront();
-    circle.attr({title:repvar.nodes[var_name].tooltip});
+    circle.attr({title: node.tooltip});
+    node.label_mouseover.attr({title: node.tooltip});
   }
 }
 
 // =====  Event handlers and callbacks:
 function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
   // Adds an additional handler to each circle.mouseover and .mouseout; doesn't replace the existing handlers.
-  /* TEST
-  cluster_obj.unmouseout(nodeLabelMouseoutHandler); // Doesn't work for some reason.
-  // Currently keeps the nodeLabel mouseover/out/click handlers. Use this to remove them:
-  for (var event_i=0; event_i<cluster_obj.events.length; ++event_i) {
-    cluster_obj.events[event_i].unbind();
-  }
-  delete cluster_obj.events;*/
   circle_obj.mouseover(function() {
     cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
   }).mouseout(function() {

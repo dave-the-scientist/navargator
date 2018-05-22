@@ -1,7 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - If there are none selected, the chosen etc update buttons should read 'clear' instead. Unless the chosen list is empty, at which it should still say update.
+
 // - Move much of setupRunOptions() into a validation function.
 // - See how the assigned_label and select_label elements look if the partial border is rounded.
 //   - Regardless of what looks best, I think I want to use this as a theme throughout (ex on style boxes).
@@ -172,7 +172,6 @@ function setupRunOptions() {
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
     });
-
   });
 }
 function setupVariantSelection() {
@@ -225,6 +224,9 @@ function setupVariantSelection() {
     $("#clearSelectionButton").click();
     updateRunOptions();
   });
+  $("#chosenUpdateButton").button('disable');
+  $("#availUpdateButton").button('disable');
+  $("#ignoreUpdateButton").button('disable');
 }
 $(document).ready(function(){
   // Called once the document has loaded.
@@ -241,6 +243,7 @@ function newTreeLoaded(data_obj) {
   clearInterval(page.maintain_interval_obj);
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   if (repvar.tree_data) {
+    $("#introMessageGroup").remove();
     drawTree();
     updateVarSelectList();
     updateRunOptions();
@@ -397,6 +400,16 @@ function numSelectedCallback() {
     $("#ignoredAssignedDiv").css('background', '');
   }
   repvar.assigned_selected = '';
+  // Update assigned 'Update' buttons:
+  if (repvar.num_selected == 0) {
+    $("#chosenUpdateButton").button('disable');
+    $("#availUpdateButton").button('disable');
+    $("#ignoreUpdateButton").button('disable');
+  } else {
+    $("#chosenUpdateButton").button('enable');
+    $("#availUpdateButton").button('enable');
+    $("#ignoreUpdateButton").button('enable');
+  }
 }
 function addVariantLabelCallbacks(jq_ele, var_name) {
   jq_ele.mouseenter(function() {

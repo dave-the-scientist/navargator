@@ -66,7 +66,7 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newRepvarNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
+  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'node', 'node_rest_colour':repvar.opts.colours.node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':repvar.opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':repvar.opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':repvar.opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':repvar.opts.colours.selection};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
@@ -110,7 +110,7 @@ function clearTree() {
   $("#svgCanvas").empty();
   $("#treeGroup").empty();
 }
-function drawTree() {
+function drawTree(marker_tooltips=true) {
   clearTree();
   loadPhyloSVG(); // Reloads jsPhyloSVG.
 
@@ -139,7 +139,7 @@ function drawTree() {
   $("#svgCanvas > svg").attr("id", "treeSvg");
   repvar.r_paper = phylocanvas.getSvg().svg;
 
-  drawVariantObjects();
+  drawVariantObjects(marker_tooltips);
   drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
 
@@ -149,7 +149,7 @@ function drawTree() {
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
 }
-function drawVariantObjects() {
+function drawVariantObjects(marker_tooltips) {
   // Collects coordinates and angles for nodes and their names, and creates their markers and highlights.
   repvar.nodes = {};
   var text_obj, var_name, var_coords, var_marker;
@@ -159,6 +159,9 @@ function drawVariantObjects() {
     var_coords = parseLeafTextCoords(text_obj);
     var_marker = repvar.r_paper.circle(var_coords.node_x, var_coords.node_y, repvar.opts.sizes.small_marker_radius);
     var_marker.attr({fill:repvar.opts.colours.node, 'stroke-width':0.5});
+    if (marker_tooltips == true) {
+      var_marker.attr({title: var_name});
+    }
     repvar.nodes[var_name] = newRepvarNodeObject();
     $.extend(repvar.nodes[var_name], {
       'circle':var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y
@@ -188,6 +191,7 @@ function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end
     label_mouseover = repvar.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   addNodeLabelEventHandlers(var_name, label_mouseover);
   repvar.nodes[var_name].label_highlight = label_highlight;
+  repvar.nodes[var_name].label_mouseover = label_mouseover;
 }
 function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, end_angle, marker_highlight_radius) {
   var node_x = repvar.nodes[var_name].node_x, node_y = repvar.nodes[var_name].node_y,
@@ -209,13 +213,16 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
 function drawTreeBackgrounds(maxLabelLength) {
   var labels_path_str, angle_offset = treeDrawingParams.scaleAngle / 2.0,
     start_angle = treeDrawingParams.seqs[0][1] - angle_offset,
-    end_angle = treeDrawingParams.seqs[treeDrawingParams.seqs.length-1][1] + angle_offset;
+    end_angle = treeDrawingParams.seqs[treeDrawingParams.seqs.length-1][1] + angle_offset,
+    inside_labels_radius = treeDrawingParams.barChartRadius - maxLabelLength;
   if (repvar.opts.fonts.tree_font_size > 0) {
-    var inside_labels_radius = treeDrawingParams.barChartRadius - maxLabelLength - Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels;
-    labels_path_str = sectorPathString(inside_labels_radius, treeDrawingParams.barChartRadius, start_angle, end_angle);
+    inside_labels_radius -= Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels;
+  }
+  if (repvar.opts.fonts.tree_font_size == 0 || repvar.opts.sizes.bar_chart_height == 0) {
+    var start_pos = secPosition(inside_labels_radius, start_angle);
+    labels_path_str = [["M", start_pos[0], start_pos[1]], secant(inside_labels_radius, start_angle, end_angle, 0)];
   } else {
-    var start_pos = secPosition(treeDrawingParams.barChartRadius, start_angle);
-    labels_path_str = [["M", start_pos[0], start_pos[1]], secant(treeDrawingParams.barChartRadius, start_angle, end_angle, 0)];
+    labels_path_str = sectorPathString(inside_labels_radius, treeDrawingParams.barChartRadius, start_angle, end_angle);
   }
   var labels_outline = repvar.r_paper.path(labels_path_str).attr({fill:'none', 'stroke-width':repvar.opts.sizes.labels_outline, stroke:'black'});
   repvar.tree_background = repvar.r_paper.circle(treeDrawingParams.cx, treeDrawingParams.cy, treeDrawingParams.barChartRadius).attr({fill:repvar.opts.colours.tree_background, stroke:'none', 'stroke-width':0}).toBack();
@@ -238,7 +245,8 @@ function drawBarGraphs() {
       height = roundFloat(dist/max_dist * max_height, 4);
       path_str = sectorPathString(min_radius, min_radius+height,
         var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
-      bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none', title:tooltip});
+      bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none'});
+      bar_chart.insertAfter(repvar.nodes[var_name].label_highlight);
       repvar.nodes[var_name]['bar_chart'] = bar_chart;
     }
     repvar.nodes[var_name].tooltip = tooltip;

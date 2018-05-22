@@ -97,7 +97,14 @@ span {
 }
 #mainTreeDiv {
   width: var(--tree-width);
-  height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
+  /*height: calc(var(--tree-width) + 44px); /*The 44px comes from the total height of an h2 element.*/
+}
+#figureSvg {
+  margin-top: 15px;
+  width: var(--tree-width);
+}
+#svgCanvas {
+  margin: 0px;
 }
 #footerDiv {
   background-color: var(--dark-background-colour);
