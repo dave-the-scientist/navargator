@@ -6,9 +6,10 @@
 #mainLeftDiv {
   display: inline-flex;
   flex-direction: column;
+  --left-col-width: 250px;
 }
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
-  width: 250px;
+  width: var(--left-col-width);
 }
 #mainVariantSelectDiv {
   min-width: 400px;
@@ -21,7 +22,7 @@
   padding: 2px 2px 2px 4px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
-  border-bottom-left-radius: 5% 25%; /* Rounded slash or not? */
+  /*border-bottom-left-radius: 5% 25%; /* Rounded slash or not? */
 }
 .var-assigned-label { /* The "2 chosen variants" text.*/
   margin: 0px 5px 0px 0px;
@@ -55,8 +56,14 @@
   padding: 3px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
-  border-bottom-left-radius: 5% 25%; /* Rounded slash or not? */
+  /*border-bottom-left-radius: 5% 25%; /* Rounded slash or not? */
   font-size: 12px;
+}
+
+/* Score graph settings: */
+#scoreGraphSvg {
+  width: var(--left-col-width);
+  height: 150px;
 }
 
 /* Various element settings */

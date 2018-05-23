@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Repvar input page">
     <meta name="author" content="Dave Curran">
-    <title>Repvar input</title>
+    <title>NaVARgator input page</title>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
     <script src="static/libs/jquery-ui.min.js"></script>
     <script src="static/libs/raphael-min.js"></script>
@@ -51,7 +51,7 @@
           <div id="inputOptionsDiv" class="style-box">
             <h2>Input file</h2>
             <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
-              <label for="upload-file"><b>Upload a tree or Repvar file</b></label>
+              <label for="upload-file"><b>Upload a tree or .nvrgtr file</b></label>
               <input id="uploadFileInput" name="upload-file" type="file">
             </form>
             <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
@@ -85,6 +85,7 @@
 
           <div id="resultsLinksDiv" class="style-box" style="display:none">
             <h2>Results pages</h2>
+            <svg id="scoreGraphSvg" style="display:none" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
             <ul id="resultsLinksList" />
           </div>
         </div>

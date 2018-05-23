@@ -162,6 +162,25 @@ class RepvarDaemon(object):
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
             return json.dumps({'session_id':s_id, 'runs_began':runs_began})
+        @self.server.route(daemonURL('/check-results-done'), methods=['POST'])
+        def check_results_done():
+            s_id = request.form['session_id']
+            vf = self.sessions[s_id]
+            var_nums = request.form.getlist('var_nums[]')
+            var_scores = []
+            dist_scale = 1.0
+            for num in var_nums:
+                num = int(num)
+                params = (num, dist_scale)
+                if params not in vf.cache:
+                    print('Error: attempting to retrieve results for a clustering run that was never started.')
+                    exit()
+                results = vf.cache[params]
+                if results == None:
+                    var_scores.append(False)
+                else:
+                    var_scores.append(sum(results['scores']))
+            return json.dumps({'var_nums':var_nums, 'var_scores':var_scores})
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():

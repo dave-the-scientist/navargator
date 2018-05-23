@@ -25,7 +25,7 @@ var repvar = {
 function showErrorPopup(message, title) {
   $("#errorDialogText").text(message);
   if (!title) {
-    title = "Repvar error";
+    title = "NaVARgator error";
   }
   $("#errorDialog").dialog("option", "title", title);
   $("#errorDialog").dialog("open");

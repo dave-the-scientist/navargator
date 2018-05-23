@@ -35,9 +35,9 @@ function setupPage() {
   repvar.num_variants = url_params[1];
   page.browser_id = generateBrowserId(10);
   console.log('browser ID:', page.browser_id);
-  var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
+  var tree_width_str = $("#mainTreeDiv").css('width');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-  var histo_height = getComputedStyle(document.getElementById("histoSvg")).getPropertyValue("height");
+  var histo_height = $("#histoSvg").css('height');
   repvar.opts.histo.height = parseInt(histo_height.slice(0,-2));
   document.title = '['+repvar.num_variants+'] ' + document.title;
 

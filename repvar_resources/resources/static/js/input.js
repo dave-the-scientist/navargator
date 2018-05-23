@@ -8,8 +8,12 @@
 // - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
 
 // =====  Modified common variables:
-repvar.result_links = {}, repvar.assigned_selected = '';
+repvar.result_links = {'var_nums':[]}, repvar.assigned_selected = '';
 repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
+repvar.check_results_timer = null, repvar.check_results_interval = 500;
+repvar.opts.graph = {
+  'height':null
+};
 // Adds repvar.nodes[var_name].variant_select_label
 
 // =====  Page setup:
@@ -20,8 +24,10 @@ function setupPage() {
   });
   page.session_id = location.search.slice(1);
   page.browser_id = generateBrowserId(10);
-  var tree_width_str = getComputedStyle(document.getElementById("mainTreeDiv")).getPropertyValue("--tree-width");
+  var tree_width_str = $("#mainTreeDiv").css('width');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  var score_graph_height = $("#scoreGraphSvg").css('height');
+  repvar.opts.graph.height = parseInt(score_graph_height.slice(0,-2));
   setupTreeElements();
   setupRunOptions();
   setupVariantSelection();
@@ -312,23 +318,71 @@ function updateCAIVariantMarkers() {
   }
 }
 function clearHideResultsPane() {
-  repvar.result_links = {};
+  repvar.result_links = {'var_nums':[]};
   $("#resultsLinksDiv").hide();
+  $("#scoreGraphSvg").hide();
   $(".result-link-li").remove();
 }
 function updateResultsPane(runs_began) {
-  var var_num, results_url, result_description, result_link_obj;
+  var var_num, results_url, result_description, result_link_obj, result_list_obj;
   for (var i=0; i<runs_began.length; ++i) {
     var_num = runs_began[i];
     results_url = page.server_url + '/results?' + page.session_id + '_' + var_num;
-    result_description = var_num + ' representative variants';
-    result_link_obj = $('<a>', {
-      text:result_description, title:result_description, href:results_url, target:'_blank'
-    }).wrap('<li class="result-link-li">').parent();
-    $("#resultsLinksList").append(result_link_obj);
-    repvar.result_links[var_num] = results_url;
+    result_description = var_num + ' variants';
+    result_link_obj = $('<a href="'+results_url+'" title="'+result_description+'" target="_blank">'+result_description+' [processing...]</a>');
+    result_list_obj = result_link_obj.wrap('<li class="result-link-li">').parent();
+    $("#resultsLinksList").append(result_list_obj);
+    repvar.result_links[var_num] = {'url':results_url, 'link':result_link_obj, 'score':null};
+    repvar.result_links.var_nums.push(var_num);
   }
+  repvar.result_links.var_nums.sort();
   $("#resultsLinksDiv").show();
+  clearTimeout(repvar.check_results_timer);
+  checkIfProcessingDone();
+}
+function checkIfProcessingDone() {
+  $.ajax({
+    url: daemonURL('/check-results-done'),
+    type: 'POST',
+    data: {'session_id': page.session_id, 'var_nums': repvar.result_links.var_nums},
+    success: function(data_obj) {
+      var data = $.parseJSON(data_obj);
+      var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
+      if (JSON.stringify(ret_var_nums) != JSON.stringify(repvar.result_links.var_nums)) {
+        return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
+      }
+      var draw_graph = true, score, var_num;
+      for (var i=0; i<data.var_scores.length; ++i) {
+        score = data.var_scores[i];
+        var_num = ret_var_nums[i];
+        if (score == false) {
+          draw_graph = false;
+        } else if (repvar.result_links[var_num].score == null) {
+          repvar.result_links[var_num].score = score;
+          repvar.result_links[var_num].link.html(var_num+' variants ['+roundFloat(score, 4)+']');
+        } else if (repvar.result_links[var_num].score != score) {
+          showErrorPopup("Error: scores from the server don't match existing scores.");
+        }
+      }
+      if (draw_graph == false) {
+        repvar.check_results_timer = setTimeout(checkIfProcessingDone, repvar.check_results_interval);
+      } else {
+        drawScoresGraph();
+      }
+    },
+    error: function(error) { processError(error, "Error checking if the results have finished"); }
+  });
+}
+function drawScoresGraph() {
+  // There should be a default <g> in scoreGraphSvg that says Processing...
+  // If only 1 score, should be no default and no graph.
+  // If >1 scores, hide default image, don't destroy any existing graph, and draw/update the line graph.
+  console.log('drawing graph...', repvar.result_links.var_nums);
+  if (repvar.result_links.var_nums.length == 1) {
+    console.log('only 1 result');
+  } else {
+
+  }
 }
 
 // =====  Callback and event handlers:
