@@ -65,6 +65,15 @@
   width: var(--left-col-width);
   height: 150px;
 }
+.score-axis-label {
+  font-family: var(--font-family);
+  font-size: 14px;
+}
+.score-line {
+  fill: none;
+  stroke: black;
+  stroke-width: 2px;
+}
 
 /* Various element settings */
 #clustMethodSelect {

@@ -8,11 +8,12 @@
 // - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
 
 // =====  Modified common variables:
-repvar.result_links = {'var_nums':[]}, repvar.assigned_selected = '';
+repvar.result_links = {'var_nums':[], 'scores':[]}, repvar.assigned_selected = '';
 repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
 repvar.check_results_timer = null, repvar.check_results_interval = 500;
 repvar.opts.graph = {
-  'height':null
+  'width':null, 'height':null, 'margin':{top:7, right:20, bottom:35, left:37},
+  'g':null,
 };
 // Adds repvar.nodes[var_name].variant_select_label
 
@@ -26,6 +27,8 @@ function setupPage() {
   page.browser_id = generateBrowserId(10);
   var tree_width_str = $("#mainTreeDiv").css('width');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  var score_graph_width = $("#scoreGraphSvg").css('width');
+  repvar.opts.graph.width = parseInt(score_graph_width.slice(0,-2));
   var score_graph_height = $("#scoreGraphSvg").css('height');
   repvar.opts.graph.height = parseInt(score_graph_height.slice(0,-2));
   setupTreeElements();
@@ -318,7 +321,7 @@ function updateCAIVariantMarkers() {
   }
 }
 function clearHideResultsPane() {
-  repvar.result_links = {'var_nums':[]};
+  repvar.result_links = {'var_nums':[], 'scores':[]};
   $("#resultsLinksDiv").hide();
   $("#scoreGraphSvg").hide();
   $(".result-link-li").remove();
@@ -367,6 +370,7 @@ function checkIfProcessingDone() {
       if (draw_graph == false) {
         repvar.check_results_timer = setTimeout(checkIfProcessingDone, repvar.check_results_interval);
       } else {
+        repvar.result_links.scores = data.var_scores;
         drawScoresGraph();
       }
     },
@@ -377,11 +381,63 @@ function drawScoresGraph() {
   // There should be a default <g> in scoreGraphSvg that says Processing...
   // If only 1 score, should be no default and no graph.
   // If >1 scores, hide default image, don't destroy any existing graph, and draw/update the line graph.
-  console.log('drawing graph...', repvar.result_links.var_nums);
   if (repvar.result_links.var_nums.length == 1) {
     console.log('only 1 result');
   } else {
+    var total_width = repvar.opts.graph.width, total_height = repvar.opts.graph.height, margin = repvar.opts.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
+    var min_var = repvar.result_links.var_nums[0],
+      max_var = repvar.result_links.var_nums[repvar.result_links.var_nums.length-1];
+    // Set up svg objects:
+    var svg = d3.select("#scoreGraphSvg")
+      .attr("width", total_width)
+      .attr("height", total_height);
+    var g = svg.append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    var x = d3.scaleLinear()
+      .domain([min_var, max_var])
+      .range([0, width]);
+    var y = d3.scaleLinear()
+      .domain([0, Math.ceil(d3.max(repvar.result_links.scores))])
+      .range([height, 0]); // The range call can be done once, and the domain call done dynamically.
+    var score_line = d3.line()
+      .x(function(d,i) { return x(repvar.result_links.var_nums[i]); })
+      .y(function(d,i) { return y(d); });
+    g.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x)
+        .tickValues(repvar.result_links.var_nums)
+        .tickFormat(d3.format("d"))
+      );
+    g.append("text")
+      .attr("class", "score-axis-label")
+      .attr("text-anchor", "middle")
+      .attr("x", width / 2)
+      .attr("y", height + 30)
+      .text("Number of variants");
+    g.append("g")
+      .call(d3.axisLeft(y)
+        .tickValues(y.ticks(3))
+    );
+    g.append("text")
+      .attr("class", "score-axis-label")
+      .attr("text-anchor", "middle")
+      .attr("x", 0 - height/2)
+      .attr("y", 0 - 20)
+      .attr("transform", "rotate(-90)")
+      .text("Total score");
+    /*
+    g.append("path")
+      .datum(repvar.result_links.scores)
+      .attr("class", "score-line")
+      .attr("d", score_line);
+    */
+    var line_graph = g.selectAll("path").datum(repvar.result_links.scores);
+    line_graph.enter().append("path")
+      .attr("class", "score-line");
+    line_graph.transition()
+      .attr("d", score_line);
 
+    $("#scoreGraphSvg").show();
   }
 }
 
