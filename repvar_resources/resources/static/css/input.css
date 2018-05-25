@@ -71,7 +71,7 @@
 }
 .score-line {
   fill: none;
-  stroke: black;
+  stroke: var(--dark-background-colour);
   stroke-width: 2px;
 }
 

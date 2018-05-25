@@ -153,15 +153,13 @@ class RepvarDaemon(object):
             vars_range = int(request.form['vars_range'])
             dist_scale = 1.0
             cluster_method = request.form['cluster_method']
-            runs_began = []
             for num in range(num_vars, vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
-                    runs_began.append(num)
                     vf.cache[params] = None
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
-            return json.dumps({'session_id':s_id, 'runs_began':runs_began})
+            return json.dumps({'session_id':s_id})
         @self.server.route(daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
             s_id = request.form['session_id']

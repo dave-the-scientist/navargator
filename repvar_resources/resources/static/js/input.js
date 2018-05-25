@@ -1,19 +1,24 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-
+// - In run options, I want a toggle button (big button with 2 faces, one selected one not) to select between Find single variant & Find range of variants, instead of a check box.
+//   - The 'auto open' option should only be available in 'single' mode. Hidden or just disabled?
+//   - The 2nd spinner in 'range' mode should be automatically updated when the lower number is increased past the 2nd's current value (should also set the 2nd's minimum). I'd also like it beside the first instead of below it.
+// - In the variant selection pane, the 'currently selected nodes (replace with variants)' text, select all, clear buttons should be in a div, as should the 'chosen/etc' labels. The text/buttons should be to the right of the 'chosen/etc' labels, and only drop below if the selection pane is too narrow. Better use of space.
+//   - Should maybe be a faint horizontal dividing line between those controls and the many variant labels.
+// - repvar.check_results_timer and .check_results_interval should be in the 'page' object, not the 'repvar' object.
 // - Move much of setupRunOptions() into a validation function.
-// - See how the assigned_label and select_label elements look if the partial border is rounded.
-//   - Regardless of what looks best, I think I want to use this as a theme throughout (ex on style boxes).
-// - Would be nice to have a graph showing the total score for each number of clusters. Have it show up in the 'Repvar results pages' box, once you cluster 3 or more. Would help select useful number.
+// - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
+// - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
+
 
 // =====  Modified common variables:
 repvar.result_links = {'var_nums':[], 'scores':[]}, repvar.assigned_selected = '';
 repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
 repvar.check_results_timer = null, repvar.check_results_interval = 500;
 repvar.opts.graph = {
-  'width':null, 'height':null, 'margin':{top:7, right:20, bottom:35, left:37},
-  'g':null,
+  'width':null, 'height':null, 'margin':{top:7, right:27, bottom:35, left:37},
+  'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
 };
 // Adds repvar.nodes[var_name].variant_select_label
 
@@ -33,6 +38,7 @@ function setupPage() {
   repvar.opts.graph.height = parseInt(score_graph_height.slice(0,-2));
   setupTreeElements();
   setupRunOptions();
+  setupScoresGraph();
   setupVariantSelection();
   setupUploadSaveButtons();
 
@@ -147,8 +153,10 @@ function setupRunOptions() {
       }
     }
     var num_vars_int = parseInt(num_vars), vars_range_int = parseInt(vars_range),
-      cluster_method = $("#clustMethodSelect").val(), do_find_vars = false, first_result_page = null;
+      var_nums = [], cluster_method = $("#clustMethodSelect").val(), do_find_vars = false,
+      auto_result_page = null;
     for (var i=num_vars_int; i<=vars_range_int; ++i) {
+      var_nums.push(i);
       if (!repvar.result_links.hasOwnProperty(i)) {
         do_find_vars = true;
       }
@@ -156,10 +164,11 @@ function setupRunOptions() {
     if (do_find_vars == false) {
       return false;
     }
-    var auto_open = ($("#autoOpenCheckbox").is(':checked'));
+    // auto_open is only available for single runs, not ranges.
+    var auto_open = ($("#autoOpenCheckbox").is(':checked') && !$("#rangeCheckbox").is(':checked'));
     if (auto_open == true) {
       // Have to open the page directly from the user's click to avoid popup blockers.
-      first_result_page = window.open('', '_blank');
+      auto_result_page = window.open('', '_blank');
     }
     $.ajax({
       url: daemonURL('/find-variants'),
@@ -167,21 +176,65 @@ function setupRunOptions() {
       data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'vars_range':vars_range},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        var new_s_id = data.session_id, runs_began = data.runs_began;
+        var new_s_id = data.session_id;
         if (new_s_id != page.session_id) {
           page.session_id = new_s_id;
           clearHideResultsPane();
         }
-        if (runs_began.length > 0) {
-          updateResultsPane(runs_began);
-          if (auto_open == true && first_result_page != null) {
-            first_result_page.location.href = repvar.result_links[runs_began[0]];
-          }
+        updateResultsPane(var_nums);
+        if (auto_open == true && auto_result_page != null) {
+          auto_result_page.location.href = repvar.result_links[var_nums[0]].url;
         }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
     });
   });
+}
+function setupScoresGraph() {
+  var total_width = repvar.opts.graph.width, total_height = repvar.opts.graph.height, margin = repvar.opts.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
+  // Set up svg and g objects:
+  var svg = d3.select("#scoreGraphSvg")
+    .attr("width", total_width)
+    .attr("height", total_height);
+  repvar.opts.graph.g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  // Set up graphing functions:
+  repvar.opts.graph.x_fxn = d3.scaleLinear()
+    .range([0, width]);
+  repvar.opts.graph.y_fxn = d3.scaleLinear()
+    .range([height, 0]);
+  repvar.opts.graph.line_fxn = d3.line()
+    .x(function(d,i) { return repvar.opts.graph.x_fxn(repvar.result_links.var_nums[i]); })
+    .y(function(d,i) { return repvar.opts.graph.y_fxn(d); });
+  // Set up graph axes:
+  repvar.opts.graph.x_axis = d3.axisBottom(repvar.opts.graph.x_fxn)
+    .tickFormat(d3.format("d"));
+  repvar.opts.graph.g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(repvar.opts.graph.x_axis);
+  repvar.opts.graph.y_axis = d3.axisLeft(repvar.opts.graph.y_fxn)
+    .tickFormat(d3.format("d"));
+  repvar.opts.graph.g.append("g")
+    .attr("class", "y-axis")
+    .call(repvar.opts.graph.y_axis);
+  // Set up axis labels:
+  repvar.opts.graph.g.append("text") // x axis
+    .attr("class", "score-axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + 30)
+    .text("Number of variants");
+  repvar.opts.graph.g.append("text") // y axis
+    .attr("class", "score-axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", 0 - height/2)
+    .attr("y", 0 - 23)
+    .attr("transform", "rotate(-90)")
+    .text("Tree score");
+  // Set up the graph line:
+  repvar.opts.graph.g.append("path")
+    .attr("class", "score-line");
 }
 function setupVariantSelection() {
   $("#selectAllButton").click(function() {
@@ -326,21 +379,35 @@ function clearHideResultsPane() {
   $("#scoreGraphSvg").hide();
   $(".result-link-li").remove();
 }
-function updateResultsPane(runs_began) {
-  var var_num, results_url, result_description, result_link_obj, result_list_obj;
-  for (var i=0; i<runs_began.length; ++i) {
-    var_num = runs_began[i];
+function updateResultsPane(var_nums) {
+  var var_num, results_url, result_description, result_link_obj, result_list_obj,
+    links_list = $("#resultsLinksList");
+  // Add links for the new runs into the results pane:
+  for (var i=0; i<var_nums.length; ++i) {
+    var_num = var_nums[i];
+    if (repvar.result_links.hasOwnProperty(var_num)) { continue; }
     results_url = page.server_url + '/results?' + page.session_id + '_' + var_num;
     result_description = var_num + ' variants';
     result_link_obj = $('<a href="'+results_url+'" title="'+result_description+'" target="_blank">'+result_description+' [processing...]</a>');
     result_list_obj = result_link_obj.wrap('<li class="result-link-li">').parent();
-    $("#resultsLinksList").append(result_list_obj);
+    result_list_obj.attr("variantNumber", var_num);
+    links_list.append(result_list_obj);
     repvar.result_links[var_num] = {'url':results_url, 'link':result_link_obj, 'score':null};
     repvar.result_links.var_nums.push(var_num);
   }
-  repvar.result_links.var_nums.sort();
+  // Sort the internal representation of the results:
+  repvar.result_links.var_nums.sort(function(a,b) { return a-b; });
+  // Sort all of the links in the results pane:
+  var sorted_links = $(".result-link-li").get();
+  sorted_links.sort(function(a,b) {
+    return $(a).attr("variantNumber") - $(b).attr("variantNumber");
+  });
+  $.each(sorted_links, function(i, li) {
+    links_list.append(li); // Removes li from it's current position in links_list, adds it to the end.
+  });
+  // Act on the new results list:
   $("#resultsLinksDiv").show();
-  clearTimeout(repvar.check_results_timer);
+  clearTimeout(repvar.check_results_timer); // In case it's still checking for a previous run.
   checkIfProcessingDone();
 }
 function checkIfProcessingDone() {
@@ -352,6 +419,7 @@ function checkIfProcessingDone() {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
       if (JSON.stringify(ret_var_nums) != JSON.stringify(repvar.result_links.var_nums)) {
+        console.log('Aborting checkIfProcessingDone(), as the returned list does not match');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
       var draw_graph = true, score, var_num;
@@ -371,72 +439,39 @@ function checkIfProcessingDone() {
         repvar.check_results_timer = setTimeout(checkIfProcessingDone, repvar.check_results_interval);
       } else {
         repvar.result_links.scores = data.var_scores;
-        drawScoresGraph();
+        updateScoreGraph();
       }
     },
     error: function(error) { processError(error, "Error checking if the results have finished"); }
   });
 }
-function drawScoresGraph() {
-  // There should be a default <g> in scoreGraphSvg that says Processing...
-  // If only 1 score, should be no default and no graph.
-  // If >1 scores, hide default image, don't destroy any existing graph, and draw/update the line graph.
+function updateScoreGraph() {
   if (repvar.result_links.var_nums.length == 1) {
-    console.log('only 1 result');
+    // No action currently taken.
   } else {
-    var total_width = repvar.opts.graph.width, total_height = repvar.opts.graph.height, margin = repvar.opts.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
+    // Update x and y domains:
     var min_var = repvar.result_links.var_nums[0],
       max_var = repvar.result_links.var_nums[repvar.result_links.var_nums.length-1];
-    // Set up svg objects:
-    var svg = d3.select("#scoreGraphSvg")
-      .attr("width", total_width)
-      .attr("height", total_height);
-    var g = svg.append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-    var x = d3.scaleLinear()
-      .domain([min_var, max_var])
-      .range([0, width]);
-    var y = d3.scaleLinear()
-      .domain([0, Math.ceil(d3.max(repvar.result_links.scores))])
-      .range([height, 0]); // The range call can be done once, and the domain call done dynamically.
-    var score_line = d3.line()
-      .x(function(d,i) { return x(repvar.result_links.var_nums[i]); })
-      .y(function(d,i) { return y(d); });
-    g.append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x)
-        .tickValues(repvar.result_links.var_nums)
-        .tickFormat(d3.format("d"))
-      );
-    g.append("text")
-      .attr("class", "score-axis-label")
-      .attr("text-anchor", "middle")
-      .attr("x", width / 2)
-      .attr("y", height + 30)
-      .text("Number of variants");
-    g.append("g")
-      .call(d3.axisLeft(y)
-        .tickValues(y.ticks(3))
+    repvar.opts.graph.x_fxn.domain(
+      [min_var, max_var]
     );
-    g.append("text")
-      .attr("class", "score-axis-label")
-      .attr("text-anchor", "middle")
-      .attr("x", 0 - height/2)
-      .attr("y", 0 - 20)
-      .attr("transform", "rotate(-90)")
-      .text("Total score");
-    /*
-    g.append("path")
-      .datum(repvar.result_links.scores)
-      .attr("class", "score-line")
-      .attr("d", score_line);
-    */
-    var line_graph = g.selectAll("path").datum(repvar.result_links.scores);
-    line_graph.enter().append("path")
-      .attr("class", "score-line");
-    line_graph.transition()
-      .attr("d", score_line);
-
+    repvar.opts.graph.y_fxn.domain(
+      [ Math.floor(d3.min(repvar.result_links.scores)),
+        Math.ceil(d3.max(repvar.result_links.scores)) ]
+    );
+    // Update x and y axes with the new domains:
+    repvar.opts.graph.x_axis.tickValues(repvar.result_links.var_nums);
+    repvar.opts.graph.y_axis.tickValues(repvar.opts.graph.y_fxn.ticks(3));
+    repvar.opts.graph.g.select(".x-axis")
+      .transition()
+      .call(repvar.opts.graph.x_axis);
+    repvar.opts.graph.g.select(".y-axis")
+      .transition()
+      .call(repvar.opts.graph.y_axis);
+    // Update the graph line:
+    repvar.opts.graph.g.select(".score-line")
+      .transition()
+      .attr("d", function() { return repvar.opts.graph.line_fxn(repvar.result_links.scores); });
     $("#scoreGraphSvg").show();
   }
 }
