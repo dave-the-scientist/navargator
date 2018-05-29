@@ -22,6 +22,7 @@ repvar.opts.histo = {
 //   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Change mentions of 'node' to 'variant'.
+// - I don't love the singleton cluster colour of dark blue. Maybe a red/orange would be better. Want them to jump out, and having negative connotations is good.
 
 // =====  Page setup:
 function setupPage() {

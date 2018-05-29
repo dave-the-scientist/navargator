@@ -150,10 +150,10 @@ class RepvarDaemon(object):
             s_id = self.update_or_copy_vf(s_id)
             vf = self.sessions[s_id]
             num_vars = int(request.form['num_vars'])
-            vars_range = int(request.form['vars_range'])
+            num_vars_range = int(request.form['num_vars_range'])
             dist_scale = 1.0
             cluster_method = request.form['cluster_method']
-            for num in range(num_vars, vars_range + 1):
+            for num in range(num_vars, num_vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
                     vf.cache[params] = None

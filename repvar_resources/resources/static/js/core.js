@@ -124,7 +124,8 @@ function validateSpinner(spinner, description) {
         step = spinner.spinner("option", "step"), msg;
     if (max) { msg = description+" must be between "+min+" and "+max; }
     else { msg = description+" must be greater than "+min; }
-    msg = msg+", and be a multiple of "+step+".";
+    if (step == 1) { msg = msg+", and be an integer value."; }
+    else { msg = msg+", and be a multiple of "+step+"."; }
     showErrorPopup(msg, "Parameter error");
     return false;
   }

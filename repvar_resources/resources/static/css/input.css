@@ -6,13 +6,14 @@
 #mainLeftDiv {
   display: inline-flex;
   flex-direction: column;
-  --left-col-width: 300px;
+  --left-col-width: 250px;
 }
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: var(--left-col-width);
 }
 #mainVariantSelectDiv {
-  min-width: 400px;
+  min-width: 280px;/* 400px;*/
+  margin-right: 0px;
 }
 
 /* Run options: */
@@ -42,32 +43,32 @@
   text-align: center;
   color: black;
   background: linear-gradient(#FAFAFA, #DCDCDC);
-  border: 1px solid #999999;
-  box-shadow: inset 4px 4px 3px rgba(255,255,255,.3), inset -2px -2px 3px rgba(201,201,201,.5);
+  border: 1px solid #8A8A8A;
+  box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
 }
 .toggle-button-label-left {
   border-top-left-radius: var(--toggle-button-border-radius);
   border-bottom-left-radius: var(--toggle-button-border-radius);
+  box-shadow: inset 4px 4px 4px rgba(255,255,255,.3), inset -2px -4px 4px rgba(201,201,201,.5);
 }
 .toggle-button-label-right {
   border-top-right-radius: var(--toggle-button-border-radius);
   border-bottom-right-radius: var(--toggle-button-border-radius);
+  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -4px -4px 4px rgba(201,201,201,.5);
+}
+.toggle-button-label-left.toggle-button-label-right {
+  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -2px -4px 4px rgba(201,201,201,.5);
 }
 .toggle-button-label:hover {
   border-color: #4F4F4F;
 }
 .toggle-button-label:active, .toggle-button-input:checked + .toggle-button-label {
+  /* The "pushed-in" look for the selected and active button states.*/
   background: linear-gradient(#DCDCDC, #FAFAFA);
-  box-shadow: inset -4px -4px 3px rgba(255,255,255,.3), inset 2px 2px 3px rgba(201,201,201,.5);
-}
-#singleRunLabel {
-
-}
-#multipleRunLabel {
-
+  box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
 }
 #clustMethodSelect {
-  width: 125px;
+  width: 110px;
 }
 #findVariantsButton {
   width: 100%;
@@ -77,6 +78,24 @@
 }
 
 /* Variant assignment and selection settings: */
+#topVariantSelectDiv {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin: 0px;
+}
+#varAssignTable {
+  margin-right: 15px;/* 15px; but I want it to be 0 if parent div wraps*/
+  margin-bottom: 10px;
+}
+#selectedVariantsDiv {
+  display: inline-block;
+  margin-bottom: 10px;
+  min-width: 218px;
+}
+#variantSelectHr {
+  margin-top: 0px;
+  margin-bottom: 10px;
+}
 .var-assigned-div { /* Box containing holding "2 chosen variants" and clear button */
   display: inline-block;
   margin: 0px 5px 0px 0px;

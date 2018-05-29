@@ -1,27 +1,28 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - In the variant selection pane, the 'currently selected nodes (replace with variants)' text, select all, clear buttons should be in a div, as should the 'chosen/etc' labels. The text/buttons should be to the right of the 'chosen/etc' labels, and only drop below if the selection pane is too narrow. Better use of space.
-//   - Should maybe be a faint horizontal dividing line between those controls and the many variant labels.
-// - repvar.check_results_timer and .check_results_interval should be in the 'page' object, not the 'repvar' object.
-// - Move much of setupRunOptions() into a validation function.
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
 // - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
 // - I love the simple animations on hover. Would be great if I find a use for them.
 //   - From the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile
-//   - Maybe just make the X (from assign labels) spin on hover
+//   - Maybe just make the X (from assign labels) spin on hover. Or, could replace that with a 'hamburger' button, that morphs into an X and the 'update' button on hover.
+// - I'd like to design a better 'Selected variants: X' panel (including select all and clear all buttons).
+//   - Another candidate for one of those morphing hamburger buttons.
+//   - If I did compact that a little (even if I don't at all), I could move it to the top-left corner of the tree (on both input and results pages).
 // - The header could use some design work. Apply some of the gradients/shadowing from https://designmodo.com/3d-css3-button/
+// - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
+// - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree (after dealing with the H2; an idea might come from that).
 
 
 // =====  Modified common variables:
+page.check_results_timer = null, page.check_results_interval = 500;
 repvar.result_links = {'var_nums':[], 'scores':[]}, repvar.assigned_selected = '';
 repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
-repvar.check_results_timer = null, repvar.check_results_interval = 500;
 repvar.opts.graph = {
   'width':null, 'height':null, 'margin':{top:7, right:27, bottom:35, left:37},
   'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
 };
-// Adds repvar.nodes[var_name].variant_select_label
+// Also adds repvar.nodes[var_name].variant_select_label
 
 // =====  Page setup:
 function setupPage() {
@@ -121,8 +122,8 @@ function setupUploadSaveButtons() {
 function setupRunOptions() {
   $("#numVarSpinner").spinner({
     min: 2, max: null,
-    numberFormat: 'N0', step: 1,
-  }).spinner('value', 3);
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 2);
   $("#rangeSpinner").spinner({
     min: 2, max: null,
     numberFormat: 'N0', step: 1
@@ -149,12 +150,10 @@ function setupRunOptions() {
   // Button callbacks:
   $("#singleRunCheckbox, #multipleRunCheckbox").change(function() {
     if ($("#singleRunCheckbox").is(':checked')) {
-      //$("#rangeSpinner").spinner('disable');
       $(".single-run-only").css('visibility', 'visible');
       $(".multiple-run-only").css('visibility', 'hidden');
       $("#rangeSpinner").parent().css('visibility', 'hidden');
     } else {
-      //$("#rangeSpinner").spinner('enable');
       $(".single-run-only").css('visibility', 'hidden');
       $(".multiple-run-only").css('visibility', 'visible');
       $("#rangeSpinner").parent().css('visibility', 'visible');
@@ -162,32 +161,15 @@ function setupRunOptions() {
   });
 
   $("#findVariantsButton").click(function() {
-    if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
-      validateSpinner($("#rangeSpinner"), "Range of variants") )) {
+    var ret = validateFindVariantsCall();
+    if (ret == false) {
       return false;
+    } else {
+      var num_vars = ret.num_vars, num_vars_range = ret.num_vars_range,
+        cluster_method = $("#clustMethodSelect").val();
     }
-    var num_vars = $("#numVarSpinner").spinner('value'), vars_range = num_vars;
-    if ($("#multipleRunCheckbox").is(':checked')) {
-      vars_range = $("#rangeSpinner").spinner('value');
-      if (vars_range < num_vars) {
-        showErrorPopup("The 'Variants to find' values must go from low to high.");
-        return false;
-      }
-    }
-    var num_vars_int = parseInt(num_vars), vars_range_int = parseInt(vars_range),
-      var_nums = [], cluster_method = $("#clustMethodSelect").val(), do_find_vars = false,
+    var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked')),
       auto_result_page = null;
-    for (var i=num_vars_int; i<=vars_range_int; ++i) {
-      var_nums.push(i);
-      if (!repvar.result_links.hasOwnProperty(i)) {
-        do_find_vars = true;
-      }
-    }
-    if (do_find_vars == false) {
-      return false;
-    }
-    // auto_open is only available for single runs, not ranges.
-    var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked'));
     if (auto_open == true) {
       // Have to open the page directly from the user's click to avoid popup blockers.
       auto_result_page = window.open('', '_blank');
@@ -195,7 +177,7 @@ function setupRunOptions() {
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'vars_range':vars_range},
+      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         var new_s_id = data.session_id;
@@ -203,9 +185,9 @@ function setupRunOptions() {
           page.session_id = new_s_id;
           clearHideResultsPane();
         }
-        updateResultsPane(var_nums);
+        updateResultsPane(num_vars, num_vars_range);
         if (auto_open == true && auto_result_page != null) {
-          auto_result_page.location.href = repvar.result_links[var_nums[0]].url;
+          auto_result_page.location.href = repvar.result_links[num_vars].url;
         }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
@@ -401,12 +383,11 @@ function clearHideResultsPane() {
   $("#scoreGraphSvg").hide();
   $(".result-link-li").remove();
 }
-function updateResultsPane(var_nums) {
-  var var_num, results_url, result_description, result_link_obj, result_list_obj,
+function updateResultsPane(num_vars, num_vars_range) {
+  var results_url, result_description, result_link_obj, result_list_obj,
     links_list = $("#resultsLinksList");
   // Add links for the new runs into the results pane:
-  for (var i=0; i<var_nums.length; ++i) {
-    var_num = var_nums[i];
+  for (var var_num=num_vars; var_num<=num_vars_range; ++var_num) {
     if (repvar.result_links.hasOwnProperty(var_num)) { continue; }
     results_url = page.server_url + '/results?' + page.session_id + '_' + var_num;
     result_description = var_num + ' variants';
@@ -429,7 +410,7 @@ function updateResultsPane(var_nums) {
   });
   // Act on the new results list:
   $("#resultsLinksDiv").show();
-  clearTimeout(repvar.check_results_timer); // In case it's still checking for a previous run.
+  clearTimeout(page.check_results_timer); // In case it's still checking for a previous run.
   checkIfProcessingDone();
 }
 function checkIfProcessingDone() {
@@ -458,7 +439,7 @@ function checkIfProcessingDone() {
         }
       }
       if (draw_graph == false) {
-        repvar.check_results_timer = setTimeout(checkIfProcessingDone, repvar.check_results_interval);
+        page.check_results_timer = setTimeout(checkIfProcessingDone, page.check_results_interval);
       } else {
         repvar.result_links.scores = data.var_scores;
         updateScoreGraph();
@@ -588,7 +569,7 @@ function addVariantLabelCallbacks(jq_ele, var_name) {
   });
 }
 
-// =====  Data parsing:
+// =====  Data parsing / validation:
 function parseRepvarData(data_obj) {
   var data = $.parseJSON(data_obj);
   page.session_id = data.session_id;
@@ -603,4 +584,30 @@ function parseRepvarData(data_obj) {
     clearInterval(page.maintain_interval_obj);
     page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   }
+}
+function validateFindVariantsCall() {
+  if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
+    validateSpinner($("#rangeSpinner"), "Range of variants") )) {
+    return false;
+  }
+  var num_vars = parseInt($("#numVarSpinner").spinner('value')), num_vars_range = num_vars;
+  if ($("#multipleRunCheckbox").is(':checked')) {
+    num_vars_range = parseInt($("#rangeSpinner").spinner('value'));
+    if (num_vars_range < num_vars) {
+      showErrorPopup("The 'Variants to find' values be entered from low to high.");
+      return false;
+    }
+  }
+  var num_vars_int = parseInt(num_vars), num_vars_range_int = parseInt(num_vars_range),
+    do_find_vars = false;
+  for (var i=num_vars_int; i<=num_vars_range_int; ++i) {
+    if (!repvar.result_links.hasOwnProperty(i)) {
+      do_find_vars = true;
+    }
+  }
+  if (do_find_vars == false) {
+    return false;
+  }
+
+  return {'num_vars':num_vars, 'num_vars_range':num_vars_range};
 }
