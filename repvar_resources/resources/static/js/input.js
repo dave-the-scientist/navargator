@@ -1,15 +1,16 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - In run options, I want a toggle button (big button with 2 faces, one selected one not) to select between Find single variant & Find range of variants, instead of a check box.
-//   - The 'auto open' option should only be available in 'single' mode. Hidden or just disabled?
-//   - The 2nd spinner in 'range' mode should be automatically updated when the lower number is increased past the 2nd's current value (should also set the 2nd's minimum). I'd also like it beside the first instead of below it.
 // - In the variant selection pane, the 'currently selected nodes (replace with variants)' text, select all, clear buttons should be in a div, as should the 'chosen/etc' labels. The text/buttons should be to the right of the 'chosen/etc' labels, and only drop below if the selection pane is too narrow. Better use of space.
 //   - Should maybe be a faint horizontal dividing line between those controls and the many variant labels.
 // - repvar.check_results_timer and .check_results_interval should be in the 'page' object, not the 'repvar' object.
 // - Move much of setupRunOptions() into a validation function.
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
 // - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
+// - I love the simple animations on hover. Would be great if I find a use for them.
+//   - From the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile
+//   - Maybe just make the X (from assign labels) spin on hover
+// - The header could use some design work. Apply some of the gradients/shadowing from https://designmodo.com/3d-css3-button/
 
 
 // =====  Modified common variables:
@@ -120,35 +121,56 @@ function setupUploadSaveButtons() {
 function setupRunOptions() {
   $("#numVarSpinner").spinner({
     min: 2, max: null,
-    numberFormat: 'N0', step: 1
+    numberFormat: 'N0', step: 1,
   }).spinner('value', 3);
   $("#rangeSpinner").spinner({
     min: 2, max: null,
-    numberFormat: 'N0', step: 1,
-    disabled: true
+    numberFormat: 'N0', step: 1
   }).spinner('value', 3);
-  $("#rangeCheckbox")[0].checked = false;
+  $("#numVarSpinner").on('spin', function(event, ui) {
+    var cur_val = ui.value,
+      range_spin = $("#rangeSpinner"), range_val = range_spin.spinner('value');
+    if (cur_val > range_val) {
+      range_spin.spinner('value', cur_val);
+    }
+  });
+  $("#rangeSpinner").on('spin', function(event, ui) {
+    var cur_val = ui.value,
+      single_spin = $("#numVarSpinner"), single_val = single_spin.spinner('value');
+    if (cur_val < single_val) {
+      single_spin.spinner('value', cur_val);
+    }
+  });
+  $(".multiple-run-only").css('visibility', 'hidden');
+  $("#rangeSpinner").parent().css('visibility', 'hidden');
   $("#clustMethodSelect").selectmenu();
   //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
 
   // Button callbacks:
-  $("#rangeCheckbox").change(function() {
-    if ($(this).is(':checked')) {
-      $("#rangeSpinner").spinner('enable');
+  $("#singleRunCheckbox, #multipleRunCheckbox").change(function() {
+    if ($("#singleRunCheckbox").is(':checked')) {
+      //$("#rangeSpinner").spinner('disable');
+      $(".single-run-only").css('visibility', 'visible');
+      $(".multiple-run-only").css('visibility', 'hidden');
+      $("#rangeSpinner").parent().css('visibility', 'hidden');
     } else {
-      $("#rangeSpinner").spinner('disable');
+      //$("#rangeSpinner").spinner('enable');
+      $(".single-run-only").css('visibility', 'hidden');
+      $(".multiple-run-only").css('visibility', 'visible');
+      $("#rangeSpinner").parent().css('visibility', 'visible');
     }
   });
+
   $("#findVariantsButton").click(function() {
     if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
       validateSpinner($("#rangeSpinner"), "Range of variants") )) {
       return false;
     }
     var num_vars = $("#numVarSpinner").spinner('value'), vars_range = num_vars;
-    if ($("#rangeCheckbox").is(':checked')) {
+    if ($("#multipleRunCheckbox").is(':checked')) {
       vars_range = $("#rangeSpinner").spinner('value');
-      if (vars_range <= num_vars) {
-        showErrorPopup("The 'Range of variants' value must be greater than the 'Variants to find' value.");
+      if (vars_range < num_vars) {
+        showErrorPopup("The 'Variants to find' values must go from low to high.");
         return false;
       }
     }
@@ -165,7 +187,7 @@ function setupRunOptions() {
       return false;
     }
     // auto_open is only available for single runs, not ranges.
-    var auto_open = ($("#autoOpenCheckbox").is(':checked') && !$("#rangeCheckbox").is(':checked'));
+    var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked'));
     if (auto_open == true) {
       // Have to open the page directly from the user's click to avoid popup blockers.
       auto_result_page = window.open('', '_blank');

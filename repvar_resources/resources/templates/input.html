@@ -63,24 +63,30 @@
 
           <div id="runOptionsDiv" class="style-box">
             <h2>Run options</h2>
-            <table id="runOptionsTable"><tbody>
-              <tr>
-                <td><label for="numVarSpinner">Variants to find</label></td>
-                <td><input id="numVarSpinner" class="param-spinner" /></td>
-              </tr>
-              <tr>
-                <td><label><input id="rangeCheckbox" type="checkbox" />Max # variants</label></td>
-                <td><input id="rangeSpinner" class="param-spinner" /></td>
-              </tr>
-              <tr>
-                <td><label><input id="autoOpenCheckbox" type="checkbox" checked />Auto-open results</label></td>
-              </tr>
+            <div class="toggle-button-container">
+              <input type="radio" id="singleRunCheckbox" name="run-type-choice" class="toggle-button-input" checked>
+              <label for="singleRunCheckbox" id="singleRunLabel" class="toggle-button-label toggle-button-label-left">Single run</label>
+              <input type="radio" id="multipleRunCheckbox" name="run-type-choice" class="toggle-button-input">
+              <label for="multipleRunCheckbox" id="multipleRunLabel" class="toggle-button-label toggle-button-label-right">Variant range</label>
+            </div>
+            <table><tbody>
+              <tr><td>
+                <label for="numVarSpinner">Variants to find:</label>
+                <input id="numVarSpinner" class="param-spinner" />
+                <span class="multiple-run-only">to</span>
+                <input id="rangeSpinner" class="param-spinner" />
+              </td></tr>
+              <tr><td>
+                <label class="single-run-only"><input id="autoOpenCheckbox" type="checkbox" checked />Auto-open results page</label>
+              </td></tr>
+              <tr><td>
+                <label for="clustMethodSelect">Clustering method</label>
+                <select id="clustMethodSelect">
+                  <option value="k medoids" selected>K medoids</option>
+                  <option value="brute force">Brute force</option>
+                </select>
+              </td></tr>
             </tbody></table>
-              <label for="clustMethodSelect">Clustering method</label>
-              <select id="clustMethodSelect">
-                <option value="k medoids" selected>K medoids</option>
-                <option value="brute force">Brute force</option>
-              </select>
             <button id="findVariantsButton" class="jq-ui-button"><b>Find variants</b></button>
           </div>
 

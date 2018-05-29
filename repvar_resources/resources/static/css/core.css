@@ -50,15 +50,15 @@ table {
   border: none;
   border-collapse: collapse;
 }
+td > * {
+  vertical-align: middle;
+}
 ul {
   list-style: none;
   padding: 0px;
 }
 button {
   margin: 2px auto 5px auto;
-}
-label {
-  margin-right: 15px;
 }
 span {
   text-align: center;

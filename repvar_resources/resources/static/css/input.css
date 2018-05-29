@@ -6,13 +6,74 @@
 #mainLeftDiv {
   display: inline-flex;
   flex-direction: column;
-  --left-col-width: 250px;
+  --left-col-width: 300px;
 }
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: var(--left-col-width);
 }
 #mainVariantSelectDiv {
   min-width: 400px;
+}
+
+/* Run options: */
+.toggle-button-container {
+  /* To use, the input elements of a group must all share the same name property.*/
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+  padding: 0px;
+  box-sizing: border-box; /* Needed if I want to add horizontal padding.*/
+  --toggle-button-border-radius: 3px;
+  -webkit-touch-callout: none; /* Prevents the text from being selected on iOS Safari, */
+    -webkit-user-select: none; /* Safari, */
+     -khtml-user-select: none; /* Konqueror HTML, */
+       -moz-user-select: none; /* Firefox, */
+        -ms-user-select: none; /* Internet Explorer/Edge, */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+}
+.toggle-button-input {
+  display: none;
+}
+.toggle-button-label {
+  flex-grow: 1;
+  line-height: 25px;
+  margin: 0px;
+  padding: 0px;
+  text-align: center;
+  color: black;
+  background: linear-gradient(#FAFAFA, #DCDCDC);
+  border: 1px solid #999999;
+  box-shadow: inset 4px 4px 3px rgba(255,255,255,.3), inset -2px -2px 3px rgba(201,201,201,.5);
+}
+.toggle-button-label-left {
+  border-top-left-radius: var(--toggle-button-border-radius);
+  border-bottom-left-radius: var(--toggle-button-border-radius);
+}
+.toggle-button-label-right {
+  border-top-right-radius: var(--toggle-button-border-radius);
+  border-bottom-right-radius: var(--toggle-button-border-radius);
+}
+.toggle-button-label:hover {
+  border-color: #4F4F4F;
+}
+.toggle-button-label:active, .toggle-button-input:checked + .toggle-button-label {
+  background: linear-gradient(#DCDCDC, #FAFAFA);
+  box-shadow: inset -4px -4px 3px rgba(255,255,255,.3), inset 2px 2px 3px rgba(201,201,201,.5);
+}
+#singleRunLabel {
+
+}
+#multipleRunLabel {
+
+}
+#clustMethodSelect {
+  width: 125px;
+}
+#findVariantsButton {
+  width: 100%;
+}
+#findVariantsButton > span {
+  font-size: 1.0em;
 }
 
 /* Variant assignment and selection settings: */
@@ -60,6 +121,12 @@
   font-size: 12px;
 }
 
+/* Result links pane settings: */
+#resultsLinksList {
+  list-style-type: disc;
+  padding-left: 20px;
+}
+
 /* Score graph settings: */
 #scoreGraphSvg {
   width: var(--left-col-width);
@@ -76,16 +143,3 @@
 }
 
 /* Various element settings */
-#clustMethodSelect {
-  width: 125px;
-}
-#findVariantsButton {
-  width: 100%;
-}
-#findVariantsButton > span {
-  font-size: 1.0em;
-}
-#resultsLinksList {
-  list-style-type: disc;
-  padding-left: 20px;
-}
