@@ -64,7 +64,7 @@
                 <td><span id="distClustersSpan">--</span></td>
               </tr>
               <tr>
-                <td>Nodes:</td>
+                <td>Variants:</td>
                 <td><span id="numNodesSpan">--</span></td>
                 <td><span id="distNodesSpan">--</span></td>
               </tr>
@@ -78,7 +78,20 @@
 
           <div id="displayOptionsDiv" class="style-box">
             <h2>Display options</h2>
-            <label><input id="globalNormCheckbox" type="checkbox" />Normalize across runs</label>
+            <table><tbody>
+              <tr><td>
+                <label><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />No normalization</label>
+              </td></tr>
+              <tr><td>
+                <label><input id="normGlobalRadio" type="radio" name="normalizeRadios" />Normalize across runs</label>
+              </td></tr>
+              <tr><td>
+                <label><input id="normValRadio" type="radio" name="normalizeRadios" />Normalize to</label>
+                <input id="normValInput" placeholder="value" />
+                <label id="normValGoButton" style="display:none">Go</label>
+              </td></tr>
+            </tbody></table>
+
             <p>Font sizes, colour pickers</p>
             <button id="redrawResultsButton" class="jq-ui-button">Redraw</button>
           </div>
@@ -113,20 +126,20 @@
 
         <div id="mainRightDiv">
           <div id="selectionDiv" class="style-box">
-            <h2>Distance to nearest chosen node</h2>
+            <h2>Distance to nearest chosen variant</h2>
             <svg id="histoSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
             <div id="histoSlider">
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
             </div>
             <div id="histoButtonsDiv">
               <button id="leftSliderButton" class="control-element">Add to<br>selection</button>
-              <span id="numSliderSpan">-- nodes</span>
-              <button id="middleSliderButton" class="control-element"><span id="midLeftArrow">&lt;&lt;</span><span id="middleSliderButtonSpan">Nodes<br>below</span><span id="midRightArrow">&gt;&gt;</span></button>
+              <span id="numSliderSpan">-- variants</span>
+              <button id="middleSliderButton" class="control-element"><span id="midLeftArrow">&lt;&lt;</span><span id="middleSliderButtonSpan">Variants<br>below</span><span id="midRightArrow">&gt;&gt;</span></button>
               <button id="rightSliderButton" class="control-element">Reset</button>
             </div>
 
-            <h2>Selected nodes</h2>
-            <p>Currently selected nodes: <span id="currentSelectionNum">0</span></p>
+            <h2>Selected variants</h2>
+            <p>Currently selected variants: <span id="currentSelectionNum">0</span></p>
             <button id="selectAllButton" class="jq-ui-button">Select all</button>
             <button id="clearSelectionButton" class="jq-ui-button">Clear selection</button>
             <div id="colourSelectionDiv">

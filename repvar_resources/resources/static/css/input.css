@@ -42,8 +42,8 @@
   padding: 0px;
   text-align: center;
   color: black;
-  background: linear-gradient(#FAFAFA, #DCDCDC);
   border: 1px solid #8A8A8A;
+  background: linear-gradient(#FAFAFA, #DCDCDC);
   box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
 }
 .toggle-button-label-left {

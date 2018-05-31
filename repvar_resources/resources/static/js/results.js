@@ -46,6 +46,7 @@ function setupPage() {
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   setupHistoSliderPane();
   setupSelectionPane();
+  setupDisplayOptionsPane();
   setupExportPane();
   setupTreeElements();
 
@@ -117,13 +118,13 @@ function setupHistoSliderPane() {
     else if (slider_val == repvar.nice_max_var_dist) { slider_val = 0; }
     if (select_below) { // Switch to above
       slider.slider('option', 'range', 'max');
-      middle_span.html('Nodes<br>above');
+      middle_span.html('Variants<br>above');
       middle_span.animate({left: '-'+mid_offset}, animation_speed);
       mid_left_arrow.animate({opacity:0}, animation_speed);
       mid_right_arrow.animate({opacity:1}, animation_speed);
     } else { // Switch to below
       slider.slider('option', 'range', 'min');
-      middle_span.html('Nodes<br>below');
+      middle_span.html('Variants<br>below');
       middle_span.animate({left: mid_offset}, animation_speed);
       mid_left_arrow.animate({opacity:1}, animation_speed);
       mid_right_arrow.animate({opacity:0}, animation_speed);
@@ -158,6 +159,65 @@ function setupSelectionPane() {
   });
   $("#clearColoursButton").click(function() {
 
+  });
+}
+function setupDisplayOptionsPane() {
+  var go_button_shown = false, prev_norm_val = null;
+  function hideGoButton() {
+    if (go_button_shown == true) {
+      $("#normValGoButton").hide(100);
+      go_button_shown = false;
+    }
+  }
+
+  $("#normSelfRadio").on("change", function(event) {
+    hideGoButton();
+  });
+  $("#normGlobalRadio").on("change", function(event) {
+    hideGoButton();
+  });
+  $("#normValRadio").click(function(event) {
+    var val = $("#normValInput").val();
+    if (val == '') {
+      $("#normValInput").focus();
+      return false;
+    }
+  }).on("change", function(event) {
+    console.log('doing re-draw');
+  });
+  $("#normValInput").on("keydown", function(event) {
+    if (event.which == 13) { // 'Enter' key
+      $(this).blur();
+      $("#normValGoButton").click();
+      return false;
+    }
+    if (go_button_shown == false) {
+      $("#normValGoButton").show(100);
+      go_button_shown = true;
+    }
+  }).blur(function() {
+    var val = parseFloat($(this).val());
+    if (isNaN(val)) {
+      val = '';
+    }
+    $(this).val(val);
+    if (!$("#normValGoButton").is(':active')) {
+      hideGoButton();
+      // If normValRadio is selected, the user modifies the input, then clicks away, the 'Go' button disappears. It shouldn't, because the redraw was never triggered.
+    }
+  });
+  $("#normValGoButton").click(function() {
+    var val = $("#normValInput").val();
+    if (val == '') {
+      return false;
+    } else if (val <= 0) {
+      showErrorPopup("Error: the 'normalize' value must be a positive number.");
+      $("#normValInput").val('');
+      return false;
+    }
+    hideGoButton();
+    // If you mousedown on the button, but release somewhere else, the button remains. What I want is an event that is fired when the button no longer is active (it would handle the hideGoButton() call from this method too). This seems to exist with IE ("onactivate"), but I can't find anything about other browsers.
+    $("#normValRadio").prop('checked', true).change();
   });
 }
 function setupExportPane() {
@@ -394,7 +454,7 @@ function selectNamesByThreshold(threshold, select_below) {
   if (num_picked == 0) {
     $("#numSliderSpan").hide();
   } else {
-    $("#numSliderSpan").html(num_picked+' nodes');
+    $("#numSliderSpan").html(num_picked+' variants');
     $("#numSliderSpan").show();
   }
   return has_changed;
