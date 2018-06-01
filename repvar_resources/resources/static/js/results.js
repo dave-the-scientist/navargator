@@ -12,6 +12,8 @@ repvar.opts.histo = {
 };
 
 //TODO:
+// - Histo slider doesnt yet update to repvar.normalized_max_distance. Also, clean up graph drawing code (and move to appropriate parts of the file).
+// - The 'No normalization' line should display the max distance for this run. The 'normalize across runs' line should display what that value is (helps user know for sure they're comparing the same thing).
 // - Get export buttons working.
 // - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
 // - Need a more efficient selectNamesByThreshold().
@@ -495,6 +497,7 @@ function colourSelectPicked(jscol) {
 }
 
 // =====  Graph functions:
+repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null};
 function updateHistogram() {
   var x_ticks = updateHistoBins();
   updateHistoGraph();
@@ -521,6 +524,79 @@ function updateHistoBins() {
   return x_ticks;
 }
 function updateHistoGraph() {
+  var formatCount = d3.format(",.0f"),
+    bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
+    bar_width = repvar.graph.x_fxn(bin_range),
+    bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
+
+  var bar_elements = repvar.graph.g.selectAll(".histo-bar")
+    .data(repvar.graph.bins);
+  bar_elements.enter().append("rect")
+    .attr("class", "histo-bar")
+    .attr("x", repvar.graph.width)
+    .attr("y", repvar.graph.height)
+    .attr("width", bar_width - bar_margin)
+    .attr("height", 0)
+    .transition()
+    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
+    .attr("transform", function(d) {
+      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin/2-repvar.graph.width) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
+    });
+  bar_elements.transition()
+    .attr("width", bar_width - bar_margin)
+    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
+    .attr("transform", function(d) {
+      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin/2-repvar.graph.width) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
+    });
+  bar_elements.exit()
+    .transition()
+    .attr("height", 0)
+    .attr("transform", "translate(0,0)")
+    .remove();
+
+  var bar_texts = repvar.graph.g.selectAll(".histo-text")
+    .data(repvar.graph.bins);
+  bar_texts.enter().append("text")
+    .attr("class", "histo-text prevent-text-selection")
+    .attr("x", repvar.graph.width)
+    .attr("y", repvar.graph.height)
+    .attr("dy", ".35em")
+    .attr("text-anchor", "middle")
+    .transition()
+    .attr("x", function(d) { return repvar.graph.x_fxn(d.x0) + bar_width / 2; })
+    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); }) // So text doesn't overlap axis
+    .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
+  bar_texts.transition()
+    .attr("x", function(d) { return repvar.graph.x_fxn(d.x0) + bar_width / 2; })
+    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); })
+    .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
+  bar_texts.exit().remove();
+  // A transparent full-sized rect on top to capture mouse events:
+  var bar_mouseovers = repvar.graph.g.selectAll(".histo-overlay")
+    .data(repvar.graph.bins);
+  bar_mouseovers.enter().append("rect")
+    .attr("class", "histo-overlay")
+    .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); })
+    .attr("width", bar_width)
+    .attr("height", repvar.graph.height)
+    .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
+    .on("mouseover", function(d) {
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
+    })
+    .on("mouseout", function(d) {
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i]); }
+    })
+    .on("click", function(d) {
+      for (var i=0; i<d.names.length; ++i) {
+        nodeLabelMouseclickHandler(d.names[i], false);
+      }
+      numSelectedCallback();
+    });
+  bar_mouseovers.attr("width", bar_width)
+  .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); });
+  bar_mouseovers.exit().remove();
+}
+function updateHistoGraph_OLD() {
   var formatCount = d3.format(",.0f"),
     bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
     bar_width = repvar.graph.x_fxn(bin_range),
@@ -568,48 +644,6 @@ function updateHistoGraph() {
       numSelectedCallback();
     });
 }
-function updateHistoGraph_OLD() {
-  var formatCount = d3.format(",.0f"),
-    bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
-    bar_width = repvar.graph.x_fxn(bin_range),
-    bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
-
-  // Add a column g to hold each bar:
-  var bar = repvar.graph.g.selectAll(".histo-bar")
-    .data(repvar.graph.bins).enter().append("g")
-    .attr("class", "histo-bar-group")
-    .attr("transform", function(d) { return "translate(" + repvar.graph.x_fxn(d.x0) + ",0)"; });
-  // Draw the bars and label them:
-  bar.append("rect")
-    .attr("class", "histo-bar")
-    .attr("x", bar_margin / 2)
-    .attr("width", bar_width - bar_margin)
-    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
-    .attr("transform", function(d) { return "translate(0,"+(repvar.graph.height - repvar.graph.y_fxn(d.length))+")"; });
-  bar.append("text")
-    .attr("class", "histo-text prevent-text-selection")
-    .attr("dy", ".35em")
-    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); }) // So text doesn't overlap axis
-    .attr("x", bar_width / 2)
-    .attr("text-anchor", "middle")
-    .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
-  bar.append("rect")
-    .attr("width", bar_width)
-    .attr("height", repvar.graph.height)
-    .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
-    .on("mouseover", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
-    })
-    .on("mouseout", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i]); }
-    })
-    .on("click", function(d) {
-      for (var i=0; i<d.names.length; ++i) {
-        nodeLabelMouseclickHandler(d.names[i], false);
-      }
-      numSelectedCallback();
-    });
-}
 function updateHistoAxes(x_ticks) {
   repvar.graph.x_axis.tickValues(x_ticks);
   repvar.graph.g.select(".x-axis")
@@ -625,10 +659,47 @@ function updateHistoAxes(x_ticks) {
     .transition()
     .call(repvar.graph.y_axis);
 }
-
-repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null};
-
 function drawDistanceHistogram() {
+  var margin = repvar.opts.histo.margin;
+  var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
+    total_width = parseInt(total_width_str.slice(0,-2)),
+    total_height = repvar.opts.histo.height;
+  repvar.graph.width = total_width - margin.right - margin.left;
+  repvar.graph.height = total_height - margin.top - margin.bottom;
+  // Set up svg objects:
+  var svg = d3.select("#histoSvg")
+    .attr("width", total_width)
+    .attr("height", total_height);
+  repvar.graph.g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  // Set up scales and data objects:
+  repvar.graph.x_fxn = d3.scaleLinear()
+    .rangeRound([0, repvar.graph.width]);
+  repvar.graph.y_fxn = d3.scaleLinear()
+    .range([0, repvar.graph.height]);
+  var x_ticks = updateHistoBins();
+
+  updateHistoGraph();
+
+  // Draw the title and axes:
+  /*svg.append("text")
+    .attr("class", "histo-title")
+    .attr("dy", "0.8em") //.attr("dy", ".35em")
+    .attr("x", total_width / 2)
+    .attr("text-anchor", "middle")
+    .text("Distribution of distances");*/
+  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn);
+  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn).tickValues([]).tickSize(0);
+  repvar.graph.g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(0," + repvar.graph.height + ")");
+  repvar.graph.g.append("g")
+    .attr("class", "y-axis");
+
+  updateHistoAxes(x_ticks);
+}
+function drawDistanceHistogram_OLD() {
   var margin = repvar.opts.histo.margin;
   var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
     total_width = parseInt(total_width_str.slice(0,-2)),

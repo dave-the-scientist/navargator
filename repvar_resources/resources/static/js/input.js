@@ -1,6 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - Should have a normalization option pane here too. Which will set the norm option for the page when it opens.
 // - Move the 'g', 'x_fxn', 'y_fxn', 'line_fxn', 'x_axis', 'y_axis' out of repvar.opts and into repvar.graph
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
 // - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
