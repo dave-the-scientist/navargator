@@ -5,7 +5,7 @@
 
 // =====  Modified / additional common variables:
 page.check_results_interval = 1000;
-repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0, repvar.nice_max_var_dist = 0.0;
+repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0, repvar.normalized_max_distance = 0.0, repvar.nice_max_var_dist = 0.0, repvar.sorted_names = [];
 repvar.opts.histo = {
   'height':null, 'margin':{top:0, right:17, bottom:30, left:7}, // top:17 if generating a title
   'bar_margin_ratio':0.15, 'bins':15 // Approximate # bins.
@@ -23,6 +23,10 @@ repvar.opts.histo = {
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Change mentions of 'node' to 'variant'.
 // - I don't love the singleton cluster colour of dark blue. Maybe a red/orange would be better. Want them to jump out, and having negative connotations is good.
+// - Is repvar.nice_max_var_dist useful?
+
+//NOTE:
+// - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be counted on the histogram.
 
 // =====  Page setup:
 function setupPage() {
@@ -162,62 +166,69 @@ function setupSelectionPane() {
   });
 }
 function setupDisplayOptionsPane() {
-  var go_button_shown = false, prev_norm_val = null;
+  var go_button_shown = false;
+  var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
+  var custom_input = $("#normValInput"), custom_go_button = $("#normValGoButton");
+  function showGoButton() {
+    if (go_button_shown == false) {
+      custom_go_button.show(100);
+      go_button_shown = true;
+    }
+  }
   function hideGoButton() {
     if (go_button_shown == true) {
-      $("#normValGoButton").hide(100);
+      custom_go_button.hide(100);
       go_button_shown = false;
     }
   }
-
-  $("#normSelfRadio").on("change", function(event) {
+  self_radio.on("change", function(event) {
     hideGoButton();
+    repvar.normalized_max_distance = repvar.max_variant_distance;
+    normalizeResults();
   });
-  $("#normGlobalRadio").on("change", function(event) {
+  global_radio.on("change", function(event) {
     hideGoButton();
+    // ajax to get it.
+    // on success, repvar.normalized_max_distance = val, then normalizeResults();
   });
-  $("#normValRadio").click(function(event) {
-    var val = $("#normValInput").val();
+  custom_radio.click(function(event) {
+    var val = custom_input.val();
     if (val == '') {
-      $("#normValInput").focus();
-      return false;
+      custom_input.focus();
+      return false; // Prevents the button from being actually selected.
     }
   }).on("change", function(event) {
-    console.log('doing re-draw');
+    repvar.normalized_max_distance = custom_input.val();
+    normalizeResults();
   });
-  $("#normValInput").on("keydown", function(event) {
+  custom_input.on("keydown", function(event) {
     if (event.which == 13) { // 'Enter' key
-      $(this).blur();
-      $("#normValGoButton").click();
+      custom_input.blur();
+      custom_go_button.click();
       return false;
     }
-    if (go_button_shown == false) {
-      $("#normValGoButton").show(100);
-      go_button_shown = true;
-    }
+    showGoButton();
   }).blur(function() {
-    var val = parseFloat($(this).val());
+    var val = parseFloat(custom_input.val());
     if (isNaN(val)) {
       val = '';
     }
-    $(this).val(val);
-    if (!$("#normValGoButton").is(':active')) {
+    custom_input.val(val);
+    if (!custom_go_button.is(':active') && !custom_radio.is(':checked')) {
       hideGoButton();
-      // If normValRadio is selected, the user modifies the input, then clicks away, the 'Go' button disappears. It shouldn't, because the redraw was never triggered.
     }
   });
-  $("#normValGoButton").click(function() {
-    var val = $("#normValInput").val();
+  custom_go_button.click(function() {
+    var val = custom_input.val();
     if (val == '') {
       return false;
     } else if (val <= 0) {
       showErrorPopup("Error: the 'normalize' value must be a positive number.");
-      $("#normValInput").val('');
+      custom_input.val('');
       return false;
     }
     hideGoButton();
-    // If you mousedown on the button, but release somewhere else, the button remains. What I want is an event that is fired when the button no longer is active (it would handle the hideGoButton() call from this method too). This seems to exist with IE ("onactivate"), but I can't find anything about other browsers.
-    $("#normValRadio").prop('checked', true).change();
+    custom_radio.prop('checked', true).change();
   });
 }
 function setupExportPane() {
@@ -363,6 +374,23 @@ function updateClusteredVariantMarkers() {
     node.label_mouseover.attr({title: node.tooltip});
   }
 }
+function normalizeResults() {
+  updateBarGraphHeights();
+  updateHistogram();
+}
+function updateBarGraphHeights() {
+  var var_name, var_angle, dist, new_path_str;
+  for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
+    var_name = treeDrawingParams.seqs[i][0];
+    var_angle = treeDrawingParams.seqs[i][1];
+    dist = repvar.variant_distance[var_name];
+    if (dist) { // Not a chosen or ignored variant:
+      new_path_str = getBarGraphPathStr(var_name, var_angle, dist);
+      repvar.nodes[var_name].bar_chart.animate({path:new_path_str}, 200, 'linear');
+    }
+  }
+}
+
 
 // =====  Event handlers and callbacks:
 function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
@@ -467,67 +495,65 @@ function colourSelectPicked(jscol) {
 }
 
 // =====  Graph functions:
-function drawDistanceHistogram() {
-  var margin = repvar.opts.histo.margin;
-  var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
-    total_width = parseInt(total_width_str.slice(0,-2)), width = total_width - margin.right - margin.left,
-    total_height = repvar.opts.histo.height, height = total_height - margin.top - margin.bottom;
-  // Set up svg objects:
-  var svg = d3.select("#histoSvg")
-    .attr("width", total_width)
-    .attr("height", total_height);
-  var g = svg.append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-  // Set up scales and data objects:
-  var x = d3.scaleLinear()
-    .domain([0, repvar.max_variant_distance])
-    .rangeRound([0, width]);
-  var x_ticks = x.ticks(repvar.opts.histo.bins),
+function updateHistogram() {
+  var x_ticks = updateHistoBins();
+  updateHistoGraph();
+  updateHistoAxes(x_ticks);
+}
+function updateHistoBins() {
+  repvar.graph.x_fxn.domain( [0, repvar.normalized_max_distance] );
+  var x_ticks = repvar.graph.x_fxn.ticks(repvar.opts.histo.bins),
     max_x_tick = x_ticks[x_ticks.length-1] + x_ticks[1];
   repvar.nice_max_var_dist = roundFloat(max_x_tick, 4);
   x_ticks.push(max_x_tick);
-  x.domain([0, max_x_tick]); // Needed so that the final bin is included in the graph.
-  var bins = d3.histogram()
-    .domain([0, repvar.max_variant_distance]) // Cannot be x.domain()
-    .thresholds(x.ticks(x_ticks.length))
+  repvar.graph.x_fxn.domain([0, max_x_tick]); // Needed so that the final bin is included in the graph.
+  repvar.graph.bins = d3.histogram()
+    .domain([0, repvar.normalized_max_distance]) // Cannot be repvar.graph.x_fxn.domain()
+    .thresholds(repvar.graph.x_fxn.ticks(x_ticks.length))
     (Object.values(repvar.variant_distance));
-  var y = d3.scaleLinear()
-    .domain([0, d3.max(bins, function(d) { return d.length; })])
-    .range([0, height]);
-  var var_names = Object.keys(repvar.variant_distance).sort(function(a,b) {
-    return repvar.variant_distance[a] - repvar.variant_distance[b];
-  }), prev_ind = 0, cur_len;
-  for (var i=0; i<bins.length; ++i) {
-    cur_len = bins[i].length;
-    bins[i]['names'] = var_names.slice(prev_ind, prev_ind+cur_len);
+  repvar.graph.y_fxn.domain( [0, d3.max(repvar.graph.bins, function(d) { return d.length; })] );
+  var prev_ind = 0, cur_len;
+  for (var i=0; i<repvar.graph.bins.length; ++i) {
+    cur_len = repvar.graph.bins[i].length;
+    repvar.graph.bins[i]['names'] = repvar.sorted_names.slice(prev_ind, prev_ind+cur_len);
     prev_ind += cur_len;
   }
-  // Add a column g to hold each bar:
-  var bar = g.selectAll(".histo-bar")
-  .data(bins)
-  .enter().append("g")
-    .attr("transform", function(d) { return "translate(" + x(d.x0) + ",0)"; });
-  // Draw the bars and label them:
+  return x_ticks;
+}
+function updateHistoGraph() {
   var formatCount = d3.format(",.0f"),
-    bin_range = bins[0].x1 - bins[0].x0,
-    bar_width = x(bin_range),
+    bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
+    bar_width = repvar.graph.x_fxn(bin_range),
     bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
-  bar.append("rect")
+
+  var bar_elements = repvar.graph.g.selectAll(".histo-bar-group")
+    .data(repvar.graph.bins);
+
+  bar_elements.exit().remove(); // The exit/updating isn't working yet.
+
+  // Add a column g to hold each bar:
+  var bar_groups = bar_elements.enter()
+    .append("g")
+    .attr("class", "histo-bar-group")
+    .attr("transform", function(d) { return "translate(" + repvar.graph.x_fxn(d.x0) + ",0)"; });
+  // Draw the bars and label them:
+  bar_groups.append("rect")
     .attr("class", "histo-bar")
     .attr("x", bar_margin / 2)
     .attr("width", bar_width - bar_margin)
-    .attr("height", function(d) { return y(d.length); })
-    .attr("transform", function(d) { return "translate(0,"+(height - y(d.length))+")"; });
-  bar.append("text")
+    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
+    .attr("transform", function(d) { return "translate(0,"+(repvar.graph.height - repvar.graph.y_fxn(d.length))+")"; });
+  bar_groups.append("text")
     .attr("class", "histo-text prevent-text-selection")
     .attr("dy", ".35em")
-    .attr("y", function(d) { return height - Math.max(y(d.length)-10, 10); }) // So text doesn't overlap axis
+    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); }) // So text doesn't overlap axis
     .attr("x", bar_width / 2)
     .attr("text-anchor", "middle")
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
-  bar.append("rect")
+  // A transparent full-sized rect on top to capture mouse events:
+  bar_groups.append("rect")
     .attr("width", bar_width)
-    .attr("height", height)
+    .attr("height", repvar.graph.height)
     .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
     .on("mouseover", function(d) {
       for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
@@ -541,6 +567,90 @@ function drawDistanceHistogram() {
       }
       numSelectedCallback();
     });
+}
+function updateHistoGraph_OLD() {
+  var formatCount = d3.format(",.0f"),
+    bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
+    bar_width = repvar.graph.x_fxn(bin_range),
+    bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
+
+  // Add a column g to hold each bar:
+  var bar = repvar.graph.g.selectAll(".histo-bar")
+    .data(repvar.graph.bins).enter().append("g")
+    .attr("class", "histo-bar-group")
+    .attr("transform", function(d) { return "translate(" + repvar.graph.x_fxn(d.x0) + ",0)"; });
+  // Draw the bars and label them:
+  bar.append("rect")
+    .attr("class", "histo-bar")
+    .attr("x", bar_margin / 2)
+    .attr("width", bar_width - bar_margin)
+    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
+    .attr("transform", function(d) { return "translate(0,"+(repvar.graph.height - repvar.graph.y_fxn(d.length))+")"; });
+  bar.append("text")
+    .attr("class", "histo-text prevent-text-selection")
+    .attr("dy", ".35em")
+    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); }) // So text doesn't overlap axis
+    .attr("x", bar_width / 2)
+    .attr("text-anchor", "middle")
+    .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
+  bar.append("rect")
+    .attr("width", bar_width)
+    .attr("height", repvar.graph.height)
+    .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
+    .on("mouseover", function(d) {
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
+    })
+    .on("mouseout", function(d) {
+      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i]); }
+    })
+    .on("click", function(d) {
+      for (var i=0; i<d.names.length; ++i) {
+        nodeLabelMouseclickHandler(d.names[i], false);
+      }
+      numSelectedCallback();
+    });
+}
+function updateHistoAxes(x_ticks) {
+  repvar.graph.x_axis.tickValues(x_ticks);
+  repvar.graph.g.select(".x-axis")
+    .transition()
+    .call(repvar.graph.x_axis)
+    .selectAll("text")
+      .style("text-anchor", "start")
+      .attr("x", 7)
+      .attr("y", 5)
+      .attr("dy", ".35em")
+      .attr("transform", "rotate(55)");
+  repvar.graph.g.select(".y-axis")
+    .transition()
+    .call(repvar.graph.y_axis);
+}
+
+repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null};
+
+function drawDistanceHistogram() {
+  var margin = repvar.opts.histo.margin;
+  var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
+    total_width = parseInt(total_width_str.slice(0,-2)),
+    total_height = repvar.opts.histo.height;
+  repvar.graph.width = total_width - margin.right - margin.left;
+  repvar.graph.height = total_height - margin.top - margin.bottom;
+  // Set up svg objects:
+  var svg = d3.select("#histoSvg")
+    .attr("width", total_width)
+    .attr("height", total_height);
+  repvar.graph.g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  // Set up scales and data objects:
+  repvar.graph.x_fxn = d3.scaleLinear()
+    .rangeRound([0, repvar.graph.width]);
+  repvar.graph.y_fxn = d3.scaleLinear()
+    .range([0, repvar.graph.height]);
+  var x_ticks = updateHistoBins();
+
+  updateHistoGraph();
+
   // Draw the title and axes:
   /*svg.append("text")
     .attr("class", "histo-title")
@@ -548,17 +658,28 @@ function drawDistanceHistogram() {
     .attr("x", total_width / 2)
     .attr("text-anchor", "middle")
     .text("Distribution of distances");*/
-  g.append("g")
-    .attr("transform", "translate(0," + height + ")")
-    .call(d3.axisBottom(x).tickValues(x_ticks))
+  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn);
+  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn).tickValues([]).tickSize(0);
+  repvar.graph.g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(0," + repvar.graph.height + ")");
+  repvar.graph.g.append("g")
+    .attr("class", "y-axis");
+
+  updateHistoAxes(x_ticks);
+  /*repvar.graph.g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(0," + repvar.graph.height + ")")
+    .call(repvar.graph.x_axis)
     .selectAll("text")
       .style("text-anchor", "start")
       .attr("x", 7)
       .attr("y", 5)
       .attr("dy", ".35em")
       .attr("transform", "rotate(55)");
-  g.append("g")
-    .call(d3.axisLeft(y).tickValues([]).tickSize(0));
+  repvar.graph.g.append("g")
+    .attr("class", "y-axis")
+    .call(repvar.graph.y_axis);*/
 }
 
 // =====  Data parsing:
@@ -583,7 +704,13 @@ function parseClusteredData(data) {
   }
   repvar.variant_distance = data.variant_distance;
   repvar.max_variant_distance = data.max_variant_distance;
+  // Check if a normalization is already set (from the server). Else:
+  repvar.normalized_max_distance = data.max_variant_distance;
   repvar.variants = data.variants;
+  repvar.sorted_names = Object.keys(repvar.variant_distance).sort(function(a,b) {
+    return repvar.variant_distance[a] - repvar.variant_distance[b];
+  });
+
   repvar.clusters = {};
   for (var i=0; i<repvar.variants.length; ++i) {
     repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null, 'colour_key':''};

@@ -16,7 +16,8 @@
 
 /* Display options pane settings: */
 #normValInput {
-  width: 55px;
+  width: 50px;
+  padding: 1px 3px;
   outline: none;
   border: 1px solid transparent;
   transition: border-color 0.2s ease-in-out;

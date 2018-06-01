@@ -228,10 +228,7 @@ function drawTreeBackgrounds(maxLabelLength) {
   repvar.tree_background = repvar.r_paper.circle(treeDrawingParams.cx, treeDrawingParams.cy, treeDrawingParams.barChartRadius).attr({fill:repvar.opts.colours.tree_background, stroke:'none', 'stroke-width':0}).toBack();
 }
 function drawBarGraphs() {
-  var var_name, var_angle, dist, tooltip, height, path_str, bar_chart;
-  var max_dist = repvar.max_variant_distance, max_height = repvar.opts.sizes.bar_chart_height,
-    min_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer,
-    angle_offset = treeDrawingParams.scaleAngle / 2.0;
+  var var_name, var_angle, dist, tooltip, path_str, bar_chart;
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
@@ -242,15 +239,21 @@ function drawBarGraphs() {
       tooltip = '[Representative] ' + var_name;
     } else {
       tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
-      height = roundFloat(dist/max_dist * max_height, 4);
-      path_str = sectorPathString(min_radius, min_radius+height,
-        var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
+      path_str = getBarGraphPathStr(var_name, var_angle, dist);
       bar_chart = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.bar_chart, stroke:'none'});
       bar_chart.insertAfter(repvar.nodes[var_name].label_highlight);
       repvar.nodes[var_name]['bar_chart'] = bar_chart;
     }
     repvar.nodes[var_name].tooltip = tooltip;
   }
+}
+function getBarGraphPathStr(var_name, var_angle, dist) {
+  var min_radius = treeDrawingParams.barChartRadius + repvar.opts.sizes.bar_chart_buffer,
+    angle_offset = treeDrawingParams.scaleAngle / 2.0;
+  var height_scale = Math.min(dist/repvar.normalized_max_distance, 1.0);
+  var height = roundFloat(height_scale*repvar.opts.sizes.bar_chart_height, 4);
+  return sectorPathString(min_radius, min_radius+height,
+    var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
 }
 function drawClusterObject(nodes) {
   // Adapted from http://stackoverflow.com/questions/13802203/draw-a-border-around-an-arbitrarily-positioned-set-of-shapes-with-raphaeljs
