@@ -6,29 +6,25 @@
 // =====  Modified / additional common variables:
 page.check_results_interval = 1000;
 repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0, repvar.normalized_max_distance = 0.0, repvar.nice_max_var_dist = 0.0, repvar.sorted_names = [];
-repvar.opts.histo = {
-  'height':null, 'margin':{top:0, right:17, bottom:30, left:7}, // top:17 if generating a title
+repvar.opts.graph = {
+  'total_width':null, 'total_height':null, 'margin':{top:0, right:17, bottom:30, left:7}, // top:17 if generating a title
   'bar_margin_ratio':0.15, 'bins':15 // Approximate # bins.
 };
+repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
 //TODO:
-// - Histo slider doesnt yet update to repvar.normalized_max_distance. Also, clean up graph drawing code (and move to appropriate parts of the file).
-// - The 'No normalization' line should display the max distance for this run. The 'normalize across runs' line should display what that value is (helps user know for sure they're comparing the same thing).
 // - Get export buttons working.
-// - Global normalization option, hide sequence names, as well as various color pickers and size spinners (these are in a collapsing pane).
+// - Hide sequence names checkbox, as well as various color pickers and size spinners (these are in a collapsing pane).
 // - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
-// - Option to normalize bar graph heights against max value in the tree, or against the max value from all repvar runs in the cache. Or against a custom value (would let you compare between different 'available' sets).
-//   - Though this wouldn't update if you ran new ones. It would also require an ajax call on activation (not a problem).
-//   - Should also re-draw the histogram with the new max_variant_distance, so you can compare histos between results.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Change mentions of 'node' to 'variant'.
 // - I don't love the singleton cluster colour of dark blue. Maybe a red/orange would be better. Want them to jump out, and having negative connotations is good.
 // - Is repvar.nice_max_var_dist useful?
 
 //NOTE:
-// - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be counted on the histogram.
+// - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be visible on the histogram, though they can still be selected with the slider.
 
 // =====  Page setup:
 function setupPage() {
@@ -37,16 +33,20 @@ function setupPage() {
     buttons:{Ok:function() { $(this).dialog("close"); }}
   }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
 
+  // =====  Variable parsing:
   var url_params = location.search.slice(1).split('_');
   page.session_id = url_params[0];
   repvar.num_variants = url_params[1];
+  document.title = '['+repvar.num_variants+'] ' + document.title;
   page.browser_id = generateBrowserId(10);
   console.log('browser ID:', page.browser_id);
-  var tree_width_str = $("#mainTreeDiv").css('width');
+  var tree_width_str = $("#mainTreeDiv").css('width'),
+    graph_width_str = $("#selectionDiv").css('width'),
+    graph_height_str = $("#histoSvg").css('height');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-  var histo_height = $("#histoSvg").css('height');
-  repvar.opts.histo.height = parseInt(histo_height.slice(0,-2));
-  document.title = '['+repvar.num_variants+'] ' + document.title;
+  repvar.opts.graph.total_width = parseInt(graph_width_str.slice(0,-2));
+  repvar.opts.graph.total_height = parseInt(graph_height_str.slice(0,-2));
+
 
   maintainServer();
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -190,8 +190,18 @@ function setupDisplayOptionsPane() {
   });
   global_radio.on("change", function(event) {
     hideGoButton();
-    // ajax to get it.
-    // on success, repvar.normalized_max_distance = val, then normalizeResults();
+    $.ajax({
+      url: daemonURL('/get-global-normalization'),
+      type: 'POST',
+      data: {'session_id': page.session_id},
+      success: function(data_obj) {
+        var data = $.parseJSON(data_obj);
+        repvar.normalized_max_distance = data.global_max;
+        $("#normGlobalValSpan").html('['+roundFloat(data.global_max, 4)+']');
+        normalizeResults();
+      },
+      error: function(error) { processError(error, "Error fetching global normalizations from the server"); }
+    });
   });
   custom_radio.click(function(event) {
     var val = custom_input.val();
@@ -271,6 +281,7 @@ function checkForClusteringResults() {
         parseClusteredData(data);
         drawBarGraphs();
         updateSummaryStats();
+        updateNormalizationPane();
         drawClusters();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
         drawDistanceHistogram();
@@ -295,10 +306,8 @@ function updateSummaryStats() {
   $("#distClustersSpan").html(cluster_dist);
   $("#distNodesSpan").html(node_dist);
 }
-function updateHistoSlider() {
-  $("#histoSlider").slider({
-    max:repvar.nice_max_var_dist
-  });
+function updateNormalizationPane() {
+  $("#normSelfValSpan").html('['+roundFloat(repvar.max_variant_distance, 4)+']');
 }
 function drawClusters() {
   var var_names;
@@ -379,6 +388,7 @@ function updateClusteredVariantMarkers() {
 function normalizeResults() {
   updateBarGraphHeights();
   updateHistogram();
+  updateHistoSlider();
 }
 function updateBarGraphHeights() {
   var var_name, var_angle, dist, new_path_str;
@@ -392,7 +402,51 @@ function updateBarGraphHeights() {
     }
   }
 }
-
+function drawDistanceHistogram() {
+  var margin = repvar.opts.graph.margin,
+    total_width = repvar.opts.graph.total_width,
+    total_height = repvar.opts.graph.total_height;
+  repvar.graph.width = total_width - margin.right - margin.left;
+  repvar.graph.height = total_height - margin.top - margin.bottom;
+  // Set up svg objects:
+  var svg = d3.select("#histoSvg")
+    .attr("width", total_width)
+    .attr("height", total_height);
+  repvar.graph.g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  // Set up scales and data objects:
+  repvar.graph.x_fxn = d3.scaleLinear()
+    .rangeRound([0, repvar.graph.width]);
+  repvar.graph.y_fxn = d3.scaleLinear()
+    .range([0, repvar.graph.height]);
+  // Graph title:
+  /*svg.append("text")
+    .attr("class", "histo-title")
+    .attr("dy", "0.8em") //.attr("dy", ".35em")
+    .attr("x", total_width / 2)
+    .attr("text-anchor", "middle")
+    .text("Distribution of distances");*/
+  // Graph axes:
+  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn);
+  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn).tickValues([]).tickSize(0);
+  repvar.graph.g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(0," + repvar.graph.height + ")");
+  repvar.graph.g.append("g")
+    .attr("class", "y-axis");
+  // Draw the graph:
+  updateHistogram();
+}
+function updateHistogram() {
+  updateHistoBins();
+  updateHistoGraph();
+  updateHistoAxes();
+}
+function updateHistoSlider() {
+  $("#histoSlider").slider({
+    max:repvar.nice_max_var_dist
+  });
+}
 
 // =====  Event handlers and callbacks:
 function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
@@ -493,19 +547,14 @@ function colourSelectionChange(choice) {
   console.log('picked', choice);
 }
 function colourSelectPicked(jscol) {
+  // not yet implemented
   console.log('chose', '#'+jscol);
 }
 
 // =====  Graph functions:
-repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null};
-function updateHistogram() {
-  var x_ticks = updateHistoBins();
-  updateHistoGraph();
-  updateHistoAxes(x_ticks);
-}
 function updateHistoBins() {
   repvar.graph.x_fxn.domain( [0, repvar.normalized_max_distance] );
-  var x_ticks = repvar.graph.x_fxn.ticks(repvar.opts.histo.bins),
+  var x_ticks = repvar.graph.x_fxn.ticks(repvar.opts.graph.bins),
     max_x_tick = x_ticks[x_ticks.length-1] + x_ticks[1];
   repvar.nice_max_var_dist = roundFloat(max_x_tick, 4);
   x_ticks.push(max_x_tick);
@@ -514,21 +563,24 @@ function updateHistoBins() {
     .domain([0, repvar.normalized_max_distance]) // Cannot be repvar.graph.x_fxn.domain()
     .thresholds(repvar.graph.x_fxn.ticks(x_ticks.length))
     (Object.values(repvar.variant_distance));
+
+  // If user has indicated a manual max y-value, either check to make sure it's not smaller than the max of the data here, or modify the bar height and text position so that they are capped at the max (prefer this option).
   repvar.graph.y_fxn.domain( [0, d3.max(repvar.graph.bins, function(d) { return d.length; })] );
+
   var prev_ind = 0, cur_len;
   for (var i=0; i<repvar.graph.bins.length; ++i) {
     cur_len = repvar.graph.bins[i].length;
     repvar.graph.bins[i]['names'] = repvar.sorted_names.slice(prev_ind, prev_ind+cur_len);
     prev_ind += cur_len;
   }
-  return x_ticks;
+  repvar.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
   var formatCount = d3.format(",.0f"),
     bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
     bar_width = repvar.graph.x_fxn(bin_range),
-    bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
-
+    bar_margin = bar_width * repvar.opts.graph.bar_margin_ratio;
+  // The bars of the graph:
   var bar_elements = repvar.graph.g.selectAll(".histo-bar")
     .data(repvar.graph.bins);
   bar_elements.enter().append("rect")
@@ -553,7 +605,7 @@ function updateHistoGraph() {
     .attr("height", 0)
     .attr("transform", "translate(0,0)")
     .remove();
-
+  // The text label for each bar:
   var bar_texts = repvar.graph.g.selectAll(".histo-text")
     .data(repvar.graph.bins);
   bar_texts.enter().append("text")
@@ -596,56 +648,8 @@ function updateHistoGraph() {
   .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); });
   bar_mouseovers.exit().remove();
 }
-function updateHistoGraph_OLD() {
-  var formatCount = d3.format(",.0f"),
-    bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
-    bar_width = repvar.graph.x_fxn(bin_range),
-    bar_margin = bar_width * repvar.opts.histo.bar_margin_ratio;
-
-  var bar_elements = repvar.graph.g.selectAll(".histo-bar-group")
-    .data(repvar.graph.bins);
-
-  bar_elements.exit().remove(); // The exit/updating isn't working yet.
-
-  // Add a column g to hold each bar:
-  var bar_groups = bar_elements.enter()
-    .append("g")
-    .attr("class", "histo-bar-group")
-    .attr("transform", function(d) { return "translate(" + repvar.graph.x_fxn(d.x0) + ",0)"; });
-  // Draw the bars and label them:
-  bar_groups.append("rect")
-    .attr("class", "histo-bar")
-    .attr("x", bar_margin / 2)
-    .attr("width", bar_width - bar_margin)
-    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
-    .attr("transform", function(d) { return "translate(0,"+(repvar.graph.height - repvar.graph.y_fxn(d.length))+")"; });
-  bar_groups.append("text")
-    .attr("class", "histo-text prevent-text-selection")
-    .attr("dy", ".35em")
-    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); }) // So text doesn't overlap axis
-    .attr("x", bar_width / 2)
-    .attr("text-anchor", "middle")
-    .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
-  // A transparent full-sized rect on top to capture mouse events:
-  bar_groups.append("rect")
-    .attr("width", bar_width)
-    .attr("height", repvar.graph.height)
-    .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
-    .on("mouseover", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
-    })
-    .on("mouseout", function(d) {
-      for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoutHandler(d.names[i]); }
-    })
-    .on("click", function(d) {
-      for (var i=0; i<d.names.length; ++i) {
-        nodeLabelMouseclickHandler(d.names[i], false);
-      }
-      numSelectedCallback();
-    });
-}
-function updateHistoAxes(x_ticks) {
-  repvar.graph.x_axis.tickValues(x_ticks);
+function updateHistoAxes() {
+  repvar.graph.x_axis.tickValues(repvar.graph.x_ticks);
   repvar.graph.g.select(".x-axis")
     .transition()
     .call(repvar.graph.x_axis)
@@ -658,99 +662,6 @@ function updateHistoAxes(x_ticks) {
   repvar.graph.g.select(".y-axis")
     .transition()
     .call(repvar.graph.y_axis);
-}
-function drawDistanceHistogram() {
-  var margin = repvar.opts.histo.margin;
-  var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
-    total_width = parseInt(total_width_str.slice(0,-2)),
-    total_height = repvar.opts.histo.height;
-  repvar.graph.width = total_width - margin.right - margin.left;
-  repvar.graph.height = total_height - margin.top - margin.bottom;
-  // Set up svg objects:
-  var svg = d3.select("#histoSvg")
-    .attr("width", total_width)
-    .attr("height", total_height);
-  repvar.graph.g = svg.append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  // Set up scales and data objects:
-  repvar.graph.x_fxn = d3.scaleLinear()
-    .rangeRound([0, repvar.graph.width]);
-  repvar.graph.y_fxn = d3.scaleLinear()
-    .range([0, repvar.graph.height]);
-  var x_ticks = updateHistoBins();
-
-  updateHistoGraph();
-
-  // Draw the title and axes:
-  /*svg.append("text")
-    .attr("class", "histo-title")
-    .attr("dy", "0.8em") //.attr("dy", ".35em")
-    .attr("x", total_width / 2)
-    .attr("text-anchor", "middle")
-    .text("Distribution of distances");*/
-  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn);
-  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn).tickValues([]).tickSize(0);
-  repvar.graph.g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", "translate(0," + repvar.graph.height + ")");
-  repvar.graph.g.append("g")
-    .attr("class", "y-axis");
-
-  updateHistoAxes(x_ticks);
-}
-function drawDistanceHistogram_OLD() {
-  var margin = repvar.opts.histo.margin;
-  var total_width_str = getComputedStyle(document.getElementById("selectionDiv")).getPropertyValue("width"),
-    total_width = parseInt(total_width_str.slice(0,-2)),
-    total_height = repvar.opts.histo.height;
-  repvar.graph.width = total_width - margin.right - margin.left;
-  repvar.graph.height = total_height - margin.top - margin.bottom;
-  // Set up svg objects:
-  var svg = d3.select("#histoSvg")
-    .attr("width", total_width)
-    .attr("height", total_height);
-  repvar.graph.g = svg.append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  // Set up scales and data objects:
-  repvar.graph.x_fxn = d3.scaleLinear()
-    .rangeRound([0, repvar.graph.width]);
-  repvar.graph.y_fxn = d3.scaleLinear()
-    .range([0, repvar.graph.height]);
-  var x_ticks = updateHistoBins();
-
-  updateHistoGraph();
-
-  // Draw the title and axes:
-  /*svg.append("text")
-    .attr("class", "histo-title")
-    .attr("dy", "0.8em") //.attr("dy", ".35em")
-    .attr("x", total_width / 2)
-    .attr("text-anchor", "middle")
-    .text("Distribution of distances");*/
-  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn);
-  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn).tickValues([]).tickSize(0);
-  repvar.graph.g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", "translate(0," + repvar.graph.height + ")");
-  repvar.graph.g.append("g")
-    .attr("class", "y-axis");
-
-  updateHistoAxes(x_ticks);
-  /*repvar.graph.g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", "translate(0," + repvar.graph.height + ")")
-    .call(repvar.graph.x_axis)
-    .selectAll("text")
-      .style("text-anchor", "start")
-      .attr("x", 7)
-      .attr("y", 5)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(55)");
-  repvar.graph.g.append("g")
-    .attr("class", "y-axis")
-    .call(repvar.graph.y_axis);*/
 }
 
 // =====  Data parsing:

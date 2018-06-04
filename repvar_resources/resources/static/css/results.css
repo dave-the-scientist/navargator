@@ -15,33 +15,7 @@
 }
 
 /* Display options pane settings: */
-#normValInput {
-  width: 50px;
-  padding: 1px 3px;
-  outline: none;
-  border: 1px solid transparent;
-  transition: border-color 0.2s ease-in-out;
-}
-#normValInput:hover, #normValInput:focus {
-  border-color: black;
-}
-#normValGoButton {
-  line-height: 17px;
-  padding: 0px 3px;
-  font-size: 14px;
-  text-align: center;
-  border: 1px solid #8A8A8A;
-  border-radius: 3px;
-  background: linear-gradient(#FAFAFA, #DCDCDC);
-  box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
-}
-#normValGoButton:hover {
-  border-color: #4F4F4F;
-}
-#normValGoButton:active {
-  background: linear-gradient(#DCDCDC, #FAFAFA);
-  box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
-}
+
 
 /* Selection pane settings: */
 

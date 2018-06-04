@@ -97,6 +97,7 @@ class VariantFinder(object):
         self.verbose = bool(verbose)
         self.leaves = []
         self.cache = {}
+        self.normalize = self._empty_normalize()
         if not _blank_init:
             tree = TreeParser(tree_input, tree_format=tree_format, verbose=verbose)
             self.leaves = tree.leaves # List of all terminal leaves in tree_file
@@ -186,6 +187,8 @@ class VariantFinder(object):
         vf.dist = self.dist.copy()
         vf.tree_data = self.tree_data
         vf.phylo_xml_data = self.phylo_xml_data
+        vf.cache = self.cache
+        vf.normalize = self.normalize
         vf._not_ignored_inds = self._not_ignored_inds.copy()
         vf._ignored = self.ignored.copy()
         vf._chosen = self.chosen.copy()
@@ -277,15 +280,23 @@ class VariantFinder(object):
         return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
 
     # # # # #  Private methods  # # # # #
+    def _clear_cache(self):
+        self.cache = {}
+        self.normalize = self._empty_normalize()
+    def _empty_normalize(self):
+        return {'method':'self', 'value':None, 'custom_max_count':None, 'global_nums':set(), 'global_max_count':None, 'global_bins':[]}
     def _calculate_cache_values(self, params, variant_inds, scores, alt_variants):
         cluster_inds = self._partition_nearest(variant_inds)
         variants = [self.leaves[i] for i in variant_inds]
         clusters = [[self.leaves[i] for i in clst] for clst in cluster_inds]
-        variant_distance = {}
+        variant_distance, max_var_dist = {}, 0
         for rep_ind, clst_inds in zip(variant_inds, cluster_inds):
             for var_ind in clst_inds:
-                variant_distance[self.leaves[var_ind]] = self.dist[rep_ind, var_ind]
-        self.cache[params] = {'variants':variants, 'scores':scores, 'clusters':clusters, 'variant_distance':variant_distance, 'alt_variants':alt_variants}
+                dist = self.dist[rep_ind, var_ind]
+                variant_distance[self.leaves[var_ind]] = dist
+                if dist > max_var_dist:
+                    max_var_dist = dist
+        self.cache[params] = {'variants':variants, 'scores':scores, 'clusters':clusters, 'variant_distance':variant_distance, 'max_distance':max_var_dist, 'alt_variants':alt_variants}
     def _print_clustering_results(self, num_variants, init_time, variants, scores, alt_variants):
         run_time = time.time() - init_time
         if alt_variants:
@@ -347,7 +358,7 @@ class VariantFinder(object):
             new_chosen.add(node)
         if new_chosen != self._chosen:
             self._chosen = new_chosen
-            self.cache = {}
+            self._clear_cache()
     @property
     def ignored(self):
         return self._ignored
@@ -369,7 +380,7 @@ class VariantFinder(object):
         if new_ignored != self._ignored:
             self._ignored = new_ignored
             self._not_ignored_inds = new_ingroup_inds
-            self.cache = {}
+            self._clear_cache()
     @property
     def available(self):
         return self._available
@@ -387,7 +398,7 @@ class VariantFinder(object):
                     new_avail.add(node)
         if new_avail != self._available:
             self._available = new_avail
-            self.cache = {}
+            self._clear_cache()
     @property
     def distance_scale(self):
         return self._distance_scale
@@ -406,7 +417,7 @@ class VariantFinder(object):
             exit()
         self._distance_scale = val
         self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
-
+        # self._clear_cache()
 
 class RepvarValidationError(ValueError):
     def __init__(self, *args, **kwargs):

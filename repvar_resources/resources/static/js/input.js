@@ -1,7 +1,8 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Should have a normalization option pane here too. Which will set the norm option for the page when it opens.
+// - Finish calculateGlobalNormalization(max_var_dist) and $("#findVariantsButton").click()
+// - The radio buttons in the normalization pane should trigger an ajax call on change. I originally decided not to, but now think it would be useful. It would allow you to change it after completing a run, and have the new result page obey the selection.
 // - Move the 'g', 'x_fxn', 'y_fxn', 'line_fxn', 'x_axis', 'y_axis' out of repvar.opts and into repvar.graph
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
 // - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
@@ -41,6 +42,7 @@ function setupPage() {
   var score_graph_height = $("#scoreGraphSvg").css('height');
   repvar.opts.graph.height = parseInt(score_graph_height.slice(0,-2));
   setupTreeElements();
+  setupDisplayOptionsPane();
   setupRunOptions();
   setupScoresGraph();
   setupVariantSelection();
@@ -95,7 +97,6 @@ function setupUploadSaveButtons() {
       cache: false,
       processData: false,
       success: function(data_obj) {
-        // Change title of tree pane to filename = $("#uploadFileInput")[0].files[0].name
         newTreeLoaded(data_obj);
       },
       error: function(error) {
@@ -119,6 +120,65 @@ function setupUploadSaveButtons() {
       },
       error: function(error) { processError(error, "Error saving repvar file"); }
     });
+  });
+}
+function setupDisplayOptionsPane() {
+  var go_button_shown = false;
+  var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
+  var custom_input = $("#normValInput"), custom_go_button = $("#normValGoButton");
+  function showGoButton() {
+    if (go_button_shown == false) {
+      custom_go_button.show(100);
+      go_button_shown = true;
+    }
+  }
+  function hideGoButton() {
+    if (go_button_shown == true) {
+      custom_go_button.hide(100);
+      go_button_shown = false;
+    }
+  }
+  self_radio.on("change", function(event) {
+    hideGoButton();
+  });
+  global_radio.on("change", function(event) {
+    hideGoButton();
+  });
+  custom_radio.click(function(event) {
+    var val = custom_input.val();
+    if (val == '') {
+      custom_input.focus();
+      return false; // Prevents the button from being actually selected.
+    }
+  });
+  custom_input.on("keydown", function(event) {
+    if (event.which == 13) { // 'Enter' key
+      custom_input.blur();
+      custom_go_button.click();
+      return false;
+    }
+    showGoButton();
+  }).blur(function() {
+    var val = parseFloat(custom_input.val());
+    if (isNaN(val)) {
+      val = '';
+    }
+    custom_input.val(val);
+    if (!custom_go_button.is(':active') && !custom_radio.is(':checked')) {
+      hideGoButton();
+    }
+  });
+  custom_go_button.click(function() {
+    var val = custom_input.val();
+    if (val == '') {
+      return false;
+    } else if (val <= 0) {
+      showErrorPopup("Error: the 'normalize' value must be a positive number.");
+      custom_input.val('');
+      return false;
+    }
+    hideGoButton();
+    custom_radio.prop('checked', true).change();
   });
 }
 function setupRunOptions() {
@@ -170,6 +230,11 @@ function setupRunOptions() {
       var num_vars = ret.num_vars, num_vars_range = ret.num_vars_range,
         cluster_method = $("#clustMethodSelect").val();
     }
+
+    // Check status of normalization radios, send info in ajax call. If self, server stores value of None. If custom, stores $("#normValInput").val(). If global, do nothing (set as if self). Instead, checkIfProcessingDone() should inform the server if global is still checked when it fires. The server should then set the norm value to whatever current max it's seen, leaving the max y-value as None. That final piece is calculated by calculateGlobalNormalization().
+    var norm_to = ($("#normValRadio").is(':checked')) ? parseFloat($("#normValInput").val()) : null;
+    console.log('norm', norm_to);
+
     var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked')),
       auto_result_page = null;
     if (auto_open == true) {
@@ -179,7 +244,7 @@ function setupRunOptions() {
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range},
+      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'normalize':norm_to},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         var new_s_id = data.session_id;
@@ -416,10 +481,11 @@ function updateResultsPane(num_vars, num_vars_range) {
   checkIfProcessingDone();
 }
 function checkIfProcessingDone() {
+  var global_norm = ($("#normGlobalRadio").is(':checked')) ? 1 : 0;
   $.ajax({
     url: daemonURL('/check-results-done'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'var_nums': repvar.result_links.var_nums},
+    data: {'session_id': page.session_id, 'var_nums': repvar.result_links.var_nums, 'global_norm':global_norm},
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
@@ -427,7 +493,7 @@ function checkIfProcessingDone() {
         console.log('Aborting checkIfProcessingDone(), as the returned list does not match');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
-      var draw_graph = true, score, var_num;
+      var draw_graph = true, max_var_dist = 0, score, var_num, max_dist;
       for (var i=0; i<data.var_scores.length; ++i) {
         score = data.var_scores[i];
         var_num = ret_var_nums[i];
@@ -436,6 +502,8 @@ function checkIfProcessingDone() {
         } else if (repvar.result_links[var_num].score == null) {
           repvar.result_links[var_num].score = score;
           repvar.result_links[var_num].link.html(var_num+' variants ['+roundFloat(score, 4)+']');
+          max_dist = parseFloat(data.max_var_dists[i]);
+          if (max_dist > max_var_dist) { max_var_dist = max_dist; }
         } else if (repvar.result_links[var_num].score != score) {
           showErrorPopup("Error: scores from the server don't match existing scores.");
         }
@@ -444,11 +512,21 @@ function checkIfProcessingDone() {
         page.check_results_timer = setTimeout(checkIfProcessingDone, page.check_results_interval);
       } else {
         repvar.result_links.scores = data.var_scores;
+        calculateGlobalNormalization(max_var_dist);
         updateScoreGraph();
       }
     },
     error: function(error) { processError(error, "Error checking if the results have finished"); }
   });
+}
+function calculateGlobalNormalization(max_var_dist) {
+  // this should be called for every run, no matter if the user has selected global norm or not.
+  console.log('calculating global norm values');
+  // use d3 to get the tick values.
+  // ajax to inform the server, allow it to calculate the max count of the histo (as it already has all of the distance values, no need to transmit them to input.js). It should set the max value prior to calculating, so that is used if the user opens the result.js page before calculations are complete.
+  // server then stores that in vf.normalize, which is accessed and passed to results.js pages when they open by parseClusteredData(data).
+  // when results.js calls /get-global-normalization, can just return this stored value.
+
 }
 function updateScoreGraph() {
   if (repvar.result_links.var_nums.length == 1) {

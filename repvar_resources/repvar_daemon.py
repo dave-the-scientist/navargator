@@ -151,21 +151,29 @@ class RepvarDaemon(object):
             vf = self.sessions[s_id]
             num_vars = int(request.form['num_vars'])
             num_vars_range = int(request.form['num_vars_range'])
-            dist_scale = 1.0
             cluster_method = request.form['cluster_method']
+            dist_scale = 1.0
             for num in range(num_vars, num_vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
                     vf.cache[params] = None
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
+            normalize = request.form['normalize']
+            if normalize:
+                vf.normalize['method'] = 'custom'
+                vf.normalize['value'] = float(normalize)
+            else:
+                vf.normalize['method'] = 'self'
+                vf.normalize['value'] = None
             return json.dumps({'session_id':s_id})
         @self.server.route(daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
             s_id = request.form['session_id']
             vf = self.sessions[s_id]
             var_nums = request.form.getlist('var_nums[]')
-            var_scores = []
+            global_norm = bool(int(request.form['global_norm']))
+            var_scores, max_var_dists = [], []
             dist_scale = 1.0
             for num in var_nums:
                 num = int(num)
@@ -176,9 +184,14 @@ class RepvarDaemon(object):
                 results = vf.cache[params]
                 if results == None:
                     var_scores.append(False)
+                    max_var_dists.append(False)
                 else:
                     var_scores.append(sum(results['scores']))
-            return json.dumps({'var_nums':var_nums, 'var_scores':var_scores})
+                    max_var_dists.append(results['max_distance'])
+            if global_norm:
+                vf.normalize['method'] = 'global'
+                vf.normalize['value'] = max(max_var_dists)
+            return json.dumps({'var_nums':var_nums, 'var_scores':var_scores, 'max_var_dists':max_var_dists})
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
@@ -194,8 +207,15 @@ class RepvarDaemon(object):
             if results == None:
                 ret = {'variants': False}
             else:
-                ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':max(results['variant_distance'].values())}
+                ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':results['max_distance']}
             return json.dumps(ret)
+        @self.server.route(daemonURL('/get-global-normalization'), methods=['POST'])
+        def get_global_normalization():
+            """For each set of params in the cache, gets the maximum distance from any variant to its cluster centre, and returns the largest of those. Used to normalize the tree graph and histogram so they can be compared between runs."""
+            s_id = request.form['session_id']
+            vf = self.sessions[s_id]
+            max_dist = max(val['max_distance'] for key,val in vf.cache.items() if key != 'normalize')
+            return json.dumps({'global_max':max_dist})
         # # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():

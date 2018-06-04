@@ -56,9 +56,22 @@
               <input id="uploadFileInput" name="upload-file" type="file">
             </form>
             <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
-            <h2>Configuration options</h2>
-            <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
             <button id="saveRepvarButton" class="jq-ui-button">Save config file</button>
+            <h2>Display options</h2>
+            <table><tbody>
+              <tr><td>
+                <label><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />Self-normalized</label>
+              </td></tr>
+              <tr><td>
+                <label><input id="normGlobalRadio" type="radio" name="normalizeRadios" />Normalize across runs <span id="normGlobalValSpan"></span></label>
+              </td></tr>
+              <tr><td>
+                <label><input id="normValRadio" type="radio" name="normalizeRadios" />Normalize to</label>
+                <input id="normValInput" placeholder="value" />
+                <label id="normValGoButton" style="display:none">Ok</label>
+              </td></tr>
+            </tbody></table>
+            <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
           </div>
 
           <div id="runOptionsDiv" class="style-box">
