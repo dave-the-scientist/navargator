@@ -284,7 +284,9 @@ class VariantFinder(object):
         self.cache = {}
         self.normalize = self._empty_normalize()
     def _empty_normalize(self):
-        return {'method':'self', 'value':None, 'custom_max_count':None, 'global_nums':set(), 'global_max_count':None, 'global_bins':[]}
+        """'method' can be one of 'self', 'global', or 'custom'. 'custom_max_count' is X.
+        """
+        return {'method':'self', 'custom_value':None, 'custom_max_count':None, 'global_value':None, 'global_max_count':None, 'global_nums':set(), 'global_bins':[]}
     def _calculate_cache_values(self, params, variant_inds, scores, alt_variants):
         cluster_inds = self._partition_nearest(variant_inds)
         variants = [self.leaves[i] for i in variant_inds]

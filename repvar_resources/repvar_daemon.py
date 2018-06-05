@@ -31,8 +31,10 @@ def daemonURL(url):
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
 
-      This class defines several custom HTTP status codes used to signal errors:
+      This class defines several custom HTTP status codes used to signal errors, which are also further defined in core.js:processError().
     550 - Specific error validating the user's tree.
+    # # #  Re-number the below error codes to reasonable values:
+    5507 - Error setting the normalization method. From set_normalization_method()
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         max_upload_size = 20*1024*1024 # 20 MB
@@ -104,6 +106,24 @@ class RepvarDaemon(object):
                 data_dict = {'session_id':s_id, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
             data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
+        @self.server.route(daemonURL('/calculate-global-normalization'), methods=['POST'])
+        def calculate_global_normalization():
+            """For each set of params in the cache, gets the maximum distance from any variant to its cluster centre, and returns the largest of those. Used to normalize the tree graph and histogram so they can be compared between runs."""
+            s_id = request.form['session_id']
+            vf = self.sessions[s_id]
+            dist_scale = 1.0
+            cur_var = request.form['cur_var']
+            max_var_dist = float(request.form['max_var_dist'])
+            bins = map(float, request.form.getlist('global_bins[]'))
+            if not cur_var: # Called from input.js:calculateGlobalNormalization()
+                var_nums = map(int, request.form.getlist('var_nums[]'))
+                self.calc_global_normalization_values(var_nums, dist_scale, max_var_dist, bins, vf)
+            else: # Called from results.js
+                cur_var = int(cur_var)
+                self.calc_global_normalization_values([cur_var], dist_scale, max_var_dist, bins, vf)
+            ret = {'global_value':vf.normalize['global_value'], 'global_max_count':vf.normalize['global_max_count']}
+            print vf.normalize
+            return json.dumps(ret)
         # # #  Input page listening routes:
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
@@ -159,20 +179,12 @@ class RepvarDaemon(object):
                     vf.cache[params] = None
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
-            normalize = request.form['normalize']
-            if normalize:
-                vf.normalize['method'] = 'custom'
-                vf.normalize['value'] = float(normalize)
-            else:
-                vf.normalize['method'] = 'self'
-                vf.normalize['value'] = None
             return json.dumps({'session_id':s_id})
         @self.server.route(daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
             s_id = request.form['session_id']
             vf = self.sessions[s_id]
             var_nums = request.form.getlist('var_nums[]')
-            global_norm = bool(int(request.form['global_norm']))
             var_scores, max_var_dists = [], []
             dist_scale = 1.0
             for num in var_nums:
@@ -188,10 +200,27 @@ class RepvarDaemon(object):
                 else:
                     var_scores.append(sum(results['scores']))
                     max_var_dists.append(results['max_distance'])
-            if global_norm:
-                vf.normalize['method'] = 'global'
-                vf.normalize['value'] = max(max_var_dists)
+            #vf.normalize['global_value'] = max(max_var_dists) or None
             return json.dumps({'var_nums':var_nums, 'var_scores':var_scores, 'max_var_dists':max_var_dists})
+        @self.server.route(daemonURL('/set-normalization-method'), methods=['POST'])
+        def set_normalization_method():
+            s_id = request.form['session_id']
+            vf = self.sessions[s_id]
+            norm_method = request.form['normalization[method]']
+            if norm_method == 'self':
+                vf.normalize['method'] = 'self'
+            elif norm_method == 'custom':
+                vf.normalize['method'] = 'custom'
+                vf.normalize['custom_value'] = float(request.form['normalization[value]'])
+            elif norm_method == 'global':
+                vf.normalize['method'] = 'global'
+            else:
+                vf.normalize['method'] = 'self'
+                err_msg = "Error: unrecognized normalization method '%s'" % norm_method
+                print(err_msg) # # TEST
+                return (err_msg, 5507)
+            print vf.normalize
+            return "normalization method set to %s" % norm_method
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
@@ -209,13 +238,6 @@ class RepvarDaemon(object):
             else:
                 ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':results['max_distance']}
             return json.dumps(ret)
-        @self.server.route(daemonURL('/get-global-normalization'), methods=['POST'])
-        def get_global_normalization():
-            """For each set of params in the cache, gets the maximum distance from any variant to its cluster centre, and returns the largest of those. Used to normalize the tree graph and histogram so they can be compared between runs."""
-            s_id = request.form['session_id']
-            vf = self.sessions[s_id]
-            max_dist = max(val['max_distance'] for key,val in vf.cache.items() if key != 'normalize')
-            return json.dumps({'global_max':max_dist})
         # # #  Serving the pages locally
         @self.server.route('/input')
         def render_input_page():
@@ -310,6 +332,45 @@ class RepvarDaemon(object):
             return self.add_variant_finder(vf)
         else:
             return s_id
+    def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
+        print '\nIn calc norm.', var_nums, bins
+        print 'pre', vf.normalize
+        if max_var_dist == vf.normalize['global_value'] and bins != vf.normalize['global_bins']:
+            vf.normalize['global_bins'] = bins
+        elif vf.normalize['global_value'] == None or max_var_dist > vf.normalize['global_value']:
+            vf.normalize['global_value'] = max_var_dist
+            vf.normalize['global_bins'] = bins
+            vf.normalize['global_nums'] = set()
+            vf.normalize['global_max_count'] = 0
+        elif max_var_dist < vf.normalize['global_value']:
+            bins = vf.normalize['global_bins']
+        max_count = vf.normalize['global_max_count'] or 0
+        for num in var_nums:
+            params = (num, dist_scale)
+            if num in vf.normalize['global_nums'] or vf.cache[params] == None:
+                continue
+            var_dists = vf.cache[params]['variant_distance']
+            count = self.calculate_max_histo_count(var_dists, bins)
+            if count > max_count:
+                max_count = count
+            vf.normalize['global_nums'].add(num)
+        vf.normalize['global_max_count'] = max_count
+        print 'post', vf.normalize
+    def calculate_max_histo_count(self, var_dists, bins):
+        dists = sorted(var_dists.values())
+        dists_ind = 0
+        max_count = 0
+        for threshold in bins[1:]:
+            count = 0
+            for d in dists[dists_ind:]:
+                if d < threshold:
+                    count += 1
+                else:
+                    break
+            if count > max_count:
+                max_count = count
+            dists_ind += count
+        return max_count
 
     # # #  Server maintainence  # # #
     def collect_garbage(self):

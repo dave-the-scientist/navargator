@@ -2,7 +2,7 @@
 
 // TODO:
 // - Finish calculateGlobalNormalization(max_var_dist) and $("#findVariantsButton").click()
-// - The radio buttons in the normalization pane should trigger an ajax call on change. I originally decided not to, but now think it would be useful. It would allow you to change it after completing a run, and have the new result page obey the selection.
+// - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - Move the 'g', 'x_fxn', 'y_fxn', 'line_fxn', 'x_axis', 'y_axis' out of repvar.opts and into repvar.graph
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
 // - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
@@ -16,15 +16,28 @@
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
 // - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree (after dealing with the H2; an idea might come from that).
 
+//NOTE:
+// - If the underlying vf is cleared, have to call setNormalizationMethod() to inform the new vf of the user's choice.
+//   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and on finding variants if any of the assigned variants have changed. Those are all currently covered.
 
 // =====  Modified common variables:
-page.check_results_timer = null, page.check_results_interval = 500;
-repvar.result_links = {'var_nums':[], 'scores':[]}, repvar.assigned_selected = '';
-repvar.opts.sizes.bar_chart_height = 0, repvar.opts.sizes.bar_chart_buffer = 0;
-repvar.opts.graph = {
-  'width':null, 'height':null, 'margin':{top:7, right:27, bottom:35, left:37},
+$.extend(page, {
+  'check_results_timer':null, 'check_results_interval':500
+});
+$.extend(repvar, {
+  'result_links':{'var_nums':[], 'scores':[]}, 'assigned_selected':''
+});
+$.extend(repvar.opts.sizes, {
+  'bar_chart_height':0, 'bar_chart_buffer':0
+});
+$.extend(repvar.opts.graph, {
+  'margin':{top:7, right:27, bottom:35, left:37},
   'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
-};
+});
+/*repvar.opts.graph = {
+  'total_width':null, 'total_height':null, 'margin':{top:7, right:27, bottom:35, left:37},
+  'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
+};*/
 // Also adds repvar.nodes[var_name].variant_select_label
 
 // =====  Page setup:
@@ -37,10 +50,10 @@ function setupPage() {
   page.browser_id = generateBrowserId(10);
   var tree_width_str = $("#mainTreeDiv").css('width');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-  var score_graph_width = $("#scoreGraphSvg").css('width');
-  repvar.opts.graph.width = parseInt(score_graph_width.slice(0,-2));
-  var score_graph_height = $("#scoreGraphSvg").css('height');
-  repvar.opts.graph.height = parseInt(score_graph_height.slice(0,-2));
+  var score_graph_width_str = $("#scoreGraphSvg").css('width');
+  repvar.opts.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
+  var score_graph_height_str = $("#scoreGraphSvg").css('height');
+  repvar.opts.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
   setupTreeElements();
   setupDisplayOptionsPane();
   setupRunOptions();
@@ -140,9 +153,11 @@ function setupDisplayOptionsPane() {
   }
   self_radio.on("change", function(event) {
     hideGoButton();
+    setNormalizationMethod();
   });
   global_radio.on("change", function(event) {
     hideGoButton();
+    setNormalizationMethod();
   });
   custom_radio.click(function(event) {
     var val = custom_input.val();
@@ -150,6 +165,8 @@ function setupDisplayOptionsPane() {
       custom_input.focus();
       return false; // Prevents the button from being actually selected.
     }
+  }).on("change", function(event) {
+    setNormalizationMethod();
   });
   custom_input.on("keydown", function(event) {
     if (event.which == 13) { // 'Enter' key
@@ -230,11 +247,6 @@ function setupRunOptions() {
       var num_vars = ret.num_vars, num_vars_range = ret.num_vars_range,
         cluster_method = $("#clustMethodSelect").val();
     }
-
-    // Check status of normalization radios, send info in ajax call. If self, server stores value of None. If custom, stores $("#normValInput").val(). If global, do nothing (set as if self). Instead, checkIfProcessingDone() should inform the server if global is still checked when it fires. The server should then set the norm value to whatever current max it's seen, leaving the max y-value as None. That final piece is calculated by calculateGlobalNormalization().
-    var norm_to = ($("#normValRadio").is(':checked')) ? parseFloat($("#normValInput").val()) : null;
-    console.log('norm', norm_to);
-
     var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked')),
       auto_result_page = null;
     if (auto_open == true) {
@@ -244,12 +256,13 @@ function setupRunOptions() {
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'normalize':norm_to},
+      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         var new_s_id = data.session_id;
         if (new_s_id != page.session_id) {
           page.session_id = new_s_id;
+          setNormalizationMethod();
           clearHideResultsPane();
         }
         updateResultsPane(num_vars, num_vars_range);
@@ -262,7 +275,7 @@ function setupRunOptions() {
   });
 }
 function setupScoresGraph() {
-  var total_width = repvar.opts.graph.width, total_height = repvar.opts.graph.height, margin = repvar.opts.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
+  var total_width = repvar.opts.graph.total_width, total_height = repvar.opts.graph.total_height, margin = repvar.opts.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
   // Set up svg and g objects:
   var svg = d3.select("#scoreGraphSvg")
     .attr("width", total_width)
@@ -363,7 +376,7 @@ function setupVariantSelection() {
 }
 $(document).ready(function(){
   // Called once the document has loaded.
-  setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens.
+  setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens. I no longer believe that, and I think those issues were caused by the html document loading the js files asynch. Should be fixed.
 });
 $(window).bind('beforeunload', function() {
   // Lets the background server know this instance has been closed.
@@ -376,6 +389,7 @@ function newTreeLoaded(data_obj) {
   clearInterval(page.maintain_interval_obj);
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   if (repvar.tree_data) {
+    setNormalizationMethod();
     $("#introMessageGroup").remove();
     drawTree();
     updateVarSelectList();
@@ -481,16 +495,15 @@ function updateResultsPane(num_vars, num_vars_range) {
   checkIfProcessingDone();
 }
 function checkIfProcessingDone() {
-  var global_norm = ($("#normGlobalRadio").is(':checked')) ? 1 : 0;
   $.ajax({
     url: daemonURL('/check-results-done'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'var_nums': repvar.result_links.var_nums, 'global_norm':global_norm},
+    data: {'session_id': page.session_id, 'var_nums': repvar.result_links.var_nums},
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
       if (JSON.stringify(ret_var_nums) != JSON.stringify(repvar.result_links.var_nums)) {
-        console.log('Aborting checkIfProcessingDone(), as the returned list does not match');
+        console.log('Aborting checkIfProcessingDone(), as the returned list does not match.');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
       var draw_graph = true, max_var_dist = 0, score, var_num, max_dist;
@@ -508,11 +521,13 @@ function checkIfProcessingDone() {
           showErrorPopup("Error: scores from the server don't match existing scores.");
         }
       }
+      if (max_var_dist > 0) {
+        calculateGlobalNormalization(max_var_dist);
+      }
       if (draw_graph == false) {
         page.check_results_timer = setTimeout(checkIfProcessingDone, page.check_results_interval);
       } else {
         repvar.result_links.scores = data.var_scores;
-        calculateGlobalNormalization(max_var_dist);
         updateScoreGraph();
       }
     },
@@ -521,9 +536,21 @@ function checkIfProcessingDone() {
 }
 function calculateGlobalNormalization(max_var_dist) {
   // this should be called for every run, no matter if the user has selected global norm or not.
-  console.log('calculating global norm values');
+  var bins = calculateHistoBins(max_var_dist);
+  console.log('calculated global norm values', max_var_dist, bins);
+
+  $.ajax({
+    url: daemonURL('/calculate-global-normalization'),
+    type: 'POST',
+    data: {'session_id': page.session_id, 'var_nums':repvar.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null},
+    success: function(data_obj) {
+      var data = $.parseJSON(data_obj);
+      console.log('data', data);
+    },
+    error: function(error) { processError(error, "Error in calculateGlobalNormalization"); }
+  });
   // use d3 to get the tick values.
-  // ajax to inform the server, allow it to calculate the max count of the histo (as it already has all of the distance values, no need to transmit them to input.js). It should set the max value prior to calculating, so that is used if the user opens the result.js page before calculations are complete.
+  // ajax to inform the server, allow it to calculate the max count of the histo (as it already has all of the distance values, no need to transmit them to input.js).
   // server then stores that in vf.normalize, which is accessed and passed to results.js pages when they open by parseClusteredData(data).
   // when results.js calls /get-global-normalization, can just return this stored value.
 
@@ -648,6 +675,19 @@ function addVariantLabelCallbacks(jq_ele, var_name) {
     nodeLabelMouseclickHandler(var_name);
   });
 }
+function setNormalizationMethod() {
+  var norm = getNormalizationSettings();
+  $.ajax({
+    url: daemonURL('/set-normalization-method'),
+    type: 'POST',
+    data: {'session_id': page.session_id, 'normalization':norm},
+    success: function(data_obj) {
+      var data = $.parseJSON(data_obj);
+      console.log('data', data);
+    },
+    error: function(error) { processError(error, "Error setting the normalization method"); }
+  });
+}
 
 // =====  Data parsing / validation:
 function parseRepvarData(data_obj) {
@@ -688,6 +728,30 @@ function validateFindVariantsCall() {
   if (do_find_vars == false) {
     return false;
   }
-
   return {'num_vars':num_vars, 'num_vars_range':num_vars_range};
+}
+function getNormalizationSettings() {
+  var ret = {'method':null, 'value':null};
+  if ($("#normSelfRadio").is(':checked')) {
+    ret.method = 'self';
+  } else if ($("#normGlobalRadio").is(':checked')) {
+    ret.method = 'global';
+  } else if ($("#normValRadio").is(':checked')) {
+    ret.method = 'custom';
+    ret.value = parseFloat($("#normValInput").val());
+  } else {
+    showErrorPopup("Error: could not retrieve normalization settings from the page.");
+  }
+  return ret;
+}
+
+// =====  Misc functions:
+function calculateHistoBins(max_var_dist) {
+  // The upper bound of each bin is not inclusive.
+  var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
+  var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
+  if (max_var_dist >= x_ticks[x_ticks.length-1]) {
+    x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
+  }
+  return x_ticks;
 }

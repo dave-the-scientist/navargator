@@ -4,15 +4,22 @@
 
 
 // =====  Modified / additional common variables:
-page.check_results_interval = 1000;
-repvar.num_variants = null, repvar.variants = [], repvar.clusters = {}, repvar.variant_distance = {}, repvar.max_variant_distance = 0.0, repvar.normalized_max_distance = 0.0, repvar.nice_max_var_dist = 0.0, repvar.sorted_names = [];
-repvar.opts.graph = {
-  'total_width':null, 'total_height':null, 'margin':{top:0, right:17, bottom:30, left:7}, // top:17 if generating a title
-  'bar_margin_ratio':0.15, 'bins':15 // Approximate # bins.
-};
+$.extend(page, {
+  'check_results_interval':1000
+});
+$.extend(repvar, {
+  'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'nice_max_dist':0.0, 'original_bins':[]
+});
+$.extend(repvar.opts.graph, {
+  'margin':{top:0, right:17, bottom:30, left:7}, 'bar_margin_ratio':0.15
+});
 repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
+//BUG:
+// - If the histo is normalized to .7867 (or higher numbers), the x ticks on the histo are only using 1 sig digit, which is clearly wrong.
+
 //TODO:
+// - Write function to get nice x_ticks for some max value. Current one adds an extra empty bin for custom values. Also should use as many decimals as necessary (can probably parse from the results of d3.ticks)
 // - Get export buttons working.
 // - Hide sequence names checkbox, as well as various color pickers and size spinners (these are in a collapsing pane).
 // - Need a more efficient selectNamesByThreshold().
@@ -191,13 +198,14 @@ function setupDisplayOptionsPane() {
   global_radio.on("change", function(event) {
     hideGoButton();
     $.ajax({
-      url: daemonURL('/get-global-normalization'),
+      url: daemonURL('/calculate-global-normalization'),
       type: 'POST',
-      data: {'session_id': page.session_id},
+      data: {'session_id':page.session_id, 'cur_var':repvar.num_variants, 'var_nums':null, 'max_var_dist':repvar.max_variant_distance, 'global_bins':repvar.original_bins},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        repvar.normalized_max_distance = data.global_max;
-        $("#normGlobalValSpan").html('['+roundFloat(data.global_max, 4)+']');
+        repvar.normalized_max_distance = data.global_value;
+        $("#normGlobalValSpan").html('['+roundFloat(data.global_value, 4)+']');
+        // deal with data.global_max_count
         normalizeResults();
       },
       error: function(error) { processError(error, "Error fetching global normalizations from the server"); }
@@ -552,9 +560,18 @@ function colourSelectPicked(jscol) {
 }
 
 // =====  Graph functions:
+function calculateHistoBins(max_var_dist) {
+  // The upper bound of each bin is not inclusive.
+  var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
+  var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
+  if (max_var_dist >= x_ticks[x_ticks.length-1]) {
+    x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
+  }
+  return x_ticks;
+}
 function updateHistoBins() {
   repvar.graph.x_fxn.domain( [0, repvar.normalized_max_distance] );
-  var x_ticks = repvar.graph.x_fxn.ticks(repvar.opts.graph.bins),
+  var x_ticks = repvar.graph.x_fxn.ticks(repvar.opts.graph.histo_bins),
     max_x_tick = x_ticks[x_ticks.length-1] + x_ticks[1];
   repvar.nice_max_var_dist = roundFloat(max_x_tick, 4);
   x_ticks.push(max_x_tick);
@@ -686,6 +703,7 @@ function parseClusteredData(data) {
   }
   repvar.variant_distance = data.variant_distance;
   repvar.max_variant_distance = data.max_variant_distance;
+  repvar.original_bins = calculateHistoBins(data.max_variant_distance);
   // Check if a normalization is already set (from the server). Else:
   repvar.normalized_max_distance = data.max_variant_distance;
   repvar.variants = data.variants;

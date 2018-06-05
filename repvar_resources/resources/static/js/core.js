@@ -1,5 +1,6 @@
 // TODO:
 // - Many of the opts.colours should be pulled from core.css; bar_chart is the dark background, chosen should be used as the histo bar colour (and I want to use it as an accent on the page), etc
+// - The variable web_server is not defined in processError
 
 // =====  Common options and parameters
 var page = {
@@ -17,7 +18,10 @@ var repvar = {
     },
     'colours' : {
       'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF'
-    }//cluster_background:F3E2B9(light tan) E4FDE5(light green) // cluster_highlight:71FED6(original cyan) 24F0C9(darker cyan) // available:9DB6F2(orig light purp)
+    },//cluster_background:F3E2B9(light tan) E4FDE5(light green) // cluster_highlight:71FED6(original cyan) 24F0C9(darker cyan) // available:9DB6F2(orig light purp)
+    'graph' : {
+      'histo_bins':15, 'total_width':null, 'total_height':null
+    }
   }
 };
 
