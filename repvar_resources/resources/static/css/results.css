@@ -30,6 +30,10 @@
   font: 16px var(--font-family);
   font-weight: bold;
 }
+.histo-axis-label {
+  font-family: var(--font-family);
+  font-size: 14px;
+}
 .histo-bar {
   fill: #24F030;
 }
@@ -38,8 +42,7 @@
   font: 10px sans-serif;
 }
 #histoSlider {
-  margin-right: 18px;
-  margin-left: 16px;
+  margin: 0px 18px 5px 18px;
 }
 #histoSliderHandle {
   width: 3em;

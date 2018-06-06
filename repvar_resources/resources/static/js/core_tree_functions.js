@@ -308,7 +308,7 @@ function nodeLabelMouseoverHandler(var_name, change_node_colour=true) {
   nodeLabelMouseoverHandlerCallback(var_name, label_colour);
 }
 function nodeLabelMouseoutHandler(var_name, change_node_colour=true) {
-  if (repvar.prevent_mouseout[var_name] != undefined) { return false; }
+  if (repvar.considered_variants[var_name] != undefined) { return false; }
   var node = repvar.nodes[var_name], circle_colour = node.node_rest_colour, label_colour = '';
   node.mouseover = false;
   if (node.selected) {

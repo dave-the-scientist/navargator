@@ -1,7 +1,6 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Finish calculateGlobalNormalization(max_var_dist) and $("#findVariantsButton").click()
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - Move the 'g', 'x_fxn', 'y_fxn', 'line_fxn', 'x_axis', 'y_axis' out of repvar.opts and into repvar.graph
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
@@ -17,27 +16,23 @@
 // - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree (after dealing with the H2; an idea might come from that).
 
 //NOTE:
-// - If the underlying vf is cleared, have to call setNormalizationMethod() to inform the new vf of the user's choice.
-//   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and on finding variants if any of the assigned variants have changed. Those are all currently covered.
+// - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
+//   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and when finding variants if any of the assigned variants have changed. Those are all currently covered.
 
 // =====  Modified common variables:
 $.extend(page, {
   'check_results_timer':null, 'check_results_interval':500
 });
 $.extend(repvar, {
-  'result_links':{'var_nums':[], 'scores':[]}, 'assigned_selected':''
+  'result_links':{'var_nums':[], 'scores':[]}, 'assigned_selected':'',
+  'graph':{'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null}
 });
 $.extend(repvar.opts.sizes, {
   'bar_chart_height':0, 'bar_chart_buffer':0
 });
 $.extend(repvar.opts.graph, {
-  'margin':{top:7, right:27, bottom:35, left:37},
-  'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
+  'margin':{top:7, right:27, bottom:35, left:37}
 });
-/*repvar.opts.graph = {
-  'total_width':null, 'total_height':null, 'margin':{top:7, right:27, bottom:35, left:37},
-  'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
-};*/
 // Also adds repvar.nodes[var_name].variant_select_label
 
 // =====  Page setup:
@@ -280,36 +275,36 @@ function setupScoresGraph() {
   var svg = d3.select("#scoreGraphSvg")
     .attr("width", total_width)
     .attr("height", total_height);
-  repvar.opts.graph.g = svg.append("g")
+  repvar.graph.g = svg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   // Set up graphing functions:
-  repvar.opts.graph.x_fxn = d3.scaleLinear()
+  repvar.graph.x_fxn = d3.scaleLinear()
     .range([0, width]);
-  repvar.opts.graph.y_fxn = d3.scaleLinear()
+  repvar.graph.y_fxn = d3.scaleLinear()
     .range([height, 0]);
-  repvar.opts.graph.line_fxn = d3.line()
-    .x(function(d,i) { return repvar.opts.graph.x_fxn(repvar.result_links.var_nums[i]); })
-    .y(function(d,i) { return repvar.opts.graph.y_fxn(d); });
+  repvar.graph.line_fxn = d3.line()
+    .x(function(d,i) { return repvar.graph.x_fxn(repvar.result_links.var_nums[i]); })
+    .y(function(d,i) { return repvar.graph.y_fxn(d); });
   // Set up graph axes:
-  repvar.opts.graph.x_axis = d3.axisBottom(repvar.opts.graph.x_fxn)
+  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn)
     .tickFormat(d3.format("d"));
-  repvar.opts.graph.g.append("g")
+  repvar.graph.g.append("g")
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + height + ")")
-    .call(repvar.opts.graph.x_axis);
-  repvar.opts.graph.y_axis = d3.axisLeft(repvar.opts.graph.y_fxn)
+    .call(repvar.graph.x_axis);
+  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn)
     .tickFormat(d3.format("d"));
-  repvar.opts.graph.g.append("g")
+  repvar.graph.g.append("g")
     .attr("class", "y-axis")
-    .call(repvar.opts.graph.y_axis);
+    .call(repvar.graph.y_axis);
   // Set up axis labels:
-  repvar.opts.graph.g.append("text") // x axis
+  repvar.graph.g.append("text") // x axis
     .attr("class", "score-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
     .attr("y", height + 30)
     .text("Number of variants");
-  repvar.opts.graph.g.append("text") // y axis
+  repvar.graph.g.append("text") // y axis
     .attr("class", "score-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", 0 - height/2)
@@ -317,7 +312,7 @@ function setupScoresGraph() {
     .attr("transform", "rotate(-90)")
     .text("Tree score");
   // Set up the graph line:
-  repvar.opts.graph.g.append("path")
+  repvar.graph.g.append("path")
     .attr("class", "score-line");
 }
 function setupVariantSelection() {
@@ -522,7 +517,7 @@ function checkIfProcessingDone() {
         }
       }
       if (max_var_dist > 0) {
-        calculateGlobalNormalization(max_var_dist);
+        calculateGlobalNormalization(max_var_dist); // So they are processed every 0.5 sec.
       }
       if (draw_graph == false) {
         page.check_results_timer = setTimeout(checkIfProcessingDone, page.check_results_interval);
@@ -534,27 +529,6 @@ function checkIfProcessingDone() {
     error: function(error) { processError(error, "Error checking if the results have finished"); }
   });
 }
-function calculateGlobalNormalization(max_var_dist) {
-  // this should be called for every run, no matter if the user has selected global norm or not.
-  var bins = calculateHistoBins(max_var_dist);
-  console.log('calculated global norm values', max_var_dist, bins);
-
-  $.ajax({
-    url: daemonURL('/calculate-global-normalization'),
-    type: 'POST',
-    data: {'session_id': page.session_id, 'var_nums':repvar.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null},
-    success: function(data_obj) {
-      var data = $.parseJSON(data_obj);
-      console.log('data', data);
-    },
-    error: function(error) { processError(error, "Error in calculateGlobalNormalization"); }
-  });
-  // use d3 to get the tick values.
-  // ajax to inform the server, allow it to calculate the max count of the histo (as it already has all of the distance values, no need to transmit them to input.js).
-  // server then stores that in vf.normalize, which is accessed and passed to results.js pages when they open by parseClusteredData(data).
-  // when results.js calls /get-global-normalization, can just return this stored value.
-
-}
 function updateScoreGraph() {
   if (repvar.result_links.var_nums.length == 1) {
     // No action currently taken.
@@ -562,26 +536,26 @@ function updateScoreGraph() {
     // Update x and y domains:
     var min_var = repvar.result_links.var_nums[0],
       max_var = repvar.result_links.var_nums[repvar.result_links.var_nums.length-1];
-    repvar.opts.graph.x_fxn.domain(
+    repvar.graph.x_fxn.domain(
       [min_var, max_var]
     );
-    repvar.opts.graph.y_fxn.domain(
+    repvar.graph.y_fxn.domain(
       [ Math.floor(d3.min(repvar.result_links.scores)),
         Math.ceil(d3.max(repvar.result_links.scores)) ]
     );
     // Update x and y axes with the new domains:
-    repvar.opts.graph.x_axis.tickValues(repvar.result_links.var_nums);
-    repvar.opts.graph.y_axis.tickValues(repvar.opts.graph.y_fxn.ticks(3));
-    repvar.opts.graph.g.select(".x-axis")
+    repvar.graph.x_axis.tickValues(repvar.result_links.var_nums);
+    repvar.graph.y_axis.tickValues(repvar.graph.y_fxn.ticks(3));
+    repvar.graph.g.select(".x-axis")
       .transition()
-      .call(repvar.opts.graph.x_axis);
-    repvar.opts.graph.g.select(".y-axis")
+      .call(repvar.graph.x_axis);
+    repvar.graph.g.select(".y-axis")
       .transition()
-      .call(repvar.opts.graph.y_axis);
+      .call(repvar.graph.y_axis);
     // Update the graph line:
-    repvar.opts.graph.g.select(".score-line")
+    repvar.graph.g.select(".score-line")
       .transition()
-      .attr("d", function() { return repvar.opts.graph.line_fxn(repvar.result_links.scores); });
+      .attr("d", function() { return repvar.graph.line_fxn(repvar.result_links.scores); });
     $("#scoreGraphSvg").show();
   }
 }
@@ -681,11 +655,20 @@ function setNormalizationMethod() {
     url: daemonURL('/set-normalization-method'),
     type: 'POST',
     data: {'session_id': page.session_id, 'normalization':norm},
-    success: function(data_obj) {
-      var data = $.parseJSON(data_obj);
-      console.log('data', data);
-    },
     error: function(error) { processError(error, "Error setting the normalization method"); }
+  });
+}
+function calculateGlobalNormalization(max_var_dist) {
+  // This should be called for every run, no matter if the user has selected global norm or not.
+  var bins = calculateHistoBins(max_var_dist);
+  $.ajax({
+    url: daemonURL('/calculate-global-normalization'),
+    type: 'POST',
+    data: {'session_id': page.session_id, 'var_nums':repvar.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null},
+    success: function(data_obj) {
+      //var data = $.parseJSON(data_obj);
+    },
+    error: function(error) { processError(error, "Error calculating global normalization values"); }
   });
 }
 

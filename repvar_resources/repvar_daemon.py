@@ -34,6 +34,7 @@ class RepvarDaemon(object):
       This class defines several custom HTTP status codes used to signal errors, which are also further defined in core.js:processError().
     550 - Specific error validating the user's tree.
     # # #  Re-number the below error codes to reasonable values:
+    5506 - Attempting to access results that don't exist. From various, but should probably be just from a central get_results method.
     5507 - Error setting the normalization method. From set_normalization_method()
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
@@ -122,7 +123,6 @@ class RepvarDaemon(object):
                 cur_var = int(cur_var)
                 self.calc_global_normalization_values([cur_var], dist_scale, max_var_dist, bins, vf)
             ret = {'global_value':vf.normalize['global_value'], 'global_max_count':vf.normalize['global_max_count']}
-            print vf.normalize
             return json.dumps(ret)
         # # #  Input page listening routes:
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
@@ -191,8 +191,8 @@ class RepvarDaemon(object):
                 num = int(num)
                 params = (num, dist_scale)
                 if params not in vf.cache:
-                    print('Error: attempting to retrieve results for a clustering run that was never started.')
-                    exit()
+                    error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
+                    return (error_msg, 5506)
                 results = vf.cache[params]
                 if results == None:
                     var_scores.append(False)
@@ -200,7 +200,6 @@ class RepvarDaemon(object):
                 else:
                     var_scores.append(sum(results['scores']))
                     max_var_dists.append(results['max_distance'])
-            #vf.normalize['global_value'] = max(max_var_dists) or None
             return json.dumps({'var_nums':var_nums, 'var_scores':var_scores, 'max_var_dists':max_var_dists})
         @self.server.route(daemonURL('/set-normalization-method'), methods=['POST'])
         def set_normalization_method():
@@ -215,11 +214,8 @@ class RepvarDaemon(object):
             elif norm_method == 'global':
                 vf.normalize['method'] = 'global'
             else:
-                vf.normalize['method'] = 'self'
                 err_msg = "Error: unrecognized normalization method '%s'" % norm_method
-                print(err_msg) # # TEST
                 return (err_msg, 5507)
-            print vf.normalize
             return "normalization method set to %s" % norm_method
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
@@ -230,13 +226,20 @@ class RepvarDaemon(object):
             dist_scale = 1.0
             params = (num_vars, dist_scale)
             if params not in vf.cache:
-                print('Error: attempting to retrieve results for a clustering run that was never started.')
-                exit()
+                error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
+                return (error_msg, 5506)
             results = vf.cache[params]
             if results == None:
                 ret = {'variants': False}
             else:
-                ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':results['max_distance']}
+                norm = {'method':vf.normalize['method'], 'value':results['max_distance'], 'max_count':0}
+                if vf.normalize['method'] == 'global':
+                    norm['value'] = vf.normalize['global_value']
+                    norm['max_count'] = vf.normalize['global_max_count']
+                elif vf.normalize['method'] == 'custom':
+                    norm['value'] = vf.normalize['custom_value']
+                    norm['max_count'] = vf.normalize['custom_max_count']
+                ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':results['max_distance'], 'normalization':norm}
             return json.dumps(ret)
         # # #  Serving the pages locally
         @self.server.route('/input')
@@ -333,29 +336,24 @@ class RepvarDaemon(object):
         else:
             return s_id
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
-        print '\nIn calc norm.', var_nums, bins
-        print 'pre', vf.normalize
-        if max_var_dist == vf.normalize['global_value'] and bins != vf.normalize['global_bins']:
-            vf.normalize['global_bins'] = bins
-        elif vf.normalize['global_value'] == None or max_var_dist > vf.normalize['global_value']:
+        if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:
             vf.normalize['global_value'] = max_var_dist
-            vf.normalize['global_bins'] = bins
-            vf.normalize['global_nums'] = set()
-            vf.normalize['global_max_count'] = 0
+            if bins != vf.normalize['global_bins']:
+                vf.normalize['global_bins'] = bins
+                vf.normalize['global_nums'] = set()
+                vf.normalize['global_max_count'] = 0
         elif max_var_dist < vf.normalize['global_value']:
             bins = vf.normalize['global_bins']
         max_count = vf.normalize['global_max_count'] or 0
         for num in var_nums:
             params = (num, dist_scale)
             if num in vf.normalize['global_nums'] or vf.cache[params] == None:
-                continue
-            var_dists = vf.cache[params]['variant_distance']
-            count = self.calculate_max_histo_count(var_dists, bins)
+                continue # Already been processed, or clustering is still in progress
+            count = self.calculate_max_histo_count(vf.cache[params]['variant_distance'], bins)
             if count > max_count:
                 max_count = count
             vf.normalize['global_nums'].add(num)
         vf.normalize['global_max_count'] = max_count
-        print 'post', vf.normalize
     def calculate_max_histo_count(self, var_dists, bins):
         dists = sorted(var_dists.values())
         dists_ind = 0

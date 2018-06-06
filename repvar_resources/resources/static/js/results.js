@@ -8,18 +8,17 @@ $.extend(page, {
   'check_results_interval':1000
 });
 $.extend(repvar, {
-  'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'nice_max_dist':0.0, 'original_bins':[]
+  'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[]
 });
 $.extend(repvar.opts.graph, {
-  'margin':{top:0, right:17, bottom:30, left:7}, 'bar_margin_ratio':0.15
+  'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15
 });
 repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
 //BUG:
-// - If the histo is normalized to .7867 (or higher numbers), the x ticks on the histo are only using 1 sig digit, which is clearly wrong.
+// - If the histo is normalized to .7 (or higher), the x ticks on the histo are only using 1 sig digit, which is clearly wrong.
 
 //TODO:
-// - Write function to get nice x_ticks for some max value. Current one adds an extra empty bin for custom values. Also should use as many decimals as necessary (can probably parse from the results of d3.ticks)
 // - Get export buttons working.
 // - Hide sequence names checkbox, as well as various color pickers and size spinners (these are in a collapsing pane).
 // - Need a more efficient selectNamesByThreshold().
@@ -30,8 +29,11 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 // - I don't love the singleton cluster colour of dark blue. Maybe a red/orange would be better. Want them to jump out, and having negative connotations is good.
 // - Is repvar.nice_max_var_dist useful?
 
-//NOTE:
-// - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be visible on the histogram, though they can still be selected with the slider.
+//NOTE (for FAQs or something):
+// - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be visible on the histogram, though they can still be selected with the slider. Same thing if the user selects a max_count smaller than what is to be displayed. The histogram will display and the text will be accurate, but the height will be capped.
+// - If you started a run that will take a while, and open one of the results pages before the run is complete, it's possible for the normalization to behave oddly. To be guaranteed accurate the user should click off of global normalization (set to self or something) then back on, once the run is finished.
+//   - The low cluster numbers are run first, and should have the highest max distances, but we do use heuristics, so it's not guaranteed. So the max x-value may not be accurate.
+//   - The higher cluster numbers tend to have the highest max y-value on the histogram, so this is much more likely to be at an intermediate value if a run is in progress. Won't break or anything, but won't be correctly scaled.
 
 // =====  Page setup:
 function setupPage() {
@@ -105,14 +107,11 @@ function setupHistoSliderPane() {
       }
     },
     stop: function(event, ui) {
-      /*if (selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min') == true
-          && do_remove == true) {
-        setButtonAddToSelection();
-      }*/
+      // Can put selection code here if its too laggy.
     }
   });
   left.click(function() {
-    var slider_keys = Object.keys(repvar.prevent_mouseout), var_name;
+    var slider_keys = Object.keys(repvar.considered_variants), var_name;
     for (var i=0; i<slider_keys.length; ++i) {
       var_name = slider_keys[i];
       nodeLabelMouseclickHandler(var_name, false, !do_remove);
@@ -193,6 +192,7 @@ function setupDisplayOptionsPane() {
   self_radio.on("change", function(event) {
     hideGoButton();
     repvar.normalized_max_distance = repvar.max_variant_distance;
+    repvar.normalized_max_count = 0;
     normalizeResults();
   });
   global_radio.on("change", function(event) {
@@ -204,8 +204,8 @@ function setupDisplayOptionsPane() {
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         repvar.normalized_max_distance = data.global_value;
+        repvar.normalized_max_count = data.global_max_count;
         $("#normGlobalValSpan").html('['+roundFloat(data.global_value, 4)+']');
-        // deal with data.global_max_count
         normalizeResults();
       },
       error: function(error) { processError(error, "Error fetching global normalizations from the server"); }
@@ -219,6 +219,7 @@ function setupDisplayOptionsPane() {
     }
   }).on("change", function(event) {
     repvar.normalized_max_distance = custom_input.val();
+    repvar.normalized_max_count = 0; // Get from UI
     normalizeResults();
   });
   custom_input.on("keydown", function(event) {
@@ -426,7 +427,8 @@ function drawDistanceHistogram() {
   repvar.graph.x_fxn = d3.scaleLinear()
     .rangeRound([0, repvar.graph.width]);
   repvar.graph.y_fxn = d3.scaleLinear()
-    .range([0, repvar.graph.height]);
+    .range([0, repvar.graph.height])
+    .clamp(true);
   // Graph title:
   /*svg.append("text")
     .attr("class", "histo-title")
@@ -442,6 +444,15 @@ function drawDistanceHistogram() {
     .attr("transform", "translate(0," + repvar.graph.height + ")");
   repvar.graph.g.append("g")
     .attr("class", "y-axis");
+  var y_axis_vert_offset = 5, y_axis_horiz_offset = -6;
+  repvar.graph.g.append("text") // y axis label
+    .attr("class", "histo-axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", 0 - repvar.graph.height/2 - y_axis_vert_offset)
+    .attr("y", 0 + y_axis_horiz_offset)
+    .attr("transform", "rotate(-90)")
+    .text("Variant numbers");
+
   // Draw the graph:
   updateHistogram();
 }
@@ -526,19 +537,19 @@ function selectNamesByThreshold(threshold, select_below) {
     $.each(repvar.variant_distance, function(var_name, dist) {
       if (select_below && dist <= threshold || !select_below && dist >= threshold) {
         num_picked += 1;
-        if (repvar.prevent_mouseout[var_name] == undefined) {
+        if (repvar.considered_variants[var_name] == undefined) {
           nodeLabelMouseoverHandler(var_name);
           has_changed = true;
         }
-        repvar.prevent_mouseout[var_name] = threshold_val; // Add / update var_name in prevent_mouseout.
+        repvar.considered_variants[var_name] = threshold_val; // Add / update var_name in considered_variants.
       }
     });
   }
-  var slider_keys = Object.keys(repvar.prevent_mouseout), var_name;
+  var slider_keys = Object.keys(repvar.considered_variants), var_name;
   for (var i=0; i<slider_keys.length; ++i) {
     var_name = slider_keys[i];
-    if (repvar.prevent_mouseout[var_name] != threshold_val) {
-      delete repvar.prevent_mouseout[var_name];
+    if (repvar.considered_variants[var_name] != threshold_val) {
+      delete repvar.considered_variants[var_name];
       nodeLabelMouseoutHandler(var_name);
       has_changed = true;
     }
@@ -570,19 +581,17 @@ function calculateHistoBins(max_var_dist) {
   return x_ticks;
 }
 function updateHistoBins() {
-  repvar.graph.x_fxn.domain( [0, repvar.normalized_max_distance] );
-  var x_ticks = repvar.graph.x_fxn.ticks(repvar.opts.graph.histo_bins),
-    max_x_tick = x_ticks[x_ticks.length-1] + x_ticks[1];
-  repvar.nice_max_var_dist = roundFloat(max_x_tick, 4);
-  x_ticks.push(max_x_tick);
-  repvar.graph.x_fxn.domain([0, max_x_tick]); // Needed so that the final bin is included in the graph.
+  var x_ticks = calculateHistoBins(repvar.normalized_max_distance);
+  repvar.nice_max_var_dist = x_ticks[x_ticks.length-1];
+  repvar.graph.x_fxn.domain([0, repvar.nice_max_var_dist]); // Needed to include the final tick
   repvar.graph.bins = d3.histogram()
-    .domain([0, repvar.normalized_max_distance]) // Cannot be repvar.graph.x_fxn.domain()
-    .thresholds(repvar.graph.x_fxn.ticks(x_ticks.length))
+    .domain([0, repvar.normalized_max_distance])
+    .thresholds(x_ticks)
     (Object.values(repvar.variant_distance));
 
   // If user has indicated a manual max y-value, either check to make sure it's not smaller than the max of the data here, or modify the bar height and text position so that they are capped at the max (prefer this option).
-  repvar.graph.y_fxn.domain( [0, d3.max(repvar.graph.bins, function(d) { return d.length; })] );
+  var max_y = (repvar.normalized_max_count > 0) ? repvar.normalized_max_count : d3.max(repvar.graph.bins, function(d) { return d.length; });
+  repvar.graph.y_fxn.domain([0, max_y]);
 
   var prev_ind = 0, cur_len;
   for (var i=0; i<repvar.graph.bins.length; ++i) {
@@ -595,27 +604,30 @@ function updateHistoBins() {
 function updateHistoGraph() {
   var formatCount = d3.format(",.0f"),
     bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
-    bar_width = repvar.graph.x_fxn(bin_range),
-    bar_margin = bar_width * repvar.opts.graph.bar_margin_ratio;
+    col_width = repvar.graph.x_fxn(bin_range),
+    bar_margin = col_width * repvar.opts.graph.bar_margin_ratio / 2,
+    bar_width = col_width - bar_margin * 2,
+    init_bar_x = repvar.graph.width - bar_width;
   // The bars of the graph:
   var bar_elements = repvar.graph.g.selectAll(".histo-bar")
     .data(repvar.graph.bins);
   bar_elements.enter().append("rect")
     .attr("class", "histo-bar")
-    .attr("x", repvar.graph.width)
+    .attr("x", init_bar_x)
     .attr("y", repvar.graph.height)
-    .attr("width", bar_width - bar_margin)
+    .attr("width", bar_width)
     .attr("height", 0)
     .transition()
     .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
     .attr("transform", function(d) {
-      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin/2-repvar.graph.width) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
+      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
     });
   bar_elements.transition()
-    .attr("width", bar_width - bar_margin)
+    .attr("x", init_bar_x)
+    .attr("width", bar_width)
     .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
     .attr("transform", function(d) {
-      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin/2-repvar.graph.width) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
+      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
     });
   bar_elements.exit()
     .transition()
@@ -623,21 +635,28 @@ function updateHistoGraph() {
     .attr("transform", "translate(0,0)")
     .remove();
   // The text label for each bar:
+  var text_y_offset = 10,
+    half_col = col_width / 2,
+    init_text_x = repvar.graph.width - half_col,
+    max_text_y = repvar.graph.height - text_y_offset;
   var bar_texts = repvar.graph.g.selectAll(".histo-text")
     .data(repvar.graph.bins);
   bar_texts.enter().append("text")
     .attr("class", "histo-text prevent-text-selection")
-    .attr("x", repvar.graph.width)
-    .attr("y", repvar.graph.height)
-    .attr("dy", ".35em")
+    .attr("x", init_text_x)
+    .attr("y", max_text_y)
+    .attr("dy", ".35em") // essentially a vertical-align: middle.
     .attr("text-anchor", "middle")
     .transition()
-    .attr("x", function(d) { return repvar.graph.x_fxn(d.x0) + bar_width / 2; })
-    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); }) // So text doesn't overlap axis
+    .attr("transform", function(d) {
+      return "translate(" + (repvar.graph.x_fxn(d.x0)+half_col-init_text_x) + "," + ( Math.min(2*text_y_offset-repvar.graph.y_fxn(d.length), 0) ) + ")";
+    })
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.transition()
-    .attr("x", function(d) { return repvar.graph.x_fxn(d.x0) + bar_width / 2; })
-    .attr("y", function(d) { return repvar.graph.height - Math.max(repvar.graph.y_fxn(d.length)-10, 10); })
+    .attr("x", init_text_x)
+    .attr("transform", function(d) {
+      return "translate(" + (repvar.graph.x_fxn(d.x0)+half_col-init_text_x) + "," + ( Math.min(2*text_y_offset-repvar.graph.y_fxn(d.length), 0) ) + ")";
+    })
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.exit().remove();
   // A transparent full-sized rect on top to capture mouse events:
@@ -646,7 +665,7 @@ function updateHistoGraph() {
   bar_mouseovers.enter().append("rect")
     .attr("class", "histo-overlay")
     .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); })
-    .attr("width", bar_width)
+    .attr("width", col_width)
     .attr("height", repvar.graph.height)
     .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
     .on("mouseover", function(d) {
@@ -661,7 +680,7 @@ function updateHistoGraph() {
       }
       numSelectedCallback();
     });
-  bar_mouseovers.attr("width", bar_width)
+  bar_mouseovers.attr("width", col_width)
   .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); });
   bar_mouseovers.exit().remove();
 }
@@ -704,8 +723,18 @@ function parseClusteredData(data) {
   repvar.variant_distance = data.variant_distance;
   repvar.max_variant_distance = data.max_variant_distance;
   repvar.original_bins = calculateHistoBins(data.max_variant_distance);
+
   // Check if a normalization is already set (from the server). Else:
-  repvar.normalized_max_distance = data.max_variant_distance;
+  repvar.normalized_max_distance = data.normalization.value;
+  repvar.normalized_max_count = data.normalization.max_count;
+  if (data.normalization.method == 'global') {
+    $("#normGlobalRadio").prop('checked', true);
+    $("#normGlobalValSpan").html('['+roundFloat(data.normalization.value, 4)+']');
+  } else if (data.normalization.method == 'custom') {
+    $("#normValRadio").prop('checked', true);
+    $("#normValInput").val(data.normalization.value);
+  }
+
   repvar.variants = data.variants;
   repvar.sorted_names = Object.keys(repvar.variant_distance).sort(function(a,b) {
     return repvar.variant_distance[a] - repvar.variant_distance[b];
