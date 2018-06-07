@@ -2,7 +2,6 @@
 
 // TODO:
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
-// - Move the 'g', 'x_fxn', 'y_fxn', 'line_fxn', 'x_axis', 'y_axis' out of repvar.opts and into repvar.graph
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
 // - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
 // - I love the simple animations on hover. Would be great if I find a use for them.
@@ -41,8 +40,10 @@ function setupPage() {
   $("#errorDialog").dialog({modal:true, autoOpen:false,
     buttons:{Ok:function() { $(this).dialog("close"); }}
   });
+  initializeCollapsibleElements();
   page.session_id = location.search.slice(1);
   page.browser_id = generateBrowserId(10);
+  console.log('sessionID:'+page.session_id+', browserID:'+page.browser_id);
   var tree_width_str = $("#mainTreeDiv").css('width');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   var score_graph_width_str = $("#scoreGraphSvg").css('width');
@@ -51,6 +52,7 @@ function setupPage() {
   repvar.opts.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
   setupTreeElements();
   setupDisplayOptionsPane();
+  setupNormalizationPane();
   setupRunOptions();
   setupScoresGraph();
   setupVariantSelection();
@@ -63,7 +65,9 @@ function setupPage() {
       type: 'POST',
       data: {'session_id': page.session_id},
       success: function(data_obj) {
-        newTreeLoaded(data_obj);
+        if (newTreeLoaded(data_obj)) {
+          //$("#").addClass("collapsible-header-open");
+        }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
@@ -131,6 +135,9 @@ function setupUploadSaveButtons() {
   });
 }
 function setupDisplayOptionsPane() {
+
+}
+function setupNormalizationPane() {
   var go_button_shown = false;
   var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
   var custom_input = $("#normValInput"), custom_go_button = $("#normValGoButton");
@@ -380,6 +387,7 @@ $(window).bind('beforeunload', function() {
 
 // =====  Page udating:
 function newTreeLoaded(data_obj) {
+  // Returns true if a tree was loaded, false otherwise.
   parseRepvarData(data_obj);
   clearInterval(page.maintain_interval_obj);
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -393,6 +401,9 @@ function newTreeLoaded(data_obj) {
     $("#saveRepvarButton").button('enable');
     $("#uploadFileButton").button('disable');
     clearHideResultsPane();
+    return true;
+  } else {
+    return false;
   }
 }
 function updateVarSelectList() {

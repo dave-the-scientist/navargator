@@ -16,7 +16,7 @@ $.extend(repvar.opts.graph, {
 repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
 //BUG:
-// - If the histo is normalized to .7 (or higher), the x ticks on the histo are only using 1 sig digit, which is clearly wrong.
+
 
 //TODO:
 // - Get export buttons working.
@@ -41,7 +41,8 @@ function setupPage() {
   $("#errorDialog").dialog({modal:true, autoOpen:false,
     buttons:{Ok:function() { $(this).dialog("close"); }}
   }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
-
+  initializeCollapsibleElements();
+  
   // =====  Variable parsing:
   var url_params = location.search.slice(1).split('_');
   page.session_id = url_params[0];
@@ -61,6 +62,7 @@ function setupPage() {
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
   setupHistoSliderPane();
   setupSelectionPane();
+  setupNormalizationPane();
   setupDisplayOptionsPane();
   setupExportPane();
   setupTreeElements();
@@ -173,7 +175,7 @@ function setupSelectionPane() {
 
   });
 }
-function setupDisplayOptionsPane() {
+function setupNormalizationPane() {
   var go_button_shown = false;
   var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
   var custom_input = $("#normValInput"), custom_go_button = $("#normValGoButton");
@@ -251,6 +253,9 @@ function setupDisplayOptionsPane() {
     hideGoButton();
     custom_radio.prop('checked', true).change();
   });
+}
+function setupDisplayOptionsPane() {
+
 }
 function setupExportPane() {
   $("#exportRepsButton").click(function() {
@@ -451,7 +456,7 @@ function drawDistanceHistogram() {
     .attr("x", 0 - repvar.graph.height/2 - y_axis_vert_offset)
     .attr("y", 0 + y_axis_horiz_offset)
     .attr("transform", "rotate(-90)")
-    .text("Variant numbers");
+    .text("Number of variants");
 
   // Draw the graph:
   updateHistogram();
@@ -685,7 +690,8 @@ function updateHistoGraph() {
   bar_mouseovers.exit().remove();
 }
 function updateHistoAxes() {
-  repvar.graph.x_axis.tickValues(repvar.graph.x_ticks);
+  repvar.graph.x_axis.tickValues(repvar.graph.x_ticks)
+    .tickFormat(d3.format(".3")); // trims trailing zeros
   repvar.graph.g.select(".x-axis")
     .transition()
     .call(repvar.graph.x_axis)

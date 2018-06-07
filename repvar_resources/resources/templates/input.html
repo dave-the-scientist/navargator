@@ -50,14 +50,27 @@
       <div id="bodyMainDiv">
         <div id="mainLeftDiv">
           <div id="inputOptionsDiv" class="style-box">
-            <h2>Input file</h2>
-            <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
-              <label for="upload-file"><b>Upload a tree or .nvrgtr file</b></label>
-              <input id="uploadFileInput" name="upload-file" type="file">
-            </form>
-            <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
+            <h2 class="collapsible-header collapsible-header-open">Load input file</h2>
+            <div class="collapsible-panel">
+              <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
+                <input id="uploadFileInput" name="upload-file" type="file">
+              </form>
+              <select id="uploadFileTypeSelect">
+                <option disabled selected>Choose file type</option>
+                <option value="nvrgtr">NaVARgator file</option>
+                <option value="newick">Newick tree</option>
+                <option value="phyloxml">PhyloXML tree</option>
+              </select>
+              <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
+              <hr>
+            </div>
             <button id="saveRepvarButton" class="jq-ui-button">Save config file</button>
             <h2>Display options</h2>
+            <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
+          </div>
+
+          <div id="runOptionsDiv" class="style-box">
+            <h2>Results normalization</h2>
             <table><tbody>
               <tr><td>
                 <label><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />Self-normalized</label>
@@ -71,10 +84,6 @@
                 <label id="normValGoButton" style="display:none">Ok</label>
               </td></tr>
             </tbody></table>
-            <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
-          </div>
-
-          <div id="runOptionsDiv" class="style-box">
             <h2>Run options</h2>
             <div class="toggle-button-container">
               <input type="radio" id="singleRunCheckbox" name="run-type-choice" class="toggle-button-input" checked>

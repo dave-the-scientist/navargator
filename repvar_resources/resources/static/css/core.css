@@ -135,10 +135,48 @@ span {
 .style-box h2 {
   margin: 10px 0px 2px 0px;
 }
-.style-box > *:not(svg):not(p):not(h2):not(h3) {
+.style-box > *:not(svg):not(div):not(p):not(h2):not(h3) {
   margin-top: 5px;
   margin-bottom: 5px;
 }
+
+/* ======  Collapsible panes  ====== */
+.collapsible-header {
+  /*transition: 0.4s;*/
+}
+.collapsible-header:hover, .collapsible-header-open {
+  /*background-color: #E1E1E1;*/
+}
+.collapsible-header:after {
+  position: absolute;
+  right: 10px;
+  font-size: 0.9em;
+  content: '\025BC';
+}
+.collapsible-header-open:after {
+  content: '\025B2';
+}
+div.collapsible-panel {
+  margin: 0px;
+  overflow: hidden;
+  transition: all 0.15s linear;
+
+  opacity: 0;
+  max-height: 0px;
+}
+:not(.collapsible-header-open) + div.collapsible-panel {
+
+}
+.collapsible-header-open + div.collapsible-panel {
+  opacity: 1;
+  /*max-height: 800px;*/
+}
+
+div.collapsible-panel > * {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
 
 /* ======  Tree view controls  ====== */
 #treeControlsDiv {

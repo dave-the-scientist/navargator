@@ -1,4 +1,5 @@
 // TODO:
+// - Implement the animated collapsible arrow from https://codepen.io/abergin/pen/ihlDf
 // - Many of the opts.colours should be pulled from core.css; bar_chart is the dark background, chosen should be used as the histo bar colour (and I want to use it as an accent on the page), etc
 // - The variable web_server is not defined in processError
 
@@ -48,6 +49,23 @@ function processError(error, message) {
   } else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }
+}
+
+// =====  Common functional elements:
+function initializeCollapsibleElements() {
+  // This line isn't working, but I think it should. Get it working, and I can choose whether or not a div is expanded just by giving it the extra class or not in html/js.
+  $(".collapsible-header.collapsible-header-open").next().css('maxHeight', $(this)[0].scrollHeight+"px");
+
+  $(".collapsible-header").click(function() {
+    var pane = $(this).next();
+    if ($(this).hasClass("collapsible-header-open")) {
+      $(this).removeClass("collapsible-header-open");
+      pane.css('maxHeight', "0px");
+    } else {
+      $(this).addClass("collapsible-header-open");
+      pane.css('maxHeight', pane[0].scrollHeight+"px");
+    }
+  });
 }
 
 // =====  Page maintainance and management:
