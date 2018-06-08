@@ -1,5 +1,4 @@
 // TODO:
-// - Implement the animated collapsible arrow from https://codepen.io/abergin/pen/ihlDf
 // - Many of the opts.colours should be pulled from core.css; bar_chart is the dark background, chosen should be used as the histo bar colour (and I want to use it as an accent on the page), etc
 // - The variable web_server is not defined in processError
 
@@ -53,19 +52,27 @@ function processError(error, message) {
 
 // =====  Common functional elements:
 function initializeCollapsibleElements() {
-  // This line isn't working, but I think it should. Get it working, and I can choose whether or not a div is expanded just by giving it the extra class or not in html/js.
-  $(".collapsible-header.collapsible-header-open").next().css('maxHeight', $(this)[0].scrollHeight+"px");
-
-  $(".collapsible-header").click(function() {
-    var pane = $(this).next();
-    if ($(this).hasClass("collapsible-header-open")) {
-      $(this).removeClass("collapsible-header-open");
-      pane.css('maxHeight', "0px");
-    } else {
-      $(this).addClass("collapsible-header-open");
-      pane.css('maxHeight', pane[0].scrollHeight+"px");
-    }
+  $(".collapsible-header").addClass("prevent-text-selection").after("<div class='collapsible-icon-div'><span class='collapsible-span1'></span><span class='collapsible-span2'></span></div>");
+  $(".collapsible-header.collapsible-header-open").each(function() {
+    var pane = $(this).nextAll("div.collapsible-panel").first();
+    pane.css('maxHeight', pane[0].scrollHeight+'px');
   });
+  $(".collapsible-header").click(function() {
+    collapsibleElementHandler($(this));
+  });
+  $(".collapsible-icon-div").click(function() {
+    collapsibleElementHandler($(this).prev(".collapsible-header"));
+  });
+}
+function collapsibleElementHandler(header) {
+  var pane = header.nextAll("div.collapsible-panel").first();
+  if (header.hasClass("collapsible-header-open")) {
+    header.removeClass("collapsible-header-open");
+    pane.css('maxHeight', "0px");
+  } else {
+    header.addClass("collapsible-header-open");
+    pane.css('maxHeight', pane[0].scrollHeight+"px");
+  }
 }
 
 // =====  Page maintainance and management:

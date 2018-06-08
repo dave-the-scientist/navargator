@@ -50,7 +50,7 @@
       <div id="bodyMainDiv">
         <div id="mainLeftDiv">
           <div id="inputOptionsDiv" class="style-box">
-            <h2 class="collapsible-header collapsible-header-open">Load input file</h2>
+            <h2 id="loadInputHeader" class="collapsible-header">Load input file</h2>
             <div class="collapsible-panel">
               <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
                 <input id="uploadFileInput" name="upload-file" type="file">
@@ -64,9 +64,12 @@
               <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
               <hr>
             </div>
-            <button id="saveRepvarButton" class="jq-ui-button">Save config file</button>
-            <h2>Display options</h2>
-            <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
+            <h2 class="collapsible-header">Display options</h2>
+            <div class="collapsible-panel">
+              <label><input id="showNamesCheckbox" type="checkbox" checked />Show variant names</label>
+              <hr>
+            </div>
+            <button id="saveRepvarButton" class="jq-ui-button">Save session file</button>
           </div>
 
           <div id="runOptionsDiv" class="style-box">

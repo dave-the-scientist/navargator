@@ -13,6 +13,7 @@
 // - The header could use some design work. Apply some of the gradients/shadowing from https://designmodo.com/3d-css3-button/
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
 // - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree (after dealing with the H2; an idea might come from that).
+// - When the user selects a file to upload, the page should pick a file type based on the file extension, and update the select on the page.
 
 //NOTE:
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
@@ -65,12 +66,14 @@ function setupPage() {
       type: 'POST',
       data: {'session_id': page.session_id},
       success: function(data_obj) {
-        if (newTreeLoaded(data_obj)) {
-          //$("#").addClass("collapsible-header-open");
+        if (!newTreeLoaded(data_obj)) {
+          $("#loadInputHeader").click();
         }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
+  } else {
+    $("#loadInputHeader").click();
   }
 }
 function setupUploadSaveButtons() {
