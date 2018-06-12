@@ -66,14 +66,14 @@ function setupPage() {
       type: 'POST',
       data: {'session_id': page.session_id},
       success: function(data_obj) {
-        if (!newTreeLoaded(data_obj)) {
-          $("#loadInputHeader").click();
+        if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
+          $("#loadInputHeader").click(); // Opens collapsible pane
         }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
   } else {
-    $("#loadInputHeader").click();
+    $("#loadInputHeader").click(); // Opens collapsible pane
   }
 }
 function setupUploadSaveButtons() {
@@ -326,22 +326,6 @@ function setupScoresGraph() {
     .attr("class", "score-line");
 }
 function setupVariantSelection() {
-  $("#selectAllButton").click(function() {
-    var var_name;
-    for (var i=0; i<repvar.leaves.length; ++i) {
-      var_name = repvar.leaves[i];
-      nodeLabelMouseclickHandler(var_name, false, true);
-    }
-    numSelectedCallback();
-  });
-  $("#clearSelectionButton").click(function() {
-    var var_name;
-    for (var i=0; i<repvar.leaves.length; ++i) {
-      var_name = repvar.leaves[i];
-      nodeLabelMouseclickHandler(var_name, false, false);
-    }
-    numSelectedCallback();
-  });
   addAssignedLabelHandlers($("#chosenAssignedDiv"), 'chosen');
   addAssignedLabelHandlers($("#availAssignedDiv"), 'available');
   addAssignedLabelHandlers($("#ignoredAssignedDiv"), 'ignored');
@@ -397,6 +381,7 @@ function newTreeLoaded(data_obj) {
   if (repvar.tree_data) {
     setNormalizationMethod();
     $("#introMessageGroup").remove();
+    $("#treeControlsDiv").show();
     drawTree();
     updateVarSelectList();
     updateRunOptions();

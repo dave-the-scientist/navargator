@@ -4,6 +4,18 @@
 
 // =====  Tree setup functions:
 function setupTreeElements() {
+  $("#selectAllButton").click(function() {
+    for (var i=0; i<repvar.leaves.length; ++i) {
+      nodeLabelMouseclickHandler(repvar.leaves[i], false, true);
+    }
+    numSelectedCallback();
+  });
+  $("#clearSelectionButton").click(function() {
+    $.each(repvar.selected, function(var_name, colour) {
+      nodeLabelMouseclickHandler(var_name, false, false);
+    });
+    numSelectedCallback();
+  });
   repvar.pan_zoom = svgPanZoom('#figureSvg', {
     fit: false,
     center: false,

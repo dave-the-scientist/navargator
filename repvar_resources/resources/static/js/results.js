@@ -20,7 +20,6 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 
 //TODO:
 // - Get export buttons working.
-// - Hide sequence names checkbox, as well as various color pickers and size spinners (these are in a collapsing pane).
 // - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
@@ -42,7 +41,7 @@ function setupPage() {
     buttons:{Ok:function() { $(this).dialog("close"); }}
   }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
   initializeCollapsibleElements();
-  
+
   // =====  Variable parsing:
   var url_params = location.search.slice(1).split('_');
   page.session_id = url_params[0];
@@ -159,21 +158,16 @@ function setupHistoSliderPane() {
   setButtonAddToSelection();
 }
 function setupSelectionPane() {
-  $("#selectAllButton").click(function() {
-    $.each(repvar.variant_distance, function(var_name, dist) {
-      nodeLabelMouseclickHandler(var_name, false, true);
-    });
-    numSelectedCallback();
-  });
-  $("#clearSelectionButton").click(function() {
-    $.each(repvar.selected, function(var_name, colour) {
-      nodeLabelMouseclickHandler(var_name, false, false);
-    });
-    numSelectedCallback();
-  });
   $("#clearColoursButton").click(function() {
 
   });
+}
+function colourSelectionChange(choice) {
+  console.log('picked', choice);
+}
+function colourSelectPicked(jscol) {
+  // not yet implemented
+  console.log('chose', '#'+jscol);
 }
 function setupNormalizationPane() {
   var go_button_shown = false;
@@ -566,13 +560,6 @@ function selectNamesByThreshold(threshold, select_below) {
     $("#numSliderSpan").show();
   }
   return has_changed;
-}
-function colourSelectionChange(choice) {
-  console.log('picked', choice);
-}
-function colourSelectPicked(jscol) {
-  // not yet implemented
-  console.log('chose', '#'+jscol);
 }
 
 // =====  Graph functions:

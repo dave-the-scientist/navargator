@@ -91,9 +91,11 @@
           </div>
 
           <div id="displayOptionsDiv" class="style-box">
-            <h2>Display options</h2>
-            <p>Font sizes, colour pickers</p>
-            <button id="redrawResultsButton" class="jq-ui-button">Redraw</button>
+            <h2 class="collapsible-header">Display options</h2>
+            <div class="collapsible-panel">
+              <p>Font sizes, colour pickers</p>
+              <button id="redrawResultsButton" class="jq-ui-button">Redraw</button>
+            </div>
           </div>
 
           <div id="exportDataDiv" class="style-box">
@@ -106,6 +108,12 @@
         </div>
 
         <div id="mainTreeDiv" class="style-box">
+          <div id="treeSelectionDiv">
+            <label class="control-element control-pair-left control-pair-right">Currently selected variants: <span id="currentSelectionNum">0</span></label>
+            <div style="clear:both;"></div>
+            <button id="selectAllButton" class="control-element control-pair-left">Select all</button><!--
+            --><button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
+          </div>
           <form id="treeControlsDiv" onsubmit="return treeSearchFunction();">
             <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
             <label id="varSearchHitsText" class=""></label>
@@ -139,9 +147,6 @@
             </div>
 
             <h2>Selected variants</h2>
-            <p>Currently selected variants: <span id="currentSelectionNum">0</span></p>
-            <button id="selectAllButton" class="jq-ui-button">Select all</button>
-            <button id="clearSelectionButton" class="jq-ui-button">Clear selection</button>
             <div id="colourSelectionDiv">
               <label for="colourBySelect">Colour selection by:</label>
               <select id="colourBySelect" onchange="colourSelectionChange(this.value)">

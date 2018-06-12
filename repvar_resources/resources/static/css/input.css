@@ -22,6 +22,7 @@
   display: inline-flex;
   justify-content: center;
   width: 100%;
+  margin: 5px 0px;
   padding: 0px;
   box-sizing: border-box; /* Needed if I want to add horizontal padding.*/
   --toggle-button-border-radius: 3px;
@@ -86,11 +87,6 @@
 #varAssignTable {
   margin-right: 15px;/* 15px; but I want it to be 0 if parent div wraps*/
   margin-bottom: 10px;
-}
-#selectedVariantsDiv {
-  display: inline-block;
-  margin-bottom: 10px;
-  min-width: 218px;
 }
 #variantSelectHr {
   margin-top: 0px;

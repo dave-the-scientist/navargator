@@ -3,6 +3,7 @@
   --dark-background-colour: #1B676B; /*#C1C1C1;*/
   --light-background-colour: #E3ECEC; /*#F5F5F5;*/
   --style-box-background-colour: #FFFFFF;
+  --shadow-colour: #555555;
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
   --tree-width: 700px;
@@ -81,12 +82,15 @@ span {
   padding: 0px;
   width: 100%;
   min-width: var(--min-page-width);
-  background-color: var(--dark-background-colour);
+  background: linear-gradient(#387A7E, var(--dark-background-colour));
   text-align: center;
-  box-shadow: 1px 1px 2px #555555;
+  box-shadow: 1px 1px 2px var(--shadow-colour);
 }
 #headerDiv p, #headerDiv h1 {
   color: white;
+}
+#headerDiv h1 {
+  text-shadow: 1px 1px 2px var(--shadow-colour);
 }
 #headerInnerDiv {
   display: inline-block;
@@ -99,14 +103,14 @@ span {
   width: var(--tree-width);
 }
 #figureSvg {
-  margin-top: 15px;
+  margin-top: 10px;
   width: var(--tree-width);
 }
 #svgCanvas {
   margin: 0px;
 }
 #footerDiv {
-  background-color: var(--dark-background-colour);
+  background: linear-gradient(#387A7E, var(--dark-background-colour));
   width: 100%;
   min-width: var(--min-page-width);
   margin: 0px 0px 5px 0px;
@@ -114,25 +118,49 @@ span {
 }
 #footerDiv p {
   color: white;
+  text-shadow: 1px 1px 2px var(--shadow-colour);
   text-align: center;
 }
 
 /* ======  Main styled div  ====== */
 .style-box {
+  --style-box-padding: 5px;
   display: inline-block;
   vertical-align: top;
   background-color: var(--style-box-background-colour);
   border: 1px solid #000000;
-  box-shadow: 1px 1px 2px #555555;
+  box-shadow: 1px 1px 2px var(--shadow-colour);
   margin: 5px 5px 5px 5px;
-  padding: 5px;
+  padding: var(--style-box-padding);
   position: relative;
 }
 .style-box p {
   margin: 5px;
 }
+.style-box h2, .style-box h2 span {
+  color: white;
+  text-shadow: 1px 1px 2px var(--shadow-colour);
+}
 .style-box h2 {
-  margin: 10px 0px 2px 0px;
+  --style-h2-border: 3px;
+  margin: 15px 0px 5px 0px; /*10px 0px 2px 0px*/
+  padding: 3px 5px;
+  /*box-sizing: border-box;*/
+  width: calc(100% - var(--style-box-padding) - var(--style-h2-border));
+
+  border: var(--style-h2-border) solid #24F030;
+  border-top-style: none;
+  border-right-style: none;
+
+  background: linear-gradient(#387A7E, var(--dark-background-colour));
+  /*
+  background-color: var(--dark-background-colour);
+  background: linear-gradient(var(--dark-background-colour) 70%, #24F030);
+  background: linear-gradient(#387A7E, var(--dark-background-colour));
+  */
+}
+.style-box h2:first-child {
+  margin-top: 5px;
 }
 .style-box > *:not(svg):not(div):not(p):not(h2):not(h3) {
   margin-top: 5px;
@@ -143,30 +171,31 @@ span {
 .collapsible-icon-div {
   position: absolute;
   right: 25px;
-  margin-top: -20px;
+  margin-top: -23px;
 }
 .collapsible-span1, .collapsible-span2 {
   position: absolute;
   width: 9px;
   height: 2px;
-  background-color: black;
+  background-color: white;
   background-clip: content-box;
   transition: .15s all;
 }
 .collapsible-header:hover + .collapsible-icon-div > span, .collapsible-icon-div:hover > span {
   box-shadow: 0px 0px 1px 0px #616161;
+  background-color: #24F030;
 }
 .collapsible-span1 {
-  transform: translate3d(-3px, 0, 0) rotate(45deg); /*The 3d version avoids anti-aliasing effects*/
+  transform: translate3d(-2.5px, 0, 0) rotate(45deg); /*The 3d version avoids anti-aliasing effects*/
 }
 .collapsible-span2 {
-  transform: translate3d(3px, 0, 0) rotate(-45deg);
+  transform: translate3d(2.5px, 0, 0) rotate(-45deg);
 }
 .collapsible-header-open + .collapsible-icon-div > .collapsible-span1 {
-  transform: translate3d(3px, 0, 0) rotate(45deg);
+  transform: translate3d(2.5px, 0, 0) rotate(45deg);
 }
 .collapsible-header-open + .collapsible-icon-div > .collapsible-span2 {
-  transform: translate3d(-3px, 0, 0) rotate(-45deg);
+  transform: translate3d(-2.5px, 0, 0) rotate(-45deg);
 }
 div.collapsible-panel {
   margin: 0px;
@@ -180,14 +209,23 @@ div.collapsible-panel > * {
 }
 
 /* ======  Tree view controls  ====== */
+#treeSelectionDiv {
+  position: absolute;
+  top: 10px;
+  left: 15px;
+  margin: 0px;
+  padding: 0px;
+}
+#currentSelectionNum {
+
+}
 #treeControlsDiv {
   position: absolute;
   top: 10px;
   right: 15px;
-  margin-top: 0.5px; /*Helps center text and icons in buttons*/
-  text-align: right;
-  border: 0px solid #000000;
+  margin: 0px;
   padding: 0px;
+  text-align: right;
 }
 #searchToSelectButton {
   line-height: 9px;
@@ -260,11 +298,18 @@ div.collapsible-panel > * {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
   text-align: center;
-  line-height: normal;
+  line-height: 25px; /*normal*/
   outline: none;
 }
-.control-pair-left {
+label.control-element, span.control-element {
+  display: inline-block;
+  height: 23px;
+}
+.control-pair-left:not(.control-pair-right) {
   border-right: 0px;
+}
+.control-pair-left {
+
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
 }

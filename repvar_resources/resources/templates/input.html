@@ -42,7 +42,7 @@
     <div id="pageDiv">
       <div id="headerDiv">
         <div id="headerInnerDiv">
-          <h1>NaVARgator</h1>
+          <h1 title="NaVARgator">NaVARgator</h1>
           <p>Navbar and whatnot goes here.</p>
         </div>
       </div>
@@ -123,10 +123,16 @@
         </div>
 
         <div id="mainTreeDiv" class="style-box">
-          <form id="treeControlsDiv" onsubmit="return treeSearchFunction();">
+          <div id="treeSelectionDiv">
+            <label class="control-element control-pair-left control-pair-right">Currently selected variants: <span id="currentSelectionNum">0</span></label>
+            <div style="clear:both;"></div>
+            <button id="selectAllButton" class="control-element control-pair-left">Select all</button><!--
+            --><button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
+          </div>
+          <form id="treeControlsDiv" onsubmit="return treeSearchFunction();" style="display:none">
             <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
             <label id="varSearchHitsText" class=""></label>
-            <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button><!-- Needed to remove whitespace between this and the button. Because the parent uses a display:inline. name="searchInput"
+            <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button><!-- Needed to remove whitespace between this and the button. Because the parent uses a display:inline.
             --><input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" />
             <button id="clearVarSearchButton" type="reset"><span class="ui-icon ui-icon-close"></span></button>
             <div style="clear:both;"></div>
@@ -137,9 +143,9 @@
           </form>
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="introMessageGroup">
-              <text x="10" y="35" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:
-                <tspan x="20" y="65" style="font-size:17px">Choose a phylogenetic tree or a previously saved .nvrgtr file.</tspan>
-                <tspan x="20" y="95" style="font-size:17px">Press "Load file".</tspan>
+              <text x="10" y="20" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:
+                <tspan x="20" y="50" style="font-size:17px">Choose a phylogenetic tree or a previously saved .nvrgtr session file.</tspan>
+                <tspan x="20" y="80" style="font-size:17px">Press "Load file".</tspan>
               </text>
             </g>
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
@@ -149,28 +155,20 @@
 
         <div id="mainVariantSelectDiv" class="style-box" style="display:none">
           <h2><span id="numVariantsSpan"></span> variants</h2>
-
-          <div id="topVariantSelectDiv">
-            <table id="varAssignTable"><tbody>
-              <tr>
-                <td><div id="chosenAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numChosenSpan">0</span> chosen variants</label><label id="clearChosenButton" class="var-assigned-clear" title="Clear 'Chosen variants'">&#10006;</label></div></td>
-                <td><button id="chosenUpdateButton" class="jq-ui-button" title="Set 'Chosen variants' to the current selection">Update</button></td>
-              </tr>
-              <tr>
-                <td><div id="availAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numAvailSpan">0</span> available variants</label><label id="clearAvailButton" class="var-assigned-clear" title="Clear 'Available variants'">&#10006;</label></div></td>
-                <td><button id="availUpdateButton" class="jq-ui-button" title="Set 'Available variants' to the current selection">Update</button></td>
-              </tr>
-              <tr>
-                <td><div id="ignoredAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numIgnoredSpan">0</span> ignored variants</label><label id="clearIgnoredButton" class="var-assigned-clear" title="Clear 'Ignored variants'">&#10006;</label></div></td>
-                <td><button id="ignoreUpdateButton" class="jq-ui-button" title="Set 'Ignored variants' to the current selection">Update</button></td>
-              </tr>
-            </tbody></table>
-            <div id="selectedVariantsDiv">
-              <p>Currently selected variants: <span id="currentSelectionNum">0</span></p>
-              <button id="selectAllButton" class="jq-ui-button">Select all</button>
-              <button id="clearSelectionButton" class="jq-ui-button">Clear selection</button>
-            </div>
-          </div>
+          <table id="varAssignTable"><tbody>
+            <tr>
+              <td><div id="chosenAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numChosenSpan">0</span> chosen variants</label><label id="clearChosenButton" class="var-assigned-clear" title="Clear 'Chosen variants'">&#10006;</label></div></td>
+              <td><button id="chosenUpdateButton" class="jq-ui-button" title="Set 'Chosen variants' to the current selection">Update</button></td>
+            </tr>
+            <tr>
+              <td><div id="availAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numAvailSpan">0</span> available variants</label><label id="clearAvailButton" class="var-assigned-clear" title="Clear 'Available variants'">&#10006;</label></div></td>
+              <td><button id="availUpdateButton" class="jq-ui-button" title="Set 'Available variants' to the current selection">Update</button></td>
+            </tr>
+            <tr>
+              <td><div id="ignoredAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numIgnoredSpan">0</span> ignored variants</label><label id="clearIgnoredButton" class="var-assigned-clear" title="Clear 'Ignored variants'">&#10006;</label></div></td>
+              <td><button id="ignoreUpdateButton" class="jq-ui-button" title="Set 'Ignored variants' to the current selection">Update</button></td>
+            </tr>
+          </tbody></table>
           <hr id="variantSelectHr">
           <div id="varSelectDiv"></div>
         </div>
