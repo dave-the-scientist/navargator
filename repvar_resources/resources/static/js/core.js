@@ -51,6 +51,12 @@ function processError(error, message) {
 }
 
 // =====  Common functional elements:
+function initializeButtons() {
+  // Standardizes appearances across browsers, and provides some additional functionality to various elements.
+  $(".jq-ui-button").button(); // Converts html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
+  $(".nvrgtr-radio-label").addClass("prevent-text-selection").children("input").after("<span class='nvrgtr-radio-checkbox'></span>");
+  //$(".nvrgtr-radio-label > input").after("<span class='nvrgtr-radio-checkbox'></span>");
+}
 function initializeCollapsibleElements() {
   $(".collapsible-header").addClass("prevent-text-selection").after("<div class='collapsible-icon-div'><span class='collapsible-span1'></span><span class='collapsible-span2'></span></div>");
   $(".collapsible-header.collapsible-header-open").each(function() {

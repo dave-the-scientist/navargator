@@ -1,7 +1,9 @@
 /* ======  CSS variables  ====== */
 :root {
-  --dark-background-colour: #1B676B; /*#C1C1C1;*/
-  --light-background-colour: #E3ECEC; /*#F5F5F5;*/
+  --dark-background-colour: #1B676B;
+  --dark-background-light-gradient: #387A7E;
+  --light-background-colour: #E3ECEC;
+  --major-accent-colour: #24F030;
   --style-box-background-colour: #FFFFFF;
   --shadow-colour: #555555;
   --font-family: Helvetica, Arial, sans-serif;
@@ -82,7 +84,7 @@ span {
   padding: 0px;
   width: 100%;
   min-width: var(--min-page-width);
-  background: linear-gradient(#387A7E, var(--dark-background-colour));
+  background: linear-gradient(var(--dark-background-light-gradient), var(--dark-background-colour));
   text-align: center;
   box-shadow: 1px 1px 2px var(--shadow-colour);
 }
@@ -110,7 +112,7 @@ span {
   margin: 0px;
 }
 #footerDiv {
-  background: linear-gradient(#387A7E, var(--dark-background-colour));
+  background: linear-gradient(var(--dark-background-light-gradient), var(--dark-background-colour));
   width: 100%;
   min-width: var(--min-page-width);
   margin: 0px 0px 5px 0px;
@@ -147,16 +149,12 @@ span {
   padding: 3px 5px;
   /*box-sizing: border-box;*/
   width: calc(100% - var(--style-box-padding) - var(--style-h2-border));
-
-  border: var(--style-h2-border) solid #24F030;
+  background: linear-gradient(var(--dark-background-light-gradient), var(--dark-background-colour));
+  border: var(--style-h2-border) solid var(--major-accent-colour);
   border-top-style: none;
   border-right-style: none;
-
-  background: linear-gradient(#387A7E, var(--dark-background-colour));
   /*
-  background-color: var(--dark-background-colour);
-  background: linear-gradient(var(--dark-background-colour) 70%, #24F030);
-  background: linear-gradient(#387A7E, var(--dark-background-colour));
+  background: linear-gradient(var(--dark-background-colour) 70%, var(--major-accent-colour));
   */
 }
 .style-box h2:first-child {
@@ -165,6 +163,48 @@ span {
 .style-box > *:not(svg):not(div):not(p):not(h2):not(h3) {
   margin-top: 5px;
   margin-bottom: 5px;
+}
+
+/* ======  Custom checkbox and radio buttons  ====== */
+.nvrgtr-radio-label {
+  position: relative;
+  display: inline-block;
+  padding-left: 25px;
+}
+.nvrgtr-radio-label > input {
+  position: absolute;
+  opacity: 0;
+}
+.nvrgtr-radio-checkbox {
+  --nvrgtr-radio-checkbox-background: white;
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  bottom: 3px;
+  left: 5px;
+  background-color: var(--nvrgtr-radio-checkbox-background);
+  /*box-shadow: inset -2px -2px 1px rgba(85,85,85,.1); Looks better without I think.*/
+  border: 1px solid #8A8A8A;
+  border-radius: 50%;
+}
+.nvrgtr-radio-checkbox:after {
+  content: "";
+  position: absolute;
+  opacity: 0;
+  width: 8px;
+  height: 8px;
+  top: 3px;
+  left: 3px;
+  background-color: var(--dark-background-colour);
+  border-radius: 50%;
+  transition: .15s all;
+}
+.nvrgtr-radio-label:hover > input + .nvrgtr-radio-checkbox {
+  border-color: #4F4F4F;
+  /*box-shadow: 0px 0px 4px var(--major-accent-colour); Green outline; looks alright, kinda busy.*/
+}
+.nvrgtr-radio-label > input:checked + .nvrgtr-radio-checkbox:after {
+  opacity: 1;
 }
 
 /* ======  Collapsible panes  ====== */
@@ -183,7 +223,7 @@ span {
 }
 .collapsible-header:hover + .collapsible-icon-div > span, .collapsible-icon-div:hover > span {
   box-shadow: 0px 0px 1px 0px #616161;
-  background-color: #24F030;
+  background-color: var(--major-accent-colour);
 }
 .collapsible-span1 {
   transform: translate3d(-2.5px, 0, 0) rotate(45deg); /*The 3d version avoids anti-aliasing effects*/
@@ -209,34 +249,17 @@ div.collapsible-panel > * {
 }
 
 /* ======  Tree view controls  ====== */
-#treeSelectionDiv {
+#treeControlsDiv {
   position: absolute;
   top: 10px;
   left: 15px;
   margin: 0px;
   padding: 0px;
 }
-#currentSelectionNum {
-
-}
-#treeControlsDiv {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  margin: 0px;
-  padding: 0px;
-  text-align: right;
-}
-#searchToSelectButton {
-  line-height: 9px;
-  font-size: 10px;
-}
-#varSearchHitsText {
-  margin: 0px;
-  vertical-align: middle;
-  vertical-align: -webkit-baseline-middle; /*Needed for chrome*/
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
+#searchInputButtonsDiv {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 #varSearchButton:not(:active), #clearVarSearchButton:not(:active) {
   background-color: var(--light-background-colour);
@@ -247,29 +270,36 @@ div.collapsible-panel > * {
   text-align: left;
 }
 #clearVarSearchButton {
-  width: 20px;
-	height: 21px;
-  position: absolute;
-  right: 3px;
-  top: 5px;
+  position: relative;
+  right: 20px;
   margin: 0px;
 	padding: 0px;
-  z-index: 1;
   display: inline-block;
   border:1px solid transparent;
   border-radius: 50%;
-  outline: 0;
+  outline: none;
 	text-align: center;
 	font-weight: normal;
 	font-size: 12px;
   color: white;
-	cursor: pointer;
+}
+#clearVarSearchButton:hover {
+  border-color: black;
 }
 #clearVarSearchButton > * { /*Applies to icon, text, whatever I use in the button*/
   margin: auto;
 }
 #varSearchInput[value=""] ~ #clearVarSearchButton {
   display: none;
+}
+#varSearchHitsText {
+  margin: 0px 10px 0px -10px; /* The -10px is 1/2 the width of the clear button*/
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+}
+#searchToSelectButton {
+  line-height: 9px;
+  font-size: 10px;
 }
 #scrollZoomButton {
   line-height: 9px;
@@ -286,6 +316,15 @@ div.collapsible-panel > * {
   padding-left: 3px;
   width: 22px;
 }
+#treeSelectionDiv {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  margin: 0px;
+  padding: 0px;
+  text-align: right;
+}
+
 .control-element {
   vertical-align: middle;
   vertical-align: -webkit-baseline-middle; /*Needed for chrome*/
@@ -309,7 +348,6 @@ label.control-element, span.control-element {
   border-right: 0px;
 }
 .control-pair-left {
-
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
 }
@@ -337,9 +375,12 @@ button.control-element:active, #clearVarSearchButton:active {
 }
 #normValGoButton {
   line-height: 17px;
+  margin-top: 0px;
+  margin-bottom: 0px;
   padding: 0px 3px;
   font-size: 14px;
   text-align: center;
+  outline: none;
   border: 1px solid #8A8A8A;
   border-radius: 3px;
   background: linear-gradient(#FAFAFA, #DCDCDC);

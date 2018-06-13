@@ -76,15 +76,15 @@
             <h2>Results normalization</h2>
             <table><tbody>
               <tr><td>
-                <label><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />Self-normalized</label>
+                <label class="nvrgtr-radio-label"><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />Self-normalized</label>
               </td></tr>
               <tr><td>
-                <label><input id="normGlobalRadio" type="radio" name="normalizeRadios" />Normalize across runs <span id="normGlobalValSpan"></span></label>
+                <label class="nvrgtr-radio-label"><input id="normGlobalRadio" type="radio" name="normalizeRadios" />Normalize across runs <span id="normGlobalValSpan"></span></label>
               </td></tr>
               <tr><td>
-                <label><input id="normValRadio" type="radio" name="normalizeRadios" />Normalize to</label>
+                <label class="nvrgtr-radio-label"><input id="normValRadio" type="radio" name="normalizeRadios" />Normalize to</label>
                 <input id="normValInput" placeholder="value" />
-                <label id="normValGoButton" style="display:none">Ok</label>
+                <button id="normValGoButton" style="display:none">Ok</button>
               </td></tr>
             </tbody></table>
             <h2>Run options</h2>
@@ -123,24 +123,26 @@
         </div>
 
         <div id="mainTreeDiv" class="style-box">
-          <div id="treeSelectionDiv">
-            <label class="control-element control-pair-left control-pair-right">Currently selected variants: <span id="currentSelectionNum">0</span></label>
-            <div style="clear:both;"></div>
-            <button id="selectAllButton" class="control-element control-pair-left">Select all</button><!--
-            --><button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
-          </div>
           <form id="treeControlsDiv" onsubmit="return treeSearchFunction();" style="display:none">
-            <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
-            <label id="varSearchHitsText" class=""></label>
-            <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button><!-- Needed to remove whitespace between this and the button. Because the parent uses a display:inline.
-            --><input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" />
-            <button id="clearVarSearchButton" type="reset"><span class="ui-icon ui-icon-close"></span></button>
+            <div id="searchInputButtonsDiv">
+              <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button><!-- Needed to remove whitespace between this and the input because the parent is inline.
+              --><input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" autocomplete="off" />
+              <button id="clearVarSearchButton" type="reset"><span class="ui-icon ui-icon-close"></span></button>
+              <label id="varSearchHitsText"></label>
+              <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
+            </div>
             <div style="clear:both;"></div>
             <button id="treeZoomOutButton" class="control-element control-pair-left" type="button"><span class="ui-icon ui-icon-minus"></button><!--
             --><button id="treeZoomInButton" class="control-element" type="button"><span class="ui-icon ui-icon-plus"></button>
             <button id="treeZoomResetButton" class="control-element control-pair-right" type="button">Reset</button>
             <button id="scrollZoomButton" class="control-element" type="button"><span id="scrollZoomText">Scroll<br>Zoom</span><span id="scrollZoomStatus">Off</span></button>
           </form>
+          <div id="treeSelectionDiv" style="display:none">
+            <label class="control-element control-pair-left control-pair-right prevent-text-selection">Currently selected variants: <span id="currentSelectionNum">0</span></label>
+            <div style="clear:both;"></div>
+            <button id="selectAllButton" class="control-element control-pair-left">Select all</button><!--
+            --><button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
+          </div>
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="introMessageGroup">
               <text x="10" y="20" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:

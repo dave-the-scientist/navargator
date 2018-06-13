@@ -36,7 +36,7 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 
 // =====  Page setup:
 function setupPage() {
-  $(".jq-ui-button").button(); // Converts these html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
+  initializeButtons();
   $("#errorDialog").dialog({modal:true, autoOpen:false,
     buttons:{Ok:function() { $(this).dialog("close"); }}
   }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).

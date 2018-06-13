@@ -1,15 +1,18 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
+// Make custom check box in same style as radios.
+// Style the control-element buttons.
+// In assigned pane, 'available' should be first, 'chosen' 2nd.
+// Style boxes should have the dark green colour as borders. Or maybe no borders?
+
 // TODO:
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
-// - Do something to the h2 text. Background, "L" underline (like the labels), something like that.
 // - I love the simple animations on hover. Would be great if I find a use for them.
 //   - From the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile
 //   - Maybe just make the X (from assign labels) spin on hover. Or, could replace that with a 'hamburger' button, that morphs into an X and the 'update' button on hover.
 // - I'd like to design a better 'Selected variants: X' panel (including select all and clear all buttons).
 //   - Another candidate for one of those morphing hamburger buttons.
-//   - If I did compact that a little (even if I don't at all), I could move it to the top-left corner of the tree (on both input and results pages).
 // - The header could use some design work. Apply some of the gradients/shadowing from https://designmodo.com/3d-css3-button/
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
 // - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree (after dealing with the H2; an idea might come from that).
@@ -37,7 +40,7 @@ $.extend(repvar.opts.graph, {
 
 // =====  Page setup:
 function setupPage() {
-  $(".jq-ui-button").button(); // Converts html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
+  initializeButtons();
   $("#errorDialog").dialog({modal:true, autoOpen:false,
     buttons:{Ok:function() { $(this).dialog("close"); }}
   });
@@ -144,6 +147,7 @@ function setupNormalizationPane() {
   var go_button_shown = false;
   var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
   var custom_input = $("#normValInput"), custom_go_button = $("#normValGoButton");
+  custom_input.data('prev_val', '');
   function showGoButton() {
     if (go_button_shown == false) {
       custom_go_button.show(100);
@@ -171,7 +175,7 @@ function setupNormalizationPane() {
       return false; // Prevents the button from being actually selected.
     }
   }).on("change", function(event) {
-    setNormalizationMethod();
+    custom_go_button.click();
   });
   custom_input.on("keydown", function(event) {
     if (event.which == 13) { // 'Enter' key
@@ -180,27 +184,33 @@ function setupNormalizationPane() {
       return false;
     }
     showGoButton();
-  }).blur(function() {
+  }).blur(function(event) {
     var val = parseFloat(custom_input.val());
     if (isNaN(val)) {
       val = '';
     }
-    custom_input.val(val);
-    if (!custom_go_button.is(':active') && !custom_radio.is(':checked')) {
+    if (val == custom_input.data('prev_val')) {
       hideGoButton();
     }
+    custom_input.val(val);
   });
-  custom_go_button.click(function() {
+  custom_go_button.click(function(event) {
+    hideGoButton();
     var val = custom_input.val();
-    if (val == '') {
-      return false;
-    } else if (val <= 0) {
-      showErrorPopup("Error: the 'normalize' value must be a positive number.");
+    if (val != '' && val <= 0) {
+      showErrorPopup("Error: the 'normalize to' value must be a positive number.");
+      val = '';
       custom_input.val('');
+    }
+    custom_input.data('prev_val', val);
+    if (val == '') {
+      if (custom_radio.is(':checked')) {
+        self_radio.prop('checked', true).change();
+      }
       return false;
     }
-    hideGoButton();
-    custom_radio.prop('checked', true).change();
+    custom_radio.prop('checked', true);
+    setNormalizationMethod();
   });
 }
 function setupRunOptions() {
@@ -332,10 +342,10 @@ function setupVariantSelection() {
   $("#clearChosenButton").click(function(event) {
     addClearAssignedButtonHandler(event, 'chosen');
   });
-  $("#clearAvailButton").click(function() {
+  $("#clearAvailButton").click(function(event) {
     addClearAssignedButtonHandler(event, 'available');
   });
-  $("#clearIgnoredButton").click(function() {
+  $("#clearIgnoredButton").click(function(event) {
     addClearAssignedButtonHandler(event, 'ignored');
   });
   $("#chosenUpdateButton").click(function() {
@@ -381,6 +391,7 @@ function newTreeLoaded(data_obj) {
   if (repvar.tree_data) {
     setNormalizationMethod();
     $("#introMessageGroup").remove();
+    $("#treeSelectionDiv").show();
     $("#treeControlsDiv").show();
     drawTree();
     updateVarSelectList();
