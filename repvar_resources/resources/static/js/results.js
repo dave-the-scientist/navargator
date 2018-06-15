@@ -84,7 +84,8 @@ function setupPage() {
 function setupHistoSliderPane() {
   var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), right = $("#rightSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
   do_remove = false;
-  var mid_offset = middle_span.css('left'), animation_speed = 150, mid_left_arrow = $("#midLeftArrow"), mid_right_arrow = $("#midRightArrow");
+  var mid_offset = middle_span.css('left'), animation_speed = 150, animation_style = 'linear',
+    mid_left_arrow = $("#midLeftArrow"), mid_right_arrow = $("#midRightArrow");
   function setButtonAddToSelection() {
     if (do_remove == true) { left.html('Add to<br>selection'); }
     do_remove = false;
@@ -132,15 +133,15 @@ function setupHistoSliderPane() {
     if (select_below) { // Switch to above
       slider.slider('option', 'range', 'max');
       middle_span.html('Variants<br>above');
-      middle_span.animate({left: '-'+mid_offset}, animation_speed);
-      mid_left_arrow.animate({opacity:0}, animation_speed);
-      mid_right_arrow.animate({opacity:1}, animation_speed);
+      middle_span.animate({left: '-'+mid_offset}, animation_speed, animation_style);
+      mid_left_arrow.animate({opacity:0}, animation_speed, animation_style);
+      mid_right_arrow.animate({opacity:1}, animation_speed, animation_style);
     } else { // Switch to below
       slider.slider('option', 'range', 'min');
       middle_span.html('Variants<br>below');
-      middle_span.animate({left: mid_offset}, animation_speed);
-      mid_left_arrow.animate({opacity:1}, animation_speed);
-      mid_right_arrow.animate({opacity:0}, animation_speed);
+      middle_span.animate({left: mid_offset}, animation_speed, animation_style);
+      mid_left_arrow.animate({opacity:1}, animation_speed, animation_style);
+      mid_right_arrow.animate({opacity:0}, animation_speed, animation_style);
     }
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);

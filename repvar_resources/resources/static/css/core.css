@@ -4,6 +4,8 @@
   --dark-background-light-gradient: #387A7E;
   --light-background-colour: #E3ECEC;
   --major-accent-colour: #24F030;
+  --button-border-colour: #8A8A8A;
+  --button-border-hover-colour: #4F4F4F;
   --style-box-background-colour: #FFFFFF;
   --shadow-colour: #555555;
   --font-family: Helvetica, Arial, sans-serif;
@@ -130,7 +132,7 @@ span {
   display: inline-block;
   vertical-align: top;
   background-color: var(--style-box-background-colour);
-  border: 1px solid #000000;
+  border: 1px solid var(--dark-background-colour);
   box-shadow: 1px 1px 2px var(--shadow-colour);
   margin: 5px 5px 5px 5px;
   padding: var(--style-box-padding);
@@ -145,9 +147,8 @@ span {
 }
 .style-box h2 {
   --style-h2-border: 3px;
-  margin: 15px 0px 5px 0px; /*10px 0px 2px 0px*/
+  margin: 15px 0px 5px 0px;
   padding: 3px 5px;
-  /*box-sizing: border-box;*/
   width: calc(100% - var(--style-box-padding) - var(--style-h2-border));
   background: linear-gradient(var(--dark-background-light-gradient), var(--dark-background-colour));
   border: var(--style-h2-border) solid var(--major-accent-colour);
@@ -166,44 +167,61 @@ span {
 }
 
 /* ======  Custom checkbox and radio buttons  ====== */
-.nvrgtr-radio-label {
+.nvrgtr-checkbox-label {
   position: relative;
   display: inline-block;
   padding-left: 25px;
 }
-.nvrgtr-radio-label > input {
+.nvrgtr-checkbox-label > input {
   position: absolute;
   opacity: 0;
 }
-.nvrgtr-radio-checkbox {
-  --nvrgtr-radio-checkbox-background: white;
+.nvrgtr-checkbox, .nvrgtr-radio-checkbox {
   position: absolute;
   width: 14px;
   height: 14px;
   bottom: 3px;
   left: 5px;
-  background-color: var(--nvrgtr-radio-checkbox-background);
-  /*box-shadow: inset -2px -2px 1px rgba(85,85,85,.1); Looks better without I think.*/
-  border: 1px solid #8A8A8A;
+  background-color: white;
+  /*box-shadow: inset -2px -2px 1px rgba(85,85,85,.1); Looks better without 3D I think.*/
+  border: 1px solid var(--button-border-colour);
+}
+.nvrgtr-checkbox {
+  border-radius: 20%;
+}
+.nvrgtr-radio-checkbox {
   border-radius: 50%;
 }
-.nvrgtr-radio-checkbox:after {
+
+.nvrgtr-checkbox:after, .nvrgtr-radio-checkbox:after {
   content: "";
   position: absolute;
   opacity: 0;
+  transition: .15s all;
+}
+.nvrgtr-checkbox:after {
+  width: 4px;
+  height: 8px;
+  left: 4px;
+  border: 3px solid var(--dark-background-colour);
+  border-top-style: none;
+  border-left-style: none;
+  transform: rotate(45deg);
+}
+.nvrgtr-radio-checkbox:after {
   width: 8px;
   height: 8px;
   top: 3px;
   left: 3px;
   background-color: var(--dark-background-colour);
   border-radius: 50%;
-  transition: .15s all;
 }
-.nvrgtr-radio-label:hover > input + .nvrgtr-radio-checkbox {
-  border-color: #4F4F4F;
+.nvrgtr-checkbox-label:hover > .nvrgtr-radio-checkbox, .nvrgtr-checkbox-label:hover > .nvrgtr-checkbox {
+  border-color: var(--button-border-hover-colour);
   /*box-shadow: 0px 0px 4px var(--major-accent-colour); Green outline; looks alright, kinda busy.*/
 }
-.nvrgtr-radio-label > input:checked + .nvrgtr-radio-checkbox:after {
+.nvrgtr-checkbox-label > input:checked + .nvrgtr-checkbox:after,
+.nvrgtr-checkbox-label > input:checked + .nvrgtr-radio-checkbox:after {
   opacity: 1;
 }
 
@@ -249,6 +267,51 @@ div.collapsible-panel > * {
 }
 
 /* ======  Tree view controls  ====== */
+.control-element {
+  --control-element-height: 25px;
+  --control-element-border-width: 1px;
+  margin: var(--control-element-vert-margin) 0px;
+  padding: 0px 5px;
+  min-width: 25px;
+  height: var(--control-element-height);
+  line-height: var(--control-element-height); /*normal*/
+  vertical-align: middle;
+  vertical-align: -webkit-baseline-middle; /*Needed for chrome*/
+  background-color: var(--light-background-colour);
+  border: var(--control-element-border-width) solid var(--button-border-colour);
+  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -4px -4px 4px rgba(201,201,201,.3);
+  outline: none;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  text-align: center;
+}
+label.control-element, span.control-element {
+  display: inline-block;
+  height: 23px;
+}
+.control-pair-left:not(.control-pair-right) {
+  border-right: 0px;
+}
+.control-pair-left {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.control-pair-right {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.control-element::-moz-focus-inner {
+  border: 0;
+}
+button.control-element:active {
+  background-color: #EAFEEC;
+  /*var(--dark-background-colour)*/
+}
+.control-element:hover {
+  border-color: var(--button-border-hover-colour);
+}
+
+/* ======  Tree pane controls  ====== */
 #treeControlsDiv {
   position: absolute;
   top: 10px;
@@ -261,30 +324,24 @@ div.collapsible-panel > * {
   display: inline-flex;
   align-items: center;
 }
-#varSearchButton:not(:active), #clearVarSearchButton:not(:active) {
-  background-color: var(--light-background-colour);
-}
 #varSearchInput {
-  height: 23px; /*Needs to be 2*border-width smaller than the button.*/
+  height: calc(var(--control-element-height) - 2 * var(--control-element-border-width));
   background-color: #ffffff;
   text-align: left;
 }
 #clearVarSearchButton {
   position: relative;
-  right: 20px;
+  right: 21px;
+  min-width: unset;
+  width: 19px;
+  height: 19px;
+  line-height: 19px;
   margin: 0px;
 	padding: 0px;
-  display: inline-block;
-  border:1px solid transparent;
   border-radius: 50%;
-  outline: none;
-	text-align: center;
-	font-weight: normal;
-	font-size: 12px;
-  color: white;
 }
-#clearVarSearchButton:hover {
-  border-color: black;
+#clearVarSearchButton, #treeZoomOutButton, #treeZoomInButton {
+  font-size: 12px;
 }
 #clearVarSearchButton > * { /*Applies to icon, text, whatever I use in the button*/
   margin: auto;
@@ -324,42 +381,8 @@ div.collapsible-panel > * {
   padding: 0px;
   text-align: right;
 }
-
-.control-element {
-  vertical-align: middle;
-  vertical-align: -webkit-baseline-middle; /*Needed for chrome*/
-  margin: var(--control-element-vert-margin) 0px;
-  padding: 0px 5px;
-  height: 25px;
-  min-width: 25px;
-  border: 1px solid #000000;
-  background-color: #ffffff;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
-  text-align: center;
-  line-height: 25px; /*normal*/
-  outline: none;
-}
-label.control-element, span.control-element {
-  display: inline-block;
-  height: 23px;
-}
-.control-pair-left:not(.control-pair-right) {
-  border-right: 0px;
-}
-.control-pair-left {
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
-}
-.control-pair-right {
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-}
-.control-element::-moz-focus-inner {
-  border: 0;
-}
-button.control-element:active, #clearVarSearchButton:active {
-  background-color: var(--dark-background-colour);
+#currentSelectionLabel {
+  background-color: white;
 }
 
 /* ======  Normalization radios  ====== */
@@ -381,13 +404,13 @@ button.control-element:active, #clearVarSearchButton:active {
   font-size: 14px;
   text-align: center;
   outline: none;
-  border: 1px solid #8A8A8A;
+  border: 1px solid var(--button-border-colour);
   border-radius: 3px;
   background: linear-gradient(#FAFAFA, #DCDCDC);
   box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
 }
 #normValGoButton:hover {
-  border-color: #4F4F4F;
+  border-color: var(--button-border-hover-colour);
 }
 #normValGoButton:active {
   background: linear-gradient(#DCDCDC, #FAFAFA);

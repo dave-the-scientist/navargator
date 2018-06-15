@@ -43,7 +43,7 @@
   padding: 0px;
   text-align: center;
   color: black;
-  border: 1px solid #8A8A8A;
+  border: 1px solid var(--button-border-colour);
   background: linear-gradient(#FAFAFA, #DCDCDC);
   box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
 }
@@ -98,33 +98,50 @@
   padding: 2px 2px 2px 4px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
-  /*border-bottom-left-radius: 5% 25%; /* Rounded slash or not? */
 }
 .var-assigned-label { /* The "2 chosen variants" text.*/
   margin: 0px 5px 0px 0px;
+  vertical-align: middle;
 }
 .var-assigned-clear { /* The clear button.*/
   --clear-button-size: 19px;
+  position: relative;
   display: inline-block;
-  opacity: 0.1;
   width: var(--clear-button-size);
   height: var(--clear-button-size);
+  vertical-align: middle;
   margin: 0px;
   padding: 0px;
   border: 1px solid transparent;
   border-radius: 50%;
-  font-size: 1.0em;
-  text-align: center;
-  line-height: var(--clear-button-size);
+  transition: .2s all;
 }
-.var-assigned-div:hover .var-assigned-clear { /* Becomes more opaque when mouseover parent div.*/
-  opacity: 0.4;
+.var-assigned-clear-span1, .var-assigned-clear-span2 {
+  position: absolute;
+  top: 8px;
+  left: 3px;
+  width: 13px;
+  height: 3px;
+  background-color: #DFDFDF;
+  transition: .2s all;
+}
+.var-assigned-clear-span1 {
+  transform: rotate(-45deg);
+}
+.var-assigned-clear-span2 {
+  /*Using rotate(45deg) makes the animation appear to flatten; -135deg makes it rapidly rotate.*/
+  transform: rotate(45deg);
+}
+.var-assigned-div:hover .var-assigned-clear > span {
+  background-color: #757575;
 }
 .var-assigned-div .var-assigned-clear:hover { /* Final form when mouseover directly.*/
-  opacity: 1.0;
-  color: red;
   background: white;
-  border-color: black;
+  border-color: var(--button-border-hover-colour);
+}
+.var-assigned-div .var-assigned-clear:hover > span {
+  background-color: red;
+  transform: rotate(0deg);
 }
 .var-select-label { /* Element for each variant in the tree.*/
   display: inline-block;

@@ -54,8 +54,8 @@ function processError(error, message) {
 function initializeButtons() {
   // Standardizes appearances across browsers, and provides some additional functionality to various elements.
   $(".jq-ui-button").button(); // Converts html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
-  $(".nvrgtr-radio-label").addClass("prevent-text-selection").children("input").after("<span class='nvrgtr-radio-checkbox'></span>");
-  //$(".nvrgtr-radio-label > input").after("<span class='nvrgtr-radio-checkbox'></span>");
+  $(".nvrgtr-checkbox-label").addClass("prevent-text-selection").children("input[type=radio]").after("<span class='nvrgtr-radio-checkbox'></span>");
+  $(".nvrgtr-checkbox-label").children("input[type=checkbox]").after("<span class='nvrgtr-checkbox'></span>");
 }
 function initializeCollapsibleElements() {
   $(".collapsible-header").addClass("prevent-text-selection").after("<div class='collapsible-icon-div'><span class='collapsible-span1'></span><span class='collapsible-span2'></span></div>");

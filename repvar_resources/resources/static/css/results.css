@@ -90,7 +90,6 @@
 }
 #midLeftArrow {
   position: absolute;
-  /*top: 30.5%;*/
   top: calc(var(--button-height) / 2 - 0.55em);
   left: 3px;
   opacity: 1;

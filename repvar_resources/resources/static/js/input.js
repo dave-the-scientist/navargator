@@ -1,22 +1,19 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
-// Make custom check box in same style as radios.
-// Style the control-element buttons.
-// In assigned pane, 'available' should be first, 'chosen' 2nd.
-// Style boxes should have the dark green colour as borders. Or maybe no borders?
-
 // TODO:
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
-// - I really don't like how the control-element buttons look, especially the 'add to selection' from search button, and the controls on the results histogram. Do something with them, even if just making them regular buttons.
-// - I love the simple animations on hover. Would be great if I find a use for them.
-//   - From the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile
-//   - Maybe just make the X (from assign labels) spin on hover. Or, could replace that with a 'hamburger' button, that morphs into an X and the 'update' button on hover.
-// - I'd like to design a better 'Selected variants: X' panel (including select all and clear all buttons).
-//   - Another candidate for one of those morphing hamburger buttons.
-// - The header could use some design work. Apply some of the gradients/shadowing from https://designmodo.com/3d-css3-button/
+// - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
-// - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree (after dealing with the H2; an idea might come from that).
+// - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree. Maybe make a circular gradient from the middle of the input tree, in the cluster colour.
 // - When the user selects a file to upload, the page should pick a file type based on the file extension, and update the select on the page.
+// - For magnifying glass icon on 'search variants' field, I could make it morph into an X on submit. Would want to move it to the right side of the field.
+//   - Kinda like from http://www.transformicons.com/; basically have 1 line and 1 circle. For X, circle height becomes 0, for magnifying glass, set equal to width and rotate/move.
+//   - Upon submission (clicking magnifying or pressing enter) jquery adds a class, and removes it when the user types any button. Means there's no button to press to clear the field prior to submission, but that's probably fine.
+// - I'd like to redesign the assigned variants labels.
+//   - The colour change should be animated. I quite like the 'fill from left' effect, like with the 3rd 'Thar' button from https://codepen.io/sazzad/pen/yNNNJG
+//   - That could look good if I made the 'update' button appear in the same way (wipe from left) upon hover of label. But then would it be intuitive for a user about how to add variants? Maybe best if I made a button group "+ | X", and the + could expand into the word "update" or something.
+// - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
+// - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
 
 //NOTE:
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
