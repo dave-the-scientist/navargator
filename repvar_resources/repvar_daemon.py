@@ -22,6 +22,7 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
+# - On windows, at least without a pre-loaded repvar file, the s_id retrieved from the request is unicode, not a string. Another reason to need a generalized 'get' function.
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
