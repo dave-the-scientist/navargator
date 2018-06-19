@@ -67,7 +67,7 @@ function setupPage() {
       data: {'session_id': page.session_id},
       success: function(data_obj) {
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
-          $("#loadInputHeader").click(); // Opens collapsible pane
+          $("#loadInputHeader").click(); //   open collapsible pane.
         }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }

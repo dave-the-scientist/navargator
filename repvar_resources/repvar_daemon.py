@@ -22,7 +22,7 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
-# - On windows, at least without a pre-loaded repvar file, the s_id retrieved from the request is unicode, not a string. Another reason to need a generalized 'get' function.
+# - Finish standardized use of get_instance(). Currently up to the upload methods.
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
@@ -35,8 +35,10 @@ class RepvarDaemon(object):
       This class defines several custom HTTP status codes used to signal errors, which are also further defined in core.js:processError().
     550 - Specific error validating the user's tree.
     # # #  Re-number the below error codes to reasonable values:
+    5505 - Error reading data from uploaded file. From the 2 upload functions.
     5506 - Attempting to access results that don't exist. From various, but should probably be just from a central get_results method.
     5507 - Error setting the normalization method. From set_normalization_method()
+    5508 - Error, no session ID sent from the client. From get_instance().
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         max_upload_size = 20*1024*1024 # 20 MB
@@ -90,7 +92,7 @@ class RepvarDaemon(object):
         def instance_closed():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
-                return msg
+                return msg # Will almost certainly never actually be processed by the closing browser.
             elif s_id == '':
                 return 'web server input closed'
             self.connections.close(s_id, b_id)
@@ -101,18 +103,23 @@ class RepvarDaemon(object):
             return 'instance-closed successful.'
         @self.server.route(daemonURL('/get-input-data'), methods=['POST'])
         def get_input_data():
-            s_id = request.form['session_id']
-            if s_id in self.sessions:
-                data_dict = self.get_vf_data_dict(s_id)
-            else:
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            if vf == None:
                 data_dict = {'session_id':s_id, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
+            else:
+                data_dict = self.get_vf_data_dict(s_id)
             data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
         @self.server.route(daemonURL('/calculate-global-normalization'), methods=['POST'])
         def calculate_global_normalization():
             """For each set of params in the cache, gets the maximum distance from any variant to its cluster centre, and returns the largest of those. Used to normalize the tree graph and histogram so they can be compared between runs."""
-            s_id = request.form['session_id']
-            vf = self.sessions[s_id]
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            elif vf == None:
+                return json.dumps({}) # Called from an input page without a tree loaded yet.
             dist_scale = 1.0
             cur_var = request.form['cur_var']
             max_var_dist = float(request.form['max_var_dist'])
@@ -132,7 +139,7 @@ class RepvarDaemon(object):
             try:
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
-                return (str(err), 552)
+                return (str(err), 5505)
             if s_id == self.local_input_session_id:
                 self.connections.close(s_id, None)
             new_s_id = self.new_variant_finder(tree_data)
@@ -143,7 +150,7 @@ class RepvarDaemon(object):
             try:
                 repvar_data = request.files['upload-file'].read()
             except Exception as err:
-                return (str(err), 552)
+                return (str(err), 5505)
             if s_id == self.local_input_session_id:
                 self.connections.close(s_id, None)
             vf = repvar_from_data(repvar_data.splitlines(), verbose=self.verbose)
@@ -261,10 +268,10 @@ class RepvarDaemon(object):
         self.connections.new_session(s_id)
         self.sessions[s_id] = vf
         return s_id
-    def add_variant_finder(self, vfinder):
+    def add_variant_finder(self, vf):
         s_id = self.generate_session_id()
         self.connections.new_session(s_id)
-        self.sessions[s_id] = vfinder
+        self.sessions[s_id] = vf
         return s_id
 
     # # # # #  Running the server  # # # # #
@@ -302,15 +309,20 @@ class RepvarDaemon(object):
 
     # # # # #  Private methods  # # # # #
     def get_instance(self, should_fail=False):
-        """HTTP status code 559 is used here to indicate a response was requested
+        """Returns vf_instance, session_id, browser_id, message. vf_instance will be None if there is no instance with that session_id. session_id can be a string of the s_id, a string of the local input s_id, '' for the web input page, or None if it was not sent or if it is not found. browser_id will be a string, or None if it was not sent. message will be a string if there were no issues, or a tuple (message, error_code) that can be returned and parsed by the client's javascript.
+        HTTP status code 559 is used here to indicate a response was requested
         for a session ID that does not exist."""
-        if should_fail: return None, 0, ('DEBUG ONLY: Intentional fail.', 588)
-        s_id = request.form['session_id']
-        b_id = request.form['browser_id']
+        if should_fail: return None, None, None, ('DEBUG ONLY: Intentional fail.', 588)
+        s_id = request.form.get('session_id', None)
+        b_id = request.form.get('browser_id', None)
         if s_id == self.local_input_session_id:
             return None, s_id, b_id, 'session ID is local input page'
+        elif s_id == '':
+            return None, s_id, b_id, 'session ID is web input page'
         elif s_id in self.sessions:
             return self.sessions[s_id], s_id, b_id, 'session ID is valid.'
+        elif s_id == None:
+            return None, None, b_id, ("error, no session ID received from the client page", 5508)
         else:
             return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
     def generate_session_id(self):
