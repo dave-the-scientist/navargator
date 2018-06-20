@@ -255,10 +255,9 @@ function setupRunOptions() {
     var ret = validateFindVariantsCall();
     if (ret == false) {
       return false;
-    } else {
-      var num_vars = ret.num_vars, num_vars_range = ret.num_vars_range,
-        cluster_method = $("#clustMethodSelect").val();
     }
+    var num_vars = ret.num_vars, num_vars_range = ret.num_vars_range,
+      cluster_method = $("#clustMethodSelect").val();
     var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked')),
       auto_result_page = null;
     if (auto_open == true) {
@@ -427,8 +426,14 @@ function updateVarSelectList() {
 function updateRunOptions() {
   // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
   var maxVars = repvar.chosen.length + repvar.available.length;
-  if (maxVars == 0) {
-    maxVars = null;
+  if (maxVars < 2) {
+    maxVars = repvar.leaves.length - repvar.ignored.length;
+  }
+  if ($("#numVarSpinner").spinner('value') > maxVars) {
+    $("#numVarSpinner").spinner('value', maxVars);
+  }
+  if ($("#rangeSpinner").spinner('value') > maxVars) {
+    $("#rangeSpinner").spinner('value', maxVars);
   }
   $("#numVarSpinner").spinner('option', 'max', maxVars);
   $("#rangeSpinner").spinner('option', 'max', maxVars);
@@ -524,7 +529,7 @@ function checkIfProcessingDone() {
         }
       }
       if (max_var_dist > 0) {
-        calculateGlobalNormalization(max_var_dist); // So they are processed every 0.5 sec.
+        calculateGlobalNormalization(max_var_dist); // So results are processed every 0.5 sec.
       }
       if (draw_graph == false) {
         page.check_results_timer = setTimeout(checkIfProcessingDone, page.check_results_interval);
@@ -696,6 +701,13 @@ function parseRepvarData(data_obj) {
   }
 }
 function validateFindVariantsCall() {
+  if (!repvar.tree_data) {
+    return false;
+  }
+  if (repvar.available.length + repvar.chosen.length < 2) {
+    showErrorPopup("You must select 2 or more variants from your tree and assign them as 'available' or 'chosen' before NaVARgator can perform clustering.");
+    return false;
+  }
   if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
     validateSpinner($("#rangeSpinner"), "Range of variants") )) {
     return false;

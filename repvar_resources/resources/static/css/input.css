@@ -79,21 +79,22 @@
 }
 
 /* Variant assignment and selection settings: */
-#topVariantSelectDiv {
-  display: inline-flex;
-  flex-wrap: wrap;
-  margin: 0px;
+#varAssignTableDiv {
+  float: left;
+  margin: 0px 15px 10px 0px;
+  padding: 0px 10px 10px 0px;
+  border: 1px solid var(--button-border-colour);
+  border-top-style: none;
+  border-left-style: none;
 }
-#varAssignTable {
-  margin-right: 15px;/* 15px; but I want it to be 0 if parent div wraps*/
-  margin-bottom: 10px;
-}
-#variantSelectHr {
-  margin-top: 0px;
-  margin-bottom: 10px;
+#varSelectHeader {
+  display: inline-block;
+  margin: 0px 0px 5px 0px;
+  font-size: 1.2em;
 }
 .var-assigned-div { /* Box containing holding "2 chosen variants" and clear button */
   display: inline-block;
+  white-space: nowrap; /* Ensures everything stays on 1 line. */
   margin: 0px 5px 0px 0px;
   padding: 2px 2px 2px 4px;
   border: 2px solid red;

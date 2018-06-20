@@ -279,7 +279,7 @@ div.collapsible-panel > * {
   vertical-align: -webkit-baseline-middle; /*Needed for chrome*/
   background-color: var(--light-background-colour);
   border: var(--control-element-border-width) solid var(--button-border-colour);
-  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -4px -4px 4px rgba(201,201,201,.3);
+  box-shadow: inset 2px 4px 6px rgba(255,255,255,.3), inset -4px -4px 6px rgba(201,201,201,.25);
   outline: none;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
@@ -327,6 +327,7 @@ button.control-element:active {
 #varSearchInput {
   height: calc(var(--control-element-height) - 2 * var(--control-element-border-width));
   background-color: #ffffff;
+  box-shadow: unset;
   text-align: left;
 }
 #clearVarSearchButton {

@@ -19,6 +19,8 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 
 
 //TODO:
+// - Cluster drawing issue if 3 clusters, with chosen: hps.strain5, app.h397, a.suis.h410. There's a cluster with few members but large area being drawn on top of a smaller cluster with more members.
+//   - I think the best answer is to change the cluster colour so that it looks the same, but the transparancy is as high as possible. Will mean these overlaps are more apparent.
 // - Get export buttons working.
 // - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
@@ -371,7 +373,7 @@ function createClusterRow(var_name, table_body) {
   return $("<tr class='cluster-list-row' variant-name='" +var_name+ "'>" +name_td +size_td +avg_dist_td +score_td+ "</tr>");
 }
 function updateClusteredVariantMarkers() {
-  // Colours the representative, available, and ignored nodes. Also adds tooltips to
+  // Colours the chosen, available, and ignored nodes. Also adds tooltips to
   var var_name, circle, circle_colour_key;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i], node = repvar.nodes[var_name];

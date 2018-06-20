@@ -1,7 +1,3 @@
-// TODO:
-// - Ensure bar graph is below the label mouseover object. Add the tooltip to that object.
-
-
 // =====  Tree setup functions:
 function setupTreeElements() {
   $("#selectAllButton").click(function() {
@@ -248,7 +244,7 @@ function drawBarGraphs() {
     if (!(var_name in repvar.variant_distance)) {
       tooltip = '[Ignored] ' + var_name;
     } else if (dist == 0) {
-      tooltip = '[Representative] ' + var_name;
+      tooltip = '[Chosen] ' + var_name;
     } else {
       tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
       path_str = getBarGraphPathStr(var_name, var_angle, dist);

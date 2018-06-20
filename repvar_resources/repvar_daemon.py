@@ -22,12 +22,9 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
-# - Finish standardized use of get_instance(). Currently up to the upload methods.
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
-# - Should have a method to get session_id from the form, that throws an appropriate error if not found. Also a method to get other attrs, again so an error can be thrown if they're not found.
-# - update_or_copy_vf() can find it's own s_id, doesn't need it as an arg. might need to rename the fxn
 
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
@@ -39,6 +36,7 @@ class RepvarDaemon(object):
     5506 - Attempting to access results that don't exist. From various, but should probably be just from a central get_results method.
     5507 - Error setting the normalization method. From set_normalization_method()
     5508 - Error, no session ID sent from the client. From get_instance().
+    5509 - Error, no variant finder found for the session ID when one is expected. From calculate_global_normalization(), update_or_copy_vf().
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         max_upload_size = 20*1024*1024 # 20 MB
@@ -73,14 +71,16 @@ class RepvarDaemon(object):
         static_dir = os.path.join(resources_dir, 'static')
         self.server = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
         self.server.config['MAX_CONTENT_LENGTH'] = max_upload_size
-        # # #  General server listening routes:
+        # # #  Setup tasks run after initialization:
         @self.server.before_first_request
         def setup_tasks():
             if self.web_server: # Setup tasks to start for the web version.
                 t = threading.Thread(target=self.start_web_server)
-                t.daemon = True; t.start()
+                t.daemon = True
+                t.start()
             else: # Setup tasks to begin for the local version.
                 pass
+        # # #  General server listening routes:
         @self.server.route(daemonURL('/maintain-server'), methods=['POST'])
         def maintain_server():
             vf, s_id, b_id, msg = self.get_instance()
@@ -119,7 +119,7 @@ class RepvarDaemon(object):
             if s_id == None:
                 return msg
             elif vf == None:
-                return json.dumps({}) # Called from an input page without a tree loaded yet.
+                return ("error, global normalization cannot be calculated because there is no valid variant finder for session ID '%s'" % s_id, 5509)
             dist_scale = 1.0
             cur_var = request.form['cur_var']
             max_var_dist = float(request.form['max_var_dist'])
@@ -135,32 +135,36 @@ class RepvarDaemon(object):
         # # #  Input page listening routes:
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
-            s_id = request.form['session_id']
             try:
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 5505)
-            if s_id == self.local_input_session_id:
-                self.connections.close(s_id, None)
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            elif s_id == self.local_input_session_id:
+                self.connections.close(s_id, None) # Needed because that particular s_id never times out.
             new_s_id = self.new_variant_finder(tree_data)
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/upload-repvar-file'), methods=['POST'])
         def upload_repvar_file():
-            s_id = request.form['session_id']
             try:
                 repvar_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 5505)
-            if s_id == self.local_input_session_id:
-                self.connections.close(s_id, None)
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            elif s_id == self.local_input_session_id:
+                self.connections.close(s_id, None) # Needed because that particular s_id never times out.
             vf = repvar_from_data(repvar_data.splitlines(), verbose=self.verbose)
             new_s_id = self.add_variant_finder(vf)
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/save-repvar-file'), methods=['POST'])
         def save_repvar_file():
-            s_id = request.form['session_id']
-            s_id = self.update_or_copy_vf(s_id)
-            vf = self.sessions[s_id]
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
             if self.web_server:
                 saved_locally = False
                 repvar_str = vf.get_repvar_string()
@@ -174,9 +178,9 @@ class RepvarDaemon(object):
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
         @self.server.route(daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
-            s_id = request.form['session_id']
-            s_id = self.update_or_copy_vf(s_id)
-            vf = self.sessions[s_id]
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
             num_vars = int(request.form['num_vars'])
             num_vars_range = int(request.form['num_vars_range'])
             cluster_method = request.form['cluster_method']
@@ -190,8 +194,11 @@ class RepvarDaemon(object):
             return json.dumps({'session_id':s_id})
         @self.server.route(daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
-            s_id = request.form['session_id']
-            vf = self.sessions[s_id]
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            elif vf == None:
+                return ("error in check_results_done(), there is no valid variant finder for session ID '%s'" % s_id, 5509)
             var_nums = request.form.getlist('var_nums[]')
             var_scores, max_var_dists = [], []
             dist_scale = 1.0
@@ -211,8 +218,13 @@ class RepvarDaemon(object):
             return json.dumps({'var_nums':var_nums, 'var_scores':var_scores, 'max_var_dists':max_var_dists})
         @self.server.route(daemonURL('/set-normalization-method'), methods=['POST'])
         def set_normalization_method():
-            s_id = request.form['session_id']
-            vf = self.sessions[s_id]
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == '' or s_id == self.local_input_session_id:
+                return "normalization cannot be set until a tree is loaded" # No error
+            elif s_id == None:
+                return msg
+            elif vf == None:
+                return ("error setting normalization method, there is no valid variant finder for session ID '%s'" % s_id, 5509)
             norm_method = request.form['normalization[method]']
             if norm_method == 'self':
                 vf.normalize['method'] = 'self'
@@ -228,9 +240,12 @@ class RepvarDaemon(object):
         # # #  Results page listening routes:
         @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
-            s_id = request.form['session_id']
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            elif vf == None:
+                return ("error in get_cluster_results(), there is no valid variant finder for session ID '%s'" % s_id, 5509)
             num_vars = int(request.form['num_vars'])
-            vf = self.sessions[s_id]
             dist_scale = 1.0
             params = (num_vars, dist_scale)
             if params not in vf.cache:
@@ -282,7 +297,8 @@ class RepvarDaemon(object):
         sys.stderr = self.log_buffer
         t = threading.Thread(target=self.server.run,
             kwargs={'threaded':True, 'port':self.server_port})
-        t.daemon = True; t.start()
+        t.daemon = True
+        t.start()
         try:
             while not self.should_quit.is_set():
                 self.should_quit.wait(self.check_interval)
@@ -307,7 +323,7 @@ class RepvarDaemon(object):
             self.should_quit.wait(self.check_interval)
             self.collect_garbage()
 
-    # # # # #  Private methods  # # # # #
+    # # # # #  Backend accession methods  # # # # #
     def get_instance(self, should_fail=False):
         """Returns vf_instance, session_id, browser_id, message. vf_instance will be None if there is no instance with that session_id. session_id can be a string of the s_id, a string of the local input s_id, '' for the web input page, or None if it was not sent or if it is not found. browser_id will be a string, or None if it was not sent. message will be a string if there were no issues, or a tuple (message, error_code) that can be returned and parsed by the client's javascript.
         HTTP status code 559 is used here to indicate a response was requested
@@ -325,6 +341,24 @@ class RepvarDaemon(object):
             return None, None, b_id, ("error, no session ID received from the client page", 5508)
         else:
             return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
+    def update_or_copy_vf(self):
+        """If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set."""
+        vf, s_id, b_id, msg = self.get_instance()
+        if s_id == None:
+            return None, None, msg
+        elif vf == None:
+            return None, None, ("error in update_or_copy_vf, there is no valid variant finder for session ID '%s'" % s_id, 5509)
+        chsn = set(request.form.getlist('chosen[]'))
+        ignrd = set(request.form.getlist('ignored[]'))
+        avail = set(request.form.getlist('available[]'))
+        if chsn != vf.chosen or ignrd != vf.ignored or avail != vf.available:
+            vf = vf.copy()
+            vf.chosen = []; vf.ignored = []; vf.available = []
+            vf.chosen = chsn; vf.ignored = ignrd; vf.available = avail
+            s_id = self.add_variant_finder(vf)
+            msg = "vf replaced; new session ID '%s'" % s_id
+        return vf, s_id, msg
+    # # # # #  Private methods  # # # # #
     def generate_session_id(self):
         # Javascript has issues parsing a number if the string begins with a non-significant zero.
         s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
@@ -334,20 +368,6 @@ class RepvarDaemon(object):
     def get_vf_data_dict(self, s_id):
         vf = self.sessions[s_id]
         return {'session_id':s_id, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data}
-    def update_or_copy_vf(self, s_id):
-        """If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set."""
-        # javascript returns an array of unicodes, not strs. But these seem to work interchangeably for some reason. If they don't probably just .encode('UTF-8') on each to convert it.
-        vf = self.sessions[s_id]
-        chsn = set(request.form.getlist('chosen[]'))
-        ignrd = set(request.form.getlist('ignored[]'))
-        avail = set(request.form.getlist('available[]'))
-        if chsn != vf.chosen or ignrd != vf.ignored or avail != vf.available:
-            vf = vf.copy()
-            vf.chosen = []; vf.ignored = []; vf.available = []
-            vf.chosen = chsn; vf.ignored = ignrd; vf.available = avail
-            return self.add_variant_finder(vf)
-        else:
-            return s_id
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:
             vf.normalize['global_value'] = max_var_dist

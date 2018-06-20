@@ -134,7 +134,7 @@ class VariantFinder(object):
             # Needed because the daemon sets self.cache[params] = None before this method is called.
             variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
         elif num_variants == num_avail + num_chsn:
-            variants = sorted(list(self.available) + list(self.chosen))
+            variants = [self.index[name] for name in list(self.available)+list(self.chosen)]
             scores = [0.0 for n in range(num_avail + num_chsn)]
             alt_variants = []
         elif method == 'brute force':
