@@ -10,6 +10,9 @@ $.extend(page, {
 $.extend(repvar, {
   'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[]
 });
+$.extend(repvar.opts.colours, {
+  'cluster_background_trans':null, 'cluster_highlight_trans':null
+});
 $.extend(repvar.opts.graph, {
   'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15
 });
@@ -19,8 +22,7 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 
 
 //TODO:
-// - Cluster drawing issue if 3 clusters, with chosen: hps.strain5, app.h397, a.suis.h410. There's a cluster with few members but large area being drawn on top of a smaller cluster with more members.
-//   - I think the best answer is to change the cluster colour so that it looks the same, but the transparancy is as high as possible. Will mean these overlaps are more apparent.
+// - Ensure setTransparentColour() is working right in updateColours(). Add colour pickers to display options.
 // - Get export buttons working.
 // - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
@@ -290,6 +292,7 @@ function checkForClusteringResults() {
         setTimeout(checkForClusteringResults, page.check_results_interval);
       } else {
         parseClusteredData(data);
+        updateColours();
         drawBarGraphs();
         updateSummaryStats();
         updateNormalizationPane();
@@ -302,6 +305,15 @@ function checkForClusteringResults() {
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
   });
 }
+function updateColours() {
+  // Parses the color pickers under display options, update repvar.opts.colours.
+  // When user sets cluster_background and cluster_highlight colours, need to check if the transparent colours will be identical. If not, display one of the warning triangle icons by the colour picker.
+  // - If bg_r*(1-opacity) > colour_r: then it's not possible to mimick the desired colour with the given transparency and background. Either opacity must be increased, the background made darker, or the desired colour made lighter. Similarly, if bg_r*(1-opacity) Obviously likewise for _g and _b channels. Easiest answer is to just increase opacity, which only matters if there is part of a cluster drawn behind another.
+  // Calculate the cluster transparent
+  setTransparentColour('cluster_background_trans', repvar.opts.colours.cluster_background, repvar.opts.colours.tree_background);
+  setTransparentColour('cluster_highlight_trans', repvar.opts.colours.cluster_highlight, repvar.opts.colours.tree_background);
+}
+
 function updateSummaryStats() {
   var cluster_dist = 0.0, node_dist = 0.0, num_nodes = 0;
   for (var i=0; i<repvar.variants.length; ++i) {
@@ -341,7 +353,7 @@ function drawClusters() {
       addSingletonClusterObjRowHandlers(var_name, cluster_obj, cluster_row);
       // The node markers are pushed to_front in updateClusteredVariantMarkers()
     } else { // Non singleton cluster
-      repvar.clusters[var_name].colour_key = 'cluster_background';
+      repvar.clusters[var_name].colour_key = 'cluster_background_trans';
       addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row);
       to_front.push(mouseover_obj);
     }
@@ -507,7 +519,7 @@ function addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row) {
 function clusterMouseoverHandler(var_name, cluster_row) {
   var cluster = repvar.clusters[var_name];
   cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
-  cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight});
+  cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight_trans});
   for (var i=0; i<cluster.nodes.length; ++i) {
     nodeLabelMouseoverHandler(cluster.nodes[i], false);
   }

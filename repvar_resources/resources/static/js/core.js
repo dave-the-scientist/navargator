@@ -17,8 +17,8 @@ var repvar = {
       'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF'
-    },//cluster_background:F3E2B9(light tan) E4FDE5(light green) // cluster_highlight:71FED6(original cyan) 24F0C9(darker cyan) // available:9DB6F2(orig light purp)
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43
+    },
     'graph' : {
       'histo_bins':15, 'total_width':null, 'total_height':null
     }
@@ -123,6 +123,62 @@ function closeInstance() {
   });
 }
 
+// Functions to calculate and warn about colour choices:
+function setTransparentColour(colour_key, desired_col, background_col) {
+  // Also pass in the warning icon so it can be displayed if needed.
+  var ret = calculateTransparentComplement(desired_col, background_col);
+  if (ret.closest_colour != '') {
+    repvar.opts.colours[colour_key] = ret.closest_colour;
+    // display warning icon, with message/title including ret.min_transparency.
+  } else {
+    repvar.opts.colours[colour_key] = ret.initial_colour;
+  }
+}
+function calculateTransparentComplement(desired_col, background_col) {
+  // If returned.closest_colour != '', it is not possible to recreate that desired colour with the given background and transparency. In that case closest_colour is the best we can do with the given transparency; returned.min_transparency is what the current transparency should be raised to in order to display desired_col.
+  var opacity = repvar.opts.colours.cluster_opacity;
+  var de_r = parseInt('0x'+desired_col.slice(1,3)),
+    de_g = parseInt('0x'+desired_col.slice(3,5)),
+    de_b = parseInt('0x'+desired_col.slice(5,7));
+  var bg_r = parseInt('0x'+background_col.slice(1,3)),
+    bg_g = parseInt('0x'+background_col.slice(3,5)),
+    bg_b = parseInt('0x'+background_col.slice(5,7));
+  ret = {
+    'r': roundFloat((de_r - bg_r*(1-opacity)) / opacity, 0),
+    'g': roundFloat((de_g - bg_g*(1-opacity)) / opacity, 0),
+    'b': roundFloat((de_b - bg_b*(1-opacity)) / opacity, 0),
+    'closest_colour': '', 'min_transparency': 0.0
+  };
+  ret.initial_colour = colourStringFromRGB(ret.r, ret.g, ret.b);
+  var min_trans = Math.max(calculateMinimumTransparency(ret.r, de_r, bg_r), calculateMinimumTransparency(ret.g, de_g, bg_g), calculateMinimumTransparency(ret.b, de_b, bg_b));
+  if (min_trans > 0) {
+    ret.min_transparency = min_trans;
+    var new_r = Math.min(Math.max(ret.r, 0), 255),
+      new_g = Math.min(Math.max(ret.g, 0), 255),
+      new_b = Math.min(Math.max(ret.b, 0), 255);
+    ret.closest_colour = colourStringFromRGB(new_r, new_g, new_b);
+  }
+  return ret;
+}
+function colourStringFromRGB(r, g, b) {
+  var r_str = (r < 16) ? '0'+r.toString(16) : r.toString(16),
+    g_str = (g < 16) ? '0'+g.toString(16) : g.toString(16),
+    b_str = (b < 16) ? '0'+b.toString(16) : b.toString(16);
+  return '#' + r_str + g_str + b_str;
+}
+function calculateMinimumTransparency(initial_val, desired_val, background_val) {
+  // Returns 0 if the desired_val can be made from the current transparency and background_val, otherwise returns the smallest avlue that the transparency would have to be set to in order to make desired_val.
+  // These equations come from: desired_val = initial_val*opacity + background_val*(1-opacity).
+  var min_trans = 0;
+  if (initial_val < 0) {
+    min_trans = 1 - desired_val/background_val;
+  } else if (initial_val > 255) {
+    min_trans = (desired_val - background_val) / (255 - background_val);
+  }
+  return min_trans;
+}
+
+// Misc common functions:
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
   return Math.round(num * x) / x;

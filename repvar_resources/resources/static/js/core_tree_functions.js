@@ -287,7 +287,9 @@ function drawClusterObject(nodes) {
     hull = expandHull(convexHull(points_list));
   }
   path_str = bezierSplinePath(hull);
-  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
+  cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background_trans, 'fill-opacity':repvar.opts.colours.cluster_opacity, stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
+  // fill:'#D5FDD9', 'fill-opacity':0.5
+  //cluster_obj = repvar.r_paper.path(path_str).attr({fill:repvar.opts.colours.cluster_background,  stroke:repvar.opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
   mouseover_obj = repvar.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];
 }

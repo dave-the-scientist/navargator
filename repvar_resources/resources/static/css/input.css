@@ -92,15 +92,55 @@
   margin: 0px 0px 5px 0px;
   font-size: 1.2em;
 }
-.var-assigned-div { /* Box containing holding "2 chosen variants" and clear button */
+.var-assigned-div { /* Box containing holding "2 chosen variants" and clear button.*/
+  --var-assigned-border-width: 2px;
+  position: relative;
   display: inline-block;
-  white-space: nowrap; /* Ensures everything stays on 1 line. */
+  white-space: nowrap; /* Ensures everything stays on 1 line.*/
   margin: 0px 5px 0px 0px;
   padding: 2px 2px 2px 4px;
-  border: 2px solid red;
+  background-color: transparent;
+  border: var(--var-assigned-border-width) solid red;
   border-style: hidden hidden solid solid;
+  z-index: 0;
+}
+.var-assigned-div:before { /* The mouseover animation element.*/
+  content: '';
+  position: absolute;
+  display: block;
+  top: 0px;
+  left: 0px;
+  width: 0px;
+  height: 100%;
+  background-color: #92F7E4;
+  z-index: -2;
+  transition: all var(--cubic-transition);
+}
+.var-assigned-div:hover:before {
+  right: auto;
+  width: 100%;
+}
+.var-assigned-div:after { /* The selected animation element.*/
+  content: '';
+  position: absolute;
+  display: block;
+  bottom: 0px;
+  left: 0px;
+  width: calc(100% - var(--var-assigned-border-width));
+  height: 0px;
+  background-color: #FAB728;
+  z-index: -1;
+  transition: all var(--cubic-transition);
+}
+.var-assigned-div.var-assigned-selected:after {
+  top: auto;
+  height: calc(100% - var(--var-assigned-border-width));
+}
+.var-assigned-div.var-assigned-selected { /* Part of the mouseover+selected effect. */
+  background-color: #FAB728;
 }
 .var-assigned-label { /* The "2 chosen variants" text.*/
+  position: relative;
   margin: 0px 5px 0px 0px;
   vertical-align: middle;
 }
@@ -115,7 +155,7 @@
   padding: 0px;
   border: 1px solid transparent;
   border-radius: 50%;
-  transition: .2s all;
+  transition: all var(--cubic-transition);
 }
 .var-assigned-clear-span1, .var-assigned-clear-span2 {
   position: absolute;

@@ -1,6 +1,9 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - Need a button to select by names. Allow users to paste in sequence names, and assign that list.
+//   - Should be located by the Select all / Clear buttons. On click, a large panel slides open (obscuring the tree).
+//   - Panel holds an input field to paste into. Buttons on bottom for "add to selection" and "cut from selection". Buttons on side for "validate list" (which bolds or highlights the names that don't match the tree; also performed if user presses enter, as well as on "add" or "cut" operations) and "clear list". Original button should morph to "hide pane". Or perhaps "hide pane" is another button along the side.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
@@ -9,10 +12,10 @@
 // - For magnifying glass icon on 'search variants' field, I could make it morph into an X on submit. Would want to move it to the right side of the field.
 //   - Kinda like from http://www.transformicons.com/; basically have 1 line and 1 circle. For X, circle height becomes 0, for magnifying glass, set equal to width and rotate/move.
 //   - Upon submission (clicking magnifying or pressing enter) jquery adds a class, and removes it when the user types any button. Means there's no button to press to clear the field prior to submission, but that's probably fine.
-// - I'd like to redesign the assigned variants labels.
-//   - The colour change should be animated. I quite like the 'fill from left' effect, like with the 3rd 'Thar' button from https://codepen.io/sazzad/pen/yNNNJG
-//   - That could look good if I made the 'update' button appear in the same way (wipe from left) upon hover of label. But then would it be intuitive for a user about how to add variants? Maybe best if I made a button group "+ | X", and the + could expand into the word "update" or something.
+// - Id like to redesign the assigned labels 'update' button. Perhaps it should appear in the same way as the label colour (wipe from left) upon hover of label.
+//   - But then would it be intuitive for a user about how to add variants? Maybe best if I made a button group "+ | X", and the + could expand into the word "update" or something.
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
+//   - Could be 'none' instead of 'clear'.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
 
 //NOTE:
@@ -577,16 +580,16 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
   label_ele.mouseenter(function() {
     var assigned_len = repvar[assigned_key].length;
     if (assigned_len == 0) { return false; }
-    label_ele.css('background', repvar.opts.colours.cluster_highlight);
+    //label_ele.css('background', repvar.opts.colours.cluster_highlight);
     for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseoverHandler(repvar[assigned_key][i]);
     }
   }).mouseleave(function() {
     var assigned_len = repvar[assigned_key].length;
     if (repvar.assigned_selected == assigned_key) {
-      label_ele.css('background', repvar.opts.colours.selection);
+      //label_ele.css('background', repvar.opts.colours.selection);
     } else {
-      label_ele.css('background', '');
+      //label_ele.css('background', '');
     }
     for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseoutHandler(repvar[assigned_key][i]);
@@ -596,9 +599,11 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
     if (assigned_len == 0) { return false; }
     var full_select = (repvar.assigned_selected != assigned_key);
     if (full_select) {
-      label_ele.css('background', repvar.opts.colours.selection);
+      //label_ele.css('background', repvar.opts.colours.selection);
+      label_ele.addClass('var-assigned-selected');
     } else {
-      label_ele.css('background', repvar.opts.colours.cluster_highlight);
+      //label_ele.css('background', repvar.opts.colours.cluster_highlight);
+      label_ele.removeClass('var-assigned-selected');
     }
     for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseclickHandler(repvar[assigned_key][i], false, full_select);
@@ -634,11 +639,11 @@ function numSelectedCallback() {
   $("#currentSelectionNum").html(repvar.num_selected);
   // Update assigned labels and controlling variable:
   if (repvar.assigned_selected == 'chosen') {
-    $("#chosenAssignedDiv").css('background', '');
+    $("#chosenAssignedDiv").removeClass('var-assigned-selected');
   } else if (repvar.assigned_selected == 'available') {
-    $("#availAssignedDiv").css('background', '');
+    $("#availAssignedDiv").removeClass('var-assigned-selected');
   } else if (repvar.assigned_selected == 'ignored') {
-    $("#ignoredAssignedDiv").css('background', '');
+    $("#ignoredAssignedDiv").removeClass('var-assigned-selected');
   }
   repvar.assigned_selected = '';
   // Update assigned 'Update' buttons:

@@ -12,6 +12,7 @@
   --min-page-width: 700px;
   --tree-width: 700px;
   --control-element-vert-margin: 3px;
+  --cubic-transition: 0.2s cubic-bezier(0.2, 0.6, 0.3, 1.0);
 }
 
 /* ======  General formatting options  ====== */
