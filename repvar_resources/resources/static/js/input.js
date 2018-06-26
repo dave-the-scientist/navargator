@@ -12,11 +12,10 @@
 // - For magnifying glass icon on 'search variants' field, I could make it morph into an X on submit. Would want to move it to the right side of the field.
 //   - Kinda like from http://www.transformicons.com/; basically have 1 line and 1 circle. For X, circle height becomes 0, for magnifying glass, set equal to width and rotate/move.
 //   - Upon submission (clicking magnifying or pressing enter) jquery adds a class, and removes it when the user types any button. Means there's no button to press to clear the field prior to submission, but that's probably fine.
-// - Id like to redesign the assigned labels 'update' button. Perhaps it should appear in the same way as the label colour (wipe from left) upon hover of label.
-//   - But then would it be intuitive for a user about how to add variants? Maybe best if I made a button group "+ | X", and the + could expand into the word "update" or something.
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
 //   - Could be 'none' instead of 'clear'.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
+// - In display options, make sure there's the option for max length of displayed names.
 
 //NOTE:
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
@@ -27,7 +26,7 @@ $.extend(page, {
   'check_results_timer':null, 'check_results_interval':500
 });
 $.extend(repvar, {
-  'result_links':{'var_nums':[], 'scores':[]}, 'assigned_selected':'',
+  'result_links':{'var_nums':[], 'scores':[]}, 'assigned_selected':'', 'assigned_added':'',
   'graph':{'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null}
 });
 $.extend(repvar.opts.sizes, {
@@ -335,42 +334,62 @@ function setupScoresGraph() {
     .attr("class", "score-line");
 }
 function setupVariantSelection() {
-  addAssignedLabelHandlers($("#chosenAssignedDiv"), 'chosen');
-  addAssignedLabelHandlers($("#availAssignedDiv"), 'available');
-  addAssignedLabelHandlers($("#ignoredAssignedDiv"), 'ignored');
-  $("#clearChosenButton").click(function(event) {
-    addClearAssignedButtonHandler(event, 'chosen');
+  var avail_assigned_div = $("#availAssignedDiv"), chosen_assigned_div = $("#chosenAssignedDiv"), ignored_assigned_div = $("#ignoredAssignedDiv");
+  addAssignedLabelHandlers(avail_assigned_div, 'available');
+  addAssignedLabelHandlers(chosen_assigned_div, 'chosen');
+  addAssignedLabelHandlers(ignored_assigned_div, 'ignored');
+  var add_avail_button = $("#addAvailButton"), add_chosen_button = $("#addChosenButton"), add_ignored_button = $("#addIgnoredButton");
+  addAssignedButtonTitleStrings(add_avail_button, 'available');
+  addAssignedButtonTitleStrings(add_chosen_button, 'chosen');
+  addAssignedButtonTitleStrings(add_ignored_button, 'ignored');
+  add_avail_button.click(function(event) {
+    var added_key = (repvar.assigned_added == 'available') ? '' : 'available',
+      selected_names = Object.keys(repvar.selected);
+    if (added_key != '') { /* Add selected to assigned.*/
+      repvar.available.push(...selected_names);
+      repvar.available = [...new Set(repvar.available)];
+      repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
+      repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+    } else { /* Remove selected from assigned.*/
+      repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+    }
+    addAssignedButtonHandler(event, add_avail_button, added_key, selected_names);
+  });
+  add_chosen_button.click(function(event) {
+    var added_key = (repvar.assigned_added == 'chosen') ? '' : 'chosen',
+      selected_names = Object.keys(repvar.selected);
+    if (added_key != '') { /* Add selected to assigned.*/
+      repvar.chosen.push(...selected_names);
+      repvar.chosen = [...new Set(repvar.chosen)];
+      repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+      repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+    } else { /* Remove selected from assigned.*/
+      repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
+    }
+    addAssignedButtonHandler(event, add_chosen_button, added_key, selected_names);
+  });
+  add_ignored_button.click(function(event) {
+    var added_key = (repvar.assigned_added == 'ignored') ? '' : 'ignored',
+      selected_names = Object.keys(repvar.selected);
+    if (added_key != '') { /* Add selected to assigned.*/
+      repvar.ignored.push(...selected_names);
+      repvar.ignored = [...new Set(repvar.ignored)];
+      repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
+      repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+    } else { /* Remove selected from assigned.*/
+      repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+    }
+    addAssignedButtonHandler(event, add_ignored_button, added_key, selected_names);
   });
   $("#clearAvailButton").click(function(event) {
-    addClearAssignedButtonHandler(event, 'available');
+    clearAssignedButtonHandler(event, 'available', avail_assigned_div);
+  });
+  $("#clearChosenButton").click(function(event) {
+    clearAssignedButtonHandler(event, 'chosen', chosen_assigned_div);
   });
   $("#clearIgnoredButton").click(function(event) {
-    addClearAssignedButtonHandler(event, 'ignored');
+    clearAssignedButtonHandler(event, 'ignored', ignored_assigned_div);
   });
-  $("#chosenUpdateButton").click(function() {
-    repvar.chosen = Object.keys(repvar.selected);
-    repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
-    repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
-    $("#clearSelectionButton").click();
-    updateRunOptions();
-  });
-  $("#availUpdateButton").click(function() {
-    repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
-    repvar.available = Object.keys(repvar.selected);
-    repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
-    $("#clearSelectionButton").click();
-    updateRunOptions();
-  });
-  $("#ignoreUpdateButton").click(function() {
-    repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
-    repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
-    repvar.ignored = Object.keys(repvar.selected);
-    $("#clearSelectionButton").click();
-    updateRunOptions();
-  });
-  $("#chosenUpdateButton").button('disable');
-  $("#availUpdateButton").button('disable');
-  $("#ignoreUpdateButton").button('disable');
 }
 $(document).ready(function(){
   // Called once the document has loaded.
@@ -580,17 +599,11 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
   label_ele.mouseenter(function() {
     var assigned_len = repvar[assigned_key].length;
     if (assigned_len == 0) { return false; }
-    //label_ele.css('background', repvar.opts.colours.cluster_highlight);
     for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseoverHandler(repvar[assigned_key][i]);
     }
   }).mouseleave(function() {
     var assigned_len = repvar[assigned_key].length;
-    if (repvar.assigned_selected == assigned_key) {
-      //label_ele.css('background', repvar.opts.colours.selection);
-    } else {
-      //label_ele.css('background', '');
-    }
     for (var i=0; i<assigned_len; ++i) {
       nodeLabelMouseoutHandler(repvar[assigned_key][i]);
     }
@@ -599,10 +612,8 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
     if (assigned_len == 0) { return false; }
     var full_select = (repvar.assigned_selected != assigned_key);
     if (full_select) {
-      //label_ele.css('background', repvar.opts.colours.selection);
       label_ele.addClass('var-assigned-selected');
     } else {
-      //label_ele.css('background', repvar.opts.colours.cluster_highlight);
       label_ele.removeClass('var-assigned-selected');
     }
     for (var i=0; i<assigned_len; ++i) {
@@ -614,7 +625,31 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
     }
   });
 }
-function addClearAssignedButtonHandler(event, assigned_key) {
+function addAssignedButtonTitleStrings(button_element, assigned_key) {
+  button_element.data("add_desc", "Add selection to '"+assigned_key+" variants'.");
+  button_element.data("remove_desc", "Remove selection from '"+assigned_key+" variants'.");
+  button_element.attr('title', button_element.data('add_desc'));
+}
+function addAssignedButtonHandler(event, button_element, assigned_key, selected_names) {
+  event.stopPropagation();
+  if (selected_names.length == 0) { return false; }
+  for (var i=0; i<selected_names.length; ++i) {
+    if (assigned_key != '') {
+      nodeLabelMouseoverHandler(selected_names[i]);
+    } else {
+      nodeLabelMouseoutHandler(selected_names[i]);
+    }
+  }
+  updateRunOptions();
+  numSelectedCallback();
+  if (assigned_key != '') {
+    // This must be after numSelectedCallback(), as it clears repvar.assigned_added
+    button_element.addClass('var-assigned-added');
+    button_element.attr('title', button_element.data('remove_desc'));
+    repvar.assigned_added = assigned_key;
+  }
+}
+function clearAssignedButtonHandler(event, assigned_key, assigned_div_element) {
   event.stopPropagation();
   var assigned_len = repvar[assigned_key].length;
   if (assigned_len == 0) { return false; }
@@ -622,7 +657,10 @@ function addClearAssignedButtonHandler(event, assigned_key) {
     nodeLabelMouseoutHandler(repvar[assigned_key][i]);
   }
   repvar[assigned_key] = [];
-  if (repvar.assigned_selected == assigned_key) { repvar.assigned_selected = ''; }
+  if (repvar.assigned_selected == assigned_key) {
+    assigned_div_element.removeClass('var-assigned-selected');
+    repvar.assigned_selected = '';
+  }
   updateRunOptions();
 }
 function nodeLabelMouseoverHandlerCallback(var_name, label_colour) {
@@ -646,16 +684,20 @@ function numSelectedCallback() {
     $("#ignoredAssignedDiv").removeClass('var-assigned-selected');
   }
   repvar.assigned_selected = '';
-  // Update assigned 'Update' buttons:
-  if (repvar.num_selected == 0) {
-    $("#chosenUpdateButton").button('disable');
-    $("#availUpdateButton").button('disable');
-    $("#ignoreUpdateButton").button('disable');
-  } else {
-    $("#chosenUpdateButton").button('enable');
-    $("#availUpdateButton").button('enable');
-    $("#ignoreUpdateButton").button('enable');
+  // Update assigned 'add/remove' buttons and controlling variable:
+  if (repvar.assigned_added != '') {
+    var button_element;
+    if (repvar.assigned_added == 'available') {
+      button_element = $("#addAvailButton");
+    } else if (repvar.assigned_added == 'chosen') {
+      button_element = $("#addChosenButton");
+    } else if (repvar.assigned_added == 'ignored') {
+      button_element = $("#addIgnoredButton");
+    }
+    button_element.removeClass('var-assigned-added');
+    button_element.attr('title', button_element.data('add_desc'));
   }
+  repvar.assigned_added = '';
 }
 function addVariantLabelCallbacks(jq_ele, var_name) {
   jq_ele.mouseenter(function() {

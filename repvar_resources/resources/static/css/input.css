@@ -78,26 +78,49 @@
   font-size: 1.0em;
 }
 
+/* Result links pane settings: */
+#resultsLinksList {
+  list-style-type: disc;
+  padding-left: 20px;
+}
+
+/* Score graph settings: */
+#scoreGraphSvg {
+  width: var(--left-col-width);
+  height: 150px;
+}
+.score-axis-label {
+  font-family: var(--font-family);
+  font-size: 14px;
+}
+.score-line {
+  fill: none;
+  stroke: var(--dark-background-colour);
+  stroke-width: 2px;
+}
+
 /* Variant assignment and selection settings: */
 #varAssignTableDiv {
   float: left;
   margin: 0px 15px 10px 0px;
-  padding: 0px 10px 10px 0px;
+  padding: 0px 15px 10px 0px;
   border: 1px solid var(--button-border-colour);
   border-top-style: none;
   border-left-style: none;
 }
-#varSelectHeader {
-  display: inline-block;
-  margin: 0px 0px 5px 0px;
-  font-size: 1.2em;
-}
 .var-assigned-div { /* Box containing holding "2 chosen variants" and clear button.*/
   --var-assigned-border-width: 2px;
+  --var-assigned-button-size: 19px;
+  --var-assigned-el-colour: #DFDFDF; /* Default colour of button elements.*/
+  --var-assigned-el-mo-colour: #757575; /* Colour of button elements on mouseover of parent div.*/
+  --var-assigned-el-rem-colour: red; /* Colour of button elements when removing variants.*/
   position: relative;
-  display: inline-block;
-  white-space: nowrap; /* Ensures everything stays on 1 line.*/
-  margin: 0px 5px 0px 0px;
+  display: inline-flex;
+  width: 100%;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin: 3px 0px;
   padding: 2px 2px 2px 4px;
   background-color: transparent;
   border: var(--var-assigned-border-width) solid red;
@@ -142,47 +165,79 @@
 .var-assigned-label { /* The "2 chosen variants" text.*/
   position: relative;
   margin: 0px 5px 0px 0px;
-  vertical-align: middle;
+  flex-grow: 1;
 }
-.var-assigned-clear { /* The clear button.*/
-  --clear-button-size: 19px;
+.var-assigned-add, .var-assigned-sep, .var-assigned-clear {
   position: relative;
   display: inline-block;
-  width: var(--clear-button-size);
-  height: var(--clear-button-size);
   vertical-align: middle;
   margin: 0px;
   padding: 0px;
-  border: 1px solid transparent;
-  border-radius: 50%;
   transition: all var(--cubic-transition);
 }
-.var-assigned-clear-span1, .var-assigned-clear-span2 {
+.var-assigned-add, .var-assigned-clear {
+  width: var(--var-assigned-button-size);
+  height: var(--var-assigned-button-size);
+  border: 1px solid transparent;
+}
+.var-assigned-add { /* The add / subtract button.*/
+  margin-right: 3px;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  border-right-style: none;
+}
+.var-assigned-sep { /* The vertical separator line.*/
+  width: 1px;
+  height: calc(var(--var-assigned-button-size) - 2px);
+  background-color: var(--var-assigned-el-colour);
+}
+.var-assigned-clear { /* The clear button.*/
+  margin-left: 3px;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-left-style: none;
+}
+.var-assigned-add-span1, .var-assigned-add-span2, .var-assigned-clear-span1, .var-assigned-clear-span2 {
   position: absolute;
   top: 8px;
   left: 3px;
   width: 13px;
   height: 3px;
-  background-color: #DFDFDF;
+  background-color: var(--var-assigned-el-colour);
   transition: .2s all;
 }
+.var-assigned-add-span2 {
+  transform: rotate(90deg);
+}
+.var-assigned-add.var-assigned-added > .var-assigned-add-span2 { /* Alternate between '+' and '-' form.*/
+  transform: rotate(0deg);
+}
 .var-assigned-clear-span1 {
+  /*transform: rotate(0deg) in order to animate 'X' into '-' */
   transform: rotate(-45deg);
 }
 .var-assigned-clear-span2 {
   /*Using rotate(45deg) makes the animation appear to flatten; -135deg makes it rapidly rotate.*/
   transform: rotate(45deg);
 }
-.var-assigned-div:hover .var-assigned-clear > span {
-  background-color: #757575;
+.var-assigned-div:hover .var-assigned-add > span,
+.var-assigned-div:hover .var-assigned-sep,
+.var-assigned-div:hover .var-assigned-clear > span { /* Button elements on mouseover of parent div.*/
+  background-color: var(--var-assigned-el-mo-colour);
 }
-.var-assigned-div .var-assigned-clear:hover { /* Final form when mouseover directly.*/
+.var-assigned-div .var-assigned-add:hover,
+.var-assigned-div .var-assigned-clear:hover { /* Final form when mouseover buttons directly.*/
   background: white;
   border-color: var(--button-border-hover-colour);
 }
+.var-assigned-div .var-assigned-add.var-assigned-added:hover > span,
 .var-assigned-div .var-assigned-clear:hover > span {
-  background-color: red;
-  transform: rotate(0deg);
+  background-color: var(--var-assigned-el-rem-colour);
+}
+#varSelectHeader {
+  display: inline-block;
+  margin: 0px 0px 5px 0px;
+  font-size: 1.2em;
 }
 .var-select-label { /* Element for each variant in the tree.*/
   display: inline-block;
@@ -190,29 +245,7 @@
   padding: 3px;
   border: 2px solid red;
   border-style: hidden hidden solid solid;
-  /*border-bottom-left-radius: 5% 25%; /* Rounded slash or not? */
   font-size: 12px;
-}
-
-/* Result links pane settings: */
-#resultsLinksList {
-  list-style-type: disc;
-  padding-left: 20px;
-}
-
-/* Score graph settings: */
-#scoreGraphSvg {
-  width: var(--left-col-width);
-  height: 150px;
-}
-.score-axis-label {
-  font-family: var(--font-family);
-  font-size: 14px;
-}
-.score-line {
-  fill: none;
-  stroke: var(--dark-background-colour);
-  stroke-width: 2px;
 }
 
 /* Various element settings */
