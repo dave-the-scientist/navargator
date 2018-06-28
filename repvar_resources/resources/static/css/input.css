@@ -166,6 +166,7 @@
   position: relative;
   margin: 0px 5px 0px 0px;
   flex-grow: 1;
+  min-width: 155px;
 }
 .var-assigned-add, .var-assigned-sep, .var-assigned-clear {
   position: relative;

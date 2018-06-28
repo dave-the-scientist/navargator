@@ -11,6 +11,8 @@
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
   --tree-width: 700px;
+  --control-element-height: 25px;
+  --control-element-border-width: 1px;
   --control-element-vert-margin: 3px;
   --cubic-transition: 0.2s cubic-bezier(0.2, 0.6, 0.3, 1.0);
 }
@@ -269,8 +271,6 @@ div.collapsible-panel > * {
 
 /* ======  Tree view controls  ====== */
 .control-element {
-  --control-element-height: 25px;
-  --control-element-border-width: 1px;
   margin: var(--control-element-vert-margin) 0px;
   padding: 0px 5px;
   min-width: 25px;
@@ -313,17 +313,26 @@ button.control-element:active {
 }
 
 /* ======  Tree pane controls  ====== */
-#treeControlsDiv {
+/*         Common elements: */
+.tree-control-div {
   position: absolute;
-  top: 10px;
-  left: 15px;
+  display: flex;
+  flex-direction: column;
   margin: 0px;
   padding: 0px;
 }
-#searchInputButtonsDiv {
+.tree-control-row, .tree-control-row-rj {
   position: relative;
   display: inline-flex;
   align-items: center;
+}
+.tree-control-row-rj { /* Right-justified row.*/
+  justify-content: flex-end;
+}
+/*         Top left panel: */
+#treeControlsDiv {
+  top: 10px;
+  left: 15px;
 }
 #varSearchInput {
   height: calc(var(--control-element-height) - 2 * var(--control-element-border-width));
@@ -360,6 +369,9 @@ button.control-element:active {
   line-height: 9px;
   font-size: 10px;
 }
+#treeZoomInButton, #treeZoomResetButton {
+  margin-right: 4px;
+}
 #scrollZoomButton {
   line-height: 9px;
 }
@@ -375,16 +387,67 @@ button.control-element:active {
   padding-left: 3px;
   width: 22px;
 }
+/*         Top right panel: */
 #treeSelectionDiv {
-  position: absolute;
   top: 10px;
   right: 15px;
-  margin: 0px;
-  padding: 0px;
-  text-align: right;
 }
 #currentSelectionLabel {
   background-color: white;
+}
+#selectNamesGroupDiv {
+  display: flex;
+  position: relative;
+}
+#selectNamesButton {
+  position: relative;
+  margin: 0px;
+  width: 52px;
+  line-height: 9px;
+  font-size: 10px;
+  transition: .15s all;
+}
+#selectNamesPane {
+  display: inline-flex;
+  position: absolute;
+  top: -5px;
+  right: 0px;
+  max-width: 0px;
+  max-height: 0px;
+  overflow: hidden;
+  margin: 0px;
+  padding: 0px;
+  background-color: var(--style-box-background-colour);
+  outline: var(--control-element-border-width) solid var(--button-border-colour);
+  outline-offset: -1px;
+  transition: .25s all;
+}
+#selectNamesLeftColumn {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 5px;
+}
+#selectNamesLeftColumn > * {
+  flex-shrink: 0;
+}
+#selectNamesText {
+  width: 250px;
+  height: 100px;
+  resize: none;
+}
+#selectNamesRightColumn {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 5px;
+}
+#selectNamesRightColumn > * {
+  flex-shrink: 0;
+}
+#selectNamesHideButton {
+  margin: 0px 0px 10px 0px;
+}
+#selectAllButton {
+  margin-left: 4px;
 }
 
 /* ======  Normalization radios  ====== */

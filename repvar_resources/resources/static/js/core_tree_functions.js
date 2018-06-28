@@ -67,6 +67,17 @@ function setupTreeElements() {
   }).mouseleave(function() {
     repvar.allow_select = true;
   });
+  var select_pane = $("#selectNamesPane");
+  $("#selectNamesButton").click(function() {
+    select_pane.addClass('select-names-open');
+    select_pane.css('maxWidth', select_pane[0].scrollWidth+"px");
+    select_pane.css('maxHeight', select_pane[0].scrollHeight+"px");
+  });
+  $("#selectNamesHideButton").click(function() {
+    select_pane.removeClass('select-names-open');
+    select_pane.css('maxWidth', "0px");
+    select_pane.css('maxHeight', "0px");
+  });
 }
 function preventSelections(newPan) {
   repvar.allow_select = false;
