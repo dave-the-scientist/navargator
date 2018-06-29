@@ -418,8 +418,9 @@ button.control-element:active {
   margin: 0px;
   padding: 0px;
   background-color: var(--style-box-background-colour);
-  outline: var(--control-element-border-width) solid var(--button-border-colour);
+  outline: var(--control-element-border-width) solid var(--button-border-hover-colour);
   outline-offset: -1px;
+  box-shadow: 1px 1px 2px var(--shadow-colour);
   transition: .25s all;
 }
 #selectNamesLeftColumn {

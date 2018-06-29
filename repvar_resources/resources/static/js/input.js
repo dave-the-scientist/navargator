@@ -737,6 +737,12 @@ function parseRepvarData(data_obj) {
   page.session_id = data.session_id;
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
+  repvar.lc_leaves = {};
+  var name;
+  for (var i=0; i<data.leaves.length; ++i) {
+    name = data.leaves[i];
+    repvar.lc_leaves[name.toLowerCase()] = name;
+  }
   repvar.chosen = data.chosen;
   repvar.available = data.available;
   repvar.ignored = data.ignored;

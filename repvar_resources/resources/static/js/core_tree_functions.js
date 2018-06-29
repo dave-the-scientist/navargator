@@ -62,13 +62,19 @@ function setupTreeElements() {
       repvar.pan_zoom.enableMouseWheelZoom();
     }
   });
-  $("#figureSvg").mousedown(function(e) {
-    repvar.allow_select = true;
-  }).mouseleave(function() {
-    repvar.allow_select = true;
-  });
+  // The select by name pane:
+  $("#selectNamesAddButton").data('state', 'add');
+  function setSelectNamesButtonToAdd() {
+    $("#selectNamesAddButton").html('Add to selection');
+    $("#selectNamesAddButton").data('state', 'add');
+  }
+  function setSelectNamesButtonToCut() {
+    $("#selectNamesAddButton").html('Cut from selection');
+    $("#selectNamesAddButton").data('state', 'cut');
+  }
   var select_pane = $("#selectNamesPane");
   $("#selectNamesButton").click(function() {
+    setSelectNamesButtonToAdd();
     select_pane.addClass('select-names-open');
     select_pane.css('maxWidth', select_pane[0].scrollWidth+"px");
     select_pane.css('maxHeight', select_pane[0].scrollHeight+"px");
@@ -78,6 +84,62 @@ function setupTreeElements() {
     select_pane.css('maxWidth', "0px");
     select_pane.css('maxHeight', "0px");
   });
+  $("#selectNamesValidateButton").click(function() {
+    validateSelectNamesFromText();
+    setSelectNamesButtonToAdd();
+  });
+  $("#selectNamesClearButton").click(function() {
+    $("#selectNamesText").val('');
+    setSelectNamesButtonToAdd();
+  });
+  $("#selectNamesAddButton").click(function() {
+    var names = validateSelectNamesFromText();
+    if ($(this).data('state') == 'add') {
+      for (var i=0; i<names.length; ++i) {
+        nodeLabelMouseclickHandler(names[i], false, true);
+      }
+      setSelectNamesButtonToCut();
+    } else {
+      for (var i=0; i<names.length; ++i) {
+        nodeLabelMouseclickHandler(names[i], false, false);
+      }
+      setSelectNamesButtonToAdd();
+    }
+    numSelectedCallback();
+  });
+  // Prevent selection on pan:
+  $("#figureSvg").mousedown(function(e) {
+    repvar.allow_select = true;
+  }).mouseleave(function() {
+    repvar.allow_select = true;
+  });
+}
+function validateSelectNamesFromText() {
+  var raw_names = getSelectNamesFromText(),
+    names = [], not_found = [], name, true_name;
+  for (var i=0; i<raw_names.length; ++i) {
+    name = raw_names[i];
+    true_name = repvar.lc_leaves[name.toLowerCase()];
+    if (true_name) {
+      names.push(true_name);
+    } else {
+      not_found.push(name);
+    }
+  }
+  if (not_found.length > 0) {
+    var message = not_found.length+' variant names were not found in the current tree and have been removed:\n';
+    message += not_found.join(', ');
+    showErrorPopup(message, 'NaVARgator warning');
+  }
+  $("#selectNamesText").val(names.join(', '));
+  return names;
+}
+function getSelectNamesFromText() {
+  var names = [], raw_str = $.trim($("#selectNamesText").val());
+  if (raw_str != '') {
+    names = raw_str.split(/[\s,]+/); // Split on one or more of a comma or whitespace character.
+  }
+  return names;
 }
 function preventSelections(newPan) {
   repvar.allow_select = false;

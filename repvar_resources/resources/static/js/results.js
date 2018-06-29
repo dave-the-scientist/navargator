@@ -714,6 +714,12 @@ function parseRepvarData(data_obj) {
   page.session_id = data.session_id;
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
+  repvar.lc_leaves = {};
+  var name;
+  for (var i=0; i<data.leaves.length; ++i) {
+    name = data.leaves[i];
+    repvar.lc_leaves[name.toLowerCase()] = name;
+  }
   repvar.ignored = data.ignored;
   repvar.available = data.available;
   if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != page.maintain_interval*1000) {

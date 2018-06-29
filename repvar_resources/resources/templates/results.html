@@ -129,18 +129,26 @@
               <label id="currentSelectionLabel" class="control-element control-pair-left control-pair-right prevent-text-selection">Selected variants: <span id="currentSelectionNum">0</span></label>
             </div>
             <div class="tree-control-row-rj">
-
               <div id="selectNamesGroupDiv">
-                <div id="selectNamesPane">
-                  <input id="selectNamesInput" placeholder=" Enter variant names" size="40" autocomplete="off" >
-                </div>
                 <button id="selectNamesButton" class="control-element">Select<br>by name</button>
+                <div id="selectNamesPane">
+                  <div id="selectNamesLeftColumn">
+                    <p><b>Select variants by name</b></p>
+                    <textarea id="selectNamesText" placeholder="Enter variant names"></textarea>
+                    <button id="selectNamesAddButton" class="control-element">Add to selection</button>
+                  </div>
+                  <div id="selectNamesRightColumn">
+                    <button id="selectNamesHideButton" class="control-element">Hide</button>
+                    <button id="selectNamesValidateButton" class="control-element">Validate</button>
+                    <button id="selectNamesClearButton" class="control-element">Clear</button>
+                  </div>
+                </div>
               </div>
-
               <button id="selectAllButton" class="control-element control-pair-left">Select all</button>
               <button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
             </div>
           </div>
+
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
           </svg>
