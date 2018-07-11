@@ -94,6 +94,7 @@ function setupTreeElements() {
   });
   $("#selectNamesAddButton").click(function() {
     var names = validateSelectNamesFromText();
+    console.log('names', names); // TEST
     if ($(this).data('state') == 'add') {
       for (var i=0; i<names.length; ++i) {
         nodeLabelMouseclickHandler(names[i], false, true);

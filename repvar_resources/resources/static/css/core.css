@@ -409,8 +409,9 @@ button.control-element:active {
 }
 #selectNamesPane {
   display: inline-flex;
+  flex-direction: column;
   position: absolute;
-  top: -5px;
+  top: 0px;
   right: 0px;
   max-width: 0px;
   max-height: 0px;
@@ -418,10 +419,56 @@ button.control-element:active {
   margin: 0px;
   padding: 0px;
   background-color: var(--style-box-background-colour);
-  outline: var(--control-element-border-width) solid var(--button-border-hover-colour);
+  outline: var(--control-element-border-width) solid var(--dark-background-colour);;
   outline-offset: -1px;
   box-shadow: 1px 1px 2px var(--shadow-colour);
   transition: .25s all;
+}
+#selectNamesHeader {
+  margin: 0px 0px 0px 5px;
+  white-space: nowrap;
+}
+#selectNamesHideButton {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 28px;
+  height: 28px; /* Should be the height of the h2 minus the bottom border width.*/
+  margin: 0px;
+  background: none;
+  border: 1px solid transparent;
+  border-bottom-style: none;
+  transition: .15s all;
+}
+#selectNamesHideButton:focus {
+  outline: none; /* Hides the default outline buttons get on focus.*/
+}
+#selectNamesHideSpan1, #selectNamesHideSpan2 {
+  position: absolute;
+  top: 12px;
+  width: 14px;
+  height: 2px;
+  background-color: white;
+  background-clip: content-box;
+  border: none;
+  transition: .15s all;
+}
+#selectNamesHideSpan1 {
+  transform: rotate(45deg);
+}
+#selectNamesHideSpan2 {
+  transform: rotate(-45deg);
+}
+#selectNamesHideButton:hover {
+  background-color: var(--major-accent-colour);
+  border-color: var(--dark-background-colour);
+}
+#selectNamesHideButton:hover > span {
+  background-color: var(--dark-background-colour);
+}
+#selectNamesMainDiv {
+  display: inline-flex;
+  position: relative;
 }
 #selectNamesLeftColumn {
   display: inline-flex;
@@ -443,9 +490,6 @@ button.control-element:active {
 }
 #selectNamesRightColumn > * {
   flex-shrink: 0;
-}
-#selectNamesHideButton {
-  margin: 0px 0px 10px 0px;
 }
 #selectAllButton {
   margin-left: 4px;

@@ -26,6 +26,10 @@ def daemonURL(url):
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 
+# BUG:
+# - The instance closed for no apparent reason.
+#   - Looking into it, it was because a time.time() call was sometimes returning a value ~15 sec too high. Then it just stopped happening. I'm guessing it was a vmware issue (as time.time is a pretty low-level function).
+
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
 

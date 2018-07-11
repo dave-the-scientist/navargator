@@ -100,7 +100,7 @@ function maintainServer() {
       type: 'POST',
       data: {'session_id': page.session_id, 'browser_id': page.browser_id},
       error: function(error) {
-        console.log('connection to Repvar server lost.');
+        console.log('connection to Repvar server lost. The error:', error);
         page.instance_closed = true;
         clearInterval(page.maintain_interval_obj);
       }
