@@ -35,7 +35,10 @@
   font-size: 14px;
 }
 .histo-bar {
-  fill: #24F030;
+  fill: #92F7E4; /* The other histogram bars, in the moueover colour.*/
+}
+.histo-bar:first-of-type {
+  fill: var(--major-accent-colour); /* The 'chosen' histogram bar.*/
 }
 .histo-text {
   fill: #000;

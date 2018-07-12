@@ -1,9 +1,6 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Need a button to select by names. Allow users to paste in sequence names, and assign that list.
-//   - Should be located by the Select all / Clear buttons. On click, a large panel slides open (obscuring the tree).
-//   - Panel holds an input field to paste into. Buttons on bottom for "add to selection" and "cut from selection". Buttons on side for "validate list" (which bolds or highlights the names that don't match the tree; also performed if user presses enter, as well as on "add" or "cut" operations) and "clear list". Original button should morph to "hide pane". Or perhaps "hide pane" is another button along the side.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
@@ -719,7 +716,7 @@ function setNormalizationMethod() {
 }
 function calculateGlobalNormalization(max_var_dist) {
   // This should be called for every run, no matter if the user has selected global norm or not.
-  var bins = calculateHistoBins(max_var_dist);
+  var bins = calculateHistoTicks(max_var_dist);
   $.ajax({
     url: daemonURL('/calculate-global-normalization'),
     type: 'POST',
@@ -801,7 +798,7 @@ function getNormalizationSettings() {
 }
 
 // =====  Misc functions:
-function calculateHistoBins(max_var_dist) {
+function calculateHistoTicks(max_var_dist) {
   // The upper bound of each bin is not inclusive.
   var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
   var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);

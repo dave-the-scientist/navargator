@@ -578,40 +578,44 @@ function selectNamesByThreshold(threshold, select_below) {
 }
 
 // =====  Graph functions:
-function calculateHistoBins(max_var_dist) {
+function calculateHistoTicks(max_var_dist) {
   // The upper bound of each bin is not inclusive.
   var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
   var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
   if (max_var_dist >= x_ticks[x_ticks.length-1]) {
     x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
   }
+  x_ticks.unshift(-x_ticks[1]); // Provides the space for the 'chosen' bar.
   return x_ticks;
 }
 function updateHistoBins() {
-  var x_ticks = calculateHistoBins(repvar.normalized_max_distance);
-  repvar.nice_max_var_dist = x_ticks[x_ticks.length-1];
-  repvar.graph.x_fxn.domain([0, repvar.nice_max_var_dist]); // Needed to include the final tick
+  var x_ticks = calculateHistoTicks(repvar.normalized_max_distance);
+  repvar.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
+  repvar.graph.x_fxn.domain([x_ticks[0], repvar.nice_max_var_dist]); // Needed to include the final tick
+
+  var num_chosen = repvar.variants.length,
+    non_chosen_dists = repvar.sorted_names.slice(num_chosen).map(function(name) {
+      return repvar.variant_distance[name];
+    });
   repvar.graph.bins = d3.histogram()
-    .domain([0, repvar.normalized_max_distance])
-    .thresholds(x_ticks)
-    (Object.values(repvar.variant_distance));
-
-  // If user has indicated a manual max y-value, either check to make sure it's not smaller than the max of the data here, or modify the bar height and text position so that they are capped at the max (prefer this option).
-  var max_y = (repvar.normalized_max_count > 0) ? repvar.normalized_max_count : d3.max(repvar.graph.bins, function(d) { return d.length; });
-  repvar.graph.y_fxn.domain([0, max_y]);
-
+    .domain([x_ticks[0], repvar.normalized_max_distance])
+    .thresholds(x_ticks)(non_chosen_dists);
+  for (var i=0; i<num_chosen; ++i) {
+    repvar.graph.bins[0].push(0.0); // Add values for the chosen variants.
+  }
   var prev_ind = 0, cur_len;
   for (var i=0; i<repvar.graph.bins.length; ++i) {
     cur_len = repvar.graph.bins[i].length;
     repvar.graph.bins[i]['names'] = repvar.sorted_names.slice(prev_ind, prev_ind+cur_len);
     prev_ind += cur_len;
   }
+  var max_y = (repvar.normalized_max_count > 0) ? repvar.normalized_max_count : d3.max(repvar.graph.bins, function(d) { return d.length; });
+  repvar.graph.y_fxn.domain([0, max_y]);
   repvar.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
   var formatCount = d3.format(",.0f"),
-    bin_range = repvar.graph.bins[0].x1 - repvar.graph.bins[0].x0,
-    col_width = repvar.graph.x_fxn(bin_range),
+    col_width = repvar.graph.x_fxn(0), // Zero is now the 2nd tick.
     bar_margin = col_width * repvar.opts.graph.bar_margin_ratio / 2,
     bar_width = col_width - bar_margin * 2,
     init_bar_x = repvar.graph.width - bar_width;
@@ -692,7 +696,9 @@ function updateHistoGraph() {
   bar_mouseovers.exit().remove();
 }
 function updateHistoAxes() {
-  repvar.graph.x_axis.tickValues(repvar.graph.x_ticks)
+  var ticks = repvar.graph.x_ticks.slice();
+  ticks[0] = ''; // So the first labeled tick is 0.
+  repvar.graph.x_axis.tickValues(ticks)
     .tickFormat(d3.format(".3")); // trims trailing zeros
   repvar.graph.g.select(".x-axis")
     .transition()
@@ -714,7 +720,7 @@ function parseRepvarData(data_obj) {
   page.session_id = data.session_id;
   repvar.tree_data = data.phyloxml_data;
   repvar.leaves = data.leaves;
-  repvar.lc_leaves = {};
+  repvar.lc_leaves = {}; // Lowercase names as keys, actual names as values. Used to search.
   var name;
   for (var i=0; i<data.leaves.length; ++i) {
     name = data.leaves[i];
@@ -736,7 +742,7 @@ function parseClusteredData(data) {
   }
   repvar.variant_distance = data.variant_distance;
   repvar.max_variant_distance = data.max_variant_distance;
-  repvar.original_bins = calculateHistoBins(data.max_variant_distance);
+  repvar.original_bins = calculateHistoTicks(data.max_variant_distance);
 
   // Check if a normalization is already set (from the server). Else:
   repvar.normalized_max_distance = data.normalization.value;
@@ -750,10 +756,16 @@ function parseClusteredData(data) {
   }
 
   repvar.variants = data.variants;
-  repvar.sorted_names = Object.keys(repvar.variant_distance).sort(function(a,b) {
-    return repvar.variant_distance[a] - repvar.variant_distance[b];
+  // Ensures repvar.sorted_names begins with the chosen variants, and the rest stably sorted by variant distance.
+  var delta, sorted_names = Object.keys(repvar.variant_distance).filter(function(name) {
+    return (data.variants.indexOf(name) == -1);
+  }).sort();
+  sorted_names = sorted_names.sort(function(a,b) {
+    delta = repvar.variant_distance[a] - repvar.variant_distance[b];
+    return (delta != 0) ? delta : (sorted_names.indexOf(a) - sorted_names.indexOf(b));
   });
-
+  repvar.sorted_names = data.variants.concat(sorted_names);
+  // Sets up cluster object.
   repvar.clusters = {};
   for (var i=0; i<repvar.variants.length; ++i) {
     repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null, 'colour_key':''};
