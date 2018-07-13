@@ -28,7 +28,7 @@ def daemonURL(url):
 
 # BUG:
 # - The instance closed for no apparent reason.
-#   - Looking into it, it was because a time.time() call was sometimes returning a value ~15 sec too high. Then it just stopped happening. I'm guessing it was a vmware issue (as time.time is a pretty low-level function).
+#   - Looking into it, it was because a time.time() call was sometimes returning a value ~15 sec too high. Then it just stopped happening. I'm guessing it was a vmware issue (as time.time is a pretty low-level function). Happened only once, I believe just after a system update.
 
 class RepvarDaemon(object):
     """Background daemon to server repvar requests.
@@ -386,16 +386,16 @@ class RepvarDaemon(object):
             params = (num, dist_scale)
             if num in vf.normalize['global_nums'] or vf.cache[params] == None:
                 continue # Already been processed, or clustering is still in progress
-            count = self.calculate_max_histo_count(vf.cache[params]['variant_distance'], bins)
+            count = self.calculate_max_histo_count(vf.cache[params]['variant_distance'], num, bins)
             if count > max_count:
                 max_count = count
             vf.normalize['global_nums'].add(num)
         vf.normalize['global_max_count'] = max_count
-    def calculate_max_histo_count(self, var_dists, bins):
-        dists = sorted(var_dists.values())
+    def calculate_max_histo_count(self, var_dists, var_num, bins):
+        dists = sorted(var_dists.values())[var_num:]
+        max_count = var_num
         dists_ind = 0
-        max_count = 0
-        for threshold in bins[1:]:
+        for threshold in bins[2:]: # bins[0] is negative (for chosen variants), bins[1] is zero.
             count = 0
             for d in dists[dists_ind:]:
                 if d < threshold:

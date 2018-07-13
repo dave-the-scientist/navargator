@@ -1,6 +1,6 @@
 // TODO:
-// - Many of the opts.colours should be pulled from core.css; bar_chart is the dark background, chosen should be used as the histo bar colour (and I want to use it as an accent on the page), etc
-// - The variable web_server is not defined in processError
+// - Many of the opts.colours should be pulled from core.css.
+// - Finish defining error codes in processError().
 
 // =====  Common options and parameters
 var page = {
@@ -16,8 +16,8 @@ var repvar = {
       'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#015DF3', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43
-    },
+      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43
+    }, // singleton:#015DF3
     'graph' : {
       'histo_bins':15, 'total_width':null, 'total_height':null
     }
@@ -39,11 +39,7 @@ function processError(error, message) {
   if (error.status == 559) {
     showErrorPopup(message+", as the server didn't recognize the given session ID. This generally means your session has timed out.");
   } else if (error.status == 0) {
-    if (web_version) {
-      showErrorPopup(message+", as no response was received. This may mean the web server is down.");
-    } else {
-      showErrorPopup(message+", as no response was received. This generally means the program has stopped.");
-    }
+    showErrorPopup(message+", as no response was received. This generally means the program has stopped or the web server is down.");
   } else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }
@@ -55,6 +51,12 @@ function initializeButtons() {
   $(".jq-ui-button").button(); // Converts html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
   $(".nvrgtr-checkbox-label").addClass("prevent-text-selection").children("input[type=radio]").after("<span class='nvrgtr-radio-checkbox'></span>");
   $(".nvrgtr-checkbox-label").children("input[type=checkbox]").after("<span class='nvrgtr-checkbox'></span>");
+}
+function initializeErrorPopupWindow() {
+  // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
+  $("#errorDialog").dialog({modal:true, autoOpen:false,
+    buttons:{Ok:function() { $(this).dialog("close"); }}
+  });
 }
 function initializeCollapsibleElements() {
   $(".collapsible-header").addClass("prevent-text-selection").after("<div class='collapsible-icon-div'><span class='collapsible-span1'></span><span class='collapsible-span2'></span></div>");
@@ -122,7 +124,7 @@ function closeInstance() {
   });
 }
 
-// Functions to calculate and warn about colour choices:
+// =====  Functions to calculate and warn about colour choices:
 function setTransparentColour(colour_key, desired_col, background_col) {
   // Also pass in the warning icon so it can be displayed if needed.
   var ret = calculateTransparentComplement(desired_col, background_col);
@@ -177,7 +179,7 @@ function calculateMinimumTransparency(initial_val, desired_val, background_val) 
   return min_trans;
 }
 
-// Misc common functions:
+// =====  Misc common functions:
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
   return Math.round(num * x) / x;
@@ -204,8 +206,20 @@ function saveDataString(data_str, file_name, file_type) {
   download_link.click();
   document.body.removeChild(download_link);
 }
+function calculateHistoTicks(max_var_dist) {
+  // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.
+  // The upper bound of each bin is not inclusive.
+  var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
+  var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
+  if (max_var_dist >= x_ticks[x_ticks.length-1]) {
+    x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
+  }
+  x_ticks.unshift(-x_ticks[1]); // Provides the space for the 'chosen' bar.
+  return x_ticks;
+}
 
 function validateSpinner(spinner, description) {
+  // Currently only used by input.js
   if (spinner.spinner("isValid")) {
     return true;
   } else {

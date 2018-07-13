@@ -37,9 +37,7 @@ $.extend(repvar.opts.graph, {
 // =====  Page setup:
 function setupPage() {
   initializeButtons();
-  $("#errorDialog").dialog({modal:true, autoOpen:false,
-    buttons:{Ok:function() { $(this).dialog("close"); }}
-  });
+  initializeErrorPopupWindow();
   initializeCollapsibleElements();
   page.session_id = location.search.slice(1);
   page.browser_id = generateBrowserId(10);
@@ -408,6 +406,7 @@ function newTreeLoaded(data_obj) {
     $("#introMessageGroup").remove();
     $("#treeSelectionDiv").show();
     $("#treeControlsDiv").show();
+    $("#treeLegendLeftGroup").show();
     drawTree();
     updateVarSelectList();
     updateRunOptions();
@@ -795,15 +794,4 @@ function getNormalizationSettings() {
     showErrorPopup("Error: could not retrieve normalization settings from the page.");
   }
   return ret;
-}
-
-// =====  Misc functions:
-function calculateHistoTicks(max_var_dist) {
-  // The upper bound of each bin is not inclusive.
-  var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
-  var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
-  if (max_var_dist >= x_ticks[x_ticks.length-1]) {
-    x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
-  }
-  return x_ticks;
 }

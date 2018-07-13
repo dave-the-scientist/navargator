@@ -30,20 +30,17 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Change mentions of 'node' to 'variant'.
 // - I don't love the singleton cluster colour of dark blue. Maybe a red/orange would be better. Want them to jump out, and having negative connotations is good.
-// - Is repvar.nice_max_var_dist useful?
 
 //NOTE (for FAQs or something):
 // - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be visible on the histogram, though they can still be selected with the slider. Same thing if the user selects a max_count smaller than what is to be displayed. The histogram will display and the text will be accurate, but the height will be capped.
 // - If you started a run that will take a while, and open one of the results pages before the run is complete, it's possible for the normalization to behave oddly. To be guaranteed accurate the user should click off of global normalization (set to self or something) then back on, once the run is finished.
-//   - The low cluster numbers are run first, and should have the highest max distances, but we do use heuristics, so it's not guaranteed. So the max x-value may not be accurate.
+//   - The low cluster numbers are run first, and should have the highest max distances, but we do use heuristics, so it's not guaranteed. So the max x-value may not be accurate right away.
 //   - The higher cluster numbers tend to have the highest max y-value on the histogram, so this is much more likely to be at an intermediate value if a run is in progress. Won't break or anything, but won't be correctly scaled.
 
 // =====  Page setup:
 function setupPage() {
   initializeButtons();
-  $("#errorDialog").dialog({modal:true, autoOpen:false,
-    buttons:{Ok:function() { $(this).dialog("close"); }}
-  }); // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
+  initializeErrorPopupWindow();
   initializeCollapsibleElements();
 
   // =====  Variable parsing:
@@ -294,6 +291,7 @@ function checkForClusteringResults() {
         parseClusteredData(data);
         updateColours();
         drawBarGraphs();
+        extendTreeLegend();
         updateSummaryStats();
         updateNormalizationPane();
         drawClusters();
@@ -314,6 +312,33 @@ function updateColours() {
   setTransparentColour('cluster_highlight_trans', repvar.opts.colours.cluster_highlight, repvar.opts.colours.tree_background);
 }
 
+function extendTreeLegend() {
+  var contains_singletons = false, clstr;
+  for (var i=0; i<repvar.num_variants; ++i) {
+    clstr = repvar.clusters[repvar.variants[i]];
+    if (clstr.nodes.length == 1) {
+      contains_singletons = true;
+      break;
+    }
+  }
+  if (contains_singletons) {
+    d3.select("#treeLegendLeftGroup").append("circle")
+      .attr('id', 'legendSingletonMarker')
+      .attr('cx', 10)
+      .attr('cy', 88)
+      .attr('r', 4)
+      .attr('fill', '#9624F0');
+    d3.select("#treeLegendLeftGroup").append("text")
+      .attr('x', 18)
+      .attr('y', 92)
+      .attr('font-family', 'Helvetica,Arial,sans-serif')
+      .attr('font-size', '12px')
+      .text('Singleton cluster');
+    var new_height = parseFloat($("#legendBorderRect").attr('height')) + 18;
+    $("#legendBorderRect").attr('height', new_height);
+  }
+  updateTreeLegend();
+}
 function updateSummaryStats() {
   var cluster_dist = 0.0, node_dist = 0.0, num_nodes = 0;
   for (var i=0; i<repvar.variants.length; ++i) {
@@ -578,16 +603,6 @@ function selectNamesByThreshold(threshold, select_below) {
 }
 
 // =====  Graph functions:
-function calculateHistoTicks(max_var_dist) {
-  // The upper bound of each bin is not inclusive.
-  var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
-  var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
-  if (max_var_dist >= x_ticks[x_ticks.length-1]) {
-    x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
-  }
-  x_ticks.unshift(-x_ticks[1]); // Provides the space for the 'chosen' bar.
-  return x_ticks;
-}
 function updateHistoBins() {
   var x_ticks = calculateHistoTicks(repvar.normalized_max_distance);
   repvar.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);

@@ -17,6 +17,7 @@ function setupTreeElements() {
     center: false,
     dblClickZoomEnabled: false,
     mouseWheelZoomEnabled: false,
+    zoomScaleSensitivity: 0.4, // Default is 0.2
     onPan: preventSelections
   });
   $('#searchToSelectButton').click(function() {
@@ -226,6 +227,7 @@ function drawTree(marker_tooltips=true) {
   drawVariantObjects(marker_tooltips);
   drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
+  updateTreeLegend();
 
   // If adding other elements, can modify figure size here, and set the offset of the tree as well.
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
@@ -310,6 +312,17 @@ function drawTreeBackgrounds(maxLabelLength) {
   }
   var labels_outline = repvar.r_paper.path(labels_path_str).attr({fill:'none', 'stroke-width':repvar.opts.sizes.labels_outline, stroke:'black'});
   repvar.tree_background = repvar.r_paper.circle(treeDrawingParams.cx, treeDrawingParams.cy, treeDrawingParams.barChartRadius).attr({fill:repvar.opts.colours.tree_background, stroke:'none', 'stroke-width':0}).toBack();
+}
+function updateTreeLegend() {
+  $("#legendAvailMarker").attr({fill: repvar.opts.colours.available});
+  $("#legendChosenMarker").attr({fill: repvar.opts.colours.chosen});
+  $("#legendIgnoredMarker").attr({fill: repvar.opts.colours.ignored});
+  if ($("#legendSingletonMarker").length) {
+    $("#legendSingletonMarker").attr({fill: repvar.opts.colours.singleton_cluster_background});
+  }
+  var border_height = $("#legendBorderRect").attr('height'),
+    legend_offset = repvar.opts.sizes.tree - border_height - 1;
+  $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
 }
 function drawBarGraphs() {
   var var_name, var_angle, dist, tooltip, path_str, bar_chart;
