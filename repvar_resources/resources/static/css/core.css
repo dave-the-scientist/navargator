@@ -11,6 +11,7 @@
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
   --tree-width: 700px;
+  --toggle-button-border-radius: 3px;
   --control-element-height: 25px;
   --control-element-border-width: 1px;
   --control-element-vert-margin: 3px;
@@ -269,6 +270,119 @@ div.collapsible-panel > * {
   margin-bottom: 5px;
 }
 
+/* ======  Floating slide-out panes  ====== */
+.floating-pane {
+  display: inline-flex;
+  flex-direction: column;
+  position: absolute;
+  max-width: 0px;
+  max-height: 0px;
+  overflow: hidden;
+  margin: 0px;
+  padding: 0px;
+  background-color: var(--style-box-background-colour);
+  border: none;
+  outline: var(--control-element-border-width) solid var(--dark-background-colour);;
+  outline-offset: -1px;
+  box-shadow: 1px 1px 2px var(--shadow-colour);
+  transition: .25s all;
+}
+.floating-pane-header {
+  margin: 0px 0px 0px 5px !important;
+  white-space: nowrap;
+}
+.floating-pane-close {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  width: 28px;
+  height: 28px; /* Should be the height of the h2 minus the bottom border width.*/
+  margin: 0px;
+  background: none;
+  border: 1px solid transparent;
+  border-bottom-style: none;
+  transition: .15s all;
+}
+.floating-pane-close-span1, .floating-pane-close-span2 {
+  position: absolute;
+  top: 12px;
+  width: 14px;
+  height: 2px;
+  background-color: white;
+  background-clip: content-box;
+  border: none;
+  transition: .15s all;
+}
+.floating-pane-close-span1 {
+  transform: rotate(45deg);
+}
+.floating-pane-close-span2 {
+  transform: rotate(-45deg);
+}
+.floating-pane-close:focus {
+  outline: none; /* Hides the default outline buttons get on focus.*/
+}
+.floating-pane-close:hover {
+  background-color: var(--major-accent-colour);
+  border-color: var(--dark-background-colour);
+}
+.floating-pane-close:hover > span {
+  background-color: var(--dark-background-colour);
+}
+
+/* ======  Horizontal toggle-able button bar  ====== */
+.toggle-button-container {
+  /* To use, the input elements of a group must all share the same name property.*/
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+  margin: 5px 0px;
+  padding: 0px;
+  box-sizing: border-box; /* Needed if I want to add horizontal padding.*/
+  -webkit-touch-callout: none; /* Prevents the text from being selected on iOS Safari, */
+    -webkit-user-select: none; /* Safari, */
+     -khtml-user-select: none; /* Konqueror HTML, */
+       -moz-user-select: none; /* Firefox, */
+        -ms-user-select: none; /* Internet Explorer/Edge, */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+}
+.toggle-button-input {
+  display: none;
+}
+.toggle-button-label {
+  flex-grow: 1;
+  line-height: 25px;
+  min-height: 25px;
+  margin: 0px;
+  padding: 0px;
+  text-align: center;
+  color: black;
+  border: 1px solid var(--button-border-colour);
+  background: linear-gradient(#FAFAFA, #DCDCDC);
+  box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
+}
+.toggle-button-label-left {
+  border-top-left-radius: var(--toggle-button-border-radius);
+  border-bottom-left-radius: var(--toggle-button-border-radius);
+  box-shadow: inset 4px 4px 4px rgba(255,255,255,.3), inset -2px -4px 4px rgba(201,201,201,.5);
+}
+.toggle-button-label-right {
+  border-top-right-radius: var(--toggle-button-border-radius);
+  border-bottom-right-radius: var(--toggle-button-border-radius);
+  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -4px -4px 4px rgba(201,201,201,.5);
+}
+.toggle-button-label-left.toggle-button-label-right {
+  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -2px -4px 4px rgba(201,201,201,.5);
+}
+.toggle-button-label:hover {
+  border-color: #4F4F4F;
+}
+.toggle-button-label:active, .toggle-button-input:checked + .toggle-button-label {
+  /* The "pushed-in" look for the selected and active button states.*/
+  background: linear-gradient(#DCDCDC, #FAFAFA);
+  box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
+}
+
 /* ======  Tree view controls  ====== */
 .control-element {
   margin: var(--control-element-vert-margin) 0px;
@@ -400,71 +514,14 @@ button.control-element:active {
   position: relative;
 }
 #selectNamesButton {
-  position: relative;
   margin: 0px;
   width: 52px;
   line-height: 9px;
   font-size: 10px;
-  transition: .15s all;
 }
 #selectNamesPane {
-  display: inline-flex;
-  flex-direction: column;
-  position: absolute;
   top: 0px;
   right: 0px;
-  max-width: 0px;
-  max-height: 0px;
-  overflow: hidden;
-  margin: 0px;
-  padding: 0px;
-  background-color: var(--style-box-background-colour);
-  outline: var(--control-element-border-width) solid var(--dark-background-colour);;
-  outline-offset: -1px;
-  box-shadow: 1px 1px 2px var(--shadow-colour);
-  transition: .25s all;
-}
-#selectNamesHeader {
-  margin: 0px 0px 0px 5px;
-  white-space: nowrap;
-}
-#selectNamesHideButton {
-  position: absolute;
-  top: 0px;
-  right: 0px;
-  width: 28px;
-  height: 28px; /* Should be the height of the h2 minus the bottom border width.*/
-  margin: 0px;
-  background: none;
-  border: 1px solid transparent;
-  border-bottom-style: none;
-  transition: .15s all;
-}
-#selectNamesHideButton:focus {
-  outline: none; /* Hides the default outline buttons get on focus.*/
-}
-#selectNamesHideSpan1, #selectNamesHideSpan2 {
-  position: absolute;
-  top: 12px;
-  width: 14px;
-  height: 2px;
-  background-color: white;
-  background-clip: content-box;
-  border: none;
-  transition: .15s all;
-}
-#selectNamesHideSpan1 {
-  transform: rotate(45deg);
-}
-#selectNamesHideSpan2 {
-  transform: rotate(-45deg);
-}
-#selectNamesHideButton:hover {
-  background-color: var(--major-accent-colour);
-  border-color: var(--dark-background-colour);
-}
-#selectNamesHideButton:hover > span {
-  background-color: var(--dark-background-colour);
 }
 #selectNamesMainDiv {
   display: inline-flex;

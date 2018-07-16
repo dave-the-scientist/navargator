@@ -17,57 +17,6 @@
 }
 
 /* Run options: */
-.toggle-button-container {
-  /* To use, the input elements of a group must all share the same name property.*/
-  display: inline-flex;
-  justify-content: center;
-  width: 100%;
-  margin: 5px 0px;
-  padding: 0px;
-  box-sizing: border-box; /* Needed if I want to add horizontal padding.*/
-  --toggle-button-border-radius: 3px;
-  -webkit-touch-callout: none; /* Prevents the text from being selected on iOS Safari, */
-    -webkit-user-select: none; /* Safari, */
-     -khtml-user-select: none; /* Konqueror HTML, */
-       -moz-user-select: none; /* Firefox, */
-        -ms-user-select: none; /* Internet Explorer/Edge, */
-            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
-}
-.toggle-button-input {
-  display: none;
-}
-.toggle-button-label {
-  flex-grow: 1;
-  line-height: 25px;
-  margin: 0px;
-  padding: 0px;
-  text-align: center;
-  color: black;
-  border: 1px solid var(--button-border-colour);
-  background: linear-gradient(#FAFAFA, #DCDCDC);
-  box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
-}
-.toggle-button-label-left {
-  border-top-left-radius: var(--toggle-button-border-radius);
-  border-bottom-left-radius: var(--toggle-button-border-radius);
-  box-shadow: inset 4px 4px 4px rgba(255,255,255,.3), inset -2px -4px 4px rgba(201,201,201,.5);
-}
-.toggle-button-label-right {
-  border-top-right-radius: var(--toggle-button-border-radius);
-  border-bottom-right-radius: var(--toggle-button-border-radius);
-  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -4px -4px 4px rgba(201,201,201,.5);
-}
-.toggle-button-label-left.toggle-button-label-right {
-  box-shadow: inset 2px 4px 4px rgba(255,255,255,.3), inset -2px -4px 4px rgba(201,201,201,.5);
-}
-.toggle-button-label:hover {
-  border-color: #4F4F4F;
-}
-.toggle-button-label:active, .toggle-button-input:checked + .toggle-button-label {
-  /* The "pushed-in" look for the selected and active button states.*/
-  background: linear-gradient(#DCDCDC, #FAFAFA);
-  box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
-}
 #clustMethodSelect {
   width: 110px;
 }

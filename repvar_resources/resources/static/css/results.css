@@ -17,8 +17,43 @@
 /* Display options pane settings: */
 
 
-/* Selection pane settings: */
-
+/* Export pane settings: */
+#exportDataDiv {
+  z-index: 5;
+}
+#exportNamesPane {
+  top: -1px; /* To line up with the top of stylebox, because this uses outline instead of border.*/
+  left: calc(100% + 5px);
+}
+#exportNamesToggleDiv {
+  margin: 5px;
+  width: calc(100% - 10px);
+}
+#exportNamesMainDiv {
+  display: inline-flex;
+  position: relative;
+}
+#exportNamesLeftColumn {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 5px;
+}
+#exportNamesLeftColumn > * {
+  flex-shrink: 0;
+}
+#exportNamesText {
+  width: 250px;
+  height: 100px;
+  resize: none;
+}
+#exportNamesRightColumn {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 5px;
+}
+#exportNamesRightColumn > * {
+  flex-shrink: 0;
+}
 
 /* Histogram settings: */
 #histoSvg {

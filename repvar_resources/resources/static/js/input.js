@@ -1,11 +1,11 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
 // - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree. Maybe make a circular gradient from the middle of the input tree, in the cluster colour.
-// - When the user selects a file to upload, the page should pick a file type based on the file extension, and update the select on the page.
 // - For magnifying glass icon on 'search variants' field, I could make it morph into an X on submit. Would want to move it to the right side of the field.
 //   - Kinda like from http://www.transformicons.com/; basically have 1 line and 1 circle. For X, circle height becomes 0, for magnifying glass, set equal to width and rotate/move.
 //   - Upon submission (clicking magnifying or pressing enter) jquery adds a class, and removes it when the user types any button. Means there's no button to press to clear the field prior to submission, but that's probably fine.
@@ -39,6 +39,7 @@ function setupPage() {
   initializeButtons();
   initializeErrorPopupWindow();
   initializeCollapsibleElements();
+  initializeFloatingPanes();
   page.session_id = location.search.slice(1);
   page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+page.session_id+', browserID:'+page.browser_id);
@@ -74,18 +75,29 @@ function setupPage() {
   }
 }
 function setupUploadSaveButtons() {
-  $("#uploadFileButton").button('disable');
-  $("#saveRepvarButton").button('disable');
+  var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveRepvarButton");
+  upload_button.button('disable');
+  save_button.button('disable');
 
-  $("#uploadFileInput").change(function() {
-    if ($("#uploadFileInput")[0].files[0]) {
-      $("#uploadFileButton").button('enable');
+  file_input.change(function() {
+    var file_obj = file_input[0].files[0];
+    if (file_obj) {
+      var filename = file_obj.name,
+        suffix = parseFileSuffix(filename);
+      if (suffix == 'repvar') {
+        upload_type_select.val('nvrgtr');
+      } else if (suffix == 'nwk' || suffix == 'tree') {
+        upload_type_select.val('newick');
+      } else if (suffix == 'xml') {
+        upload_type_select.val('phyloxml');
+      }
+      upload_button.button('enable');
     } else {
-      $("#uploadFileButton").button('disable');
+      upload_button.button('disable');
     }
   });
-  $("#uploadFileButton").click(function() {
-    var file_obj = $("#uploadFileInput")[0].files[0];
+  upload_button.click(function() {
+    var file_obj = file_input[0].files[0];
     if (!file_obj) {
       showErrorPopup("No file selected.");
       return false;
@@ -95,11 +107,17 @@ function setupUploadSaveButtons() {
     }
     var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
     form_data.append('session_id', page.session_id);
-    // Should have a drop-down to allow user to specify file type. Upon picking file, filename should be examined to automatically guess file type. Initially repvar and newick, but probably add phyloXML, etc.
-    if (file_obj.name.toLowerCase().endsWith('.repvar')) {
+    var selected_file_type = upload_type_select.val();
+    if (selected_file_type == 'nvrgtr') {
       upload_url = daemonURL('/upload-repvar-file');
-    } else {
+    } else if (selected_file_type == 'newick') {
       upload_url = daemonURL('/upload-newick-tree');
+    } else if (selected_file_type == 'phyloxml') {
+      showErrorPopup("The PhyloXML tree format is not yet supported by NaVARgator.");
+      return false;
+    } else {
+      showErrorPopup("No file type was selected for the input file. Please specify it and load the file again.");
+      return false;
     }
     $.ajax({
       type: 'POST',
@@ -112,11 +130,11 @@ function setupUploadSaveButtons() {
         newTreeLoaded(data_obj);
       },
       error: function(error) {
-        processError(error, "Error uploading files");
+        processError(error, "Error uploading the input file. This may be due to the incorrect file format being specified");
       }
     });
   });
-  $("#saveRepvarButton").click(function() {
+  save_button.click(function() {
     $.ajax({
       url: daemonURL('/save-repvar-file'),
       type: 'POST',

@@ -22,6 +22,7 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 
 
 //TODO:
+// - For some reason exportNamesToggleDiv is still not respecting its own content; its height is less than its contents. Fix that, and finish the export pane.
 // - Ensure setTransparentColour() is working right in updateColours(). Add colour pickers to display options.
 // - Get export buttons working.
 // - Need a more efficient selectNamesByThreshold().
@@ -42,6 +43,7 @@ function setupPage() {
   initializeButtons();
   initializeErrorPopupWindow();
   initializeCollapsibleElements();
+  initializeFloatingPanes();
 
   // =====  Variable parsing:
   var url_params = location.search.slice(1).split('_');
@@ -56,7 +58,6 @@ function setupPage() {
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   repvar.opts.graph.total_width = parseInt(graph_width_str.slice(0,-2));
   repvar.opts.graph.total_height = parseInt(graph_height_str.slice(0,-2));
-
 
   maintainServer();
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -254,8 +255,9 @@ function setupDisplayOptionsPane() {
 
 }
 function setupExportPane() {
-  $("#exportRepsButton").click(function() {
-
+  var export_pane = $("#exportNamesPane");
+  $("#exportChosenButton").click(function() {
+    showFloatingPane(export_pane);
   });
   $("#exportClustersButton").click(function() {
 

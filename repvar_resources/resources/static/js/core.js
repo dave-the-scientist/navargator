@@ -81,6 +81,22 @@ function collapsibleElementHandler(header) {
     pane.css('maxHeight', pane[0].scrollHeight+"px");
   }
 }
+function initializeFloatingPanes() {
+  $(".floating-pane-close").each(function() {
+    $(this).append('<span class="floating-pane-close-span1">');
+    $(this).append('<span class="floating-pane-close-span2">');
+    $(".floating-pane-header").addClass("prevent-text-selection");
+    var pane = $(this).parent().parent();
+    $(this).click(function() {
+      pane.css('maxWidth', "0px");
+      pane.css('maxHeight', "0px");
+    });
+  });
+}
+function showFloatingPane(pane) {
+  pane.css('maxWidth', pane[0].scrollWidth+"px");
+  pane.css('maxHeight', pane[0].scrollHeight+"px");
+}
 
 // =====  Page maintainance and management:
 function generateBrowserId(length) {
@@ -183,6 +199,14 @@ function calculateMinimumTransparency(initial_val, desired_val, background_val) 
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
   return Math.round(num * x) / x;
+}
+function parseFileSuffix(filename) {
+  // Taken from https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript
+  var file_parts = filename.split(".");
+  if ( file_parts.length === 1 || (file_parts[0] === "" && file_parts.length === 2) ) {
+    return "";
+  }
+  return file_parts.pop().toLowerCase();
 }
 function calculate90Percentile(orig_var_names) {
   if (orig_var_names.length == 1) {

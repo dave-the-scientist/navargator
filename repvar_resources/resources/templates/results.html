@@ -100,10 +100,33 @@
 
           <div id="exportDataDiv" class="style-box">
             <h2>Export data</h2>
-            <button id="exportRepsButton" class="jq-ui-button">Export chosen</button>
-            <button id="exportClustersButton" class="jq-ui-button">Export clusters</button>
-            <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
-            <button id="exportTreeButton" class="jq-ui-button">Export tree image</button>
+
+            <div id="exportNamesPane" class="floating-pane">
+              <div>
+                <h2 class="floating-pane-header">Export variant names</h2>
+                <button class="floating-pane-close"></button>
+              </div>
+              <div id="exportNamesToggleDiv" class="toggle-button-container">
+                <input type="radio" id="exportNamesCheckbox" name="export-choice" class="toggle-button-input" checked>
+                <label for="exportNamesCheckbox" id="exportNamesLabel" class="toggle-button-label toggle-button-label-left">Single run</label>
+                <input type="radio" id="exportNamesAndScoresCheckbox" name="export-choice" class="toggle-button-input">
+                <label for="exportNamesAndScoresCheckbox" id="exportNamesAndScoresRunLabel" class="toggle-button-label toggle-button-label-right">Variant range</label>
+              </div>
+              <div id="exportNamesMainDiv">
+                <div id="exportNamesLeftColumn">
+                  <textarea id="exportNamesText" placeholder="Variant names"></textarea>
+                </div>
+                <div id="exportNamesRightColumn">
+                  <button id="exportNamesClearButton" class="control-element">Clear</button>
+                </div>
+              </div>
+            </div>
+
+            <button id="exportChosenButton">Export chosen</button>
+            <button id="exportClustersButton">Export clusters</button>
+            <button id="exportSelectionButton">Export selection</button>
+
+            <button id="exportTreeButton">Export tree image</button>
           </div>
         </div>
 
@@ -131,10 +154,10 @@
             <div class="tree-control-row-rj">
               <div id="selectNamesGroupDiv">
                 <button id="selectNamesButton" class="control-element">Select<br>by name</button>
-                <div id="selectNamesPane">
-                  <div id="selectNamesHeaderDiv">
-                    <h2 id="selectNamesHeader">Select variants by name</h2>
-                    <button id="selectNamesHideButton"><span id="selectNamesHideSpan1"></span><span id="selectNamesHideSpan2"></span></button>
+                <div id="selectNamesPane" class="floating-pane">
+                  <div>
+                    <h2 class="floating-pane-header">Select variants by name</h2>
+                    <button class="floating-pane-close"></button>
                   </div>
                   <div id="selectNamesMainDiv">
                     <div id="selectNamesLeftColumn">
