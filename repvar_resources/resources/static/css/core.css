@@ -527,26 +527,18 @@ button.control-element:active {
   display: inline-flex;
   position: relative;
 }
-#selectNamesLeftColumn {
+#selectNamesLeftColumn, #selectNamesRightColumn {
   display: inline-flex;
   flex-direction: column;
   padding: 5px;
 }
-#selectNamesLeftColumn > * {
+#selectNamesLeftColumn > *, #selectNamesRightColumn > * {
   flex-shrink: 0;
 }
 #selectNamesText {
   width: 250px;
   height: 100px;
   resize: none;
-}
-#selectNamesRightColumn {
-  display: inline-flex;
-  flex-direction: column;
-  padding: 5px;
-}
-#selectNamesRightColumn > * {
-  flex-shrink: 0;
 }
 #selectAllButton {
   margin-left: 4px;

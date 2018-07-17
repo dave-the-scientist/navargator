@@ -22,9 +22,8 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 
 
 //TODO:
-// - For some reason exportNamesToggleDiv is still not respecting its own content; its height is less than its contents. Fix that, and finish the export pane.
+// - Finish getting export buttons working.
 // - Ensure setTransparentColour() is working right in updateColours(). Add colour pickers to display options.
-// - Get export buttons working.
 // - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
@@ -255,18 +254,54 @@ function setupDisplayOptionsPane() {
 
 }
 function setupExportPane() {
-  var export_pane = $("#exportNamesPane");
-  $("#exportChosenButton").click(function() {
+  var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
+  export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
+  function formatDisplayExportNames() {
+    var delimiter = $("#exportDelimiterSelect").val();
+    if (delimiter == 'tab') {
+      delimiter = '\t';
+    } else if (delimiter == 'newline') {
+      delimiter = '\n';
+    }
+    var names = export_pane.data('names'), text_val = '';
+    if ($("#exportNamesCheckbox").is(':checked')) {
+      text_val = names.join(delimiter);
+    } else {
+      var val;
+      for (var i=0; i<names.length; ++i) {
+        val = names[i] + delimiter + repvar.variant_distance[names[i]] + '\n';
+        text_val += val;
+      }
+    }
+    export_text.val(text_val.trim());
+    export_text.css('height', '');
+    export_text.css('height', export_text[0].scrollHeight+'px');
     showFloatingPane(export_pane);
+  }
+  $("#exportChosenButton").click(function() {
+    export_pane.data('names', repvar.variants.slice());
+    formatDisplayExportNames();
+  });
+  $("#exportSelectionButton").click(function() {
+    export_pane.data('names', Object.keys(repvar.selected));
+    formatDisplayExportNames();
   });
   $("#exportClustersButton").click(function() {
 
   });
-  $("#exportSelectionButton").click(function() {
-
-  });
   $("#exportTreeButton").click(function() {
 
+  });
+  // Functionality of the export pane:
+  $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
+    formatDisplayExportNames();
+  });
+  $("#exportDelimiterSelect").change(function() {
+    formatDisplayExportNames();
+  });
+  $("#exportNamesCopyButton").click(function() {
+    export_text.select();
+    document.execCommand("copy");
   });
 }
 

@@ -1,6 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - Swap the 'search variants' and 'num selected' elements on the tree pane. That way all selection buttons are grouped. Also gives me more options to style the 'num selected' (using bold colours).
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
