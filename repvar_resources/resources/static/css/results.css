@@ -26,14 +26,14 @@
   left: calc(100% + 5px);
 }
 #exportNamesToggleDiv {
-  margin: 10px 5px 5px 5px;
-  width: calc(100% - 10px);
+  margin: 10px 10px 5px 10px;
+  width: calc(100% - 20px);
   flex-shrink: 0;
 }
 #exportNamesMainDiv {
   display: inline-flex;
   position: relative;
-  padding: 5px 0px 0px 0px;
+  padding: 5px 5px 0px 5px;
 }
 #exportNamesLeftColumn, #exportNamesRightColumn {
   display: inline-flex;
@@ -44,13 +44,22 @@
   flex-shrink: 0;
 }
 #exportNamesText {
-  width: 400px;
+  width: 370px;
   min-height: 75px;
   max-height: 300px;
   resize: none;
   overflow: auto;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   transition: height .25s;
+}
+#exportDelimiterLabel {
+  margin: 0px;
+}
+#exportDelimiterSelect {
+  margin: 0px 0px 10px 0px;
+}
+#exportNamesCopyButton, #exportNamesSaveButton {
+  margin: 10px 0px;
 }
 
 /* Histogram settings: */

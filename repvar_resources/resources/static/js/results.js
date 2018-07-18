@@ -19,17 +19,15 @@ $.extend(repvar.opts.graph, {
 repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
 //BUG:
-
+// - I increased padding in the exportPane from 5 to 10, but now the scrollWidth of the pane is initially 10px too narrow (ends up overlapping some padding). This is corrected if any other export button is pushed, and then increases by an additional 5px (which is not shown) if a 2nd button is pushed. 
 
 //TODO:
-// - Finish getting export buttons working.
 // - Ensure setTransparentColour() is working right in updateColours(). Add colour pickers to display options.
 // - Need a more efficient selectNamesByThreshold().
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Change mentions of 'node' to 'variant'.
-// - I don't love the singleton cluster colour of dark blue. Maybe a red/orange would be better. Want them to jump out, and having negative connotations is good.
 
 //NOTE (for FAQs or something):
 // - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be visible on the histogram, though they can still be selected with the slider. Same thing if the user selects a max_count smaller than what is to be displayed. The histogram will display and the text will be accurate, but the height will be capped.
@@ -257,40 +255,59 @@ function setupExportPane() {
   var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
   export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
   function formatDisplayExportNames() {
+    // Function to format the information based on the user's selection.
     var delimiter = $("#exportDelimiterSelect").val();
     if (delimiter == 'tab') {
       delimiter = '\t';
     } else if (delimiter == 'newline') {
       delimiter = '\n';
     }
-    var names = export_pane.data('names'), text_val = '';
-    if ($("#exportNamesCheckbox").is(':checked')) {
-      text_val = names.join(delimiter);
-    } else {
-      var val;
+    var names = export_pane.data('names'),
+      include_scores = ($("#exportNamesCheckbox").is(':checked')) ? false : true,
+      new_text_val = '';
+    if (typeof names[0] === 'string' || names[0] instanceof String) { // If exporting chosen or selection:
+      new_text_val = formatExportNameGroup(names, delimiter, include_scores);
+    } else { // Else exporting clusters (names is a list of lists):
       for (var i=0; i<names.length; ++i) {
-        val = names[i] + delimiter + repvar.variant_distance[names[i]] + '\n';
-        text_val += val;
+        new_text_val += formatExportNameGroup(names[i], delimiter, include_scores);
+        if (i < names.length - 1) { new_text_val += '\n\n'; }
       }
     }
-    export_text.val(text_val.trim());
-    export_text.css('height', '');
+    export_text.val(new_text_val);
+    export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
     export_text.css('height', export_text[0].scrollHeight+'px');
     showFloatingPane(export_pane);
   }
+  // Button callbacks:
   $("#exportChosenButton").click(function() {
+    // Sets 'names' to a list of the chosen variants.
     export_pane.data('names', repvar.variants.slice());
     formatDisplayExportNames();
   });
   $("#exportSelectionButton").click(function() {
+    // Sets 'names' to a list of the selected variants. The order is undefined.
     export_pane.data('names', Object.keys(repvar.selected));
     formatDisplayExportNames();
   });
   $("#exportClustersButton").click(function() {
-
+    // Sets 'names' to a list of lists, each sublist begins with the chosen followed by the rest of the variants.
+    var clusters = [], chosen, names, vars, name;
+    for (var i=0; i<repvar.variants.length; ++i) {
+      chosen = repvar.variants[i];
+      names = [chosen];
+      vars = repvar.clusters[chosen].nodes;
+      for (var j=0; j<vars.length; ++j) {
+        name = vars[j];
+        if (name != chosen) { names.push(name); }
+      }
+      clusters.push(names);
+    }
+    export_pane.data('names', clusters);
+    formatDisplayExportNames();
   });
   $("#exportTreeButton").click(function() {
-
+    var svg_data = $("#figureSvg")[0].outerHTML;
+    downloadData("nvrgtr_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   // Functionality of the export pane:
   $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
@@ -302,6 +319,10 @@ function setupExportPane() {
   $("#exportNamesCopyButton").click(function() {
     export_text.select();
     document.execCommand("copy");
+  });
+  $("#exportNamesSaveButton").click(function() {
+    var text_data = export_text.val();
+    downloadData("nvrgtr_data.txt", text_data, "text/plain");
   });
 }
 
@@ -806,7 +827,6 @@ function parseClusteredData(data) {
     $("#normValRadio").prop('checked', true);
     $("#normValInput").val(data.normalization.value);
   }
-
   repvar.variants = data.variants;
   // Ensures repvar.sorted_names begins with the chosen variants, and the rest stably sorted by variant distance.
   var delta, sorted_names = Object.keys(repvar.variant_distance).filter(function(name) {
@@ -822,4 +842,31 @@ function parseClusteredData(data) {
   for (var i=0; i<repvar.variants.length; ++i) {
     repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null, 'colour_key':''};
   }
+}
+
+// =====  Misc functions:
+function formatExportNameGroup(names, delimiter, include_scores) {
+  var text_val = '';
+  if (include_scores === false) {
+    text_val = names.join(delimiter);
+  } else {
+    var dist, val;
+    for (var i=0; i<names.length; ++i) {
+      dist = repvar.variant_distance[names[i]];
+      if (dist === undefined) { dist = ''; }
+      val = names[i] + delimiter + dist;
+      if (i < names.length - 1) { val += '\n'; }
+      text_val += val;
+    }
+  }
+  return text_val;
+}
+function downloadData(filename, data, blob_type) {
+  var blob = new Blob([data], {type:blob_type}),
+    blob_url = URL.createObjectURL(blob),
+    download_link = document.createElement("a");
+  download_link.href = blob_url;
+  download_link.download = filename;
+  download_link.click();
+  download_link = null; // Removes the element
 }

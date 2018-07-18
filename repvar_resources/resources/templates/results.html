@@ -117,7 +117,7 @@
                   <textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
                 </div>
                 <div id="exportNamesRightColumn">
-                  <label>Delimiter:</label>
+                  <label id="exportDelimiterLabel">Delimiter:</label>
                   <select id="exportDelimiterSelect">
                     <option value="tab" selected>Tab</option>
                     <option value=", ">Comma</option>
@@ -125,6 +125,7 @@
                     <option value="newline">New line</option>
                   </select>
                   <button id="exportNamesCopyButton">Copy to clipboard</button>
+                  <button id="exportNamesSaveButton">Download data</button>
                 </div>
               </div>
             </div>
@@ -132,7 +133,8 @@
             <button id="exportChosenButton">Export chosen</button>
             <button id="exportSelectionButton">Export selection</button>
             <button id="exportClustersButton">Export clusters</button>
-            <button id="exportTreeButton">Export tree image</button>
+            <hr>
+            <button id="exportTreeButton">Download tree image</button>
           </div>
         </div>
 
