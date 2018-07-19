@@ -456,8 +456,8 @@ button.control-element:active {
   text-align: left;
 }
 #clearVarSearchButton {
-  position: relative;
-  right: 21px;
+  position: absolute;
+  right: 3px;
   min-width: unset;
   width: 19px;
   height: 19px;
@@ -476,7 +476,7 @@ button.control-element:active {
   display: none;
 }
 #varSearchHitsText {
-  margin: 0px 10px 0px -10px; /* The -10px is 1/2 the width of the clear button*/
+  margin: 0px 15px 0px 15px; /* The -10px is 1/2 the width of the clear button*/
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
 }

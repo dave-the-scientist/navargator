@@ -1,7 +1,8 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Swap the 'search variants' and 'num selected' elements on the tree pane. That way all selection buttons are grouped. Also gives me more options to style the 'num selected' (using bold colours).
+// - Style the 'num selected' label (using bold colours). MIght look good to do it like the h2 banner, with a streak of dark across the very top. The search box would be in the same banner, with the magnifying glass/X button on the right, probably in green. The other buttons would then be just below that banner.
+//   - Could also be a good place for the same style, but using different colours (or swapping them or something). As it's centered in the page, front and centre, etc.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
