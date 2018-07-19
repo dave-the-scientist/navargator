@@ -14,12 +14,12 @@ $.extend(repvar.opts.colours, {
   'cluster_background_trans':null, 'cluster_highlight_trans':null
 });
 $.extend(repvar.opts.graph, {
-  'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15
+  'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
 });
 repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
 //BUG:
-// - I increased padding in the exportPane from 5 to 10, but now the scrollWidth of the pane is initially 10px too narrow (ends up overlapping some padding). This is corrected if any other export button is pushed, and then increases by an additional 5px (which is not shown) if a 2nd button is pushed. 
+
 
 //TODO:
 // - Ensure setTransparentColour() is working right in updateColours(). Add colour pickers to display options.
@@ -51,10 +51,12 @@ function setupPage() {
   console.log('browser ID:', page.browser_id);
   var tree_width_str = $("#mainTreeDiv").css('width'),
     graph_width_str = $("#selectionDiv").css('width'),
-    graph_height_str = $("#histoSvg").css('height');
+    graph_height_str = $("#histoSvg").css('height'),
+    histo_l_margin_str = $("#histoSlider").css('marginLeft');
   repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   repvar.opts.graph.total_width = parseInt(graph_width_str.slice(0,-2));
   repvar.opts.graph.total_height = parseInt(graph_height_str.slice(0,-2));
+  repvar.opts.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
 
   maintainServer();
   page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
@@ -346,6 +348,7 @@ function checkForClusteringResults() {
       if (data.variants == false) {
         setTimeout(checkForClusteringResults, page.check_results_interval);
       } else {
+        $("#treeLoadingMessageGroup").remove();
         parseClusteredData(data);
         updateColours();
         drawBarGraphs();
@@ -356,6 +359,9 @@ function checkForClusteringResults() {
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
         drawDistanceHistogram();
         updateHistoSlider(); // Must be after drawDistanceHistogram
+        $("#treeSelectionDiv").show();
+        $("#treeControlsDiv").show();
+        $("#treeLegendLeftGroup").show();
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
@@ -767,10 +773,13 @@ function updateHistoGraph() {
   bar_mouseovers.attr("width", col_width)
   .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); });
   bar_mouseovers.exit().remove();
+
+  // Update the histo slider, so its zero lines up with the graph's zero.
+  var new_l_margin = repvar.opts.graph.histo_left_margin + col_width;
+  $("#histoSlider").animate({'marginLeft':new_l_margin+'px'}, 250);
 }
 function updateHistoAxes() {
-  var ticks = repvar.graph.x_ticks.slice();
-  ticks[0] = ''; // So the first labeled tick is 0.
+  var ticks = repvar.graph.x_ticks.slice(1); // Removes the first value (placeholder for 'chosen' bar).
   repvar.graph.x_axis.tickValues(ticks)
     .tickFormat(d3.format(".3")); // trims trailing zeros
   repvar.graph.g.select(".x-axis")

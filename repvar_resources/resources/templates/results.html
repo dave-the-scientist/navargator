@@ -125,7 +125,7 @@
                     <option value="newline">New line</option>
                   </select>
                   <button id="exportNamesCopyButton">Copy to clipboard</button>
-                  <button id="exportNamesSaveButton">Download data</button>
+                  <button id="exportNamesSaveButton">Save text file</button>
                 </div>
               </div>
             </div>
@@ -134,12 +134,12 @@
             <button id="exportSelectionButton">Export selection</button>
             <button id="exportClustersButton">Export clusters</button>
             <hr>
-            <button id="exportTreeButton">Download tree image</button>
+            <button id="exportTreeButton">Save tree image</button>
           </div>
         </div>
 
         <div id="mainTreeDiv" class="style-box">
-          <div id="treeControlsDiv" class="tree-control-div">
+          <div id="treeControlsDiv" class="tree-control-div" style="display:none">
             <form class="tree-control-row" onsubmit="return treeSearchFunction();">
               <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button>
               <input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" autocomplete="off" />
@@ -155,7 +155,7 @@
             </div>
           </div>
 
-          <div id="treeSelectionDiv" class="tree-control-div">
+          <div id="treeSelectionDiv" class="tree-control-div" style="display:none">
             <div class="tree-control-row-rj">
               <label id="currentSelectionLabel" class="control-element control-pair-left control-pair-right prevent-text-selection">Selected variants: <span id="currentSelectionNum">0</span></label>
             </div>
@@ -186,7 +186,7 @@
 
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
-            <g id="treeLegendLeftGroup">
+            <g id="treeLegendLeftGroup" style="display:none">
               <rect id="legendBorderRect" x="1" y="0" width="115" height="82" style="fill:white;stroke:black;stroke-width:1" />
               <text x="18" y="20" style="font-size:18px; font-family:Helvetica,Arial,sans-serif">Legend</text>
               <circle id="legendAvailMarker" cx="10" cy="34" r="4" fill="#24B1F0" />
@@ -195,6 +195,11 @@
               <text x="18" y="56" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Chosen variant</text>
               <circle id="legendIgnoredMarker" cx="10" cy="70" r="4" fill="#5D5D5D" />
               <text x="18" y="74" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Ignored variant</text>
+            </g>
+            <g id="treeLoadingMessageGroup">
+              <rect x="5" y="5" width="690" height="690" style="fill:white;fill-opacity:0.7" />
+              <text x="100" y="140" style="font-size:28px; font-family:Helvetica,Arial,sans-serif">Clustering calculations in progress...</text>
+              <text x="40" y="250" style="font-size:28px; font-family:Helvetica,Arial,sans-serif">This page will automatically update when finished.</text>
             </g>
           </svg>
           <div id="svgCanvas"></div>

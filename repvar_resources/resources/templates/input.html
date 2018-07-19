@@ -124,6 +124,7 @@
 
         <div id="mainTreeDiv" class="style-box">
           <div id="treeControlsDiv" class="tree-control-div" style="display:none">
+
             <form class="tree-control-row" onsubmit="return treeSearchFunction();">
               <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button>
               <input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" autocomplete="off" />
@@ -131,6 +132,7 @@
               <label id="varSearchHitsText"></label>
               <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
             </form>
+
             <div class="tree-control-row">
               <button id="treeZoomOutButton" class="control-element control-pair-left" type="button">&#10134;</button>
               <button id="treeZoomInButton" class="control-element" type="button">&#10133;</button>
@@ -140,9 +142,11 @@
           </div>
 
           <div id="treeSelectionDiv" class="tree-control-div" style="display:none">
+
             <div class="tree-control-row-rj">
               <label id="currentSelectionLabel" class="control-element control-pair-left control-pair-right prevent-text-selection">Selected variants: <span id="currentSelectionNum">0</span></label>
             </div>
+            
             <div class="tree-control-row-rj">
               <div id="selectNamesGroupDiv">
                 <button id="selectNamesButton" class="control-element">Select<br>by name</button>
@@ -167,11 +171,6 @@
               <button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
             </div>
           </div>
-
-          <div id="treeLegendLeftDiv" class="tree-control-div" style="display:none">
-
-          </div>
-
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="introMessageGroup">
               <text x="10" y="20" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:

@@ -132,7 +132,7 @@ span {
 
 /* ======  Main styled div  ====== */
 .style-box {
-  --style-box-padding: 5px;
+  --style-box-padding: 10px;
   display: inline-block;
   vertical-align: top;
   background-color: var(--style-box-background-colour);
@@ -140,6 +140,7 @@ span {
   box-shadow: 1px 1px 2px var(--shadow-colour);
   margin: 5px 5px 5px 5px;
   padding: var(--style-box-padding);
+  padding-top: 0px;
   position: relative;
 }
 .style-box p {
@@ -153,17 +154,15 @@ span {
   --style-h2-border: 3px;
   margin: 15px 0px 5px 0px;
   padding: 3px 5px;
-  width: calc(100% - var(--style-box-padding) - var(--style-h2-border));
+  width: calc(100% + var(--style-box-padding));
+  box-sizing: border-box;
   background: linear-gradient(var(--dark-background-light-gradient), var(--dark-background-colour));
   border: var(--style-h2-border) solid var(--major-accent-colour);
   border-top-style: none;
   border-right-style: none;
-  /*
-  background: linear-gradient(var(--dark-background-colour) 70%, var(--major-accent-colour));
-  */
 }
 .style-box h2:first-child {
-  margin-top: 5px;
+  margin-top: 0px;
 }
 .style-box > *:not(svg):not(div):not(p):not(h2):not(h3) {
   margin-top: 5px;
@@ -287,8 +286,10 @@ div.collapsible-panel > * {
   box-shadow: 1px 1px 2px var(--shadow-colour);
   transition: .25s all;
 }
-.floating-pane-header {
-  margin: 0px 0px 0px 5px !important;
+.floating-pane > div > .floating-pane-header { /*Long selector needed for priority.*/
+  width: unset;
+  margin: 0px 0px 0px 10px;
+  box-sizing: border-box;
   white-space: nowrap;
 }
 .floating-pane-close {
@@ -526,11 +527,18 @@ button.control-element:active {
 #selectNamesMainDiv {
   display: inline-flex;
   position: relative;
+  padding: 5px 0px 0px 0px;
 }
 #selectNamesLeftColumn, #selectNamesRightColumn {
   display: inline-flex;
   flex-direction: column;
-  padding: 5px;
+  padding: 0px 5px;
+}
+#selectNamesLeftColumn {
+  padding-left: 10px;
+}
+#selectNamesRightColumn {
+  padding-right: 10px;
 }
 #selectNamesLeftColumn > *, #selectNamesRightColumn > * {
   flex-shrink: 0;
@@ -539,6 +547,9 @@ button.control-element:active {
   width: 250px;
   height: 100px;
   resize: none;
+}
+#selectNamesAddButton {
+  margin: 5px 0px 10px 0px;
 }
 #selectAllButton {
   margin-left: 4px;

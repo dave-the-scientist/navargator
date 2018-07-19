@@ -33,24 +33,30 @@
 #exportNamesMainDiv {
   display: inline-flex;
   position: relative;
-  padding: 5px 5px 0px 5px;
+  padding: 5px 0px 0px 0px;
 }
 #exportNamesLeftColumn, #exportNamesRightColumn {
   display: inline-flex;
   flex-direction: column;
   padding: 0px 5px;
 }
+#exportNamesLeftColumn {
+  padding-left: 10px;
+}
+#exportNamesRightColumn {
+  padding-right: 10px;
+}
 #exportNamesLeftColumn > *, #exportNamesRightColumn > * {
   flex-shrink: 0;
 }
 #exportNamesText {
   width: 370px;
-  min-height: 75px;
+  min-height: 140px;
   max-height: 300px;
   resize: none;
   overflow: auto;
   margin-bottom: 10px;
-  transition: height .25s;
+  transition: all .25s;
 }
 #exportDelimiterLabel {
   margin: 0px;
