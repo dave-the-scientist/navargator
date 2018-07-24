@@ -20,6 +20,52 @@ function setupTreeElements() {
     zoomScaleSensitivity: 0.4, // Default is 0.2
     onPan: preventSelections
   });
+
+  // The search input and associated buttons and labels:
+  var search_input = $("#varSearchInput"), search_button = $("#varSearchButton");
+  function treeSearchFunction() {
+    var query = search_input.val().trim().toLowerCase();
+    var name, num_hits = 0;
+    repvar.search_results.length = 0;
+    repvar.search_results.add_to_selection = true; // Resets so names will be added instead of removed.
+    for (var i=0; i<repvar.leaves.length; ++i) {
+      name = repvar.leaves[i];
+      if (query == '' || name.toLowerCase().indexOf(query) == -1) {
+        repvar.nodes[name]['search_highlight'].hide();
+      } else {
+        num_hits += 1;
+        repvar.nodes[name]['search_highlight'].show();
+        repvar.search_results.push(name);
+      }
+    }
+    if (query == '') {
+      $("#varSearchHitsText").text('');
+      $("#searchToSelectButton").hide();
+      search_button.removeClass('tree-search-button-clear');
+    } else {
+      $("#varSearchHitsText").text(num_hits+' hits');
+      $("#searchToSelectButton").show();
+      search_button.addClass('tree-search-button-clear');
+    }
+    return false;
+  }
+  search_button.click(function() {
+    if (search_button.hasClass('tree-search-button-clear')) {
+      search_input.val('');
+    }
+    treeSearchFunction();
+  });
+  search_input.on("input", function() {
+    if (search_input.val() == '' && repvar.search_results.length != 0) {
+      search_button.addClass('tree-search-button-clear'); // Change to 'clear' button.
+    } else {
+      search_button.removeClass('tree-search-button-clear'); // Ensure is 'search' button.
+    }
+  }).on("keypress", function(event) {
+    if (event.which == 13) { // The 'enter' key(s).
+      treeSearchFunction();
+    }
+  });
   $('#searchToSelectButton').click(function() {
     var var_name;
     if (repvar.search_results.add_to_selection == false) { // Remove from selection
@@ -40,10 +86,7 @@ function setupTreeElements() {
       $("#searchToSelectButton").html('Cut from<br>selection');
     }
   });
-  $("#clearVarSearchButton").click(function() {
-    $("#varSearchInput").attr('value', '');
-    treeSearchFunction();
-  });
+
   $('#treeZoomOutButton').click(function() {
     repvar.pan_zoom.zoomOut();
   });
@@ -152,32 +195,6 @@ function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, 
   repvar.nodes[var_name][state_key_name] = colour_key;
   repvar.nodes[var_name][state_colour_name] = new_colour;
   raphael_ele.attr({fill:new_colour});
-}
-
-// =====  Tree use functions:
-function treeSearchFunction() {
-  var query = $('#varSearchInput').attr('value').trim().toLowerCase();
-  var name, num_hits = 0;
-  repvar.search_results.length = 0;
-  repvar.search_results.add_to_selection = true; // Resets so names will be added instead of removed.
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    name = repvar.leaves[i];
-    if (query == '' || name.toLowerCase().indexOf(query) == -1) {
-      repvar.nodes[name]['search_highlight'].hide();
-    } else {
-      num_hits += 1;
-      repvar.nodes[name]['search_highlight'].show();
-      repvar.search_results.push(name);
-    }
-  }
-  if (query == '') {
-    $("#varSearchHitsText").text('');
-    $("#searchToSelectButton").hide();
-  } else {
-    $("#varSearchHitsText").text(num_hits+' hits');
-    $("#searchToSelectButton").show();
-  }
-  return false;
 }
 
 // =====  Tree drawing functions:

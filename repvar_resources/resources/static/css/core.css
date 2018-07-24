@@ -111,7 +111,7 @@ span {
   width: var(--tree-width);
 }
 #figureSvg {
-  margin-top: 10px;
+  margin-top: 0px;
   width: var(--tree-width);
 }
 #svgCanvas {
@@ -444,37 +444,97 @@ button.control-element:active {
 .tree-control-row-rj { /* Right-justified row.*/
   justify-content: flex-end;
 }
-/*         Top left panel: */
+/* If I don't end up putting anything else in these top corners, can merge tree-control-div and tree-control-row. Probably don't need to be classes either.*/
+#mainTreeHeader {
+  /*
+  color: white;
+  background: var(--major-accent-colour);
+  border-color: var(--dark-background-colour);
+  */
+}
+#treeSearchDiv {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  top: 2px;
+  right: 10px;
+}
+#treeSearchDiv > * {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+/*         Top left panel/buttons: */
 #treeControlsDiv {
-  top: 10px;
+  top: 30px;
   left: 15px;
 }
 #varSearchInput {
-  height: calc(var(--control-element-height) - 2 * var(--control-element-border-width));
-  background-color: #ffffff;
+  /*height: calc(var(--control-element-height) - 2 * var(--control-element-border-width));*/
+  height: 21px;
+  background-color: var(--light-background-colour);
+  border: 1px solid var(--light-background-colour);
   box-shadow: unset;
   text-align: left;
 }
-#clearVarSearchButton {
+
+#varSearchButton {
+  position: relative;
+  width: 25px;
+  height: 23px;
+  padding: 0px;
+  background: none;
+  border: 1px solid var(--light-background-colour);
+  box-shadow: unset;
+  transition: .25s all;
+}
+#varSearchButton:hover {
+  background: var(--major-accent-colour);
+  border-color: var(--major-accent-colour) var(--major-accent-colour) var(--major-accent-colour) var(--dark-background-colour);
+}
+#varSearchButton:hover > span {
+  background: var(--major-accent-colour);
+  border-color: var(--dark-background-colour);
+}
+#varSearchButton:active {
+  background: var(--light-background-colour);
+}
+#varSearchButton:active > span {
+  background: var(--light-background-colour);
+  border-color: var(--dark-background-colour);
+}
+#treeSearchSpanLine, #treeSearchSpanCircle {
   position: absolute;
-  right: 3px;
-  min-width: unset;
-  width: 19px;
-  height: 19px;
-  line-height: 19px;
-  margin: 0px;
-	padding: 0px;
+  width: 8px;
+  border: 1px solid white;
+  transition: .25s all;
+}
+#treeSearchSpanLine {
+  top: 13px;
+  left: 9px;
+  height: 0px;
+  transform: rotate(45deg);
+}
+#treeSearchSpanCircle {
+  top: 4px;
+  left: 4px;
+  height: 8px;
+  background: var(--dark-background-colour);
   border-radius: 50%;
+  box-shadow: inset 1px 1px 2px rgba(255,255,255,0.8);
 }
-#clearVarSearchButton, #treeZoomOutButton, #treeZoomInButton {
-  font-size: 12px;
+#varSearchButton.tree-search-button-clear > #treeSearchSpanLine {
+  width: 12px;
+  transform: translate3d(-4px, -2.5px, 0) rotate(-45deg);
 }
-#clearVarSearchButton > * { /*Applies to icon, text, whatever I use in the button*/
-  margin: auto;
+#varSearchButton.tree-search-button-clear > #treeSearchSpanCircle {
+  width: 12px;
+  height: 0px;
+  border-radius: unset;
+  box-shadow: unset;
+  transform: translate3d(1px, 6.5px, 0) rotate(45deg);
 }
-#varSearchInput[value=""] ~ #clearVarSearchButton {
-  display: none;
-}
+
+
 #varSearchHitsText {
   margin: 0px 15px 0px 15px; /* The -10px is 1/2 the width of the clear button*/
   font-family: Arial, Helvetica, sans-serif;
@@ -483,6 +543,9 @@ button.control-element:active {
 #searchToSelectButton {
   line-height: 9px;
   font-size: 10px;
+}
+#treeZoomOutButton, #treeZoomInButton {
+  font-size: 12px;
 }
 #treeZoomInButton, #treeZoomResetButton {
   margin-right: 4px;
@@ -504,11 +567,8 @@ button.control-element:active {
 }
 /*         Top right panel: */
 #treeSelectionDiv {
-  top: 10px;
+  top: 30px;
   right: 15px;
-}
-#currentSelectionLabel {
-  background-color: white;
 }
 #selectNamesGroupDiv {
   display: flex;

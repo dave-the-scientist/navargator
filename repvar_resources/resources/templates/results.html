@@ -139,10 +139,17 @@
         </div>
 
         <div id="mainTreeDiv" class="style-box">
+          <h2>Selected variants: <span id="currentSelectionNum">0</span>
+            <form id="treeSearchForm" onsubmit="return treeSearchFunction();">
+              <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
+              <label id="varSearchHitsText"></label>
+              <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button>
+              <input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" autocomplete="off" />
+              <button id="clearVarSearchButton" class="control-element" type="reset">&#10006;</button>
+            </form>
+          </h2>
+
           <div id="treeControlsDiv" class="tree-control-div" style="display:none">
-            <div class="tree-control-row">
-              <label id="currentSelectionLabel" class="control-element control-pair-left control-pair-right prevent-text-selection">Selected variants: <span id="currentSelectionNum">0</span></label>
-            </div>
             <div class="tree-control-row">
               <button id="treeZoomOutButton" class="control-element control-pair-left" type="button">&#10134;</button>
               <button id="treeZoomInButton" class="control-element" type="button">&#10133;</button>
@@ -152,13 +159,6 @@
           </div>
 
           <div id="treeSelectionDiv" class="tree-control-div" style="display:none">
-            <form class="tree-control-row-rj" onsubmit="return treeSearchFunction();">
-              <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
-              <label id="varSearchHitsText"></label>
-              <button id="varSearchButton" class="control-element control-pair-left"><span class="ui-icon ui-icon-search"></span></button>
-              <input id="varSearchInput" class="control-element control-pair-right" size="18" placeholder=" Search variants" onkeyup="this.setAttribute('value', this.value);" value="" autocomplete="off" />
-              <button id="clearVarSearchButton" class="control-element" type="reset">&#10006;</button>
-            </form>
             <div class="tree-control-row-rj">
               <div id="selectNamesGroupDiv">
                 <button id="selectNamesButton" class="control-element">Select<br>by name</button>
