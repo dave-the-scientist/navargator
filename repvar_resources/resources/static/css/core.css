@@ -453,39 +453,88 @@ button.control-element:active {
   */
 }
 #treeSearchDiv {
+  --tree-search-button-height: 23px;
   position: absolute;
   display: inline-flex;
   align-items: center;
   top: 2px;
-  right: 10px;
+  right: 15px;
 }
 #treeSearchDiv > * {
   margin-top: 0px;
   margin-bottom: 0px;
 }
-/*         Top left panel/buttons: */
-#treeControlsDiv {
-  top: 30px;
-  left: 15px;
+
+
+/*#searchToSelectButton {
+  line-height: 9px;
+  font-size: 10px;
 }
+#varSearchHitsText {
+  margin: 0px 15px 0px 15px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+}*/
+#varSearchHitsDiv {
+  display: flex;
+  margin: 0px;
+  padding: 0px;
+  max-width: 0px;
+  overflow: hidden;
+  transition: .25s all;
+}
+#searchToSelectButton {
+  position: relative;
+  margin: 0px 20px 0px 0px;
+  padding: 0px 25px 0px 5px;
+  height: var(--tree-search-button-height);
+  white-space: nowrap;
+  border: 1px solid var(--light-background-colour);
+  border-radius: 4px;
+}
+#varSearchNumHitsText {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  color: black;
+  text-shadow: unset;
+}
+#searchSelectIconSpan1, #searchSelectIconSpan2 {
+  position: absolute;
+  top: 9px;
+  right: 5px;
+  width: 13px;
+  height: 3px;
+  background: var(--dark-background-colour);
+  transition: all .15s linear, transform .25s linear;
+}
+#searchSelectIconSpan2 {
+  transform: rotate(90deg);
+}
+#searchToSelectButton.tree-search-cut-hits > span {
+  background-color: red;
+}
+#searchToSelectButton.tree-search-cut-hits > #searchSelectIconSpan2 {
+  transform: unset;
+}
+
+
 #varSearchInput {
   /*height: calc(var(--control-element-height) - 2 * var(--control-element-border-width));*/
-  height: 21px;
+  height: calc(var(--tree-search-button-height) - 2px);
   background-color: var(--light-background-colour);
   border: 1px solid var(--light-background-colour);
   box-shadow: unset;
   text-align: left;
 }
-
 #varSearchButton {
   position: relative;
   width: 25px;
-  height: 23px;
+  height: var(--tree-search-button-height);
   padding: 0px;
   background: none;
   border: 1px solid var(--light-background-colour);
   box-shadow: unset;
-  transition: .25s all;
+  transition: background-color .15s, border-color .15s;
 }
 #varSearchButton:hover {
   background: var(--major-accent-colour);
@@ -497,6 +546,7 @@ button.control-element:active {
 }
 #varSearchButton:active {
   background: var(--light-background-colour);
+  border-color: var(--light-background-colour);
 }
 #varSearchButton:active > span {
   background: var(--light-background-colour);
@@ -506,16 +556,16 @@ button.control-element:active {
   position: absolute;
   width: 8px;
   border: 1px solid white;
-  transition: .25s all;
+  transition: all .15s linear, transform .25s linear;
 }
 #treeSearchSpanLine {
-  top: 13px;
+  top: 12px;
   left: 9px;
   height: 0px;
   transform: rotate(45deg);
 }
 #treeSearchSpanCircle {
-  top: 4px;
+  top: 3px;
   left: 4px;
   height: 8px;
   background: var(--dark-background-colour);
@@ -534,15 +584,10 @@ button.control-element:active {
   transform: translate3d(1px, 6.5px, 0) rotate(45deg);
 }
 
-
-#varSearchHitsText {
-  margin: 0px 15px 0px 15px; /* The -10px is 1/2 the width of the clear button*/
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
-}
-#searchToSelectButton {
-  line-height: 9px;
-  font-size: 10px;
+/*         Top left panel/buttons: */
+#treeControlsDiv {
+  top: 30px;
+  left: 15px;
 }
 #treeZoomOutButton, #treeZoomInButton {
   font-size: 12px;

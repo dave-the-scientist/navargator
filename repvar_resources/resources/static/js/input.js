@@ -1,8 +1,9 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Finish extending search bar and num selected edits to results page.
-// - Style the 'Add to selection' button.
+// - Finish styling the 'Add to selection' button, then update results.
+//   - I'd like the whole thing to be more bold (possible connecting line to the input?). Also, the right half (around the +) to change background on hover, but the whole thing to behave like one button.
+//   - Need a title for the button, changes between 'add' and 'remove'.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.

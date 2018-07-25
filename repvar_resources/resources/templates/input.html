@@ -125,9 +125,13 @@
         <div id="mainTreeDiv" class="style-box">
           <h2 id="mainTreeHeader">Selected variants: <span id="currentSelectionNum">0</span>
             <div id="treeSearchDiv">
-              <button id="searchToSelectButton" class="control-element" type="button" style="display:none">Add to<br>selection</button>
-              <label id="varSearchHitsText"></label>
-              <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder=" Search variants" autocomplete="off" />
+              <div id="varSearchHitsDiv">
+                <button id="searchToSelectButton" class="control-element">
+                  <b><label id="varSearchNumHitsText">--</label> hits</b>
+                  <span id="searchSelectIconSpan1"></span><span id="searchSelectIconSpan2"></span>
+                </button>
+              </div>
+              <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder="Search variants" autocomplete="off" />
               <button id="varSearchButton" class="control-element control-pair-right"><span id="treeSearchSpanLine"></span><span id="treeSearchSpanCircle"></span></button>
             </div>
           </h2>
