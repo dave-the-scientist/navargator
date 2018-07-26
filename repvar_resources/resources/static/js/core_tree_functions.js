@@ -23,7 +23,14 @@ function setupTreeElements() {
 
   // The search input and associated buttons and labels:
   var search_input = $("#varSearchInput"), search_button = $("#varSearchButton"), search_hits_div = $("#varSearchHitsDiv"), search_select_button = $('#searchToSelectButton');
-  var search_select_max_width = '100px'; // Must be larger than width of button + right margin.
+  // To calculate approx center point for the search_select button:
+  var button_half_width = 41.7, // For 2 digits selected. Close enough for others.
+    tree_div_pad_str = $("#mainTreeDiv").css('paddingRight'),
+    tree_div_pad = parseInt(tree_div_pad_str.slice(0,-2)),
+    search_input_size = $("#treeSearchDiv")[0].scrollWidth,
+    search_right_margin_str = $("#treeSearchDiv").css('right'),
+    search_right_margin = parseInt(search_right_margin_str.slice(0,-2)),
+    total_right_offset = search_input_size + search_right_margin - button_half_width - tree_div_pad;
   function treeSearchFunction() {
     var query = search_input.val().trim().toLowerCase();
     var name, num_hits = 0;
@@ -39,14 +46,18 @@ function setupTreeElements() {
         repvar.search_results.push(name);
       }
     }
+    var button_half_width, search_select_max_width;
     if (query == '') { // The 'clear search' command.
       search_button.removeClass('tree-search-button-clear');
       search_hits_div.css('maxWidth', '0px');
+      search_hits_div.css('width', '0px');
     } else { // A real query was searched.
-      $("#varSearchNumHitsText").text(num_hits);
+      $("#varSearchNumHitsText").text(num_hits + ' hits');
+      search_select_max_width = (repvar.opts.sizes.tree/2-total_right_offset) + 'px';
       search_button.addClass('tree-search-button-clear');
       search_select_button.removeClass('tree-search-cut-hits');
       search_hits_div.css('maxWidth', search_select_max_width);
+      search_hits_div.css('width', search_select_max_width);
     }
     return false;
   }
