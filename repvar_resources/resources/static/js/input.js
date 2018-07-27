@@ -1,19 +1,14 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Finish styling the 'Add to selection' button, then update results.
-//   - I'd like the whole thing to be more bold (possible connecting line to the input?). Also, the right half (around the +) to change background on hover, but the whole thing to behave like one button.
-//   - Need a title for the button, changes between 'add' and 'remove'.
+// - Finish edits; notes at line 124 of input.css
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
-// - The tree on the results page looks more cohesive, because it's incorporating colours from the page. Add them somehow to the input tree. Maybe make a circular gradient from the middle of the input tree, in the cluster colour.
-// - For magnifying glass icon on 'search variants' field, I could make it morph into an X on submit. Would want to move it to the right side of the field.
-//   - Kinda like from http://www.transformicons.com/; basically have 1 line and 1 circle. For X, circle height becomes 0, for magnifying glass, set equal to width and rotate/move.
-//   - Upon submission (clicking magnifying or pressing enter) jquery adds a class, and removes it when the user types any button. Means there's no button to press to clear the field prior to submission, but that's probably fine.
+// - The tree on the results page looks more cohesive, because it's incorporating colours from the page. The input tree looks better now with the header. Maybe make a circular gradient from the middle of the input tree, in the cluster colour. Probably not necessary though.
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
 //   - Could be 'none' instead of 'clear'.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)

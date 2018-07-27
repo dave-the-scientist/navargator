@@ -535,7 +535,7 @@ button.control-element:active {
   height: 1px;
   flex-grow: 1;
   background-color: var(--light-background-colour);
-  transition: width .2s linear;
+  /*transition: width .2s linear; Doesn't appear to be doing much. Nor on button.*/
 }
 #varSearchInput {
   height: calc(var(--tree-search-button-height) - 2px);

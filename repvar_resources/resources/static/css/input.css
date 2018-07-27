@@ -117,18 +117,24 @@
   flex-grow: 1;
   min-width: 155px;
 }
+.var-assigned-button-group {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: all var(--cubic-transition);
+  /*Move all border and background info from the labels and sep into here. Update the various hover and whatnot states to account for this extra layer.*/
+  /*I want a highlight on mouseover of the 'add' label. Probably just turn it green.*/
+  /*The colour change for the X on hover seems slow. Reduce the time.*/
+}
 .var-assigned-add, .var-assigned-sep, .var-assigned-clear {
   position: relative;
   display: inline-block;
   vertical-align: middle;
   margin: 0px;
   padding: 0px;
-  transition: all var(--cubic-transition);
 }
 .var-assigned-add, .var-assigned-clear {
   width: var(--var-assigned-button-size);
   height: var(--var-assigned-button-size);
-  border: 1px solid transparent;
 }
 .var-assigned-add { /* The add / subtract button.*/
   margin-right: 3px;
@@ -154,7 +160,7 @@
   width: 13px;
   height: 3px;
   background-color: var(--var-assigned-el-colour);
-  transition: .2s all;
+  transition: all .2s linear;
 }
 .var-assigned-add-span2 {
   transform: rotate(90deg);

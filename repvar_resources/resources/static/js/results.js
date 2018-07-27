@@ -27,8 +27,7 @@ repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':nul
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
-// - Change mentions of 'node' to 'variant'.
-// - Add an option to visualize the data as a heatmap. Would be symmetrical, with variants on each side, and coloured by distance-to-nearest-chosen. The order of the variants would be chosen such that clusters are all together, and maybe keep the tree ordering inside each cluster?
+// - Add an option to visualize the data as a heatmap. Would be symmetrical, with variants on each side, and coloured by distance. The order of the variants would be chosen such that clusters are all together, and maybe keep the tree ordering inside each cluster?
 //   - Could just be a pop-up window, or, could potentially replace the tree. I think I could visualize everything from the tree on that heatmap. Useful?
 
 //NOTE (for FAQs or something):

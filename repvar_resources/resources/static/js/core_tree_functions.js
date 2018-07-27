@@ -23,6 +23,8 @@ function setupTreeElements() {
 
   // The search input and associated buttons and labels:
   var search_input = $("#varSearchInput"), search_button = $("#varSearchButton"), search_hits_div = $("#varSearchHitsDiv"), search_select_button = $('#searchToSelectButton');
+  var search_select_add_title = "Add these hits to the current selection",
+    search_select_cut_title = "Remove these hits from the current selection";
   // To calculate approx center point for the search_select button:
   var button_half_width = 41.7, // For 2 digits selected. Close enough for others.
     tree_div_pad_str = $("#mainTreeDiv").css('paddingRight'),
@@ -31,6 +33,14 @@ function setupTreeElements() {
     search_right_margin_str = $("#treeSearchDiv").css('right'),
     search_right_margin = parseInt(search_right_margin_str.slice(0,-2)),
     total_right_offset = search_input_size + search_right_margin - button_half_width - tree_div_pad;
+  function setSearchSelectToAdd() {
+    search_select_button.removeClass('tree-search-cut-hits');
+    search_select_button.attr('title', search_select_add_title);
+  }
+  function setSearchSelectToCut() {
+    search_select_button.addClass('tree-search-cut-hits');
+    search_select_button.attr('title', search_select_cut_title);
+  }
   function treeSearchFunction() {
     var query = search_input.val().trim().toLowerCase();
     var name, num_hits = 0;
@@ -55,7 +65,7 @@ function setupTreeElements() {
       $("#varSearchNumHitsText").text(num_hits + ' hits');
       search_select_max_width = (repvar.opts.sizes.tree/2-total_right_offset) + 'px';
       search_button.addClass('tree-search-button-clear');
-      search_select_button.removeClass('tree-search-cut-hits');
+      setSearchSelectToAdd();
       search_hits_div.css('maxWidth', search_select_max_width);
       search_hits_div.css('width', search_select_max_width);
     }
@@ -78,19 +88,20 @@ function setupTreeElements() {
       treeSearchFunction();
     }
   });
+  setSearchSelectToAdd();
   search_select_button.click(function() {
     if (repvar.search_results.length == 0) { return false; }
     var var_name;
-    if (repvar.search_results.add_to_selection == false) { // Remove from selection
-      search_select_button.removeClass('tree-search-cut-hits');
+    if (repvar.search_results.add_to_selection == false) { // Perform cut from selection
+      setSearchSelectToAdd();
       for (var i=0; i<repvar.search_results.length; ++i) {
         var_name = repvar.search_results[i];
         nodeLabelMouseclickHandler(var_name, false, false);
       }
       numSelectedCallback();
       repvar.search_results.add_to_selection = true;
-    } else { // Add to selection
-      search_select_button.addClass('tree-search-cut-hits');
+    } else { // Perform add to selection
+      setSearchSelectToCut();
       for (var i=0; i<repvar.search_results.length; ++i) {
         var_name = repvar.search_results[i];
         nodeLabelMouseclickHandler(var_name, false, true);
@@ -99,7 +110,7 @@ function setupTreeElements() {
       repvar.search_results.add_to_selection = false;
     }
   });
-
+  // The zoom buttons:
   $('#treeZoomOutButton').click(function() {
     repvar.pan_zoom.zoomOut();
   });
