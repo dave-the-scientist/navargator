@@ -1,7 +1,6 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Finish edits; notes at line 124 of input.css
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
