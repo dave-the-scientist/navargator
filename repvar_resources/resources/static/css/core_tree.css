@@ -1,0 +1,249 @@
+/*Styling for the shared phylogenetic tree and supporting elements*/
+
+/* ======  Tree pane controls  ====== */
+/*         Common elements: */
+.tree-control-div {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  margin: 0px;
+  padding: 0px;
+}
+.tree-control-row, .tree-control-row-rj {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.tree-control-row-rj { /* Right-justified row.*/
+  justify-content: flex-end;
+}
+/* If I don't end up putting anything else in the top corners, can merge tree-control-div and tree-control-row. Probably don't need to be classes either.*/
+
+
+#treeSearchDiv {
+  --tree-search-button-height: 23px;
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  top: 2px;
+  right: 15px;
+}
+#treeSearchDiv > * {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+#varSearchHitsDiv {
+  display: flex;
+  align-items: center;
+  margin: 0px;
+  padding: 0px;
+  max-width: 0px;
+  overflow: hidden;
+  transition: width .2s linear, max-width .2s linear;
+}
+#searchToSelectButton {
+  position: relative;
+  display: flex;
+  margin: 0px;
+  padding: 0px;
+  height: var(--tree-search-button-height);
+  flex-grow: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  border: 1px solid var(--light-background-colour);
+  border-radius: 4px;
+  transition: width .2s linear;
+}
+#varSearchNumHitsText {
+  margin: 0px 0px 0px 5px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  color: black;
+  text-shadow: unset;
+}
+#searchSelectIconDiv {
+  position: relative;
+  top: -1px;
+  right: -1px;
+  margin: 0px 0px 0px 5px;
+  width: 25px;
+  height: 21px; /*var(--tree-search-button-height);*/
+  background-color: var(--dark-background-colour);
+  border: 1px solid var(--light-background-colour);
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  transition: background-color .15s linear, border-color .15s linear;
+}
+#searchSelectIconSpan1, #searchSelectIconSpan2 {
+  position: absolute;
+  top: 9px;
+  right: 6px;
+  width: 13px;
+  height: 3px;
+  background: var(--major-accent-colour);
+  transition: all .15s linear, transform .25s linear;
+}
+#searchSelectIconSpan2 {
+  transform: rotate(90deg);
+}
+#searchToSelectButton:hover > #searchSelectIconDiv {
+  background-color: var(--major-accent-colour);
+  border-color: var(--major-accent-colour) var(--major-accent-colour) var(--major-accent-colour) var(--dark-background-colour);
+}
+#searchToSelectButton:hover > #searchSelectIconDiv > span {
+  background-color: var(--dark-background-colour);
+}
+#searchToSelectButton.tree-search-cut-hits > #searchSelectIconDiv > span {
+  background-color: red;
+}
+#searchToSelectButton.tree-search-cut-hits > #searchSelectIconDiv > #searchSelectIconSpan2 {
+  transform: unset;
+}
+#searchSelectConnectingSpan {
+  position: relative;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  flex-grow: 1;
+  background-color: var(--light-background-colour);
+}
+#varSearchInput {
+  height: calc(var(--tree-search-button-height) - 2px);
+  background-color: var(--light-background-colour);
+  border: 1px solid var(--light-background-colour);
+  box-shadow: unset;
+  text-align: left;
+}
+#varSearchButton {
+  position: relative;
+  width: 25px;
+  height: var(--tree-search-button-height);
+  padding: 0px;
+  background: none;
+  border: 1px solid var(--light-background-colour);
+  box-shadow: unset;
+  transition: background-color .15s, border-color .15s;
+}
+#varSearchButton:hover, #varSearchInput:hover + #varSearchButton {
+  background: var(--major-accent-colour);
+  border-color: var(--major-accent-colour) var(--major-accent-colour) var(--major-accent-colour) var(--dark-background-colour);
+}
+#varSearchButton:hover > span, #varSearchInput:hover + #varSearchButton > span {
+  background: var(--major-accent-colour);
+  border-color: var(--dark-background-colour);
+}
+#varSearchButton:active {
+  background: var(--light-background-colour);
+  border-color: var(--light-background-colour);
+}
+#varSearchButton:active > span {
+  background: var(--light-background-colour);
+  border-color: var(--dark-background-colour);
+}
+#treeSearchSpanLine, #treeSearchSpanCircle {
+  position: absolute;
+  width: 8px;
+  border: 1px solid white;
+  transition: all .15s linear, transform .25s linear;
+}
+#treeSearchSpanLine {
+  top: 12px;
+  left: 9px;
+  height: 0px;
+  transform: rotate(45deg);
+}
+#treeSearchSpanCircle {
+  top: 3px;
+  left: 4px;
+  height: 8px;
+  background: var(--dark-background-colour);
+  border-radius: 50%;
+  box-shadow: inset 1px 1px 2px rgba(255,255,255,0.8);
+}
+#varSearchButton.tree-search-button-clear > #treeSearchSpanLine {
+  width: 12px;
+  transform: translate3d(-4px, -2.5px, 0) rotate(-45deg);
+}
+#varSearchButton.tree-search-button-clear > #treeSearchSpanCircle {
+  width: 12px;
+  height: 0px;
+  border-radius: unset;
+  box-shadow: unset;
+  transform: translate3d(1px, 6.5px, 0) rotate(45deg);
+}
+
+/*         Top left panel/buttons: */
+#treeControlsDiv {
+  top: 30px;
+  left: 15px;
+}
+#treeZoomOutButton, #treeZoomInButton {
+  font-size: 12px;
+}
+#treeZoomInButton, #treeZoomResetButton {
+  margin-right: 4px;
+}
+#scrollZoomButton {
+  line-height: 9px;
+}
+#scrollZoomText {
+  display: table-cell;
+  vertical-align: middle;
+  font-family: var(--font-family);
+  font-size: 10px;
+}
+#scrollZoomStatus {
+  display: table-cell;
+  vertical-align: middle;
+  padding-left: 3px;
+  width: 22px;
+}
+/*         Top right panel: */
+#treeSelectionDiv {
+  top: 30px;
+  right: 15px;
+}
+#selectNamesGroupDiv {
+  display: flex;
+  position: relative;
+}
+#selectNamesButton {
+  margin: 0px;
+  width: 52px;
+  line-height: 9px;
+  font-size: 10px;
+}
+#selectNamesPane {
+  top: 0px;
+  right: 0px;
+}
+#selectNamesMainDiv {
+  display: inline-flex;
+  position: relative;
+  padding: 5px 0px 0px 0px;
+}
+#selectNamesLeftColumn, #selectNamesRightColumn {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 0px 5px;
+}
+#selectNamesLeftColumn {
+  padding-left: 10px;
+}
+#selectNamesRightColumn {
+  padding-right: 10px;
+}
+#selectNamesLeftColumn > *, #selectNamesRightColumn > * {
+  flex-shrink: 0;
+}
+#selectNamesText {
+  width: 250px;
+  height: 100px;
+  resize: none;
+}
+#selectNamesAddButton {
+  margin: 5px 0px 10px 0px;
+}
+#selectAllButton {
+  margin-left: 4px;
+}

@@ -16,8 +16,8 @@ var repvar = {
       'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
     },
     'colours' : {
-      'node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43
-    }, // singleton:#015DF3
+      'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43
+    },
     'graph' : {
       'histo_bins':15, 'total_width':null, 'total_height':null
     }
@@ -96,6 +96,54 @@ function initializeFloatingPanes() {
 function showFloatingPane(pane) {
   pane.css('maxWidth', pane[0].scrollWidth+"px");
   pane.css('maxHeight', pane[0].scrollHeight+"px");
+}
+function setupDisplayOptionsPane() {
+  setColourPickers();
+}
+function setColourPickers() {
+  /*Updates the colour pickers to reflect the current values in repvar.opts.colours*/
+
+  //$("#cluster-colour")[0].jscolor.fromString(opts.colours.clusters); // Set colour
+  //opts.colours.bar_chart = '#' + $("#bar-colour")[0].value; // Get colour
+
+  //var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'bar_chart', 'cluster_highlight', 'selection', 'search'];
+  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background'];
+  var key, colour, picker_id;
+  for (var i=0; i<key_list.length; ++i) {
+    key = key_list[i];
+    colour = repvar.opts.colours[key];
+    picker_id = '#' + key + "_colourPicker";
+    $(picker_id)[0].jscolor.fromString(colour);
+  }
+}
+function updateDisplayColour(key, jscolor) {
+  /*Called directly by the colour picker elements.*/
+  var colour = '#' + jscolor;
+  if (key in repvar.opts.colours) {
+    repvar.opts.colours[key] = colour;
+    if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
+      updateVariantColours();
+    } else if (['cluster_background'].indexOf(key) > -1) {
+      updateClusterColours();
+    }
+  } else {
+    showErrorPopup("Error setting colour; key '"+key+"' not recognized.", "NaVARgator colour picker");
+  }
+}
+function updateVariantColours() {
+  var colour;
+  $.each(repvar.nodes, function(name, node) {
+    colour = repvar.opts.colours[node.node_rest_key];
+    node.node_rest_colour = colour;
+    if (!node.selected && !node.mouseover) {
+      node.circle.attr({fill:colour});
+    }
+  });
+  updateTreeLegend();
+}
+function updateClusterColours() {
+  // Modify the cluster objects in repvar.clusters.
+  // Deal with the transparency thing (check updateColours() in results.js).
 }
 
 // =====  Page maintainance and management:

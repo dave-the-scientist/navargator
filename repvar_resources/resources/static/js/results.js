@@ -251,9 +251,6 @@ function setupNormalizationPane() {
     custom_radio.prop('checked', true).change();
   });
 }
-function setupDisplayOptionsPane() {
-
-}
 function setupExportPane() {
   var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
   export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
@@ -475,7 +472,7 @@ function createClusterRow(var_name, table_body) {
   return $("<tr class='cluster-list-row' variant-name='" +var_name+ "'>" +name_td +size_td +avg_dist_td +score_td+ "</tr>");
 }
 function updateClusteredVariantMarkers() {
-  // Colours the chosen, available, and ignored nodes. Also adds tooltips to
+  // Colours the chosen, available, and ignored nodes. Also adds tooltips to the mouseover object.
   var var_name, circle, circle_colour_key;
   for (var i=0; i<repvar.leaves.length; ++i) {
     var_name = repvar.leaves[i], node = repvar.nodes[var_name];
@@ -490,7 +487,7 @@ function updateClusteredVariantMarkers() {
       circle_colour_key = 'ignored';
       circle.attr({'r':repvar.opts.sizes.big_marker_radius});
     } else {
-      circle_colour_key = 'node';
+      circle_colour_key = 'default_node';
     }
     changeNodeStateColour(var_name, circle, 'node_rest', circle_colour_key);
     circle.toFront();

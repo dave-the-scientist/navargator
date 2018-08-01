@@ -14,17 +14,23 @@
     <script src="static/libs/jsphylosvg-DC.js"></script>
     <script src="static/libs/svg-pan-zoom.min.js"></script>
     <script src="static/libs/d3.min.js"></script>
+    <script src="static/libs/jscolor.js"></script>
     <link rel="stylesheet" href="static/libs/jquery-ui.min.css">
     <link rel="stylesheet" href="static/libs/jquery-ui.theme.min.css">
     <script>
       var timestamp = +new Date;
       var core_css_url = 'static/css/core.css?v=' + timestamp;
+      var core_tree_css_url = 'static/css/core_tree.css?v=' + timestamp;
       var page_css_url = 'static/css/results.css?v=' + timestamp;
       var icon_url = 'static/images/favicon.ico?v=' + timestamp;
       $('<link>')
         .appendTo('head')
         .attr({type : 'text/css', rel : 'stylesheet'})
         .attr('href', core_css_url);
+      $('<link>')
+        .appendTo('head')
+        .attr({type : 'text/css', rel : 'stylesheet'})
+        .attr('href', core_tree_css_url);
       $('<link>')
         .appendTo('head')
         .attr({type : 'text/css', rel : 'stylesheet'})
@@ -92,9 +98,35 @@
 
           <div id="displayOptionsDiv" class="style-box">
             <h2 class="collapsible-header">Display options</h2>
-            <div class="collapsible-panel">
-              <p>Font sizes, colour pickers</p>
-              <button id="redrawResultsButton" class="jq-ui-button">Redraw</button>
+            <div id="displayOptionsPanel" class="collapsible-panel">
+
+              <table id="displayOptionsColourTable"><tbody>
+                <tr>
+                  <td class="displayOptionGroupColumn" colspan="4"><label class="displayOptionGroupLabel">Variant colours</label></td>
+                </tr>
+                <tr>
+                  <td><label class="displayOptionLabel">Available:</label></td>
+                  <td><input id="available_colourPicker" class="jscolor" onchange="updateDisplayColour('available',this.jscolor)"></td>
+                  <td><label class="displayOptionLabel">Chosen:</label></td>
+                  <td><input id="chosen_colourPicker" class="jscolor" onchange="updateDisplayColour('chosen',this.jscolor)"></td>
+                </tr>
+                <tr>
+                  <td><label class="displayOptionLabel">Ignored:</label></td>
+                  <td><input id="ignored_colourPicker" class="jscolor" onchange="updateDisplayColour('ignored',this.jscolor)"></td>
+                  <td><label class="displayOptionLabel">Default:</label></td>
+                  <td><input id="default_node_colourPicker" class="jscolor" onchange="updateDisplayColour('default_node',this.jscolor)"></td>
+                </tr>
+                <tr>
+                  <td class="displayOptionGroupColumn" colspan="4"><label class="displayOptionGroupLabel">Cluster colours</label></td>
+                </tr>
+                <tr>
+                  <td><label class="displayOptionLabel">Clusters:</label></td>
+                  <td><input id="cluster_background_colourPicker" class="jscolor" onchange="updateDisplayColour('cluster_background',this.jscolor)"></td>
+                  <td><label class="displayOptionLabel">Singletons:</label></td>
+                  <td><input id="singleton_cluster_background_colourPicker" class="jscolor" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
+                </tr>
+              </tbody></table>
+
             </div>
           </div>
 

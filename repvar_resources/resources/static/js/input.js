@@ -151,9 +151,6 @@ function setupUploadSaveButtons() {
     });
   });
 }
-function setupDisplayOptionsPane() {
-
-}
 function setupNormalizationPane() {
   var go_button_shown = false;
   var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
@@ -492,7 +489,7 @@ function updateCAIVariantMarkers() {
     } else if (repvar.ignored.indexOf(var_name) != -1) {
       colour_key = 'ignored';
     } else {
-      colour_key = 'node';
+      colour_key = 'default_node';
       circle_radius = repvar.opts.sizes.small_marker_radius;
     }
     changeNodeStateColour(var_name, circle, 'node_rest', colour_key);
