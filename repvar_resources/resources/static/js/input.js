@@ -1,9 +1,12 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - Finish display options in core.js
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
+// - After the session file format is ready, make it save the user's display options.
+//   - These options should also be passed to the server and then to results.js as defaults.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
@@ -449,9 +452,9 @@ function updateVarSelectList() {
     repvar.nodes[var_name].variant_select_label = label;
     addVariantLabelCallbacks(label, var_name);
   }
-  $("#chosenAssignedDiv").css('border-color', repvar.opts.colours['chosen']);
-  $("#availAssignedDiv").css('border-color', repvar.opts.colours['available']);
-  $("#ignoredAssignedDiv").css('border-color', repvar.opts.colours['ignored']);
+  $("#chosenAssignedDiv").css('border-color', repvar.opts.colours.chosen);
+  $("#availAssignedDiv").css('border-color', repvar.opts.colours.available);
+  $("#ignoredAssignedDiv").css('border-color', repvar.opts.colours.ignored);
   $("#numVariantsSpan").html(repvar.leaves.length);
   $("#mainVariantSelectDiv").show();
 }
@@ -602,6 +605,15 @@ function updateScoreGraph() {
       .attr("d", function() { return repvar.graph.line_fxn(repvar.result_links.scores); });
     $("#scoreGraphSvg").show();
   }
+}
+function updateVariantColoursFollowup() {
+  /*Called from core.js when the user changes one of the variant colours.*/
+  $("#availAssignedDiv").css('border-color', repvar.opts.colours.available);
+  $("#chosenAssignedDiv").css('border-color', repvar.opts.colours.chosen);
+  $("#ignoredAssignedDiv").css('border-color', repvar.opts.colours.ignored);
+  $.each(repvar.nodes, function(name, node) {
+    node.variant_select_label.css('border-color', node.node_rest_colour);
+  });
 }
 
 // =====  Callback and event handlers:

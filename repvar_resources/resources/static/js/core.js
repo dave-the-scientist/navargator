@@ -1,4 +1,6 @@
 // TODO:
+// - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
+// - Finish the rest of the display colour pickers.
 // - Many of the opts.colours should be pulled from core.css.
 // - Finish defining error codes in processError().
 
@@ -16,7 +18,7 @@ var repvar = {
       'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
     },
     'colours' : {
-      'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43
+      'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
     },
     'graph' : {
       'histo_bins':15, 'total_width':null, 'total_height':null
@@ -99,6 +101,8 @@ function showFloatingPane(pane) {
 }
 function setupDisplayOptionsPane() {
   setColourPickers();
+
+  // Ensure that if the transparency or tree background is changed, updateClusterColours() is called.
 }
 function setColourPickers() {
   /*Updates the colour pickers to reflect the current values in repvar.opts.colours*/
@@ -107,7 +111,7 @@ function setColourPickers() {
   //opts.colours.bar_chart = '#' + $("#bar-colour")[0].value; // Get colour
 
   //var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'bar_chart', 'cluster_highlight', 'selection', 'search'];
-  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background'];
+  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'selection'];
   var key, colour, picker_id;
   for (var i=0; i<key_list.length; ++i) {
     key = key_list[i];
@@ -123,11 +127,15 @@ function updateDisplayColour(key, jscolor) {
     repvar.opts.colours[key] = colour;
     if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
       updateVariantColours();
-    } else if (['cluster_background'].indexOf(key) > -1) {
-      updateClusterColours();
+    } else if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
+      //       ^ This list must match that in updateClusterColours().
+      updateClusterTransColour(key, colour);
+    }
+    if (['cluster_highlight', 'selection'].indexOf(key) > -1) {
+      // cluster_highlight must be in 2 categories; above for the clusters, here for the nodes/labels.
     }
   } else {
-    showErrorPopup("Error setting colour; key '"+key+"' not recognized.", "NaVARgator colour picker");
+    showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the NaVARgator github page.", "NaVARgator colour picker");
   }
 }
 function updateVariantColours() {
@@ -140,10 +148,30 @@ function updateVariantColours() {
     }
   });
   updateTreeLegend();
+  updateVariantColoursFollowup();
 }
 function updateClusterColours() {
-  // Modify the cluster objects in repvar.clusters.
-  // Deal with the transparency thing (check updateColours() in results.js).
+  var key, keys = ['cluster_background', 'cluster_highlight'];
+  for (var i=0; i<keys.length; ++i) {
+    key = keys[i];
+    updateClusterTransColour(key, repvar.opts.colours[key]);
+  }
+}
+function updateClusterTransColour(key, colour) {
+  var ret = calculateTransparentComplement(colour, repvar.opts.colours.cluster_opacity, repvar.opts.colours.tree_background);
+  var trans_comp = (ret.closest_colour == '') ? ret.trans_comp : ret.closest_colour,
+    trans_key = key + '_trans';
+  repvar.opts.colours[trans_key] = trans_comp;
+  updateClusterTransColourFollowup(key, trans_comp);
+  if (ret.closest_colour != '') {
+    // TODO: Show warning popup.
+  }
+}
+function updateVariantColoursFollowup() {
+  // Overwritten in input.js to update elements with new colours.
+}
+function updateClusterTransColourFollowup(key, trans_comp) {
+  // Overwritten in results.js to update elements with new colours.
 }
 
 // =====  Page maintainance and management:
@@ -189,19 +217,8 @@ function closeInstance() {
 }
 
 // =====  Functions to calculate and warn about colour choices:
-function setTransparentColour(colour_key, desired_col, background_col) {
-  // Also pass in the warning icon so it can be displayed if needed.
-  var ret = calculateTransparentComplement(desired_col, background_col);
-  if (ret.closest_colour != '') {
-    repvar.opts.colours[colour_key] = ret.closest_colour;
-    // display warning icon, with message/title including ret.min_transparency.
-  } else {
-    repvar.opts.colours[colour_key] = ret.initial_colour;
-  }
-}
-function calculateTransparentComplement(desired_col, background_col) {
-  // If returned.closest_colour != '', it is not possible to recreate that desired colour with the given background and transparency. In that case closest_colour is the best we can do with the given transparency; returned.min_transparency is what the current transparency should be raised to in order to display desired_col.
-  var opacity = repvar.opts.colours.cluster_opacity;
+function calculateTransparentComplement(desired_col, opacity, background_col) {
+  // If returned.closest_colour == '', then returned.trans_comp is what the colour should be set to in order to achieve the desired colour, given the current cluster_opacity and tree_background. Otherwise, it is not possible to recreate that desired colour with the given background and transparency. In that case closest_colour is the best we can do with the given transparency; returned.min_transparency is what the current transparency should be raised to in order to display desired_col.
   var de_r = parseInt('0x'+desired_col.slice(1,3)),
     de_g = parseInt('0x'+desired_col.slice(3,5)),
     de_b = parseInt('0x'+desired_col.slice(5,7));
@@ -214,7 +231,7 @@ function calculateTransparentComplement(desired_col, background_col) {
     'b': roundFloat((de_b - bg_b*(1-opacity)) / opacity, 0),
     'closest_colour': '', 'min_transparency': 0.0
   };
-  ret.initial_colour = colourStringFromRGB(ret.r, ret.g, ret.b);
+  ret.trans_comp = colourStringFromRGB(ret.r, ret.g, ret.b);
   var min_trans = Math.max(calculateMinimumTransparency(ret.r, de_r, bg_r), calculateMinimumTransparency(ret.g, de_g, bg_g), calculateMinimumTransparency(ret.b, de_b, bg_b));
   if (min_trans > 0) {
     ret.min_transparency = min_trans;
@@ -232,7 +249,7 @@ function colourStringFromRGB(r, g, b) {
   return '#' + r_str + g_str + b_str;
 }
 function calculateMinimumTransparency(initial_val, desired_val, background_val) {
-  // Returns 0 if the desired_val can be made from the current transparency and background_val, otherwise returns the smallest avlue that the transparency would have to be set to in order to make desired_val.
+  // Returns 0 if the desired_val can be made from the current transparency and background_val, otherwise returns the smallest value that the transparency would have to be set to in order to make desired_val.
   // These equations come from: desired_val = initial_val*opacity + background_val*(1-opacity).
   var min_trans = 0;
   if (initial_val < 0) {
