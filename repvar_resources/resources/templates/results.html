@@ -99,38 +99,49 @@
             <h2 class="collapsible-header">Display options</h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
 
-              <table id="displayOptionsColourTable"><tbody>
+              <table class="display-options-table"><tbody>
                 <tr>
-                  <td class="displayOptionGroupColumn" colspan="4"><label class="displayOptionGroupLabel">Variant colours</label></td>
+                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Variant colours</label></td>
                 </tr>
                 <tr>
-                  <td><label class="displayOptionLabel">Available:</label></td>
-                  <td><input id="available_colourPicker" class="jscolor" onchange="updateDisplayColour('available',this.jscolor)"></td>
-                  <td><label class="displayOptionLabel">Chosen:</label></td>
-                  <td><input id="chosen_colourPicker" class="jscolor" onchange="updateDisplayColour('chosen',this.jscolor)"></td>
+                  <td><label class="display-options-label">Available:</label></td>
+                  <td><input id="available_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('available',this.jscolor)"></td>
+                  <td><label class="display-options-label">Chosen:</label></td>
+                  <td><input id="chosen_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('chosen',this.jscolor)"></td>
                 </tr>
                 <tr>
-                  <td><label class="displayOptionLabel">Ignored:</label></td>
-                  <td><input id="ignored_colourPicker" class="jscolor" onchange="updateDisplayColour('ignored',this.jscolor)"></td>
-                  <td><label class="displayOptionLabel">Default:</label></td>
-                  <td><input id="default_node_colourPicker" class="jscolor" onchange="updateDisplayColour('default_node',this.jscolor)"></td>
+                  <td><label class="display-options-label">Ignored:</label></td>
+                  <td><input id="ignored_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('ignored',this.jscolor)"></td>
+                  <td><label class="display-options-label">Default:</label></td>
+                  <td><input id="default_node_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('default_node',this.jscolor)"></td>
                 </tr>
                 <tr>
-                  <td class="displayOptionGroupColumn" colspan="4"><label class="displayOptionGroupLabel">Tree colours</label></td>
+                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree colours</label></td>
                 </tr>
                 <tr>
-                  <td><label class="displayOptionLabel">Clusters:</label></td>
-                  <td><input id="cluster_background_colourPicker" class="jscolor" onchange="updateDisplayColour('cluster_background',this.jscolor)"></td>
-                  <td><label class="displayOptionLabel">Singletons:</label></td>
-                  <td><input id="singleton_cluster_background_colourPicker" class="jscolor" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
+                  <td><label class="display-options-label">Clusters:</label></td>
+                  <td><input id="cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_background',this.jscolor)"></td>
+                  <td><label class="display-options-label">Singletons:</label></td>
+                  <td><input id="singleton_cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
                 </tr>
                 <tr>
-                  <td><label class="displayOptionLabel">Mouseover:</label></td>
-                  <td><input id="cluster_highlight_colourPicker" class="jscolor" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
-                  <td><label class="displayOptionLabel">Selection:</label></td>
-                  <td><input id="selection_colourPicker" class="jscolor" onchange="updateDisplayColour('selection',this.jscolor)"></td>
+                  <td><label class="display-options-label">Mouseover:</label></td>
+                  <td><input id="cluster_highlight_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
+                  <td><label class="display-options-label">Selection:</label></td>
+                  <td><input id="selection_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('selection',this.jscolor)"></td>
                 </tr>
               </tbody></table>
+              <hr>
+              <table class="display-options-table"><tbody>
+                <tr>
+                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Sizes</label></td>
+                </tr>
+                <tr>
+                  <td><label class="display-options-label">Tree font:</label></td>
+                  <td><input id="displayTreeFontSizeSpinner" class="param-spinner" /></td>
+                </tr>
+              </tbody></table>
+              <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
 
             </div>
           </div>
@@ -279,7 +290,7 @@
             <table id="clustersListTable" class="sortable results-table">
               <thead>
                 <tr>
-                  <th>Variant</th>
+                  <th>Cluster center</th>
                   <th class="sorttable_numeric">Size</th>
                   <th class="sorttable_numeric">Average<br>distance</th>
                   <th class="sorttable_numeric">90th<br>percentile</th>

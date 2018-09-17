@@ -1,6 +1,5 @@
 // TODO:
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
-// - Finish the rest of the display colour pickers.
 // - Many of the opts.colours should be pulled from core.css.
 // - Finish defining error codes in processError().
 
@@ -100,9 +99,25 @@ function showFloatingPane(pane) {
   pane.css('maxHeight', pane[0].scrollHeight+"px");
 }
 function setupDisplayOptionsPane() {
-  setColourPickers();
+  $("#displayTreeFontSizeSpinner").spinner({
+    min: 0, max: 25,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      repvar.opts.fonts.tree_font_size = ui.value;
+    },
+    change: function(event, ui) {
+      repvar.opts.fonts.tree_font_size = parseInt(this.value);
+    }
+  }).spinner('value', repvar.opts.fonts.tree_font_size);
+  $("#redrawTreeButton").click(function() {
+    redrawTree();
+  });
 
+  setColourPickers();
   // Ensure that if the transparency or tree background is changed, updateClusterColours() is called.
+}
+function redrawTree() {
+  // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
 }
 function setColourPickers() {
   /*Updates the colour pickers to reflect the current values in repvar.opts.colours*/

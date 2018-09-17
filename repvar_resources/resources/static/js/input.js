@@ -333,7 +333,7 @@ function setupScoresGraph() {
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
     .attr("y", height + 30)
-    .text("Number of variants");
+    .text("Number of clusters");
   repvar.graph.g.append("text") // y axis
     .attr("class", "score-axis-label")
     .attr("text-anchor", "middle")
@@ -436,6 +436,11 @@ function newTreeLoaded(data_obj) {
     return false;
   }
 }
+function redrawTree() {
+  drawTree();
+  updateVarSelectList();
+  updateRunOptions();
+}
 function updateVarSelectList() {
   // Updates the list of variants in the selection pane. Should be called every time the phylogenetic tree is modified.
   $('#varSelectDiv > .var-select-label').remove();
@@ -513,7 +518,7 @@ function updateResultsPane(num_vars, num_vars_range) {
   for (var var_num=num_vars; var_num<=num_vars_range; ++var_num) {
     if (repvar.result_links.hasOwnProperty(var_num)) { continue; }
     results_url = page.server_url + '/results?' + page.session_id + '_' + var_num;
-    result_description = var_num + ' variants';
+    result_description = var_num + ' clusters';
     result_link_obj = $('<a href="'+results_url+'" title="'+result_description+'" target="_blank">'+result_description+' [processing...]</a>');
     result_list_obj = result_link_obj.wrap('<li class="result-link-li">').parent();
     result_list_obj.attr("variantNumber", var_num);
@@ -556,7 +561,7 @@ function checkIfProcessingDone() {
           draw_graph = false;
         } else if (repvar.result_links[var_num].score == null) {
           repvar.result_links[var_num].score = score;
-          repvar.result_links[var_num].link.html(var_num+' variants ['+roundFloat(score, 4)+']');
+          repvar.result_links[var_num].link.html(var_num+' clusters ['+roundFloat(score, 4)+']');
           max_dist = parseFloat(data.max_var_dists[i]);
           if (max_dist > max_var_dist) { max_var_dist = max_dist; }
         } else if (repvar.result_links[var_num].score != score) {

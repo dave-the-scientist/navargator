@@ -427,24 +427,24 @@ button.control-element:active {
 }
 
 /* ======  Display options  ====== */
-#displayOptionsColourTable {
+.display-options-table {
   width: 100%;
   text-align: left;
 }
-#displayOptionsColourTable td:nth-child(1),
-#displayOptionsColourTable td:nth-child(3) {
+.display-options-table td:nth-child(1),
+.display-options-table td:nth-child(3) {
   text-align: right;
 }
-#displayOptionsColourTable td.displayOptionGroupColumn {
+.display-options-table td.display-options-group-column {
   text-align: center;
 }
-#displayOptionsColourTable .displayOptionGroupLabel {
+.display-options-table .display-options-group-label {
   font-weight: bold;
 }
-#displayOptionsPanel .displayOptionLabel {
-  font-size: 0.9em;
+.display-options-table .display-options-label {
+  font-size: 0.85em;
 }
-#displayOptionsColourTable .jscolor {
+.display-options-table .jscolor {
   width: 45px;
   height: 14px;
   padding: 0px 1px;
@@ -495,13 +495,18 @@ button.control-element:active {
 .param-spinner {
   width: 21px;
 }
+table.sortable th span,
+table.sortable th:after {
+  font-size: 12px;
+}
 /*table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {*/
 table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
-  content: " \25B4\25BE"
+  /*content: " \25B4\25BE";*/
+  content: " \25B4";
 }
 table.sortable th.sorttable_sorted:after {
-  content: "\25B4"
+  /*content: "\25B4";*/
 }
 table.sortable th.sorttable_sorted_reverse:after {
-  content: "\25BE"
+  /*content: "\25BE";*/
 }

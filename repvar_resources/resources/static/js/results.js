@@ -16,7 +16,7 @@ $.extend(repvar.opts.graph, {
 repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
 
 //BUG:
-
+// - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
 // - Need a more efficient selectNamesByThreshold().
@@ -354,6 +354,12 @@ function checkForClusteringResults() {
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
   });
 }
+function redrawTree() {
+  drawTree(false);
+  drawBarGraphs();
+  drawClusters();
+  updateClusteredVariantMarkers();
+}
 function extendTreeLegend() {
   var contains_singletons = false, clstr;
   for (var i=0; i<repvar.num_variants; ++i) {
@@ -405,6 +411,7 @@ function drawClusters() {
   var_names.sort(function(a,b) {
     return repvar.clusters[a].nodes.length - repvar.clusters[b].nodes.length;
   });
+  $(".cluster-list-row").remove();
   var var_name, cluster_row, ret, cluster_obj, mouseover_obj, to_front = [],
     table_body = $("#clustersListTable > tbody");
   for (var i=0; i<var_names.length; ++i) {
