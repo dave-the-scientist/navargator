@@ -1,29 +1,35 @@
 // TODO:
+// - Finish removing mention of 'repvar'
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
 // - Finish defining error codes in processError().
 
 // =====  Common options and parameters
-var page = {
+var nvrgtr_page = {
   'server_url':'http://'+window.location.host, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
 };
-var repvar = {
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null,
-  'opts' : {
-    'fonts' : {
-      'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
-    },
-    'sizes' : {
-      'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
-    },
-    'colours' : {
-      'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
-    },
-    'graph' : {
-      'histo_bins':15, 'total_width':null, 'total_height':null
-    }
+var nvrgtr_data = { // Variables used by each page.
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null
+};
+var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
+  'graph' : {
+    'histo_bins':15, 'total_width':null, 'total_height':null
   }
 };
+var nvrgtr_opts = { // User-modifiable settings that persist between pages and sessions.
+  'fonts' : {
+    'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
+  },
+  'sizes' : {
+    'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
+  },
+  'colours' : {
+    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
+  }
+};
+
+// set a default for nvrgtr_opts.sizes.tree; if different from the css value on page load, set the css global value
+
 
 // =====  Convenience and error handling:
 function showErrorPopup(message, title) {
@@ -100,15 +106,25 @@ function showFloatingPane(pane) {
 }
 function setupDisplayOptionsPane() {
   $("#displayTreeFontSizeSpinner").spinner({
-    min: 0, max: 25,
+    min: 0, max: 48,
     numberFormat: 'N0', step: 1,
     spin: function(event, ui) {
-      repvar.opts.fonts.tree_font_size = ui.value;
+      nvrgtr_opts.fonts.tree_font_size = ui.value;
     },
     change: function(event, ui) {
-      repvar.opts.fonts.tree_font_size = parseInt(this.value);
+      nvrgtr_opts.fonts.tree_font_size = parseInt(this.value);
     }
-  }).spinner('value', repvar.opts.fonts.tree_font_size);
+  }).spinner('value', nvrgtr_opts.fonts.tree_font_size);
+  $("#displayTreeLabelOutlineSpinner").spinner({
+    min: 0, max: 10,
+    numberFormat: 'N1', step: 0.1,
+    spin: function(event, ui) {
+      nvrgtr_opts.sizes.labels_outline = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_opts.sizes.labels_outline = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_opts.sizes.labels_outline);
   $("#redrawTreeButton").click(function() {
     redrawTree();
   });
@@ -120,7 +136,7 @@ function redrawTree() {
   // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
 }
 function setColourPickers() {
-  /*Updates the colour pickers to reflect the current values in repvar.opts.colours*/
+  /*Updates the colour pickers to reflect the current values in nvrgtr_opts.colours*/
 
   //$("#cluster-colour")[0].jscolor.fromString(opts.colours.clusters); // Set colour
   //opts.colours.bar_chart = '#' + $("#bar-colour")[0].value; // Get colour
@@ -130,7 +146,7 @@ function setColourPickers() {
   var key, colour, picker_id;
   for (var i=0; i<key_list.length; ++i) {
     key = key_list[i];
-    colour = repvar.opts.colours[key];
+    colour = nvrgtr_opts.colours[key];
     picker_id = '#' + key + "_colourPicker";
     $(picker_id)[0].jscolor.fromString(colour);
   }
@@ -138,8 +154,8 @@ function setColourPickers() {
 function updateDisplayColour(key, jscolor) {
   /*Called directly by the colour picker elements.*/
   var colour = '#' + jscolor;
-  if (key in repvar.opts.colours) {
-    repvar.opts.colours[key] = colour;
+  if (key in nvrgtr_opts.colours) {
+    nvrgtr_opts.colours[key] = colour;
     if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
       updateVariantColours();
     } else if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
@@ -155,8 +171,8 @@ function updateDisplayColour(key, jscolor) {
 }
 function updateVariantColours() {
   var colour;
-  $.each(repvar.nodes, function(name, node) {
-    colour = repvar.opts.colours[node.node_rest_key];
+  $.each(nvrgtr_data.nodes, function(name, node) {
+    colour = nvrgtr_opts.colours[node.node_rest_key];
     node.node_rest_colour = colour;
     if (!node.selected && !node.mouseover) {
       node.circle.attr({fill:colour});
@@ -169,14 +185,14 @@ function updateClusterColours() {
   var key, keys = ['cluster_background', 'cluster_highlight'];
   for (var i=0; i<keys.length; ++i) {
     key = keys[i];
-    updateClusterTransColour(key, repvar.opts.colours[key]);
+    updateClusterTransColour(key, nvrgtr_opts.colours[key]);
   }
 }
 function updateClusterTransColour(key, colour) {
-  var ret = calculateTransparentComplement(colour, repvar.opts.colours.cluster_opacity, repvar.opts.colours.tree_background);
+  var ret = calculateTransparentComplement(colour, nvrgtr_opts.colours.cluster_opacity, nvrgtr_opts.colours.tree_background);
   var trans_comp = (ret.closest_colour == '') ? ret.trans_comp : ret.closest_colour,
     trans_key = key + '_trans';
-  repvar.opts.colours[trans_key] = trans_comp;
+  nvrgtr_opts.colours[trans_key] = trans_comp;
   updateClusterTransColourFollowup(key, trans_comp);
   if (ret.closest_colour != '') {
     // TODO: Show warning popup.
@@ -199,30 +215,30 @@ function generateBrowserId(length) {
 }
 function daemonURL(url) {
   // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in repvar_daemon.py
-  return page.server_url + '/daemon' + url;
+  return nvrgtr_page.server_url + '/daemon' + url;
 }
 function maintainServer() {
   // This is continually called to maintain the background server.
-  if (!page.instance_closed) {
+  if (!nvrgtr_page.instance_closed) {
     $.ajax({
       url: daemonURL('/maintain-server'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'browser_id': page.browser_id},
+      data: {'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id},
       error: function(error) {
-        console.log('connection to Repvar server lost. The error:', error);
-        page.instance_closed = true;
-        clearInterval(page.maintain_interval_obj);
+        console.log('connection to NaVARgator server lost. The error:', error);
+        nvrgtr_page.instance_closed = true;
+        clearInterval(nvrgtr_page.maintain_interval_obj);
       }
     });
   }
 }
 function closeInstance() {
-  page.instance_closed = true;
-  clearInterval(page.maintain_interval_obj);
+  nvrgtr_page.instance_closed = true;
+  clearInterval(nvrgtr_page.maintain_interval_obj);
   $.ajax({
     url: daemonURL('/instance-closed'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'browser_id': page.browser_id},
+    data: {'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id},
     async: false, // Makes a huge difference ensuring that this ajax call actually happens
     error: function(error) {
       console.log("Error closing your instance:");
@@ -294,10 +310,10 @@ function calculate90Percentile(orig_var_names) {
   }
   var var_names = orig_var_names.slice();
   var_names.sort(function(a, b) {
-    return repvar.variant_distance[a] - repvar.variant_distance[b];
+    return nvrgtr_data.variant_distance[a] - nvrgtr_data.variant_distance[b];
   });
   var ind = roundFloat(var_names.length * 0.9, 0) - 1;
-  return repvar.variant_distance[var_names[ind]];
+  return nvrgtr_data.variant_distance[var_names[ind]];
 }
 function saveDataString(data_str, file_name, file_type) {
   // Uses javascript to save the string as a file to the client's download directory. This method works for >1MB svg files, for which other methods failed on Chrome.
@@ -314,7 +330,7 @@ function calculateHistoTicks(max_var_dist) {
   // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.
   // The upper bound of each bin is not inclusive.
   var x_fxn = d3.scaleLinear().domain([0, max_var_dist]);
-  var x_ticks = x_fxn.ticks(repvar.opts.graph.histo_bins);
+  var x_ticks = x_fxn.ticks(nvrgtr_settings.graph.histo_bins);
   if (max_var_dist >= x_ticks[x_ticks.length-1]) {
     x_ticks.push(x_ticks[x_ticks.length-1] + x_ticks[1]);
   }

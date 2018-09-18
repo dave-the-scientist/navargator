@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Repvar input page">
+    <meta name="description" content="NaVARgator input page">
     <meta name="author" content="Dave Curran">
     <title>NaVARgator input page</title>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
@@ -41,7 +41,7 @@
     </script>
   </head>
   <body>
-    <div id="errorDialog" title="Repvar error">
+    <div id="errorDialog" title="NaVARgator error">
       <p id="errorDialogText">Error loading page resources.</p>
     </div>
 
@@ -112,13 +112,15 @@
                 <tr>
                   <td><label class="display-options-label">Tree font:</label></td>
                   <td><input id="displayTreeFontSizeSpinner" class="param-spinner" /></td>
+                  <td><label class="display-options-label">Outer outline:</label></td>
+                  <td><input id="displayTreeLabelOutlineSpinner" class="param-spinner" /></td>
                 </tr>
               </tbody></table>
               <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
 
               <hr>
             </div>
-            <button id="saveRepvarButton" class="jq-ui-button">Save session file</button>
+            <button id="saveSessionButton" class="jq-ui-button">Save session file</button>
           </div>
 
           <div id="runOptionsDiv" class="style-box">

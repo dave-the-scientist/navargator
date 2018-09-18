@@ -4,22 +4,25 @@
 
 
 // =====  Modified / additional common variables:
-$.extend(page, {
-  'check_results_interval':1000
+$.extend(nvrgtr_page, {
+  'page':'results', 'check_results_interval':1000
 });
-$.extend(repvar, {
-  'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[]
+$.extend(nvrgtr_data, {
+  'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[],
+  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]}
 });
-$.extend(repvar.opts.graph, {
+$.extend(nvrgtr_settings.graph, {
   'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
 });
-repvar.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]};
+
+//nvrgtr_data.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]}; // ADD some of this to the core.js nvrgtr_data.graph
+// Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by addming a middle variable
 
 //BUG:
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
-// - Need a more efficient selectNamesByThreshold().
+// - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
@@ -41,22 +44,22 @@ function setupPage() {
 
   // =====  Variable parsing:
   var url_params = location.search.slice(1).split('_');
-  page.session_id = url_params[0];
-  repvar.num_variants = url_params[1];
-  document.title = '['+repvar.num_variants+'] ' + document.title;
-  page.browser_id = generateBrowserId(10);
-  console.log('browser ID:', page.browser_id);
+  nvrgtr_page.session_id = url_params[0];
+  nvrgtr_data.num_variants = url_params[1];
+  document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
+  nvrgtr_page.browser_id = generateBrowserId(10);
+  console.log('browser ID:', nvrgtr_page.browser_id);
   var tree_width_str = $("#mainTreeDiv").css('width'),
     graph_width_str = $("#selectionDiv").css('width'),
     graph_height_str = $("#histoSvg").css('height'),
     histo_l_margin_str = $("#histoSlider").css('marginLeft');
-  repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
-  repvar.opts.graph.total_width = parseInt(graph_width_str.slice(0,-2));
-  repvar.opts.graph.total_height = parseInt(graph_height_str.slice(0,-2));
-  repvar.opts.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
+  nvrgtr_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  nvrgtr_settings.graph.total_width = parseInt(graph_width_str.slice(0,-2));
+  nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
+  nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
 
   maintainServer();
-  page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+  nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   updateClusterColours();
   setupHistoSliderPane();
   setupSelectionPane();
@@ -68,12 +71,12 @@ function setupPage() {
   $.ajax({
     url: daemonURL('/get-input-data'),
     type: 'POST',
-    data: {'session_id': page.session_id},
+    data: {'session_id': nvrgtr_page.session_id},
     success: function(data_obj) {
-      parseRepvarData(data_obj);
-      $("#numClustersH2Span").html(repvar.num_variants);
-      $("#numClustersSpan").html(repvar.num_variants);
-      $("#numNodesSpan").html(repvar.leaves.length);
+      parseBasicData(data_obj);
+      $("#numClustersH2Span").html(nvrgtr_data.num_variants);
+      $("#numClustersSpan").html(nvrgtr_data.num_variants);
+      $("#numNodesSpan").html(nvrgtr_data.leaves.length);
       drawTree(false);
       checkForClusteringResults();
     },
@@ -112,7 +115,7 @@ function setupHistoSliderPane() {
     }
   });
   left.click(function() {
-    var slider_keys = Object.keys(repvar.considered_variants), var_name;
+    var slider_keys = Object.keys(nvrgtr_data.considered_variants), var_name;
     for (var i=0; i<slider_keys.length; ++i) {
       var_name = slider_keys[i];
       nodeLabelMouseclickHandler(var_name, false, !do_remove);
@@ -127,8 +130,8 @@ function setupHistoSliderPane() {
   middle.click(function() {
     var select_below = slider.slider('option', 'range') == 'min',
       slider_val = slider.slider('value');
-    if (slider_val == 0) { slider_val = repvar.nice_max_var_dist; }
-    else if (slider_val == repvar.nice_max_var_dist) { slider_val = 0; }
+    if (slider_val == 0) { slider_val = nvrgtr_data.nice_max_var_dist; }
+    else if (slider_val == nvrgtr_data.nice_max_var_dist) { slider_val = 0; }
     if (select_below) { // Switch to above
       slider.slider('option', 'range', 'max');
       middle_span.html('Variants<br>above');
@@ -149,7 +152,7 @@ function setupHistoSliderPane() {
   });
   right.click(function() {
     var select_below = slider.slider('option', 'range') == 'min',
-      slider_val = (select_below) ? 0 : repvar.nice_max_var_dist;
+      slider_val = (select_below) ? 0 : nvrgtr_data.nice_max_var_dist;
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
     selectNamesByThreshold(slider_val, select_below);
@@ -180,8 +183,8 @@ function setupNormalizationPane() {
   }
   self_radio.on("change", function(event) {
     hideGoButton();
-    repvar.normalized_max_distance = repvar.max_variant_distance;
-    repvar.normalized_max_count = 0;
+    nvrgtr_data.normalized_max_distance = nvrgtr_data.max_variant_distance;
+    nvrgtr_data.normalized_max_count = 0;
     normalizeResults();
   });
   global_radio.on("change", function(event) {
@@ -189,11 +192,11 @@ function setupNormalizationPane() {
     $.ajax({
       url: daemonURL('/calculate-global-normalization'),
       type: 'POST',
-      data: {'session_id':page.session_id, 'cur_var':repvar.num_variants, 'var_nums':null, 'max_var_dist':repvar.max_variant_distance, 'global_bins':repvar.original_bins},
+      data: {'session_id':nvrgtr_page.session_id, 'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        repvar.normalized_max_distance = data.global_value;
-        repvar.normalized_max_count = data.global_max_count;
+        nvrgtr_data.normalized_max_distance = data.global_value;
+        nvrgtr_data.normalized_max_count = data.global_max_count;
         $("#normGlobalValSpan").html('['+roundFloat(data.global_value, 4)+']');
         normalizeResults();
       },
@@ -207,8 +210,8 @@ function setupNormalizationPane() {
       return false; // Prevents the button from being actually selected.
     }
   }).on("change", function(event) {
-    repvar.normalized_max_distance = custom_input.val();
-    repvar.normalized_max_count = 0; // Get from UI
+    nvrgtr_data.normalized_max_distance = custom_input.val();
+    nvrgtr_data.normalized_max_count = 0; // Get from UI
     normalizeResults();
   });
   custom_input.on("keydown", function(event) {
@@ -271,21 +274,21 @@ function setupExportPane() {
   // Button callbacks:
   $("#exportChosenButton").click(function() {
     // Sets 'names' to a list of the chosen variants.
-    export_pane.data('names', repvar.variants.slice());
+    export_pane.data('names', nvrgtr_data.variants.slice());
     formatDisplayExportNames();
   });
   $("#exportSelectionButton").click(function() {
     // Sets 'names' to a list of the selected variants. The order is undefined.
-    export_pane.data('names', Object.keys(repvar.selected));
+    export_pane.data('names', Object.keys(nvrgtr_data.selected));
     formatDisplayExportNames();
   });
   $("#exportClustersButton").click(function() {
     // Sets 'names' to a list of lists, each sublist begins with the chosen followed by the rest of the variants.
     var clusters = [], chosen, names, vars, name;
-    for (var i=0; i<repvar.variants.length; ++i) {
-      chosen = repvar.variants[i];
+    for (var i=0; i<nvrgtr_data.variants.length; ++i) {
+      chosen = nvrgtr_data.variants[i];
       names = [chosen];
-      vars = repvar.clusters[chosen].nodes;
+      vars = nvrgtr_data.clusters[chosen].nodes;
       for (var j=0; j<vars.length; ++j) {
         name = vars[j];
         if (name != chosen) { names.push(name); }
@@ -330,11 +333,11 @@ function checkForClusteringResults() {
   $.ajax({
     url: daemonURL('/get-cluster-results'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'num_vars': repvar.num_variants},
+    data: {'session_id': nvrgtr_page.session_id, 'num_vars': nvrgtr_data.num_variants},
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       if (data.variants == false) {
-        setTimeout(checkForClusteringResults, page.check_results_interval);
+        setTimeout(checkForClusteringResults, nvrgtr_page.check_results_interval);
       } else {
         $("#treeLoadingMessageGroup").remove();
         parseClusteredData(data);
@@ -362,8 +365,8 @@ function redrawTree() {
 }
 function extendTreeLegend() {
   var contains_singletons = false, clstr;
-  for (var i=0; i<repvar.num_variants; ++i) {
-    clstr = repvar.clusters[repvar.variants[i]];
+  for (var i=0; i<nvrgtr_data.num_variants; ++i) {
+    clstr = nvrgtr_data.clusters[nvrgtr_data.variants[i]];
     if (clstr.nodes.length == 1) {
       contains_singletons = true;
       break;
@@ -389,12 +392,12 @@ function extendTreeLegend() {
 }
 function updateSummaryStats() {
   var cluster_dist = 0.0, node_dist = 0.0, num_nodes = 0;
-  for (var i=0; i<repvar.variants.length; ++i) {
-    cluster_dist += repvar.clusters[repvar.variants[i]].score;
+  for (var i=0; i<nvrgtr_data.variants.length; ++i) {
+    cluster_dist += nvrgtr_data.clusters[nvrgtr_data.variants[i]].score;
   }
   $("#distTotalSpan").html(roundFloat(cluster_dist, 4));
-  cluster_dist = roundFloat(cluster_dist/repvar.variants.length, 4);
-  $.each(repvar.variant_distance, function(var_name, dist) {
+  cluster_dist = roundFloat(cluster_dist/nvrgtr_data.variants.length, 4);
+  $.each(nvrgtr_data.variant_distance, function(var_name, dist) {
     node_dist += dist;
     num_nodes += 1;
   });
@@ -403,13 +406,13 @@ function updateSummaryStats() {
   $("#distNodesSpan").html(node_dist);
 }
 function updateNormalizationPane() {
-  $("#normSelfValSpan").html('['+roundFloat(repvar.max_variant_distance, 4)+']');
+  $("#normSelfValSpan").html('['+roundFloat(nvrgtr_data.max_variant_distance, 4)+']');
 }
 function drawClusters() {
   var var_names;
-  var_names = repvar.variants.slice();
+  var_names = nvrgtr_data.variants.slice();
   var_names.sort(function(a,b) {
-    return repvar.clusters[a].nodes.length - repvar.clusters[b].nodes.length;
+    return nvrgtr_data.clusters[a].nodes.length - nvrgtr_data.clusters[b].nodes.length;
   });
   $(".cluster-list-row").remove();
   var var_name, cluster_row, ret, cluster_obj, mouseover_obj, to_front = [],
@@ -418,16 +421,16 @@ function drawClusters() {
     var_name = var_names[i];
     cluster_row = createClusterRow(var_name, table_body);
     table_body.append(cluster_row);
-    ret = drawClusterObject(repvar.clusters[var_name].nodes);
+    ret = drawClusterObject(nvrgtr_data.clusters[var_name].nodes);
     cluster_obj = ret[0];
     mouseover_obj = ret[1];
-    repvar.clusters[var_name].cluster_obj = cluster_obj;
+    nvrgtr_data.clusters[var_name].cluster_obj = cluster_obj;
     if (mouseover_obj == false) { // Singleton cluster
-      repvar.clusters[var_name].colour_key = 'singleton_cluster_background';
+      nvrgtr_data.clusters[var_name].colour_key = 'singleton_cluster_background';
       addSingletonClusterObjRowHandlers(var_name, cluster_obj, cluster_row);
       // The node markers are pushed to_front in updateClusteredVariantMarkers()
     } else { // Non singleton cluster
-      repvar.clusters[var_name].colour_key = 'cluster_background_trans';
+      nvrgtr_data.clusters[var_name].colour_key = 'cluster_background_trans';
       addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row);
       to_front.push(mouseover_obj);
     }
@@ -435,20 +438,20 @@ function drawClusters() {
   for (var i=to_front.length-1; i>=0; --i) {
     to_front[i].toFront(); // Puts the smallest invisible mouseover objects in front of the larger ones.
   }
-  repvar.tree_background.toBack();
+  nvrgtr_data.tree_background.toBack();
 }
 function createClusterRow(var_name, table_body) {
   var dec_precision = 4,
-    clstr_size = repvar.clusters[var_name].nodes.length,
-    clstr_score = repvar.clusters[var_name].score,
+    clstr_size = nvrgtr_data.clusters[var_name].nodes.length,
+    clstr_score = nvrgtr_data.clusters[var_name].score,
     clstr_avg_score = 0, score_90th = 0;
   if (clstr_size > 1) {
     clstr_avg_score = roundFloat(clstr_score/(clstr_size-1), dec_precision); // size-1 removes the rep var.
-    score_90th = roundFloat(calculate90Percentile(repvar.clusters[var_name].nodes), dec_precision);
+    score_90th = roundFloat(calculate90Percentile(nvrgtr_data.clusters[var_name].nodes), dec_precision);
   }
   var name_td, short_name;
-  if (var_name.length > repvar.opts.sizes.max_variant_name_length) {
-    short_name = var_name.slice(0, repvar.opts.sizes.max_variant_name_length);
+  if (var_name.length > nvrgtr_opts.sizes.max_variant_name_length) {
+    short_name = var_name.slice(0, nvrgtr_opts.sizes.max_variant_name_length);
     name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
   } else {
     name_td = "<td>"+var_name+"</td>";
@@ -461,18 +464,18 @@ function createClusterRow(var_name, table_body) {
 function updateClusteredVariantMarkers() {
   // Colours the chosen, available, and ignored nodes. Also adds tooltips to the mouseover object.
   var var_name, circle, circle_colour_key;
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i], node = repvar.nodes[var_name];
+  for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
+    var_name = nvrgtr_data.leaves[i], node = nvrgtr_data.nodes[var_name];
     circle = node.circle;
-    if (repvar.variants.indexOf(var_name) != -1) {
-      circle_colour_key = (repvar.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
-      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
+    if (nvrgtr_data.variants.indexOf(var_name) != -1) {
+      circle_colour_key = (nvrgtr_data.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
+      circle.attr({'r':nvrgtr_opts.sizes.big_marker_radius});
       changeNodeStateColour(var_name, node.label_highlight, 'label_mouseover', 'chosen');
-    } else if (repvar.available.indexOf(var_name) != -1) {
+    } else if (nvrgtr_data.available.indexOf(var_name) != -1) {
       circle_colour_key = 'available';
-    } else if (repvar.ignored.indexOf(var_name) != -1) {
+    } else if (nvrgtr_data.ignored.indexOf(var_name) != -1) {
       circle_colour_key = 'ignored';
-      circle.attr({'r':repvar.opts.sizes.big_marker_radius});
+      circle.attr({'r':nvrgtr_opts.sizes.big_marker_radius});
     } else {
       circle_colour_key = 'default_node';
     }
@@ -485,7 +488,7 @@ function updateClusteredVariantMarkers() {
 function updateClusterTransColourFollowup(key, trans_comp) {
   // Called by core.js when the user changes the cluster or mouseover colour.
   if (key == 'cluster_background') {
-    $.each(repvar.clusters, function(name, clstr) {
+    $.each(nvrgtr_data.clusters, function(name, clstr) {
       if (clstr.nodes.length == 1) { return; }
       clstr.cluster_obj.attr({fill:trans_comp});
     });
@@ -503,30 +506,30 @@ function updateBarGraphHeights() {
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
-    dist = repvar.variant_distance[var_name];
+    dist = nvrgtr_data.variant_distance[var_name];
     if (dist) { // Not a chosen or ignored variant:
       new_path_str = getBarGraphPathStr(var_name, var_angle, dist);
-      repvar.nodes[var_name].bar_chart.animate({path:new_path_str}, 200, 'linear');
+      nvrgtr_data.nodes[var_name].bar_chart.animate({path:new_path_str}, 200, 'linear');
     }
   }
 }
 function drawDistanceHistogram() {
-  var margin = repvar.opts.graph.margin,
-    total_width = repvar.opts.graph.total_width,
-    total_height = repvar.opts.graph.total_height;
-  repvar.graph.width = total_width - margin.right - margin.left;
-  repvar.graph.height = total_height - margin.top - margin.bottom;
+  var margin = nvrgtr_settings.graph.margin,
+    total_width = nvrgtr_settings.graph.total_width,
+    total_height = nvrgtr_settings.graph.total_height;
+  nvrgtr_data.graph.width = total_width - margin.right - margin.left;
+  nvrgtr_data.graph.height = total_height - margin.top - margin.bottom;
   // Set up svg objects:
   var svg = d3.select("#histoSvg")
     .attr("width", total_width)
     .attr("height", total_height);
-  repvar.graph.g = svg.append("g")
+  nvrgtr_data.graph.g = svg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   // Set up scales and data objects:
-  repvar.graph.x_fxn = d3.scaleLinear()
-    .rangeRound([0, repvar.graph.width]);
-  repvar.graph.y_fxn = d3.scaleLinear()
-    .range([0, repvar.graph.height])
+  nvrgtr_data.graph.x_fxn = d3.scaleLinear()
+    .rangeRound([0, nvrgtr_data.graph.width]);
+  nvrgtr_data.graph.y_fxn = d3.scaleLinear()
+    .range([0, nvrgtr_data.graph.height])
     .clamp(true);
   // Graph title:
   /*svg.append("text")
@@ -536,18 +539,18 @@ function drawDistanceHistogram() {
     .attr("text-anchor", "middle")
     .text("Distribution of distances");*/
   // Graph axes:
-  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn);
-  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn).tickValues([]).tickSize(0);
-  repvar.graph.g.append("g")
+  nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
+  nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn).tickValues([]).tickSize(0);
+  nvrgtr_data.graph.g.append("g")
     .attr("class", "x-axis")
-    .attr("transform", "translate(0," + repvar.graph.height + ")");
-  repvar.graph.g.append("g")
+    .attr("transform", "translate(0," + nvrgtr_data.graph.height + ")");
+  nvrgtr_data.graph.g.append("g")
     .attr("class", "y-axis");
   var y_axis_vert_offset = 5, y_axis_horiz_offset = -6;
-  repvar.graph.g.append("text") // y axis label
+  nvrgtr_data.graph.g.append("text") // y axis label
     .attr("class", "histo-axis-label")
     .attr("text-anchor", "middle")
-    .attr("x", 0 - repvar.graph.height/2 - y_axis_vert_offset)
+    .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
     .attr("y", 0 + y_axis_horiz_offset)
     .attr("transform", "rotate(-90)")
     .text("Number of variants");
@@ -562,7 +565,7 @@ function updateHistogram() {
 }
 function updateHistoSlider() {
   $("#histoSlider").slider({
-    max:repvar.nice_max_var_dist
+    max:nvrgtr_data.nice_max_var_dist
   });
 }
 
@@ -570,12 +573,12 @@ function updateHistoSlider() {
 function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
   // Adds an additional handler to each circle.mouseover and .mouseout; doesn't replace the existing handlers.
   circle_obj.mouseover(function() {
-    cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
+    cluster_row.css('background-color', nvrgtr_opts.colours.cluster_highlight);
   }).mouseout(function() {
     cluster_row.css('background-color', '');
   });
   cluster_row.mouseenter(function() {
-    cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
+    cluster_row.css('background-color', nvrgtr_opts.colours.cluster_highlight);
     nodeLabelMouseoverHandler(var_name);
   }).mouseleave(function() {
     cluster_row.css('background-color', '');
@@ -590,7 +593,7 @@ function addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row) {
   }).mouseout(function() {
     clusterMouseoutHandler(var_name, cluster_row);
   }).click(function() {
-    if (!repvar.allow_select) { return true; }
+    if (!nvrgtr_data.allow_select) { return true; }
     clusterMouseclickHandler(var_name);
   });
   cluster_row.mouseenter(function() {
@@ -602,16 +605,16 @@ function addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row) {
   });
 }
 function clusterMouseoverHandler(var_name, cluster_row) {
-  var cluster = repvar.clusters[var_name];
-  cluster_row.css('background-color', repvar.opts.colours.cluster_highlight);
-  cluster.cluster_obj.attr({fill:repvar.opts.colours.cluster_highlight_trans});
+  var cluster = nvrgtr_data.clusters[var_name];
+  cluster_row.css('background-color', nvrgtr_opts.colours.cluster_highlight);
+  cluster.cluster_obj.attr({fill:nvrgtr_opts.colours.cluster_highlight_trans});
   for (var i=0; i<cluster.nodes.length; ++i) {
     nodeLabelMouseoverHandler(cluster.nodes[i], false);
   }
 }
 function clusterMouseoutHandler(var_name, cluster_row) {
-  var cluster = repvar.clusters[var_name],
-    orig_colour = repvar.opts.colours[cluster.colour_key];
+  var cluster = nvrgtr_data.clusters[var_name],
+    orig_colour = nvrgtr_opts.colours[cluster.colour_key];
   cluster_row.css('background-color', '');
   cluster.cluster_obj.attr({fill:orig_colour});
   for (var i=0; i<cluster.nodes.length; ++i) {
@@ -619,36 +622,36 @@ function clusterMouseoutHandler(var_name, cluster_row) {
   }
 }
 function clusterMouseclickHandler(var_name) {
-  var cluster = repvar.clusters[var_name];
+  var cluster = nvrgtr_data.clusters[var_name];
   for (var i=0; i<cluster.nodes.length; ++i) {
     nodeLabelMouseclickHandler(cluster.nodes[i], false);
   }
   numSelectedCallback();
 }
 function numSelectedCallback() {
-  $("#currentSelectionNum").html(repvar.num_selected);
+  $("#currentSelectionNum").html(nvrgtr_data.num_selected);
 }
 function selectNamesByThreshold(threshold, select_below) {
   // Could implement a short-circuit in case the threshold hasn't changed.
   var threshold_val = [threshold, select_below], num_picked = 0, has_changed = false;
   if ( !(select_below && threshold == 0) &&
-       !(!select_below && threshold == repvar.nice_max_var_dist) ) {
-    $.each(repvar.variant_distance, function(var_name, dist) {
+       !(!select_below && threshold == nvrgtr_data.nice_max_var_dist) ) {
+    $.each(nvrgtr_data.variant_distance, function(var_name, dist) {
       if (select_below && dist <= threshold || !select_below && dist >= threshold) {
         num_picked += 1;
-        if (repvar.considered_variants[var_name] == undefined) {
+        if (nvrgtr_data.considered_variants[var_name] == undefined) {
           nodeLabelMouseoverHandler(var_name);
           has_changed = true;
         }
-        repvar.considered_variants[var_name] = threshold_val; // Add / update var_name in considered_variants.
+        nvrgtr_data.considered_variants[var_name] = threshold_val; // Add / update var_name in considered_variants.
       }
     });
   }
-  var slider_keys = Object.keys(repvar.considered_variants), var_name;
+  var slider_keys = Object.keys(nvrgtr_data.considered_variants), var_name;
   for (var i=0; i<slider_keys.length; ++i) {
     var_name = slider_keys[i];
-    if (repvar.considered_variants[var_name] != threshold_val) {
-      delete repvar.considered_variants[var_name];
+    if (nvrgtr_data.considered_variants[var_name] != threshold_val) {
+      delete nvrgtr_data.considered_variants[var_name];
       nodeLabelMouseoutHandler(var_name);
       has_changed = true;
     }
@@ -664,56 +667,56 @@ function selectNamesByThreshold(threshold, select_below) {
 
 // =====  Graph functions:
 function updateHistoBins() {
-  var x_ticks = calculateHistoTicks(repvar.normalized_max_distance);
-  repvar.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
-  repvar.graph.x_fxn.domain([x_ticks[0], repvar.nice_max_var_dist]); // Needed to include the final tick
+  var x_ticks = calculateHistoTicks(nvrgtr_data.normalized_max_distance);
+  nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
+  nvrgtr_data.graph.x_fxn.domain([x_ticks[0], nvrgtr_data.nice_max_var_dist]); // Needed to include the final tick
 
-  var num_chosen = repvar.variants.length,
-    non_chosen_dists = repvar.sorted_names.slice(num_chosen).map(function(name) {
-      return repvar.variant_distance[name];
+  var num_chosen = nvrgtr_data.variants.length,
+    non_chosen_dists = nvrgtr_data.sorted_names.slice(num_chosen).map(function(name) {
+      return nvrgtr_data.variant_distance[name];
     });
-  repvar.graph.bins = d3.histogram()
-    .domain([x_ticks[0], repvar.normalized_max_distance])
+  nvrgtr_data.graph.bins = d3.histogram()
+    .domain([x_ticks[0], nvrgtr_data.normalized_max_distance])
     .thresholds(x_ticks)(non_chosen_dists);
   for (var i=0; i<num_chosen; ++i) {
-    repvar.graph.bins[0].push(0.0); // Add values for the chosen variants.
+    nvrgtr_data.graph.bins[0].push(0.0); // Add values for the chosen variants.
   }
   var prev_ind = 0, cur_len;
-  for (var i=0; i<repvar.graph.bins.length; ++i) {
-    cur_len = repvar.graph.bins[i].length;
-    repvar.graph.bins[i]['names'] = repvar.sorted_names.slice(prev_ind, prev_ind+cur_len);
+  for (var i=0; i<nvrgtr_data.graph.bins.length; ++i) {
+    cur_len = nvrgtr_data.graph.bins[i].length;
+    nvrgtr_data.graph.bins[i]['names'] = nvrgtr_data.sorted_names.slice(prev_ind, prev_ind+cur_len);
     prev_ind += cur_len;
   }
-  var max_y = (repvar.normalized_max_count > 0) ? repvar.normalized_max_count : d3.max(repvar.graph.bins, function(d) { return d.length; });
-  repvar.graph.y_fxn.domain([0, max_y]);
-  repvar.graph.x_ticks = x_ticks;
+  var max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
+  nvrgtr_data.graph.y_fxn.domain([0, max_y]);
+  nvrgtr_data.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
   var formatCount = d3.format(",.0f"),
-    col_width = repvar.graph.x_fxn(0), // Zero is now the 2nd tick.
-    bar_margin = col_width * repvar.opts.graph.bar_margin_ratio / 2,
+    col_width = nvrgtr_data.graph.x_fxn(0), // Zero is now the 2nd tick.
+    bar_margin = col_width * nvrgtr_settings.graph.bar_margin_ratio / 2,
     bar_width = col_width - bar_margin * 2,
-    init_bar_x = repvar.graph.width - bar_width;
+    init_bar_x = nvrgtr_data.graph.width - bar_width;
   // The bars of the graph:
-  var bar_elements = repvar.graph.g.selectAll(".histo-bar")
-    .data(repvar.graph.bins);
+  var bar_elements = nvrgtr_data.graph.g.selectAll(".histo-bar")
+    .data(nvrgtr_data.graph.bins);
   bar_elements.enter().append("rect")
     .attr("class", "histo-bar")
     .attr("x", init_bar_x)
-    .attr("y", repvar.graph.height)
+    .attr("y", nvrgtr_data.graph.height)
     .attr("width", bar_width)
     .attr("height", 0)
     .transition()
-    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
+    .attr("height", function(d) { return nvrgtr_data.graph.y_fxn(d.length); })
     .attr("transform", function(d) {
-      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
+      return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-nvrgtr_data.graph.y_fxn(d.length)) + ")";
     });
   bar_elements.transition()
     .attr("x", init_bar_x)
     .attr("width", bar_width)
-    .attr("height", function(d) { return repvar.graph.y_fxn(d.length); })
+    .attr("height", function(d) { return nvrgtr_data.graph.y_fxn(d.length); })
     .attr("transform", function(d) {
-      return "translate(" + (repvar.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-repvar.graph.y_fxn(d.length)) + ")";
+      return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-nvrgtr_data.graph.y_fxn(d.length)) + ")";
     });
   bar_elements.exit()
     .transition()
@@ -723,10 +726,10 @@ function updateHistoGraph() {
   // The text label for each bar:
   var text_y_offset = 10,
     half_col = col_width / 2,
-    init_text_x = repvar.graph.width - half_col,
-    max_text_y = repvar.graph.height - text_y_offset;
-  var bar_texts = repvar.graph.g.selectAll(".histo-text")
-    .data(repvar.graph.bins);
+    init_text_x = nvrgtr_data.graph.width - half_col,
+    max_text_y = nvrgtr_data.graph.height - text_y_offset;
+  var bar_texts = nvrgtr_data.graph.g.selectAll(".histo-text")
+    .data(nvrgtr_data.graph.bins);
   bar_texts.enter().append("text")
     .attr("class", "histo-text prevent-text-selection")
     .attr("x", init_text_x)
@@ -735,24 +738,24 @@ function updateHistoGraph() {
     .attr("text-anchor", "middle")
     .transition()
     .attr("transform", function(d) {
-      return "translate(" + (repvar.graph.x_fxn(d.x0)+half_col-init_text_x) + "," + ( Math.min(2*text_y_offset-repvar.graph.y_fxn(d.length), 0) ) + ")";
+      return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+half_col-init_text_x) + "," + ( Math.min(2*text_y_offset-nvrgtr_data.graph.y_fxn(d.length), 0) ) + ")";
     })
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.transition()
     .attr("x", init_text_x)
     .attr("transform", function(d) {
-      return "translate(" + (repvar.graph.x_fxn(d.x0)+half_col-init_text_x) + "," + ( Math.min(2*text_y_offset-repvar.graph.y_fxn(d.length), 0) ) + ")";
+      return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+half_col-init_text_x) + "," + ( Math.min(2*text_y_offset-nvrgtr_data.graph.y_fxn(d.length), 0) ) + ")";
     })
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.exit().remove();
   // A transparent full-sized rect on top to capture mouse events:
-  var bar_mouseovers = repvar.graph.g.selectAll(".histo-overlay")
-    .data(repvar.graph.bins);
+  var bar_mouseovers = nvrgtr_data.graph.g.selectAll(".histo-overlay")
+    .data(nvrgtr_data.graph.bins);
   bar_mouseovers.enter().append("rect")
     .attr("class", "histo-overlay")
-    .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); })
+    .attr("x", function(d) { return nvrgtr_data.graph.x_fxn(d.x0); })
     .attr("width", col_width)
-    .attr("height", repvar.graph.height)
+    .attr("height", nvrgtr_data.graph.height)
     .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
     .on("mouseover", function(d) {
       for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
@@ -767,64 +770,64 @@ function updateHistoGraph() {
       numSelectedCallback();
     });
   bar_mouseovers.attr("width", col_width)
-  .attr("x", function(d) { return repvar.graph.x_fxn(d.x0); });
+  .attr("x", function(d) { return nvrgtr_data.graph.x_fxn(d.x0); });
   bar_mouseovers.exit().remove();
 
   // Update the histo slider, so its zero lines up with the graph's zero.
-  var new_l_margin = repvar.opts.graph.histo_left_margin + col_width;
+  var new_l_margin = nvrgtr_settings.graph.histo_left_margin + col_width;
   $("#histoSlider").animate({'marginLeft':new_l_margin+'px'}, 250);
 }
 function updateHistoAxes() {
-  var ticks = repvar.graph.x_ticks.slice(1); // Removes the first value (placeholder for 'chosen' bar).
-  repvar.graph.x_axis.tickValues(ticks)
+  var ticks = nvrgtr_data.graph.x_ticks.slice(1); // Removes the first value (placeholder for 'chosen' bar).
+  nvrgtr_data.graph.x_axis.tickValues(ticks)
     .tickFormat(d3.format(".3")); // trims trailing zeros
-  repvar.graph.g.select(".x-axis")
+  nvrgtr_data.graph.g.select(".x-axis")
     .transition()
-    .call(repvar.graph.x_axis)
+    .call(nvrgtr_data.graph.x_axis)
     .selectAll("text")
       .style("text-anchor", "start")
       .attr("x", 7)
       .attr("y", 5)
       .attr("dy", ".35em")
       .attr("transform", "rotate(55)");
-  repvar.graph.g.select(".y-axis")
+  nvrgtr_data.graph.g.select(".y-axis")
     .transition()
-    .call(repvar.graph.y_axis);
+    .call(nvrgtr_data.graph.y_axis);
 }
 
 // =====  Data parsing:
-function parseRepvarData(data_obj) {
+function parseBasicData(data_obj) {
   var data = $.parseJSON(data_obj);
-  page.session_id = data.session_id;
-  repvar.tree_data = data.phyloxml_data;
-  repvar.leaves = data.leaves;
-  repvar.lc_leaves = {}; // Lowercase names as keys, actual names as values. Used to search.
+  nvrgtr_page.session_id = data.session_id;
+  nvrgtr_data.tree_data = data.phyloxml_data;
+  nvrgtr_data.leaves = data.leaves;
+  nvrgtr_data.lc_leaves = {}; // Lowercase names as keys, actual names as values. Used to search.
   var name;
   for (var i=0; i<data.leaves.length; ++i) {
     name = data.leaves[i];
-    repvar.lc_leaves[name.toLowerCase()] = name;
+    nvrgtr_data.lc_leaves[name.toLowerCase()] = name;
   }
-  repvar.ignored = data.ignored;
-  repvar.available = data.available;
-  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != page.maintain_interval*1000) {
+  nvrgtr_data.ignored = data.ignored;
+  nvrgtr_data.available = data.available;
+  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != nvrgtr_page.maintain_interval*1000) {
     maintainServer();
-    page.maintain_interval = data.maintain_interval * 1000;
-    clearInterval(page.maintain_interval_obj);
-    page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+    nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
+    clearInterval(nvrgtr_page.maintain_interval_obj);
+    nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
 }
 function parseClusteredData(data) {
-  if (data.variants.length != repvar.num_variants) {
+  if (data.variants.length != nvrgtr_data.num_variants) {
     showErrorPopup("Error: data appears to be corrupted (num_variants and variants disagree).");
     return false;
   }
-  repvar.variant_distance = data.variant_distance;
-  repvar.max_variant_distance = data.max_variant_distance;
-  repvar.original_bins = calculateHistoTicks(data.max_variant_distance);
+  nvrgtr_data.variant_distance = data.variant_distance;
+  nvrgtr_data.max_variant_distance = data.max_variant_distance;
+  nvrgtr_data.original_bins = calculateHistoTicks(data.max_variant_distance);
 
   // Check if a normalization is already set (from the server). Else:
-  repvar.normalized_max_distance = data.normalization.value;
-  repvar.normalized_max_count = data.normalization.max_count;
+  nvrgtr_data.normalized_max_distance = data.normalization.value;
+  nvrgtr_data.normalized_max_count = data.normalization.max_count;
   if (data.normalization.method == 'global') {
     $("#normGlobalRadio").prop('checked', true);
     $("#normGlobalValSpan").html('['+roundFloat(data.normalization.value, 4)+']');
@@ -832,20 +835,20 @@ function parseClusteredData(data) {
     $("#normValRadio").prop('checked', true);
     $("#normValInput").val(data.normalization.value);
   }
-  repvar.variants = data.variants;
-  // Ensures repvar.sorted_names begins with the chosen variants, and the rest stably sorted by variant distance.
-  var delta, sorted_names = Object.keys(repvar.variant_distance).filter(function(name) {
+  nvrgtr_data.variants = data.variants;
+  // Ensures nvrgtr_data.sorted_names begins with the chosen variants, and the rest stably sorted by variant distance.
+  var delta, sorted_names = Object.keys(nvrgtr_data.variant_distance).filter(function(name) {
     return (data.variants.indexOf(name) == -1);
   }).sort();
   sorted_names = sorted_names.sort(function(a,b) {
-    delta = repvar.variant_distance[a] - repvar.variant_distance[b];
+    delta = nvrgtr_data.variant_distance[a] - nvrgtr_data.variant_distance[b];
     return (delta != 0) ? delta : (sorted_names.indexOf(a) - sorted_names.indexOf(b));
   });
-  repvar.sorted_names = data.variants.concat(sorted_names);
+  nvrgtr_data.sorted_names = data.variants.concat(sorted_names);
   // Sets up cluster object.
-  repvar.clusters = {};
-  for (var i=0; i<repvar.variants.length; ++i) {
-    repvar.clusters[repvar.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null, 'colour_key':''};
+  nvrgtr_data.clusters = {};
+  for (var i=0; i<nvrgtr_data.variants.length; ++i) {
+    nvrgtr_data.clusters[nvrgtr_data.variants[i]] = {'score':data.scores[i], 'nodes':data.clusters[i], 'cluster_obj':null, 'colour_key':''};
   }
 }
 
@@ -857,7 +860,7 @@ function formatExportNameGroup(names, delimiter, include_scores) {
   } else {
     var dist, val;
     for (var i=0; i<names.length; ++i) {
-      dist = repvar.variant_distance[names[i]];
+      dist = nvrgtr_data.variant_distance[names[i]];
       if (dist === undefined) { dist = ''; }
       val = names[i] + delimiter + dist;
       if (i < names.length - 1) { val += '\n'; }

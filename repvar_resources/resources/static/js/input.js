@@ -21,20 +21,17 @@
 //   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and when finding variants if any of the assigned variants have changed. Those are all currently covered.
 
 // =====  Modified common variables:
-$.extend(page, {
-  'check_results_timer':null, 'check_results_interval':500
+$.extend(nvrgtr_page, {
+  'page':'input', 'check_results_timer':null, 'check_results_interval':500
 });
-$.extend(repvar, {
+$.extend(nvrgtr_data, {
   'result_links':{'var_nums':[], 'scores':[]}, 'assigned_selected':'', 'assigned_added':'',
   'graph':{'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null}
 });
-$.extend(repvar.opts.sizes, {
-  'bar_chart_height':0, 'bar_chart_buffer':0
-});
-$.extend(repvar.opts.graph, {
+$.extend(nvrgtr_settings.graph, {
   'margin':{top:7, right:27, bottom:35, left:37}
 });
-// Also adds repvar.nodes[var_name].variant_select_label
+// Also adds nvrgtr_data.nodes[var_name].variant_select_label
 
 // =====  Page setup:
 function setupPage() {
@@ -42,15 +39,15 @@ function setupPage() {
   initializeErrorPopupWindow();
   initializeCollapsibleElements();
   initializeFloatingPanes();
-  page.session_id = location.search.slice(1);
-  page.browser_id = generateBrowserId(10);
-  console.log('sessionID:'+page.session_id+', browserID:'+page.browser_id);
+  nvrgtr_page.session_id = location.search.slice(1);
+  nvrgtr_page.browser_id = generateBrowserId(10);
+  console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
   var tree_width_str = $("#mainTreeDiv").css('width');
-  repvar.opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  nvrgtr_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   var score_graph_width_str = $("#scoreGraphSvg").css('width');
-  repvar.opts.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
+  nvrgtr_settings.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
   var score_graph_height_str = $("#scoreGraphSvg").css('height');
-  repvar.opts.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
+  nvrgtr_settings.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
   setupTreeElements();
   setupDisplayOptionsPane();
   setupNormalizationPane();
@@ -59,12 +56,12 @@ function setupPage() {
   setupVariantSelection();
   setupUploadSaveButtons();
 
-  if (page.session_id != '') {
+  if (nvrgtr_page.session_id != '') {
     // This is only run for the local version.
     $.ajax({
       url: daemonURL('/get-input-data'),
       type: 'POST',
-      data: {'session_id': page.session_id},
+      data: {'session_id': nvrgtr_page.session_id},
       success: function(data_obj) {
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
           $("#loadInputHeader").click(); //   open collapsible pane.
@@ -77,7 +74,7 @@ function setupPage() {
   }
 }
 function setupUploadSaveButtons() {
-  var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveRepvarButton");
+  var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveSessionButton");
   upload_button.button('disable');
   save_button.button('disable');
 
@@ -103,12 +100,12 @@ function setupUploadSaveButtons() {
     if (!file_obj) {
       showErrorPopup("No file selected.");
       return false;
-    } else if (file_obj.size > page.max_upload_size) {
+    } else if (file_obj.size > nvrgtr_page.max_upload_size) {
       showErrorPopup("The selected file exceeds the maximum upload size.");
       return false;
     }
     var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
-    form_data.append('session_id', page.session_id);
+    form_data.append('session_id', nvrgtr_page.session_id);
     var selected_file_type = upload_type_select.val();
     if (selected_file_type == 'nvrgtr') {
       upload_url = daemonURL('/upload-repvar-file');
@@ -140,17 +137,17 @@ function setupUploadSaveButtons() {
     $.ajax({
       url: daemonURL('/save-repvar-file'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored},
+      data: {'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        page.session_id = data.session_id;
+        nvrgtr_page.session_id = data.session_id;
         if (data.saved_locally == true) {
           console.log('file saved locally');
         } else {
           saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
         }
       },
-      error: function(error) { processError(error, "Error saving repvar file"); }
+      error: function(error) { processError(error, "Error saving session file"); }
     });
   });
 }
@@ -281,18 +278,18 @@ function setupRunOptions() {
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
-      data: {'session_id': page.session_id, 'chosen':repvar.chosen, 'available':repvar.available, 'ignored':repvar.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range},
+      data: {'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range},
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         var new_s_id = data.session_id;
-        if (new_s_id != page.session_id) {
-          page.session_id = new_s_id;
+        if (new_s_id != nvrgtr_page.session_id) {
+          nvrgtr_page.session_id = new_s_id;
           setNormalizationMethod();
           clearHideResultsPane();
         }
         updateResultsPane(num_vars, num_vars_range);
         if (auto_open == true && auto_result_page != null) {
-          auto_result_page.location.href = repvar.result_links[num_vars].url;
+          auto_result_page.location.href = nvrgtr_data.result_links[num_vars].url;
         }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
@@ -300,41 +297,41 @@ function setupRunOptions() {
   });
 }
 function setupScoresGraph() {
-  var total_width = repvar.opts.graph.total_width, total_height = repvar.opts.graph.total_height, margin = repvar.opts.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
+  var total_width = nvrgtr_settings.graph.total_width, total_height = nvrgtr_settings.graph.total_height, margin = nvrgtr_settings.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
   // Set up svg and g objects:
   var svg = d3.select("#scoreGraphSvg")
     .attr("width", total_width)
     .attr("height", total_height);
-  repvar.graph.g = svg.append("g")
+  nvrgtr_data.graph.g = svg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   // Set up graphing functions:
-  repvar.graph.x_fxn = d3.scaleLinear()
+  nvrgtr_data.graph.x_fxn = d3.scaleLinear()
     .range([0, width]);
-  repvar.graph.y_fxn = d3.scaleLinear()
+  nvrgtr_data.graph.y_fxn = d3.scaleLinear()
     .range([height, 0]);
-  repvar.graph.line_fxn = d3.line()
-    .x(function(d,i) { return repvar.graph.x_fxn(repvar.result_links.var_nums[i]); })
-    .y(function(d,i) { return repvar.graph.y_fxn(d); });
+  nvrgtr_data.graph.line_fxn = d3.line()
+    .x(function(d,i) { return nvrgtr_data.graph.x_fxn(nvrgtr_data.result_links.var_nums[i]); })
+    .y(function(d,i) { return nvrgtr_data.graph.y_fxn(d); });
   // Set up graph axes:
-  repvar.graph.x_axis = d3.axisBottom(repvar.graph.x_fxn)
+  nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn)
     .tickFormat(d3.format("d"));
-  repvar.graph.g.append("g")
+  nvrgtr_data.graph.g.append("g")
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + height + ")")
-    .call(repvar.graph.x_axis);
-  repvar.graph.y_axis = d3.axisLeft(repvar.graph.y_fxn)
+    .call(nvrgtr_data.graph.x_axis);
+  nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn)
     .tickFormat(d3.format("d"));
-  repvar.graph.g.append("g")
+  nvrgtr_data.graph.g.append("g")
     .attr("class", "y-axis")
-    .call(repvar.graph.y_axis);
+    .call(nvrgtr_data.graph.y_axis);
   // Set up axis labels:
-  repvar.graph.g.append("text") // x axis
+  nvrgtr_data.graph.g.append("text") // x axis
     .attr("class", "score-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
     .attr("y", height + 30)
     .text("Number of clusters");
-  repvar.graph.g.append("text") // y axis
+  nvrgtr_data.graph.g.append("text") // y axis
     .attr("class", "score-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", 0 - height/2)
@@ -342,7 +339,7 @@ function setupScoresGraph() {
     .attr("transform", "rotate(-90)")
     .text("Tree score");
   // Set up the graph line:
-  repvar.graph.g.append("path")
+  nvrgtr_data.graph.g.append("path")
     .attr("class", "score-line");
 }
 function setupVariantSelection() {
@@ -355,41 +352,41 @@ function setupVariantSelection() {
   addAssignedButtonTitleStrings(add_chosen_button, 'chosen');
   addAssignedButtonTitleStrings(add_ignored_button, 'ignored');
   add_avail_button.click(function(event) {
-    var added_key = (repvar.assigned_added == 'available') ? '' : 'available',
-      selected_names = Object.keys(repvar.selected);
+    var added_key = (nvrgtr_data.assigned_added == 'available') ? '' : 'available',
+      selected_names = Object.keys(nvrgtr_data.selected);
     if (added_key != '') { /* Add selected to assigned.*/
-      repvar.available.push(...selected_names);
-      repvar.available = [...new Set(repvar.available)];
-      repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
-      repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+      nvrgtr_data.available.push(...selected_names);
+      nvrgtr_data.available = [...new Set(nvrgtr_data.available)];
+      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(n in nvrgtr_data.selected) });
     } else { /* Remove selected from assigned.*/
-      repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(n in nvrgtr_data.selected) });
     }
     addAssignedButtonHandler(event, add_avail_button, added_key, selected_names);
   });
   add_chosen_button.click(function(event) {
-    var added_key = (repvar.assigned_added == 'chosen') ? '' : 'chosen',
-      selected_names = Object.keys(repvar.selected);
+    var added_key = (nvrgtr_data.assigned_added == 'chosen') ? '' : 'chosen',
+      selected_names = Object.keys(nvrgtr_data.selected);
     if (added_key != '') { /* Add selected to assigned.*/
-      repvar.chosen.push(...selected_names);
-      repvar.chosen = [...new Set(repvar.chosen)];
-      repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
-      repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+      nvrgtr_data.chosen.push(...selected_names);
+      nvrgtr_data.chosen = [...new Set(nvrgtr_data.chosen)];
+      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(n in nvrgtr_data.selected) });
     } else { /* Remove selected from assigned.*/
-      repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
+      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(n in nvrgtr_data.selected) });
     }
     addAssignedButtonHandler(event, add_chosen_button, added_key, selected_names);
   });
   add_ignored_button.click(function(event) {
-    var added_key = (repvar.assigned_added == 'ignored') ? '' : 'ignored',
-      selected_names = Object.keys(repvar.selected);
+    var added_key = (nvrgtr_data.assigned_added == 'ignored') ? '' : 'ignored',
+      selected_names = Object.keys(nvrgtr_data.selected);
     if (added_key != '') { /* Add selected to assigned.*/
-      repvar.ignored.push(...selected_names);
-      repvar.ignored = [...new Set(repvar.ignored)];
-      repvar.chosen = $.grep(repvar.chosen, function(n, i) { return !(n in repvar.selected) });
-      repvar.available = $.grep(repvar.available, function(n, i) { return !(n in repvar.selected) });
+      nvrgtr_data.ignored.push(...selected_names);
+      nvrgtr_data.ignored = [...new Set(nvrgtr_data.ignored)];
+      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(n in nvrgtr_data.selected) });
     } else { /* Remove selected from assigned.*/
-      repvar.ignored = $.grep(repvar.ignored, function(n, i) { return !(n in repvar.selected) });
+      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(n in nvrgtr_data.selected) });
     }
     addAssignedButtonHandler(event, add_ignored_button, added_key, selected_names);
   });
@@ -415,10 +412,10 @@ $(window).bind('beforeunload', function() {
 // =====  Page udating:
 function newTreeLoaded(data_obj) {
   // Returns true if a tree was loaded, false otherwise.
-  parseRepvarData(data_obj);
-  clearInterval(page.maintain_interval_obj);
-  page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
-  if (repvar.tree_data) {
+  parseBasicData(data_obj);
+  clearInterval(nvrgtr_page.maintain_interval_obj);
+  nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
+  if (nvrgtr_data.tree_data) {
     setNormalizationMethod();
     $("#introMessageGroup").remove();
     $("#treeSelectionDiv").show();
@@ -428,7 +425,7 @@ function newTreeLoaded(data_obj) {
     updateVarSelectList();
     updateRunOptions();
     $("#uploadFileInput").val('');
-    $("#saveRepvarButton").button('enable');
+    $("#saveSessionButton").button('enable');
     $("#uploadFileButton").button('disable');
     clearHideResultsPane();
     return true;
@@ -445,29 +442,29 @@ function updateVarSelectList() {
   // Updates the list of variants in the selection pane. Should be called every time the phylogenetic tree is modified.
   $('#varSelectDiv > .var-select-label').remove();
   var var_name, short_name, label;
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i];
-    if (var_name.length > repvar.opts.sizes.max_variant_name_length) {
-      short_name = var_name.slice(0, repvar.opts.sizes.max_variant_name_length);
+  for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
+    var_name = nvrgtr_data.leaves[i];
+    if (var_name.length > nvrgtr_opts.sizes.max_variant_name_length) {
+      short_name = var_name.slice(0, nvrgtr_opts.sizes.max_variant_name_length);
       label = $('<label name="'+var_name+'" class="var-select-label prevent-text-selection" title="'+var_name+'">'+short_name+'</label>');
     } else {
       label = $('<label name="'+var_name+'" class="var-select-label prevent-text-selection">'+var_name+'</label>');
     }
     $("#varSelectDiv").append(label);
-    repvar.nodes[var_name].variant_select_label = label;
+    nvrgtr_data.nodes[var_name].variant_select_label = label;
     addVariantLabelCallbacks(label, var_name);
   }
-  $("#chosenAssignedDiv").css('border-color', repvar.opts.colours.chosen);
-  $("#availAssignedDiv").css('border-color', repvar.opts.colours.available);
-  $("#ignoredAssignedDiv").css('border-color', repvar.opts.colours.ignored);
-  $("#numVariantsSpan").html(repvar.leaves.length);
+  $("#chosenAssignedDiv").css('border-color', nvrgtr_opts.colours.chosen);
+  $("#availAssignedDiv").css('border-color', nvrgtr_opts.colours.available);
+  $("#ignoredAssignedDiv").css('border-color', nvrgtr_opts.colours.ignored);
+  $("#numVariantsSpan").html(nvrgtr_data.leaves.length);
   $("#mainVariantSelectDiv").show();
 }
 function updateRunOptions() {
   // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
-  var maxVars = repvar.chosen.length + repvar.available.length;
+  var maxVars = nvrgtr_data.chosen.length + nvrgtr_data.available.length;
   if (maxVars < 2) {
-    maxVars = repvar.leaves.length - repvar.ignored.length;
+    maxVars = nvrgtr_data.leaves.length - nvrgtr_data.ignored.length;
   }
   if ($("#numVarSpinner").spinner('value') > maxVars) {
     $("#numVarSpinner").spinner('value', maxVars);
@@ -477,36 +474,36 @@ function updateRunOptions() {
   }
   $("#numVarSpinner").spinner('option', 'max', maxVars);
   $("#rangeSpinner").spinner('option', 'max', maxVars);
-  $("#numChosenSpan").html(repvar.chosen.length);
-  $("#numAvailSpan").html(repvar.available.length);
-  $("#numIgnoredSpan").html(repvar.ignored.length);
+  $("#numChosenSpan").html(nvrgtr_data.chosen.length);
+  $("#numAvailSpan").html(nvrgtr_data.available.length);
+  $("#numIgnoredSpan").html(nvrgtr_data.ignored.length);
   updateCAIVariantMarkers();
   clearHideResultsPane();
 }
 function updateCAIVariantMarkers() {
   // CAI stands for chosen, available, ignored.
   var var_name, circle, circle_radius, colour_key;
-  for (var i=0; i<repvar.leaves.length; ++i) {
-    var_name = repvar.leaves[i];
-    circle = repvar.nodes[var_name].circle;
-    circle_radius = repvar.opts.sizes.big_marker_radius;
-    if (repvar.chosen.indexOf(var_name) != -1) {
+  for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
+    var_name = nvrgtr_data.leaves[i];
+    circle = nvrgtr_data.nodes[var_name].circle;
+    circle_radius = nvrgtr_opts.sizes.big_marker_radius;
+    if (nvrgtr_data.chosen.indexOf(var_name) != -1) {
       colour_key = 'chosen';
-    } else if (repvar.available.indexOf(var_name) != -1) {
+    } else if (nvrgtr_data.available.indexOf(var_name) != -1) {
       colour_key = 'available';
-    } else if (repvar.ignored.indexOf(var_name) != -1) {
+    } else if (nvrgtr_data.ignored.indexOf(var_name) != -1) {
       colour_key = 'ignored';
     } else {
       colour_key = 'default_node';
-      circle_radius = repvar.opts.sizes.small_marker_radius;
+      circle_radius = nvrgtr_opts.sizes.small_marker_radius;
     }
     changeNodeStateColour(var_name, circle, 'node_rest', colour_key);
     circle.attr({'r':circle_radius});
-    $(".var-select-label[name='"+var_name+"'").css('border-color', repvar.opts.colours[colour_key]);
+    $(".var-select-label[name='"+var_name+"'").css('border-color', nvrgtr_opts.colours[colour_key]);
   }
 }
 function clearHideResultsPane() {
-  repvar.result_links = {'var_nums':[], 'scores':[]};
+  nvrgtr_data.result_links = {'var_nums':[], 'scores':[]};
   $("#resultsLinksDiv").hide();
   $("#scoreGraphSvg").hide();
   $(".result-link-li").remove();
@@ -516,18 +513,18 @@ function updateResultsPane(num_vars, num_vars_range) {
     links_list = $("#resultsLinksList");
   // Add links for the new runs into the results pane:
   for (var var_num=num_vars; var_num<=num_vars_range; ++var_num) {
-    if (repvar.result_links.hasOwnProperty(var_num)) { continue; }
-    results_url = page.server_url + '/results?' + page.session_id + '_' + var_num;
+    if (nvrgtr_data.result_links.hasOwnProperty(var_num)) { continue; }
+    results_url = nvrgtr_page.server_url + '/results?' + nvrgtr_page.session_id + '_' + var_num;
     result_description = var_num + ' clusters';
     result_link_obj = $('<a href="'+results_url+'" title="'+result_description+'" target="_blank">'+result_description+' [processing...]</a>');
     result_list_obj = result_link_obj.wrap('<li class="result-link-li">').parent();
     result_list_obj.attr("variantNumber", var_num);
     links_list.append(result_list_obj);
-    repvar.result_links[var_num] = {'url':results_url, 'link':result_link_obj, 'score':null};
-    repvar.result_links.var_nums.push(var_num);
+    nvrgtr_data.result_links[var_num] = {'url':results_url, 'link':result_link_obj, 'score':null};
+    nvrgtr_data.result_links.var_nums.push(var_num);
   }
   // Sort the internal representation of the results:
-  repvar.result_links.var_nums.sort(function(a,b) { return a-b; });
+  nvrgtr_data.result_links.var_nums.sort(function(a,b) { return a-b; });
   // Sort all of the links in the results pane:
   var sorted_links = $(".result-link-li").get();
   sorted_links.sort(function(a,b) {
@@ -538,18 +535,18 @@ function updateResultsPane(num_vars, num_vars_range) {
   });
   // Act on the new results list:
   $("#resultsLinksDiv").show();
-  clearTimeout(page.check_results_timer); // In case it's still checking for a previous run.
+  clearTimeout(nvrgtr_page.check_results_timer); // In case it's still checking for a previous run.
   checkIfProcessingDone();
 }
 function checkIfProcessingDone() {
   $.ajax({
     url: daemonURL('/check-results-done'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'var_nums': repvar.result_links.var_nums},
+    data: {'session_id': nvrgtr_page.session_id, 'var_nums': nvrgtr_data.result_links.var_nums},
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
-      if (JSON.stringify(ret_var_nums) != JSON.stringify(repvar.result_links.var_nums)) {
+      if (JSON.stringify(ret_var_nums) != JSON.stringify(nvrgtr_data.result_links.var_nums)) {
         console.log('Aborting checkIfProcessingDone(), as the returned list does not match.');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
@@ -559,12 +556,12 @@ function checkIfProcessingDone() {
         var_num = ret_var_nums[i];
         if (score == false) {
           draw_graph = false;
-        } else if (repvar.result_links[var_num].score == null) {
-          repvar.result_links[var_num].score = score;
-          repvar.result_links[var_num].link.html(var_num+' clusters ['+roundFloat(score, 4)+']');
+        } else if (nvrgtr_data.result_links[var_num].score == null) {
+          nvrgtr_data.result_links[var_num].score = score;
+          nvrgtr_data.result_links[var_num].link.html(var_num+' clusters ['+roundFloat(score, 4)+']');
           max_dist = parseFloat(data.max_var_dists[i]);
           if (max_dist > max_var_dist) { max_var_dist = max_dist; }
-        } else if (repvar.result_links[var_num].score != score) {
+        } else if (nvrgtr_data.result_links[var_num].score != score) {
           showErrorPopup("Error: scores from the server don't match existing scores.");
         }
       }
@@ -572,9 +569,9 @@ function checkIfProcessingDone() {
         calculateGlobalNormalization(max_var_dist); // So results are processed every 0.5 sec.
       }
       if (draw_graph == false) {
-        page.check_results_timer = setTimeout(checkIfProcessingDone, page.check_results_interval);
+        nvrgtr_page.check_results_timer = setTimeout(checkIfProcessingDone, nvrgtr_page.check_results_interval);
       } else {
-        repvar.result_links.scores = data.var_scores;
+        nvrgtr_data.result_links.scores = data.var_scores;
         updateScoreGraph();
       }
     },
@@ -582,41 +579,41 @@ function checkIfProcessingDone() {
   });
 }
 function updateScoreGraph() {
-  if (repvar.result_links.var_nums.length == 1) {
+  if (nvrgtr_data.result_links.var_nums.length == 1) {
     // No action currently taken.
   } else {
     // Update x and y domains:
-    var min_var = repvar.result_links.var_nums[0],
-      max_var = repvar.result_links.var_nums[repvar.result_links.var_nums.length-1];
-    repvar.graph.x_fxn.domain(
+    var min_var = nvrgtr_data.result_links.var_nums[0],
+      max_var = nvrgtr_data.result_links.var_nums[nvrgtr_data.result_links.var_nums.length-1];
+    nvrgtr_data.graph.x_fxn.domain(
       [min_var, max_var]
     );
-    repvar.graph.y_fxn.domain(
-      [ Math.floor(d3.min(repvar.result_links.scores)),
-        Math.ceil(d3.max(repvar.result_links.scores)) ]
+    nvrgtr_data.graph.y_fxn.domain(
+      [ Math.floor(d3.min(nvrgtr_data.result_links.scores)),
+        Math.ceil(d3.max(nvrgtr_data.result_links.scores)) ]
     );
     // Update x and y axes with the new domains:
-    repvar.graph.x_axis.tickValues(repvar.result_links.var_nums);
-    repvar.graph.y_axis.tickValues(repvar.graph.y_fxn.ticks(3));
-    repvar.graph.g.select(".x-axis")
+    nvrgtr_data.graph.x_axis.tickValues(nvrgtr_data.result_links.var_nums);
+    nvrgtr_data.graph.y_axis.tickValues(nvrgtr_data.graph.y_fxn.ticks(3));
+    nvrgtr_data.graph.g.select(".x-axis")
       .transition()
-      .call(repvar.graph.x_axis);
-    repvar.graph.g.select(".y-axis")
+      .call(nvrgtr_data.graph.x_axis);
+    nvrgtr_data.graph.g.select(".y-axis")
       .transition()
-      .call(repvar.graph.y_axis);
+      .call(nvrgtr_data.graph.y_axis);
     // Update the graph line:
-    repvar.graph.g.select(".score-line")
+    nvrgtr_data.graph.g.select(".score-line")
       .transition()
-      .attr("d", function() { return repvar.graph.line_fxn(repvar.result_links.scores); });
+      .attr("d", function() { return nvrgtr_data.graph.line_fxn(nvrgtr_data.result_links.scores); });
     $("#scoreGraphSvg").show();
   }
 }
 function updateVariantColoursFollowup() {
   /*Called from core.js when the user changes one of the variant colours.*/
-  $("#availAssignedDiv").css('border-color', repvar.opts.colours.available);
-  $("#chosenAssignedDiv").css('border-color', repvar.opts.colours.chosen);
-  $("#ignoredAssignedDiv").css('border-color', repvar.opts.colours.ignored);
-  $.each(repvar.nodes, function(name, node) {
+  $("#availAssignedDiv").css('border-color', nvrgtr_opts.colours.available);
+  $("#chosenAssignedDiv").css('border-color', nvrgtr_opts.colours.chosen);
+  $("#ignoredAssignedDiv").css('border-color', nvrgtr_opts.colours.ignored);
+  $.each(nvrgtr_data.nodes, function(name, node) {
     node.variant_select_label.css('border-color', node.node_rest_colour);
   });
 }
@@ -624,31 +621,31 @@ function updateVariantColoursFollowup() {
 // =====  Callback and event handlers:
 function addAssignedLabelHandlers(label_ele, assigned_key) {
   label_ele.mouseenter(function() {
-    var assigned_len = repvar[assigned_key].length;
+    var assigned_len = nvrgtr_data[assigned_key].length;
     if (assigned_len == 0) { return false; }
     for (var i=0; i<assigned_len; ++i) {
-      nodeLabelMouseoverHandler(repvar[assigned_key][i]);
+      nodeLabelMouseoverHandler(nvrgtr_data[assigned_key][i]);
     }
   }).mouseleave(function() {
-    var assigned_len = repvar[assigned_key].length;
+    var assigned_len = nvrgtr_data[assigned_key].length;
     for (var i=0; i<assigned_len; ++i) {
-      nodeLabelMouseoutHandler(repvar[assigned_key][i]);
+      nodeLabelMouseoutHandler(nvrgtr_data[assigned_key][i]);
     }
   }).click(function() {
-    var assigned_len = repvar[assigned_key].length;
+    var assigned_len = nvrgtr_data[assigned_key].length;
     if (assigned_len == 0) { return false; }
-    var full_select = (repvar.assigned_selected != assigned_key);
+    var full_select = (nvrgtr_data.assigned_selected != assigned_key);
     if (full_select) {
       label_ele.addClass('var-assigned-selected');
     } else {
       label_ele.removeClass('var-assigned-selected');
     }
     for (var i=0; i<assigned_len; ++i) {
-      nodeLabelMouseclickHandler(repvar[assigned_key][i], false, full_select);
+      nodeLabelMouseclickHandler(nvrgtr_data[assigned_key][i], false, full_select);
     }
     numSelectedCallback();
     if (full_select) {
-      repvar.assigned_selected = assigned_key;
+      nvrgtr_data.assigned_selected = assigned_key;
     }
   });
 }
@@ -670,61 +667,61 @@ function addAssignedButtonHandler(event, button_element, assigned_key, selected_
   updateRunOptions();
   numSelectedCallback();
   if (assigned_key != '') {
-    // This must be after numSelectedCallback(), as it clears repvar.assigned_added
+    // This must be after numSelectedCallback(), as it clears nvrgtr_data.assigned_added
     button_element.addClass('var-assigned-added');
     button_element.attr('title', button_element.data('remove_desc'));
-    repvar.assigned_added = assigned_key;
+    nvrgtr_data.assigned_added = assigned_key;
   }
 }
 function clearAssignedButtonHandler(event, assigned_key, assigned_div_element) {
   event.stopPropagation();
-  var assigned_len = repvar[assigned_key].length;
+  var assigned_len = nvrgtr_data[assigned_key].length;
   if (assigned_len == 0) { return false; }
   for (var i=0; i<assigned_len; ++i) {
-    nodeLabelMouseoutHandler(repvar[assigned_key][i]);
+    nodeLabelMouseoutHandler(nvrgtr_data[assigned_key][i]);
   }
-  repvar[assigned_key] = [];
-  if (repvar.assigned_selected == assigned_key) {
+  nvrgtr_data[assigned_key] = [];
+  if (nvrgtr_data.assigned_selected == assigned_key) {
     assigned_div_element.removeClass('var-assigned-selected');
-    repvar.assigned_selected = '';
+    nvrgtr_data.assigned_selected = '';
   }
   updateRunOptions();
 }
 function nodeLabelMouseoverHandlerCallback(var_name, label_colour) {
-  repvar.nodes[var_name].variant_select_label.css('background', label_colour);
+  nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
 }
 function nodeLabelMouseoutHandlerCallback(var_name, label_colour) {
-  repvar.nodes[var_name].variant_select_label.css('background', label_colour);
+  nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
 }
 function nodeLabelMouseclickHandlerCallback(var_name, label_colour) {
-  repvar.nodes[var_name].variant_select_label.css('background', label_colour);
+  nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
 }
 function numSelectedCallback() {
   // Update span indicating number of selected variants:
-  $("#currentSelectionNum").html(repvar.num_selected);
+  $("#currentSelectionNum").html(nvrgtr_data.num_selected);
   // Update assigned labels and controlling variable:
-  if (repvar.assigned_selected == 'chosen') {
+  if (nvrgtr_data.assigned_selected == 'chosen') {
     $("#chosenAssignedDiv").removeClass('var-assigned-selected');
-  } else if (repvar.assigned_selected == 'available') {
+  } else if (nvrgtr_data.assigned_selected == 'available') {
     $("#availAssignedDiv").removeClass('var-assigned-selected');
-  } else if (repvar.assigned_selected == 'ignored') {
+  } else if (nvrgtr_data.assigned_selected == 'ignored') {
     $("#ignoredAssignedDiv").removeClass('var-assigned-selected');
   }
-  repvar.assigned_selected = '';
+  nvrgtr_data.assigned_selected = '';
   // Update assigned 'add/remove' buttons and controlling variable:
-  if (repvar.assigned_added != '') {
+  if (nvrgtr_data.assigned_added != '') {
     var button_element;
-    if (repvar.assigned_added == 'available') {
+    if (nvrgtr_data.assigned_added == 'available') {
       button_element = $("#addAvailButton");
-    } else if (repvar.assigned_added == 'chosen') {
+    } else if (nvrgtr_data.assigned_added == 'chosen') {
       button_element = $("#addChosenButton");
-    } else if (repvar.assigned_added == 'ignored') {
+    } else if (nvrgtr_data.assigned_added == 'ignored') {
       button_element = $("#addIgnoredButton");
     }
     button_element.removeClass('var-assigned-added');
     button_element.attr('title', button_element.data('add_desc'));
   }
-  repvar.assigned_added = '';
+  nvrgtr_data.assigned_added = '';
 }
 function addVariantLabelCallbacks(jq_ele, var_name) {
   jq_ele.mouseenter(function() {
@@ -740,7 +737,7 @@ function setNormalizationMethod() {
   $.ajax({
     url: daemonURL('/set-normalization-method'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'normalization':norm},
+    data: {'session_id': nvrgtr_page.session_id, 'normalization':norm},
     error: function(error) { processError(error, "Error setting the normalization method"); }
   });
 }
@@ -750,7 +747,7 @@ function calculateGlobalNormalization(max_var_dist) {
   $.ajax({
     url: daemonURL('/calculate-global-normalization'),
     type: 'POST',
-    data: {'session_id': page.session_id, 'var_nums':repvar.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null},
+    data: {'session_id': nvrgtr_page.session_id, 'var_nums':nvrgtr_data.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null},
     success: function(data_obj) {
       //var data = $.parseJSON(data_obj);
     },
@@ -759,32 +756,32 @@ function calculateGlobalNormalization(max_var_dist) {
 }
 
 // =====  Data parsing / validation:
-function parseRepvarData(data_obj) {
+function parseBasicData(data_obj) {
   var data = $.parseJSON(data_obj);
-  page.session_id = data.session_id;
-  repvar.tree_data = data.phyloxml_data;
-  repvar.leaves = data.leaves;
-  repvar.lc_leaves = {};
+  nvrgtr_page.session_id = data.session_id;
+  nvrgtr_data.tree_data = data.phyloxml_data;
+  nvrgtr_data.leaves = data.leaves;
+  nvrgtr_data.lc_leaves = {};
   var name;
   for (var i=0; i<data.leaves.length; ++i) {
     name = data.leaves[i];
-    repvar.lc_leaves[name.toLowerCase()] = name;
+    nvrgtr_data.lc_leaves[name.toLowerCase()] = name;
   }
-  repvar.chosen = data.chosen;
-  repvar.available = data.available;
-  repvar.ignored = data.ignored;
-  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != page.maintain_interval*1000) {
+  nvrgtr_data.chosen = data.chosen;
+  nvrgtr_data.available = data.available;
+  nvrgtr_data.ignored = data.ignored;
+  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != nvrgtr_page.maintain_interval*1000) {
     maintainServer();
-    page.maintain_interval = data.maintain_interval * 1000;
-    clearInterval(page.maintain_interval_obj);
-    page.maintain_interval_obj = setInterval(maintainServer, page.maintain_interval);
+    nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
+    clearInterval(nvrgtr_page.maintain_interval_obj);
+    nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
 }
 function validateFindVariantsCall() {
-  if (!repvar.tree_data) {
+  if (!nvrgtr_data.tree_data) {
     return false;
   }
-  if (repvar.available.length + repvar.chosen.length < 2) {
+  if (nvrgtr_data.available.length + nvrgtr_data.chosen.length < 2) {
     showErrorPopup("You must select 2 or more variants from your tree and assign them as 'available' or 'chosen' before NaVARgator can perform clustering.");
     return false;
   }
@@ -803,7 +800,7 @@ function validateFindVariantsCall() {
   var num_vars_int = parseInt(num_vars), num_vars_range_int = parseInt(num_vars_range),
     do_find_vars = false;
   for (var i=num_vars_int; i<=num_vars_range_int; ++i) {
-    if (!repvar.result_links.hasOwnProperty(i)) {
+    if (!nvrgtr_data.result_links.hasOwnProperty(i)) {
       do_find_vars = true;
     }
   }
