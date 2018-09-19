@@ -214,7 +214,7 @@ function generateBrowserId(length) {
   return b_id;
 }
 function daemonURL(url) {
-  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in repvar_daemon.py
+  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in navargator_daemon.py
   return nvrgtr_page.server_url + '/daemon' + url;
 }
 function maintainServer() {

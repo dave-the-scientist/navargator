@@ -1,6 +1,6 @@
 """
 Defines the following public functions:
-  load_repvar_file(file_path)
+  load_navargator_file(file_path)
 """
 import os, itertools, random, time
 from math import log, exp
@@ -14,23 +14,23 @@ ignore_nodes_tag = 'ignored variants'
 tree_data_tag = 'newick tree'
 
 # # # # #  Misc functions  # # # # #
-def load_repvar_file(file_path, verbose=True):
-    if not file_path.lower().endswith('.repvar'):
-        file_path += '.repvar'
+def load_navargator_file(file_path, verbose=True):
+    if not file_path.lower().endswith('.nvrgtr'):
+        file_path += '.nvrgtr'
     if not os.path.isfile(file_path):
-        print('Error: could not find the given repvar file "%s"' % file_path)
+        print('Error: could not find the given navargator file "%s"' % file_path)
         exit()
     if verbose:
         print('Loading information from %s...' % file_path)
     with open(file_path) as f:
-        vfinder = repvar_from_data(f, verbose=verbose)
+        vfinder = navargator_from_data(f, verbose=verbose)
     return vfinder
-def repvar_from_data(data_lines, verbose=False):
+def navargator_from_data(data_lines, verbose=False):
     """Expects data as an iterable of lines. Should be either a file object or a str.splitlines()."""
     data = {}
     def process_tag_data(tag, data_buff):
         if tag in data:
-            print('Error: the repvar file %s has multiple sections labeled "[%s]".' % (file_path, tag))
+            print('Error: the navargator file %s has multiple sections labeled "[%s]".' % (file_path, tag))
             exit()
         if not data_buff:
             return
@@ -155,16 +155,16 @@ class VariantFinder(object):
         self._calculate_cache_values(params, variants, scores, alt_variants)
         return variants, scores, alt_variants
 
-    def save_repvar_file(self, file_path):
-        if not file_path.lower().endswith('.repvar'):
-            file_path += '.repvar'
-        repvar_str = self.get_repvar_string()
+    def save_navargator_file(self, file_path):
+        if not file_path.lower().endswith('.nvrgtr'):
+            file_path += '.nvrgtr'
+        nvrgtr_str = self.get_navargator_string()
         with open(file_path, 'w') as f:
-            f.write(repvar_str)
+            f.write(nvrgtr_str)
         if self.verbose:
             print('\nData saved to %s' % file_path)
 
-    def get_repvar_string(self):
+    def get_navargator_string(self):
         buff = []
         if self.ignored:
             ignor_names = ', '.join(sorted(self.ignored))
@@ -421,10 +421,10 @@ class VariantFinder(object):
         self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
         # self._clear_cache()
 
-class RepvarValidationError(ValueError):
+class NavargatorValidationError(ValueError):
     def __init__(self, *args, **kwargs):
         ValueError.__init__(self, *args, **kwargs)
-class RepvarRuntimeError(RuntimeError):
+class NavargatorRuntimeError(RuntimeError):
     def __init__(self, *args, **kwargs):
         RuntimeError.__init__(self, *args, **kwargs)
 

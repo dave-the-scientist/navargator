@@ -1,6 +1,6 @@
 import sys, os, webbrowser, socket
-from repvar_resources.variant_finder import load_repvar_file, VariantFinder
-from repvar_resources import repvar_daemon
+from repvar_resources.variant_finder import load_navargator_file, VariantFinder
+from repvar_resources import navargator_daemon
 
 __author__ = 'David Curran'
 __version__ = '0.1.1'
@@ -32,15 +32,15 @@ vfinder.chosen = ['Hps.Strain5.Unk']
 #vfinder.available = ['h87[A.p|sv', 'h49[A.p|sv', 'h57[A.suis', 'c15[H.p|nt']
 #vfinder.available = vfinder.leaves[:20]
 
-#vfinder.save_repvar_file('results/tbpb82.repvar')
+#vfinder.save_navargator_file('results/tbpb82.nvrgtr')
 
-vfinder = load_repvar_file('results/tbpb82')
+vfinder = load_navargator_file('results/tbpb82')
 vfinder.find_variants(8, method='k medoids')
 exit()"""
 # TODO:
 # -- Need to calculate defaults like show/hide variant names (if too many or too long).
 # -- Provide controls for display options (font sizes, colours, etc). I think I want this in a collapsable style-box
-# -- Change repvar file format. A sequence name could start with '[', which would mess it up. However, '[(' cannot happen in a newick tree, so that's how I should format my tag lines. A seq name could start with '#', so I think '//' is probably a better way to format comment lines.
+# -- Change nvrgtr file format. A sequence name could start with '[', which would mess it up. However, '[(' cannot happen in a newick tree, so that's how I should format my tag lines. A seq name could start with '#', so I think '//' is probably a better way to format comment lines.
 
 # BUG reports:
 
@@ -52,14 +52,14 @@ if __name__ == '__main__':
     num_threads = 3
     verbose = False
 
-    daemon = repvar_daemon.RepvarDaemon(server_port, threads=num_threads, verbose=verbose)
+    daemon = navargator_daemon.NavargatorDaemon(server_port, threads=num_threads, verbose=verbose)
 
     if len(sys.argv) == 1:
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_session_id)
     else:
         input_file = sys.argv[1].strip()
-        if input_file.lower().endswith('.repvar'):
-            vfinder = load_repvar_file(input_file, verbose=verbose)
+        if input_file.lower().endswith('.nvrgtr'):
+            vfinder = load_navargator_file(input_file, verbose=verbose)
             idnum = daemon.add_variant_finder(vfinder)
         else:
             idnum = daemon.new_variant_finder(input_file)

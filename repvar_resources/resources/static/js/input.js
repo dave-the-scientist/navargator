@@ -7,7 +7,7 @@
 // - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
 // - After the session file format is ready, make it save the user's display options.
 //   - These options should also be passed to the server and then to results.js as defaults.
-// - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once repvar files actually save clustering results too.
+// - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
 // - The tree on the results page looks more cohesive, because it's incorporating colours from the page. The input tree looks better now with the header. Maybe make a circular gradient from the middle of the input tree, in the cluster colour. Probably not necessary though.
@@ -83,7 +83,7 @@ function setupUploadSaveButtons() {
     if (file_obj) {
       var filename = file_obj.name,
         suffix = parseFileSuffix(filename);
-      if (suffix == 'repvar') {
+      if (suffix == 'nvrgtr') {
         upload_type_select.val('nvrgtr');
       } else if (suffix == 'nwk' || suffix == 'tree') {
         upload_type_select.val('newick');
@@ -108,7 +108,7 @@ function setupUploadSaveButtons() {
     form_data.append('session_id', nvrgtr_page.session_id);
     var selected_file_type = upload_type_select.val();
     if (selected_file_type == 'nvrgtr') {
-      upload_url = daemonURL('/upload-repvar-file');
+      upload_url = daemonURL('/upload-nvrgtr-file');
     } else if (selected_file_type == 'newick') {
       upload_url = daemonURL('/upload-newick-tree');
     } else if (selected_file_type == 'phyloxml') {
@@ -135,7 +135,7 @@ function setupUploadSaveButtons() {
   });
   save_button.click(function() {
     $.ajax({
-      url: daemonURL('/save-repvar-file'),
+      url: daemonURL('/save-nvrgtr-file'),
       type: 'POST',
       data: {'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored},
       success: function(data_obj) {
@@ -144,7 +144,7 @@ function setupUploadSaveButtons() {
         if (data.saved_locally == true) {
           console.log('file saved locally');
         } else {
-          saveDataString(data.repvar_as_string, 'web_tree.repvar', 'text/plain');
+          saveDataString(data.nvrgtr_as_string, 'web_tree.nvrgtr', 'text/plain');
         }
       },
       error: function(error) { processError(error, "Error saving session file"); }

@@ -2,7 +2,7 @@ import os, sys, time, threading
 from collections import deque
 from random import randint
 from flask import Flask, request, render_template, json
-from repvar_resources.variant_finder import VariantFinder, repvar_from_data
+from repvar_resources.variant_finder import VariantFinder, navargator_from_data
 from repvar_resources.job_queue import JobQueue
 
 if sys.version_info >= (3,0): # Python 3.x imports
@@ -31,8 +31,8 @@ def daemonURL(url):
 # - The instance closed for no apparent reason.
 #   - Looking into it, it was because a time.time() call was sometimes returning a value ~15 sec too high. Then it just stopped happening. I'm guessing it was a vmware issue (as time.time is a pretty low-level function). Happened only once, I believe just after a system update.
 
-class RepvarDaemon(object):
-    """Background daemon to server repvar requests.
+class NavargatorDaemon(object):
+    """Background daemon to serve NaVARgator requests.
 
       This class defines several custom HTTP status codes used to signal errors, which are also further defined in core.js:processError().
     550 - Specific error validating the user's tree.
@@ -49,13 +49,13 @@ class RepvarDaemon(object):
         self.server_port = server_port
         self.web_server = web_server
         self.verbose = verbose
-        self.sessions = {} # Holds the repvar instances, with session IDs as keys.
+        self.sessions = {} # Holds the navargator instances, with session IDs as keys.
         self.job_queue = JobQueue(threads)
         if not web_server: # Running locally.
             self.sessionID_length = 5 # Length of the unique session ID used.
             self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
-            self.maintain_interval = 2 # Interval that the page sends a signal to maintain the repvar instance.
-            allowed_wait = 10 # Wait seconds before timing out repvar instances.
+            self.maintain_interval = 2 # Interval that the page sends a signal to maintain the navargator instance.
+            allowed_wait = 10 # Wait seconds before timing out navargator instances.
         else: # Live, hosted web server.
             self.sessionID_length = 20
             self.check_interval = 10
@@ -151,10 +151,10 @@ class RepvarDaemon(object):
                 self.connections.close(s_id, None) # Needed because that particular s_id never times out.
             new_s_id = self.new_variant_finder(tree_data)
             return json.dumps(self.get_vf_data_dict(new_s_id))
-        @self.server.route(daemonURL('/upload-repvar-file'), methods=['POST'])
-        def upload_repvar_file():
+        @self.server.route(daemonURL('/upload-nvrgtr-file'), methods=['POST'])
+        def upload_nvrgtr_file():
             try:
-                repvar_data = request.files['upload-file'].read()
+                nvrgtr_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 5505)
             vf, s_id, b_id, msg = self.get_instance()
@@ -162,25 +162,25 @@ class RepvarDaemon(object):
                 return msg
             elif s_id == self.local_input_session_id:
                 self.connections.close(s_id, None) # Needed because that particular s_id never times out.
-            vf = repvar_from_data(repvar_data.splitlines(), verbose=self.verbose)
+            vf = navargator_from_data(nvrgtr_data.splitlines(), verbose=self.verbose)
             new_s_id = self.add_variant_finder(vf)
             return json.dumps(self.get_vf_data_dict(new_s_id))
-        @self.server.route(daemonURL('/save-repvar-file'), methods=['POST'])
-        def save_repvar_file():
+        @self.server.route(daemonURL('/save-nvrgtr-file'), methods=['POST'])
+        def save_nvrgtr_file():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
                 return msg
             if self.web_server:
                 saved_locally = False
-                repvar_str = vf.get_repvar_string()
+                nvrgtr_str = vf.get_navargator_string()
             else:
                 root = tk_root()
                 filename = saveAs()
                 root.destroy()
                 if filename:
-                    vf.save_repvar_file(filename)
-                saved_locally, repvar_str = True, ''
-            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'repvar_as_string':repvar_str})
+                    vf.save_navargator_file(filename)
+                saved_locally, nvrgtr_str = True, ''
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str})
         @self.server.route(daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
             vf, s_id, msg = self.update_or_copy_vf()
@@ -416,7 +416,7 @@ class RepvarDaemon(object):
                 del self.sessions[s_id]
         if not self.web_server: # if personal server with no live instances.
             if self.connections.all_dead():
-                print('Last Repvar instance closed, shutting down server.')
+                print('Last NaVARgator instance closed, shutting down server.')
                 self.should_quit.set()
     def close(self):
         """Careful with this; the web version should probably never have this
