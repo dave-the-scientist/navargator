@@ -1,9 +1,9 @@
 import sys, os, webbrowser, socket
-from repvar_resources.variant_finder import load_navargator_file, VariantFinder
-from repvar_resources import navargator_daemon
+from navargator_resources.variant_finder import load_navargator_file, VariantFinder
+from navargator_resources import navargator_daemon
 
 __author__ = 'David Curran'
-__version__ = '0.1.1'
+__version__ = '0.1.1' # test
 
 def new_random_port():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

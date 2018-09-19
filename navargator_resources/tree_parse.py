@@ -1,7 +1,7 @@
 import os, itertools
 import numpy as np
 import xml.etree.ElementTree as ET
-from repvar_resources.convert import NewickToPhyloxml
+from navargator_resources.convert import NewickToPhyloxml
 
 class TreeParser(object):
     def __init__(self, tree_input, tree_format, verbose=False):

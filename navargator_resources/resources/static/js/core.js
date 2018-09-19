@@ -1,5 +1,4 @@
 // TODO:
-// - Finish removing mention of 'repvar'
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
 // - Finish defining error codes in processError().

@@ -2,8 +2,8 @@ import os, sys, time, threading
 from collections import deque
 from random import randint
 from flask import Flask, request, render_template, json
-from repvar_resources.variant_finder import VariantFinder, navargator_from_data
-from repvar_resources.job_queue import JobQueue
+from navargator_resources.variant_finder import VariantFinder, navargator_from_data
+from navargator_resources.job_queue import JobQueue
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
