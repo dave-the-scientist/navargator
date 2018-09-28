@@ -15,8 +15,7 @@ $.extend(nvrgtr_settings.graph, {
   'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
 });
 
-//nvrgtr_data.graph = {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]}; // ADD some of this to the core.js nvrgtr_data.graph
-// Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by addming a middle variable
+// Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by adding a middle variable
 
 //BUG:
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
@@ -69,9 +68,10 @@ function setupPage() {
   setupTreeElements();
 
   $.ajax({
-    url: daemonURL('/get-input-data'),
+    url: daemonURL('/get-basic-data'),
     type: 'POST',
-    data: {'session_id': nvrgtr_page.session_id},
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id}),
     success: function(data_obj) {
       parseBasicData(data_obj);
       $("#numClustersH2Span").html(nvrgtr_data.num_variants);
@@ -192,7 +192,8 @@ function setupNormalizationPane() {
     $.ajax({
       url: daemonURL('/calculate-global-normalization'),
       type: 'POST',
-      data: {'session_id':nvrgtr_page.session_id, 'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins},
+      contentType: "application/json",
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         nvrgtr_data.normalized_max_distance = data.global_value;
@@ -333,7 +334,8 @@ function checkForClusteringResults() {
   $.ajax({
     url: daemonURL('/get-cluster-results'),
     type: 'POST',
-    data: {'session_id': nvrgtr_page.session_id, 'num_vars': nvrgtr_data.num_variants},
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'num_vars': nvrgtr_data.num_variants}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       if (data.variants == false) {
@@ -796,26 +798,6 @@ function updateHistoAxes() {
 }
 
 // =====  Data parsing:
-function parseBasicData(data_obj) {
-  var data = $.parseJSON(data_obj);
-  nvrgtr_page.session_id = data.session_id;
-  nvrgtr_data.tree_data = data.phyloxml_data;
-  nvrgtr_data.leaves = data.leaves;
-  nvrgtr_data.lc_leaves = {}; // Lowercase names as keys, actual names as values. Used to search.
-  var name;
-  for (var i=0; i<data.leaves.length; ++i) {
-    name = data.leaves[i];
-    nvrgtr_data.lc_leaves[name.toLowerCase()] = name;
-  }
-  nvrgtr_data.ignored = data.ignored;
-  nvrgtr_data.available = data.available;
-  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != nvrgtr_page.maintain_interval*1000) {
-    maintainServer();
-    nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
-    clearInterval(nvrgtr_page.maintain_interval_obj);
-    nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
-  }
-}
 function parseClusteredData(data) {
   if (data.variants.length != nvrgtr_data.num_variants) {
     showErrorPopup("Error: data appears to be corrupted (num_variants and variants disagree).");

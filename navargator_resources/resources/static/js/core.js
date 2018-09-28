@@ -1,4 +1,6 @@
 // TODO:
+// - Finish parseBasicData(), the associated opts processing, and calculation of default values.
+// - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
 // - Finish defining error codes in processError().
@@ -23,7 +25,7 @@ var nvrgtr_opts = { // User-modifiable settings that persist between pages and s
     'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
   },
   'colours' : {
-    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
+    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
 };
 
@@ -216,13 +218,48 @@ function daemonURL(url) {
   // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in navargator_daemon.py
   return nvrgtr_page.server_url + '/daemon' + url;
 }
+function parseBasicData(data_obj) {
+  // Is always called before calling drawTree.
+  var data = $.parseJSON(data_obj);
+  nvrgtr_page.session_id = data.session_id;
+  nvrgtr_data.tree_data = data.phyloxml_data;
+  nvrgtr_data.leaves = data.leaves;
+  nvrgtr_data.lc_leaves = {}; // Lowercase names as keys, actual names as values. Used to search.
+  var name;
+  for (var i=0; i<data.leaves.length; ++i) {
+    name = data.leaves[i];
+    nvrgtr_data.lc_leaves[name.toLowerCase()] = name;
+  }
+  nvrgtr_data.available = data.available;
+  nvrgtr_data.ignored = data.ignored;
+  if (nvrgtr_page.page == 'input') {
+    nvrgtr_data.chosen = data.chosen;
+  }
+  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != nvrgtr_page.maintain_interval*1000) {
+    maintainServer();
+    nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
+    clearInterval(nvrgtr_page.maintain_interval_obj);
+    nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
+  }
+
+  console.log('processing display opts');
+  $.each(data.display_opts, function(category, opts) {
+    console.log(category);
+    $.each(opts, function(key, value) {
+      console.log(key, value);
+    });
+  });
+  // if nvrgtr_opts.sizes.tree is different from the css value, need to modify the css variable here.
+  // if data.display_opts is empty, it means that the session is brand new (not previously saved). in this case, should calculate a few default values (like tree node font size, node widths, etc). At this point I do know how many sequences the tree has
+}
 function maintainServer() {
   // This is continually called to maintain the background server.
   if (!nvrgtr_page.instance_closed) {
     $.ajax({
       url: daemonURL('/maintain-server'),
       type: 'POST',
-      data: {'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id},
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id}),
       error: function(error) {
         console.log('connection to NaVARgator server lost. The error:', error);
         nvrgtr_page.instance_closed = true;
@@ -237,7 +274,8 @@ function closeInstance() {
   $.ajax({
     url: daemonURL('/instance-closed'),
     type: 'POST',
-    data: {'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id},
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id}),
     async: false, // Makes a huge difference ensuring that this ajax call actually happens
     error: function(error) {
       console.log("Error closing your instance:");
@@ -321,9 +359,9 @@ function saveDataString(data_str, file_name, file_type) {
   var download_link = document.createElement("a");
   download_link.href = data_url;
   download_link.download = file_name;
-  document.body.appendChild(download_link);
+  document.body.appendChild(download_link); // TESTING should be able to remove these 2 lines
   download_link.click();
-  document.body.removeChild(download_link);
+  document.body.removeChild(download_link); // TESTING should be able to remove these 2 lines
 }
 function calculateHistoTicks(max_var_dist) {
   // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.

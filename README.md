@@ -17,4 +17,4 @@ NaVARgator can be run as an online tool or by installing it and running it on yo
 
 ### Installation instructions
 
-Coming soon. For now, just ensure you have Python (2 or 3), numpy and flask installed for that version, and pull from this github. Then, in that directory, start it with `python navargator.py`.
+Coming soon. For now, just ensure you have Python (2 or 3) installed, as well as the Python packages numpy, flask, and tkinter, and pull from this github repository. Then, in that directory, start it with `python navargator.py`.

@@ -1,5 +1,5 @@
 import sys, os, webbrowser, socket
-from navargator_resources.variant_finder import load_navargator_file, VariantFinder
+from navargator_resources.variant_finder import load_navargator_file
 from navargator_resources import navargator_daemon
 
 __author__ = 'David Curran'
@@ -16,30 +16,8 @@ def new_random_port():
         return prt
 
 
-"""
-tree_file = "results/Bootstrap100_rooted.nwk"
-vfinder = VariantFinder(tree_file)
-avail = []
-for l in vfinder.leaves:
-    if l == 'Hps.hrn11.Unk': continue
-    if l.split('.')[-2][0] == 'h':
-        avail.append(l)
-vfinder.available = avail
-vfinder.ignored = ['App.L20.SV5', 'App.JL03.SV3', 'App.76.Unk']
-vfinder.chosen = ['Hps.Strain5.Unk']
-
-#vfinder.ignored = ['L20[A.p]', 'Ap76[A.p]', 'ApJL03[A.p']
-#vfinder.available = ['h87[A.p|sv', 'h49[A.p|sv', 'h57[A.suis', 'c15[H.p|nt']
-#vfinder.available = vfinder.leaves[:20]
-
-#vfinder.save_navargator_file('results/tbpb82.nvrgtr')
-
-vfinder = load_navargator_file('results/tbpb82')
-vfinder.find_variants(8, method='k medoids')
-exit()"""
 # TODO:
 # -- Need to calculate defaults like show/hide variant names (if too many or too long).
-# -- Provide controls for display options (font sizes, colours, etc). I think I want this in a collapsable style-box
 # -- Change nvrgtr file format. A sequence name could start with '[', which would mess it up. However, '[(' cannot happen in a newick tree, so that's how I should format my tag lines. A seq name could start with '#', so I think '//' is probably a better way to format comment lines.
 
 # BUG reports:

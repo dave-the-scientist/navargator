@@ -59,9 +59,10 @@ function setupPage() {
   if (nvrgtr_page.session_id != '') {
     // This is only run for the local version.
     $.ajax({
-      url: daemonURL('/get-input-data'),
+      url: daemonURL('/get-basic-data'),
       type: 'POST',
-      data: {'session_id': nvrgtr_page.session_id},
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id}),
       success: function(data_obj) {
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
           $("#loadInputHeader").click(); //   open collapsible pane.
@@ -121,8 +122,8 @@ function setupUploadSaveButtons() {
     $.ajax({
       type: 'POST',
       url: upload_url,
-      data: form_data,
-      contentType: false,
+      contentType: false, // Not using contentType: "application/json" here,
+      data: form_data, //    or JSON.stringify here, as it's sending files.
       cache: false,
       processData: false,
       success: function(data_obj) {
@@ -137,7 +138,8 @@ function setupUploadSaveButtons() {
     $.ajax({
       url: daemonURL('/save-nvrgtr-file'),
       type: 'POST',
-      data: {'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored},
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         nvrgtr_page.session_id = data.session_id;
@@ -278,7 +280,8 @@ function setupRunOptions() {
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
-      data: {'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range},
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'display_opts':nvrgtr_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         var new_s_id = data.session_id;
@@ -402,7 +405,7 @@ function setupVariantSelection() {
 }
 $(document).ready(function(){
   // Called once the document has loaded.
-  setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens. I no longer believe that, and I think those issues were caused by the html document loading the js files asynch. Should be fixed.
+  setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens. I no longer believe that, and I think those issues were caused by the html document loading the js files asynch. Should be fixed now.
 });
 $(window).bind('beforeunload', function() {
   // Lets the background server know this instance has been closed.
@@ -542,7 +545,8 @@ function checkIfProcessingDone() {
   $.ajax({
     url: daemonURL('/check-results-done'),
     type: 'POST',
-    data: {'session_id': nvrgtr_page.session_id, 'var_nums': nvrgtr_data.result_links.var_nums},
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'var_nums': nvrgtr_data.result_links.var_nums}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
@@ -737,7 +741,8 @@ function setNormalizationMethod() {
   $.ajax({
     url: daemonURL('/set-normalization-method'),
     type: 'POST',
-    data: {'session_id': nvrgtr_page.session_id, 'normalization':norm},
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'normalization':norm}),
     error: function(error) { processError(error, "Error setting the normalization method"); }
   });
 }
@@ -747,7 +752,8 @@ function calculateGlobalNormalization(max_var_dist) {
   $.ajax({
     url: daemonURL('/calculate-global-normalization'),
     type: 'POST',
-    data: {'session_id': nvrgtr_page.session_id, 'var_nums':nvrgtr_data.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null},
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'var_nums':nvrgtr_data.result_links.var_nums, 'max_var_dist':max_var_dist, 'global_bins':bins, 'cur_var':null}),
     success: function(data_obj) {
       //var data = $.parseJSON(data_obj);
     },
@@ -756,27 +762,6 @@ function calculateGlobalNormalization(max_var_dist) {
 }
 
 // =====  Data parsing / validation:
-function parseBasicData(data_obj) {
-  var data = $.parseJSON(data_obj);
-  nvrgtr_page.session_id = data.session_id;
-  nvrgtr_data.tree_data = data.phyloxml_data;
-  nvrgtr_data.leaves = data.leaves;
-  nvrgtr_data.lc_leaves = {};
-  var name;
-  for (var i=0; i<data.leaves.length; ++i) {
-    name = data.leaves[i];
-    nvrgtr_data.lc_leaves[name.toLowerCase()] = name;
-  }
-  nvrgtr_data.chosen = data.chosen;
-  nvrgtr_data.available = data.available;
-  nvrgtr_data.ignored = data.ignored;
-  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != nvrgtr_page.maintain_interval*1000) {
-    maintainServer();
-    nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
-    clearInterval(nvrgtr_page.maintain_interval_obj);
-    nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
-  }
-}
 function validateFindVariantsCall() {
   if (!nvrgtr_data.tree_data) {
     return false;

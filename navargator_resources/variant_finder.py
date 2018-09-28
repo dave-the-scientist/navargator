@@ -98,6 +98,7 @@ class VariantFinder(object):
         self.leaves = []
         self.cache = {}
         self.normalize = self._empty_normalize()
+        self.display_options = {}
         if not _blank_init:
             tree = TreeParser(tree_input, tree_format=tree_format, verbose=verbose)
             self.leaves = tree.leaves # List of all terminal leaves in tree_file

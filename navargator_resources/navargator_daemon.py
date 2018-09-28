@@ -22,6 +22,8 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
+# - Finish setting up the display options. In core.js, nvrgtr_opts should be renamed as default_nvrgtr_opts. This also means that I can have a "restore defaults" button in the "Display options" pane. In core.js:parseBasicData(), it should set nvrgtr_opts as a copy of the defaults, and then process the data.display_opts object, overwriting any valid values.
+
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
@@ -106,7 +108,7 @@ class NavargatorDaemon(object):
             if not self.web_server and self.connections.all_dead():
                 self.should_quit.set()
             return 'instance-closed successful.'
-        @self.server.route(daemonURL('/get-input-data'), methods=['POST'])
+        @self.server.route(daemonURL('/get-basic-data'), methods=['POST'])
         def get_input_data():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
@@ -126,11 +128,11 @@ class NavargatorDaemon(object):
             elif vf == None:
                 return ("error, global normalization cannot be calculated because there is no valid variant finder for session ID '%s'" % s_id, 5509)
             dist_scale = 1.0
-            cur_var = request.form['cur_var']
-            max_var_dist = float(request.form['max_var_dist'])
-            bins = map(float, request.form.getlist('global_bins[]'))
+            cur_var = request.json['cur_var']
+            max_var_dist = float(request.json['max_var_dist'])
+            bins = map(float, request.json['global_bins'])
             if not cur_var: # Called from input.js:calculateGlobalNormalization()
-                var_nums = map(int, request.form.getlist('var_nums[]'))
+                var_nums = map(int, request.json['var_nums'])
                 self.calc_global_normalization_values(var_nums, dist_scale, max_var_dist, bins, vf)
             else: # Called from results.js
                 cur_var = int(cur_var)
@@ -144,7 +146,7 @@ class NavargatorDaemon(object):
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 5505)
-            vf, s_id, b_id, msg = self.get_instance()
+            vf, s_id, b_id, msg = self.get_instance(json_data=False)
             if s_id == None:
                 return msg
             elif s_id == self.local_input_session_id:
@@ -157,7 +159,7 @@ class NavargatorDaemon(object):
                 nvrgtr_data = request.files['upload-file'].read()
             except Exception as err:
                 return (str(err), 5505)
-            vf, s_id, b_id, msg = self.get_instance()
+            vf, s_id, b_id, msg = self.get_instance(json_data=False)
             if s_id == None:
                 return msg
             elif s_id == self.local_input_session_id:
@@ -186,9 +188,9 @@ class NavargatorDaemon(object):
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
                 return msg
-            num_vars = int(request.form['num_vars'])
-            num_vars_range = int(request.form['num_vars_range'])
-            cluster_method = request.form['cluster_method']
+            num_vars = int(request.json['num_vars'])
+            num_vars_range = int(request.json['num_vars_range'])
+            cluster_method = request.json['cluster_method']
             dist_scale = 1.0
             for num in range(num_vars, num_vars_range + 1):
                 params = (num, dist_scale)
@@ -204,7 +206,7 @@ class NavargatorDaemon(object):
                 return msg
             elif vf == None:
                 return ("error in check_results_done(), there is no valid variant finder for session ID '%s'" % s_id, 5509)
-            var_nums = request.form.getlist('var_nums[]')
+            var_nums = request.json['var_nums']
             var_scores, max_var_dists = [], []
             dist_scale = 1.0
             for num in var_nums:
@@ -230,12 +232,12 @@ class NavargatorDaemon(object):
                 return msg
             elif vf == None:
                 return ("error setting normalization method, there is no valid variant finder for session ID '%s'" % s_id, 5509)
-            norm_method = request.form['normalization[method]']
+            norm_method = request.json['normalization']['method']
             if norm_method == 'self':
                 vf.normalize['method'] = 'self'
             elif norm_method == 'custom':
                 vf.normalize['method'] = 'custom'
-                vf.normalize['custom_value'] = float(request.form['normalization[value]'])
+                vf.normalize['custom_value'] = float(request.json['normalization']['value'])
             elif norm_method == 'global':
                 vf.normalize['method'] = 'global'
             else:
@@ -250,7 +252,7 @@ class NavargatorDaemon(object):
                 return msg
             elif vf == None:
                 return ("error in get_cluster_results(), there is no valid variant finder for session ID '%s'" % s_id, 5509)
-            num_vars = int(request.form['num_vars'])
+            num_vars = int(request.json['num_vars'])
             dist_scale = 1.0
             params = (num_vars, dist_scale)
             if params not in vf.cache:
@@ -329,13 +331,17 @@ class NavargatorDaemon(object):
             self.collect_garbage()
 
     # # # # #  Backend accession methods  # # # # #
-    def get_instance(self, should_fail=False):
+    def get_instance(self, json_data=True, should_fail=False):
         """Returns vf_instance, session_id, browser_id, message. vf_instance will be None if there is no instance with that session_id. session_id can be a string of the s_id, a string of the local input s_id, '' for the web input page, or None if it was not sent or if it is not found. browser_id will be a string, or None if it was not sent. message will be a string if there were no issues, or a tuple (message, error_code) that can be returned and parsed by the client's javascript.
         HTTP status code 559 is used here to indicate a response was requested
         for a session ID that does not exist."""
         if should_fail: return None, None, None, ('DEBUG ONLY: Intentional fail.', 588)
-        s_id = request.form.get('session_id', None)
-        b_id = request.form.get('browser_id', None)
+        if json_data:
+            s_id = request.json.get('session_id')
+            b_id = request.json.get('browser_id')
+        else:
+            s_id = request.form.get('session_id', None)
+            b_id = request.form.get('browser_id', None)
         if s_id == self.local_input_session_id:
             return None, s_id, b_id, 'session ID is local input page'
         elif s_id == '':
@@ -347,21 +353,22 @@ class NavargatorDaemon(object):
         else:
             return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
     def update_or_copy_vf(self):
-        """If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set."""
+        """Called from save-nvrgtr-file and find-variants routes. If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set. Updates the display_opts dict of the vf instance."""
         vf, s_id, b_id, msg = self.get_instance()
         if s_id == None:
             return None, None, msg
         elif vf == None:
             return None, None, ("error in update_or_copy_vf, there is no valid variant finder for session ID '%s'" % s_id, 5509)
-        chsn = set(request.form.getlist('chosen[]'))
-        ignrd = set(request.form.getlist('ignored[]'))
-        avail = set(request.form.getlist('available[]'))
+        chsn = set(request.json['chosen'])
+        ignrd = set(request.json['ignored'])
+        avail = set(request.json['available'])
         if chsn != vf.chosen or ignrd != vf.ignored or avail != vf.available:
             vf = vf.copy()
             vf.chosen = []; vf.ignored = []; vf.available = []
             vf.chosen = chsn; vf.ignored = ignrd; vf.available = avail
             s_id = self.add_variant_finder(vf)
             msg = "vf replaced; new session ID '%s'" % s_id
+        vf.display_options = request.json.get('display_opts', {})
         return vf, s_id, msg
     # # # # #  Private methods  # # # # #
     def generate_session_id(self):
@@ -372,7 +379,7 @@ class NavargatorDaemon(object):
         return s_id
     def get_vf_data_dict(self, s_id):
         vf = self.sessions[s_id]
-        return {'session_id':s_id, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data}
+        return {'session_id':s_id, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data, 'display_opts':vf.display_options}
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:
             vf.normalize['global_value'] = max_var_dist
