@@ -63,7 +63,7 @@ function setupTreeElements() {
       search_hits_div.css('width', '0px');
     } else { // A real query was searched.
       $("#varSearchNumHitsText").text(num_hits + ' hits');
-      search_select_max_width = (nvrgtr_opts.sizes.tree/2-total_right_offset) + 'px';
+      search_select_max_width = (nvrgtr_display_opts.sizes.tree/2-total_right_offset) + 'px';
       search_button.addClass('tree-search-button-clear');
       setSearchSelectToAdd();
       search_hits_div.css('maxWidth', search_select_max_width);
@@ -211,11 +211,11 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_opts.colours.selection};
+  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
-  if (new_colour == false) { new_colour = nvrgtr_opts.colours[colour_key]; }
+  if (new_colour == false) { new_colour = nvrgtr_display_opts.colours[colour_key]; }
   nvrgtr_data.nodes[var_name][state_key_name] = colour_key;
   nvrgtr_data.nodes[var_name][state_colour_name] = new_colour;
   raphael_ele.attr({fill:new_colour});
@@ -235,11 +235,11 @@ function drawTree(marker_tooltips=true) {
 
   var tree_params = Smits.PhyloCanvas.Render.Parameters,
     tree_style = Smits.PhyloCanvas.Render.Style,
-    sizes = nvrgtr_opts.sizes;
+    sizes = nvrgtr_display_opts.sizes;
 
   tree_params.jsOverride = 1;
-  tree_style.text["font-size"] = nvrgtr_opts.fonts.tree_font_size;
-  tree_style.text["font-family"] = nvrgtr_opts.fonts.family;
+  tree_style.text["font-size"] = nvrgtr_display_opts.fonts.tree_font_size;
+  tree_style.text["font-family"] = nvrgtr_display_opts.fonts.family;
   tree_style.connectedDash['stroke'] = 'none';
 
   var canvas_size = sizes.tree;
@@ -281,8 +281,8 @@ function drawVariantObjects(marker_tooltips) {
     text_obj = $(this);
     var_name = text_obj.text();
     var_coords = parseLeafTextCoords(text_obj);
-    var_marker = nvrgtr_data.r_paper.circle(var_coords.node_x, var_coords.node_y, nvrgtr_opts.sizes.small_marker_radius);
-    var_marker.attr({fill:nvrgtr_opts.colours.default_node, 'stroke-width':0.5});
+    var_marker = nvrgtr_data.r_paper.circle(var_coords.node_x, var_coords.node_y, nvrgtr_display_opts.sizes.small_marker_radius);
+    var_marker.attr({fill:nvrgtr_display_opts.colours.default_node, 'stroke-width':0.5});
     if (marker_tooltips == true) {
       var_marker.attr({title: var_name});
     }
@@ -294,7 +294,7 @@ function drawVariantObjects(marker_tooltips) {
   });
 }
 function drawLabelAndSearchHighlights() {
-  var var_name, var_angle, sizes = nvrgtr_opts.sizes;
+  var var_name, var_angle, sizes = nvrgtr_display_opts.sizes;
   var angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05,
     label_highlight_start_radius = treeDrawingParams.minBGRadius+sizes.big_marker_radius+1,
     label_highlight_end_radius = treeDrawingParams.barChartRadius;
@@ -314,7 +314,7 @@ function drawLabelAndSearchHighlights() {
 }
 function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end_angle) {
   var label_path_str = sectorPathString(start_radius, end_radius, start_angle, end_angle),
-    label_highlight = nvrgtr_data.r_paper.path(label_path_str).attr({fill:nvrgtr_opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide(),
+    label_highlight = nvrgtr_data.r_paper.path(label_path_str).attr({fill:nvrgtr_display_opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide(),
     label_mouseover = nvrgtr_data.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   addNodeLabelEventHandlers(var_name, label_mouseover);
   nvrgtr_data.nodes[var_name].label_highlight = label_highlight;
@@ -333,8 +333,8 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
   var var_line_highlight = nvrgtr_data.r_paper.path('M'+node_x+','+node_y+' L'+label_x+','+label_y);
   // Grouping the highlights, and storing the object:
   var_highlight_set.push(search_label_highlight, marker_highlight, var_line_highlight);
-  var_highlight_set.attr({'stroke-width':0, fill:nvrgtr_opts.colours.search}).toBack().hide();
-  var_line_highlight.attr({'stroke-width':2, stroke:nvrgtr_opts.colours.search});
+  var_highlight_set.attr({'stroke-width':0, fill:nvrgtr_display_opts.colours.search}).toBack().hide();
+  var_line_highlight.attr({'stroke-width':2, stroke:nvrgtr_display_opts.colours.search});
   nvrgtr_data.nodes[var_name].search_highlight = var_highlight_set;
 }
 function drawTreeBackgrounds(maxLabelLength) {
@@ -342,34 +342,34 @@ function drawTreeBackgrounds(maxLabelLength) {
     start_angle = treeDrawingParams.seqs[0][1] - angle_offset,
     end_angle = treeDrawingParams.seqs[treeDrawingParams.seqs.length-1][1] + angle_offset,
     inside_labels_radius = treeDrawingParams.barChartRadius - maxLabelLength;
-  if (nvrgtr_opts.fonts.tree_font_size > 0) {
+  if (nvrgtr_display_opts.fonts.tree_font_size > 0) {
     inside_labels_radius -= Smits.PhyloCanvas.Render.Parameters.Circular.bufferOuterLabels;
   }
   // Decide what to draw around the tree labels
-  if (nvrgtr_page.page == 'input' && nvrgtr_opts.fonts.tree_font_size > 0 ||
-      nvrgtr_page.page == 'results' && nvrgtr_opts.fonts.tree_font_size == 0) {
+  if (nvrgtr_page.page == 'input' && nvrgtr_display_opts.fonts.tree_font_size > 0 ||
+      nvrgtr_page.page == 'results' && nvrgtr_display_opts.fonts.tree_font_size == 0) {
     // Only draw inner arc, between labels and nodes.
     var start_pos = secPosition(inside_labels_radius, start_angle);
     labels_path_str = [["M", start_pos[0], start_pos[1]], secant(inside_labels_radius, start_angle, end_angle, 0)];
-  } else if (nvrgtr_page.page == 'results' && nvrgtr_opts.fonts.tree_font_size > 0) {
+  } else if (nvrgtr_page.page == 'results' && nvrgtr_display_opts.fonts.tree_font_size > 0) {
     // Draw inner and outer arc, connected together, around labels.
     labels_path_str = sectorPathString(inside_labels_radius, treeDrawingParams.barChartRadius, start_angle, end_angle);
   }
-  if (labels_path_str != null && nvrgtr_opts.sizes.labels_outline > 0) {
-    nvrgtr_data.r_paper.path(labels_path_str).attr({fill:'none', 'stroke-width':nvrgtr_opts.sizes.labels_outline, stroke:'black'}); // No reference to the element is saved. Should be fine.
+  if (labels_path_str != null && nvrgtr_display_opts.sizes.labels_outline > 0) {
+    nvrgtr_data.r_paper.path(labels_path_str).attr({fill:'none', 'stroke-width':nvrgtr_display_opts.sizes.labels_outline, stroke:'black'}); // No reference to the element is saved. Should be fine.
   }
   // Draw filled-in circle to go behind tree.
-  nvrgtr_data.tree_background = nvrgtr_data.r_paper.circle(treeDrawingParams.cx, treeDrawingParams.cy, treeDrawingParams.barChartRadius).attr({fill:nvrgtr_opts.colours.tree_background, stroke:'none', 'stroke-width':0}).toBack();
+  nvrgtr_data.tree_background = nvrgtr_data.r_paper.circle(treeDrawingParams.cx, treeDrawingParams.cy, treeDrawingParams.barChartRadius).attr({fill:nvrgtr_display_opts.colours.tree_background, stroke:'none', 'stroke-width':0}).toBack();
 }
 function updateTreeLegend() {
-  $("#legendAvailMarker").attr({fill: nvrgtr_opts.colours.available});
-  $("#legendChosenMarker").attr({fill: nvrgtr_opts.colours.chosen});
-  $("#legendIgnoredMarker").attr({fill: nvrgtr_opts.colours.ignored});
+  $("#legendAvailMarker").attr({fill: nvrgtr_display_opts.colours.available});
+  $("#legendChosenMarker").attr({fill: nvrgtr_display_opts.colours.chosen});
+  $("#legendIgnoredMarker").attr({fill: nvrgtr_display_opts.colours.ignored});
   if ($("#legendSingletonMarker").length) {
-    $("#legendSingletonMarker").attr({fill: nvrgtr_opts.colours.singleton_cluster_background});
+    $("#legendSingletonMarker").attr({fill: nvrgtr_display_opts.colours.singleton_cluster_background});
   }
   var border_height = $("#legendBorderRect").attr('height'),
-    legend_offset = nvrgtr_opts.sizes.tree - border_height - 1;
+    legend_offset = nvrgtr_display_opts.sizes.tree - border_height - 1;
   $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
 }
 function drawBarGraphs() {
@@ -385,7 +385,7 @@ function drawBarGraphs() {
     } else {
       tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
       path_str = getBarGraphPathStr(var_name, var_angle, dist);
-      bar_chart = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_opts.colours.bar_chart, stroke:'none'});
+      bar_chart = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_display_opts.colours.bar_chart, stroke:'none'});
       bar_chart.insertAfter(nvrgtr_data.nodes[var_name].label_highlight);
       nvrgtr_data.nodes[var_name]['bar_chart'] = bar_chart;
     }
@@ -393,10 +393,10 @@ function drawBarGraphs() {
   }
 }
 function getBarGraphPathStr(var_name, var_angle, dist) {
-  var min_radius = treeDrawingParams.barChartRadius + nvrgtr_opts.sizes.bar_chart_buffer,
+  var min_radius = treeDrawingParams.barChartRadius + nvrgtr_display_opts.sizes.bar_chart_buffer,
     angle_offset = treeDrawingParams.scaleAngle / 2.0;
   var height_scale = Math.min(dist/nvrgtr_data.normalized_max_distance, 1.0);
-  var height = roundFloat(height_scale*nvrgtr_opts.sizes.bar_chart_height, 4);
+  var height = roundFloat(height_scale*nvrgtr_display_opts.sizes.bar_chart_height, 4);
   return sectorPathString(min_radius, min_radius+height,
     var_angle-angle_offset*0.9, var_angle+angle_offset*0.9);
 }
@@ -412,9 +412,9 @@ function drawClusterObject(nodes) {
       points_list.push({'name':var_name, 'tree_index':i, 'x':x_coord, 'y':y_coord});
     }
   }
-  var cluster_obj, singleton_radius = Math.max(nvrgtr_opts.sizes.big_marker_radius, nvrgtr_opts.sizes.cluster_expand);
+  var cluster_obj, singleton_radius = Math.max(nvrgtr_display_opts.sizes.big_marker_radius, nvrgtr_display_opts.sizes.cluster_expand);
   if (points_list.length == 1) {
-    cluster_obj = nvrgtr_data.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:nvrgtr_opts.colours.singleton_cluster_background});
+    cluster_obj = nvrgtr_data.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:nvrgtr_display_opts.colours.singleton_cluster_background});
     return [cluster_obj, false];
   }
   var hull, path_str, mouseover_obj;
@@ -424,9 +424,9 @@ function drawClusterObject(nodes) {
     hull = expandHull(convexHull(points_list));
   }
   path_str = bezierSplinePath(hull);
-  cluster_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_opts.colours.cluster_background_trans, 'fill-opacity':nvrgtr_opts.colours.cluster_opacity, stroke:nvrgtr_opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
+  cluster_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_display_opts.colours.cluster_background_trans, 'fill-opacity':nvrgtr_display_opts.colours.cluster_opacity, stroke:nvrgtr_display_opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
   // fill:'#D5FDD9', 'fill-opacity':0.5
-  //cluster_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_opts.colours.cluster_background,  stroke:nvrgtr_opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
+  //cluster_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_display_opts.colours.cluster_background,  stroke:nvrgtr_display_opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
   mouseover_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];
 }
@@ -544,9 +544,9 @@ function convexHull(points_list) {
   return hull.slice(max_pos).concat(hull.slice(0, max_pos));
 }
 function expandHull(hull) {
-  var expand = nvrgtr_opts.sizes.cluster_expand;
+  var expand = nvrgtr_display_opts.sizes.cluster_expand;
   if (hull.length == 2) {
-    expand = Math.max(nvrgtr_opts.sizes.small_marker_radius, expand, 1);
+    expand = Math.max(nvrgtr_display_opts.sizes.small_marker_radius, expand, 1);
   } else if (expand == 0) {
     return hull;
   }
@@ -591,7 +591,7 @@ function expandHull(hull) {
 function bezierSplinePath(hull) {
   // Adapted from http://www.antigrain.com/research/bezier_interpolation/ I think it's essentially equating first derivatives of adjacent curves, not but the seconds. Looks better than an implementation that equates seconds. Calculates the 2 control points for p2.
   var p1=hull[hull.length-1],p2=hull[0],p3, l1,l2,a1,a2,b,cp1,cp2, l_ratio,shift,
-    scale = nvrgtr_opts.sizes.cluster_smooth, cp_sets=[];
+    scale = nvrgtr_display_opts.sizes.cluster_smooth, cp_sets=[];
   for (var i=0; i<hull.length; ++i) {
     if (i == hull.length - 1) {
       p3 = hull[0];
@@ -657,7 +657,7 @@ function parseLeafTextCoords(a_obj) {
   var L_ind = coordsStr.indexOf("L");
   var nodeCoords = coordsStr.slice(1, L_ind).split(",");
   var labelCoords = coordsStr.slice(L_ind+1).split(",");
-  labelCoords = moveAwayFromCentre(labelCoords, nvrgtr_opts.sizes.big_marker_radius+1);
+  labelCoords = moveAwayFromCentre(labelCoords, nvrgtr_display_opts.sizes.big_marker_radius+1);
   return {'node_x':parseFloat(nodeCoords[0]), 'node_y':parseFloat(nodeCoords[1]),
       'label_x':parseFloat(labelCoords[0]), 'label_y':parseFloat(labelCoords[1])};
 }

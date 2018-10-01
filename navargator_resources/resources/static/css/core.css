@@ -10,7 +10,7 @@
   --shadow-colour: #555555;
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
-  --tree-width: 700px;
+  --tree-width: 700px; /* Must equal core.js:nvrgtr_default_display_opts.sizes.tree */
   --toggle-button-border-radius: 3px;
   --control-element-height: 25px;
   --control-element-border-width: 1px;

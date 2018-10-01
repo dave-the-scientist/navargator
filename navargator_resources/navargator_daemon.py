@@ -109,14 +109,11 @@ class NavargatorDaemon(object):
                 self.should_quit.set()
             return 'instance-closed successful.'
         @self.server.route(daemonURL('/get-basic-data'), methods=['POST'])
-        def get_input_data():
+        def get_basic_data():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
                 return msg
-            if vf == None:
-                data_dict = {'session_id':s_id, 'leaves':[], 'phyloxml_data':'', 'available':[], 'ignored':[]}
-            else:
-                data_dict = self.get_vf_data_dict(s_id)
+            data_dict = self.get_vf_data_dict(s_id)
             data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
         @self.server.route(daemonURL('/calculate-global-normalization'), methods=['POST'])
@@ -378,8 +375,11 @@ class NavargatorDaemon(object):
             s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return s_id
     def get_vf_data_dict(self, s_id):
-        vf = self.sessions[s_id]
-        return {'session_id':s_id, 'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data, 'display_opts':vf.display_options}
+        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}}
+        vf = self.sessions.get(s_id)
+        if vf != None:
+            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data, 'display_opts':vf.display_options})
+        return data_dict
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:
             vf.normalize['global_value'] = max_var_dist

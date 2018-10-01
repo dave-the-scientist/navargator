@@ -17,20 +17,18 @@ var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
     'histo_bins':15, 'total_width':null, 'total_height':null
   }
 };
-var nvrgtr_opts = { // User-modifiable settings that persist between pages and sessions.
+var nvrgtr_default_display_opts = { // User-modifiable settings that persist between pages and sessions. Anything with a value of null cannot be set by the user.
   'fonts' : {
     'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
   },
   'sizes' : {
-    'tree':null, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
+    'tree':700, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
   },
   'colours' : {
     'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
 };
-
-// set a default for nvrgtr_opts.sizes.tree; if different from the css value on page load, set the css global value
-
+var nvrgtr_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // Deep copy
 
 // =====  Convenience and error handling:
 function showErrorPopup(message, title) {
@@ -110,114 +108,31 @@ function setupDisplayOptionsPane() {
     min: 0, max: 48,
     numberFormat: 'N0', step: 1,
     spin: function(event, ui) {
-      nvrgtr_opts.fonts.tree_font_size = ui.value;
+      nvrgtr_display_opts.fonts.tree_font_size = ui.value;
     },
     change: function(event, ui) {
-      nvrgtr_opts.fonts.tree_font_size = parseInt(this.value);
+      nvrgtr_display_opts.fonts.tree_font_size = parseInt(this.value);
     }
-  }).spinner('value', nvrgtr_opts.fonts.tree_font_size);
+  }).spinner('value', nvrgtr_display_opts.fonts.tree_font_size);
   $("#displayTreeLabelOutlineSpinner").spinner({
     min: 0, max: 10,
     numberFormat: 'N1', step: 0.1,
     spin: function(event, ui) {
-      nvrgtr_opts.sizes.labels_outline = ui.value;
+      nvrgtr_display_opts.sizes.labels_outline = ui.value;
     },
     change: function(event, ui) {
-      nvrgtr_opts.sizes.labels_outline = parseFloat(this.value);
+      nvrgtr_display_opts.sizes.labels_outline = parseFloat(this.value);
     }
-  }).spinner('value', nvrgtr_opts.sizes.labels_outline);
+  }).spinner('value', nvrgtr_display_opts.sizes.labels_outline);
   $("#redrawTreeButton").click(function() {
     redrawTree();
   });
-
-  setColourPickers();
-  // Ensure that if the transparency or tree background is changed, updateClusterColours() is called.
 }
 function redrawTree() {
   // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
 }
-function setColourPickers() {
-  /*Updates the colour pickers to reflect the current values in nvrgtr_opts.colours*/
 
-  //$("#cluster-colour")[0].jscolor.fromString(opts.colours.clusters); // Set colour
-  //opts.colours.bar_chart = '#' + $("#bar-colour")[0].value; // Get colour
-
-  //var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'bar_chart', 'cluster_highlight', 'selection', 'search'];
-  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'selection'];
-  var key, colour, picker_id;
-  for (var i=0; i<key_list.length; ++i) {
-    key = key_list[i];
-    colour = nvrgtr_opts.colours[key];
-    picker_id = '#' + key + "_colourPicker";
-    $(picker_id)[0].jscolor.fromString(colour);
-  }
-}
-function updateDisplayColour(key, jscolor) {
-  /*Called directly by the colour picker elements.*/
-  var colour = '#' + jscolor;
-  if (key in nvrgtr_opts.colours) {
-    nvrgtr_opts.colours[key] = colour;
-    if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
-      updateVariantColours();
-    } else if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
-      //       ^ This list must match that in updateClusterColours().
-      updateClusterTransColour(key, colour);
-    }
-    if (['cluster_highlight', 'selection'].indexOf(key) > -1) {
-      // cluster_highlight must be in 2 categories; above for the clusters, here for the nodes/labels.
-    }
-  } else {
-    showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the NaVARgator github page.", "NaVARgator colour picker");
-  }
-}
-function updateVariantColours() {
-  var colour;
-  $.each(nvrgtr_data.nodes, function(name, node) {
-    colour = nvrgtr_opts.colours[node.node_rest_key];
-    node.node_rest_colour = colour;
-    if (!node.selected && !node.mouseover) {
-      node.circle.attr({fill:colour});
-    }
-  });
-  updateTreeLegend();
-  updateVariantColoursFollowup();
-}
-function updateClusterColours() {
-  var key, keys = ['cluster_background', 'cluster_highlight'];
-  for (var i=0; i<keys.length; ++i) {
-    key = keys[i];
-    updateClusterTransColour(key, nvrgtr_opts.colours[key]);
-  }
-}
-function updateClusterTransColour(key, colour) {
-  var ret = calculateTransparentComplement(colour, nvrgtr_opts.colours.cluster_opacity, nvrgtr_opts.colours.tree_background);
-  var trans_comp = (ret.closest_colour == '') ? ret.trans_comp : ret.closest_colour,
-    trans_key = key + '_trans';
-  nvrgtr_opts.colours[trans_key] = trans_comp;
-  updateClusterTransColourFollowup(key, trans_comp);
-  if (ret.closest_colour != '') {
-    // TODO: Show warning popup.
-  }
-}
-function updateVariantColoursFollowup() {
-  // Overwritten in input.js to update elements with new colours.
-}
-function updateClusterTransColourFollowup(key, trans_comp) {
-  // Overwritten in results.js to update elements with new colours.
-}
-
-// =====  Page maintainance and management:
-function generateBrowserId(length) {
-  var b_id = 'b';
-  for (var i=0; i<length; ++i) {
-    b_id += Math.floor(Math.random() * 10); // Adds an integer from [0,9].
-  }
-  return b_id;
-}
-function daemonURL(url) {
-  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in navargator_daemon.py
-  return nvrgtr_page.server_url + '/daemon' + url;
-}
+// =====  Display option updating:
 function parseBasicData(data_obj) {
   // Is always called before calling drawTree.
   var data = $.parseJSON(data_obj);
@@ -241,16 +156,165 @@ function parseBasicData(data_obj) {
     clearInterval(nvrgtr_page.maintain_interval_obj);
     nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
-
-  console.log('processing display opts');
-  $.each(data.display_opts, function(category, opts) {
-    console.log(category);
-    $.each(opts, function(key, value) {
-      console.log(key, value);
-    });
+  display_opts = data.display_opts;
+  if ($.isEmptyObject(display_opts)) {
+    display_opts = calculateDefaultDisplayOpts(data.leaves.length);
+  }
+  updateDisplayOptions(display_opts);
+  setColourPickers();
+  updateClusterColours();
+}
+function calculateDefaultDisplayOpts(num_vars) {
+  var display_opts = {};
+  if (num_vars > 200) {
+    display_opts['fonts'] = {'tree_font_size':0};
+    display_opts['sizes'] = {'small_marker_radius':1.5, 'big_marker_radius':2};
+  }
+  if (num_vars > 400) {
+    display_opts.sizes.small_marker_radius = 0.5;
+    display_opts.sizes.big_marker_radius = 1;
+  }
+  if (num_vars > 1400) {
+    display_opts.sizes.big_marker_radius = 0.5;
+  }
+  return display_opts;
+}
+function validateDisplayOption(category, key, new_val) {
+  var val_type = $.type(nvrgtr_default_display_opts[category][key]), value, is_valid;
+  if (val_type == 'number') {
+    if (key == 'max_variant_name_length') {
+      value = parseInt(new_val);
+    } else {
+      value = parseFloat(new_val);
+    }
+    is_valid = isFinite(value); // Also catches NaN, which means it couldn't convert.
+  } else if (val_type == 'string') {
+    value = new_val.trim(), is_valid = true;
+    if (category == 'colours') {
+      if (value[0] != '#' || value.length != 7) {
+        is_valid = false;
+      }
+    }
+  } else if (val_type == 'boolean') {
+    is_valid = true;
+    if (new_val.toLowerCase() == 'true') {
+      value = true;
+    } else if (new_val.toLowerCase() == 'false') {
+      value = false;
+    } else {
+      is_valid = false;
+    }
+  } else if (val_type == 'null') {
+    value = null;
+    is_valid = true;
+  }
+  if (is_valid == false) {
+    value = nvrgtr_default_display_opts[category][key];
+  }
+  return value;
+}
+function updateDisplayOptions(display_opts={}) {
+  // Sets nvrgtr_display_opts to the default values, updated by the passed 'opts' object. So if 'opts' is empty, nvrgtr_display_opts will be reset to default values. Any display options passed will be validated before being accepted.
+  var new_opts = {}, new_val;
+  $.each(nvrgtr_default_display_opts, function(category, opts) {
+    if (category in display_opts) { // validate the passed options.
+      new_opts[category] = {};
+      $.each(opts, function(key, old_val) {
+        if (key in display_opts[category]) {
+          new_val = display_opts[category][key];
+          new_opts[category][key] = validateDisplayOption(category, key, new_val);
+        } else {
+          new_opts[category][key] = old_val;
+        }
+      });
+    } else { // set the whole category to default values.
+      new_opts[category] = $.extend(true, {}, opts);
+    }
   });
-  // if nvrgtr_opts.sizes.tree is different from the css value, need to modify the css variable here.
-  // if data.display_opts is empty, it means that the session is brand new (not previously saved). in this case, should calculate a few default values (like tree node font size, node widths, etc). At this point I do know how many sequences the tree has
+  nvrgtr_display_opts = new_opts;
+}
+function setColourPickers() {
+  /*Updates the colour pickers to reflect the current values in nvrgtr_display_opts.colours*/
+
+  //$("#cluster-colour")[0].jscolor.fromString(opts.colours.clusters); // Set colour
+  //opts.colours.bar_chart = '#' + $("#bar-colour")[0].value; // Get colour
+
+  //var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'bar_chart', 'cluster_highlight', 'selection', 'search'];
+  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'selection'];
+  var key, colour, picker_id;
+  for (var i=0; i<key_list.length; ++i) {
+    key = key_list[i];
+    colour = nvrgtr_display_opts.colours[key];
+    picker_id = '#' + key + "_colourPicker";
+    $(picker_id)[0].jscolor.fromString(colour);
+  }
+}
+function updateDisplayColour(key, jscolor) {
+  /*Called directly by the colour picker elements.*/
+  var colour = '#' + jscolor;
+  if (key in nvrgtr_display_opts.colours) {
+    nvrgtr_display_opts.colours[key] = colour;
+    if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
+      updateVariantColours();
+    } else if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
+      //       ^ This list must match that in updateClusterColours().
+      updateClusterTransColour(key, colour);
+    }
+    if (['cluster_highlight', 'selection'].indexOf(key) > -1) {
+      // cluster_highlight must be in 2 categories; above for the clusters, here for the nodes/labels.
+      // Implement this.
+    }
+  } else {
+    showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the NaVARgator github page.", "NaVARgator colour picker");
+  }
+}
+function updateVariantColours() {
+  var colour;
+  $.each(nvrgtr_data.nodes, function(name, node) {
+    colour = nvrgtr_display_opts.colours[node.node_rest_key];
+    node.node_rest_colour = colour;
+    if (!node.selected && !node.mouseover) {
+      node.circle.attr({fill:colour});
+    }
+  });
+  updateTreeLegend();
+  updateVariantColoursFollowup();
+}
+function updateClusterColours() {
+  var key, keys = ['cluster_background', 'cluster_highlight'];
+  for (var i=0; i<keys.length; ++i) {
+    key = keys[i];
+    updateClusterTransColour(key, nvrgtr_display_opts.colours[key]);
+  }
+}
+function updateClusterTransColour(key, colour) {
+  var ret = calculateTransparentComplement(colour, nvrgtr_display_opts.colours.cluster_opacity, nvrgtr_display_opts.colours.tree_background);
+  var trans_comp = (ret.closest_colour == '') ? ret.trans_comp : ret.closest_colour,
+    trans_key = key + '_trans';
+  nvrgtr_display_opts.colours[trans_key] = trans_comp;
+  updateClusterTransColourFollowup(key, trans_comp);
+  if (ret.closest_colour != '') {
+    // TODO: Show warning popup.
+  }
+}
+function updateVariantColoursFollowup() {
+  // Overwritten in input.js to update elements with new colours.
+}
+function updateClusterTransColourFollowup(key, trans_comp) {
+  // Overwritten in results.js to update elements with new colours.
+}
+
+// =====  Page maintainance and management:
+function generateBrowserId(length) {
+  var b_id = 'b';
+  for (var i=0; i<length; ++i) {
+    b_id += Math.floor(Math.random() * 10); // Adds an integer from [0,9].
+  }
+  return b_id;
+}
+function daemonURL(url) {
+  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in navargator_daemon.py
+  return nvrgtr_page.server_url + '/daemon' + url;
 }
 function maintainServer() {
   // This is continually called to maintain the background server.

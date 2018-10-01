@@ -42,8 +42,8 @@ function setupPage() {
   nvrgtr_page.session_id = location.search.slice(1);
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
-  var tree_width_str = $("#mainTreeDiv").css('width');
-  nvrgtr_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  //var tree_width_str = $("#mainTreeDiv").css('width');
+  //nvrgtr_display_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   var score_graph_width_str = $("#scoreGraphSvg").css('width');
   nvrgtr_settings.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
   var score_graph_height_str = $("#scoreGraphSvg").css('height');
@@ -139,7 +139,7 @@ function setupUploadSaveButtons() {
       url: daemonURL('/save-nvrgtr-file'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_opts}),
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         nvrgtr_page.session_id = data.session_id;
@@ -281,7 +281,7 @@ function setupRunOptions() {
       url: daemonURL('/find-variants'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'display_opts':nvrgtr_opts}),
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'display_opts':nvrgtr_display_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         var new_s_id = data.session_id;
@@ -424,9 +424,7 @@ function newTreeLoaded(data_obj) {
     $("#treeSelectionDiv").show();
     $("#treeControlsDiv").show();
     $("#treeLegendLeftGroup").show();
-    drawTree();
-    updateVarSelectList();
-    updateRunOptions();
+    redrawTree();
     $("#uploadFileInput").val('');
     $("#saveSessionButton").button('enable');
     $("#uploadFileButton").button('disable');
@@ -437,6 +435,7 @@ function newTreeLoaded(data_obj) {
   }
 }
 function redrawTree() {
+  // if nvrgtr_display_opts.sizes.tree is different from the default value, need to modify the css width and height here.
   drawTree();
   updateVarSelectList();
   updateRunOptions();
@@ -447,8 +446,8 @@ function updateVarSelectList() {
   var var_name, short_name, label;
   for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
     var_name = nvrgtr_data.leaves[i];
-    if (var_name.length > nvrgtr_opts.sizes.max_variant_name_length) {
-      short_name = var_name.slice(0, nvrgtr_opts.sizes.max_variant_name_length);
+    if (var_name.length > nvrgtr_display_opts.sizes.max_variant_name_length) {
+      short_name = var_name.slice(0, nvrgtr_display_opts.sizes.max_variant_name_length);
       label = $('<label name="'+var_name+'" class="var-select-label prevent-text-selection" title="'+var_name+'">'+short_name+'</label>');
     } else {
       label = $('<label name="'+var_name+'" class="var-select-label prevent-text-selection">'+var_name+'</label>');
@@ -457,9 +456,9 @@ function updateVarSelectList() {
     nvrgtr_data.nodes[var_name].variant_select_label = label;
     addVariantLabelCallbacks(label, var_name);
   }
-  $("#chosenAssignedDiv").css('border-color', nvrgtr_opts.colours.chosen);
-  $("#availAssignedDiv").css('border-color', nvrgtr_opts.colours.available);
-  $("#ignoredAssignedDiv").css('border-color', nvrgtr_opts.colours.ignored);
+  $("#chosenAssignedDiv").css('border-color', nvrgtr_display_opts.colours.chosen);
+  $("#availAssignedDiv").css('border-color', nvrgtr_display_opts.colours.available);
+  $("#ignoredAssignedDiv").css('border-color', nvrgtr_display_opts.colours.ignored);
   $("#numVariantsSpan").html(nvrgtr_data.leaves.length);
   $("#mainVariantSelectDiv").show();
 }
@@ -489,7 +488,7 @@ function updateCAIVariantMarkers() {
   for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
     var_name = nvrgtr_data.leaves[i];
     circle = nvrgtr_data.nodes[var_name].circle;
-    circle_radius = nvrgtr_opts.sizes.big_marker_radius;
+    circle_radius = nvrgtr_display_opts.sizes.big_marker_radius;
     if (nvrgtr_data.chosen.indexOf(var_name) != -1) {
       colour_key = 'chosen';
     } else if (nvrgtr_data.available.indexOf(var_name) != -1) {
@@ -498,11 +497,11 @@ function updateCAIVariantMarkers() {
       colour_key = 'ignored';
     } else {
       colour_key = 'default_node';
-      circle_radius = nvrgtr_opts.sizes.small_marker_radius;
+      circle_radius = nvrgtr_display_opts.sizes.small_marker_radius;
     }
     changeNodeStateColour(var_name, circle, 'node_rest', colour_key);
     circle.attr({'r':circle_radius});
-    $(".var-select-label[name='"+var_name+"'").css('border-color', nvrgtr_opts.colours[colour_key]);
+    $(".var-select-label[name='"+var_name+"'").css('border-color', nvrgtr_display_opts.colours[colour_key]);
   }
 }
 function clearHideResultsPane() {
@@ -614,9 +613,9 @@ function updateScoreGraph() {
 }
 function updateVariantColoursFollowup() {
   /*Called from core.js when the user changes one of the variant colours.*/
-  $("#availAssignedDiv").css('border-color', nvrgtr_opts.colours.available);
-  $("#chosenAssignedDiv").css('border-color', nvrgtr_opts.colours.chosen);
-  $("#ignoredAssignedDiv").css('border-color', nvrgtr_opts.colours.ignored);
+  $("#availAssignedDiv").css('border-color', nvrgtr_display_opts.colours.available);
+  $("#chosenAssignedDiv").css('border-color', nvrgtr_display_opts.colours.chosen);
+  $("#ignoredAssignedDiv").css('border-color', nvrgtr_display_opts.colours.ignored);
   $.each(nvrgtr_data.nodes, function(name, node) {
     node.variant_select_label.css('border-color', node.node_rest_colour);
   });

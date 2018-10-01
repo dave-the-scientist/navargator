@@ -48,11 +48,11 @@ function setupPage() {
   document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('browser ID:', nvrgtr_page.browser_id);
-  var tree_width_str = $("#mainTreeDiv").css('width'),
-    graph_width_str = $("#selectionDiv").css('width'),
+  //var tree_width_str = $("#mainTreeDiv").css('width');
+  //nvrgtr_display_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
+  var graph_width_str = $("#selectionDiv").css('width'),
     graph_height_str = $("#histoSvg").css('height'),
     histo_l_margin_str = $("#histoSlider").css('marginLeft');
-  nvrgtr_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   nvrgtr_settings.graph.total_width = parseInt(graph_width_str.slice(0,-2));
   nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
   nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
@@ -77,7 +77,7 @@ function setupPage() {
       $("#numClustersH2Span").html(nvrgtr_data.num_variants);
       $("#numClustersSpan").html(nvrgtr_data.num_variants);
       $("#numNodesSpan").html(nvrgtr_data.leaves.length);
-      drawTree(false);
+      redrawTree(true);
       checkForClusteringResults();
     },
     error: function(error) { processError(error, "Error loading input data from the server"); }
@@ -359,11 +359,14 @@ function checkForClusteringResults() {
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
   });
 }
-function redrawTree() {
+function redrawTree(initial_draw=false) {
+  // if nvrgtr_display_opts.sizes.tree is different from the default value, need to modify the css width and height here.
   drawTree(false);
-  drawBarGraphs();
-  drawClusters();
-  updateClusteredVariantMarkers();
+  if (initial_draw == false) {
+    drawBarGraphs();
+    drawClusters();
+    updateClusteredVariantMarkers();
+  }
 }
 function extendTreeLegend() {
   var contains_singletons = false, clstr;
@@ -452,8 +455,8 @@ function createClusterRow(var_name, table_body) {
     score_90th = roundFloat(calculate90Percentile(nvrgtr_data.clusters[var_name].nodes), dec_precision);
   }
   var name_td, short_name;
-  if (var_name.length > nvrgtr_opts.sizes.max_variant_name_length) {
-    short_name = var_name.slice(0, nvrgtr_opts.sizes.max_variant_name_length);
+  if (var_name.length > nvrgtr_display_opts.sizes.max_variant_name_length) {
+    short_name = var_name.slice(0, nvrgtr_display_opts.sizes.max_variant_name_length);
     name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
   } else {
     name_td = "<td>"+var_name+"</td>";
@@ -471,13 +474,13 @@ function updateClusteredVariantMarkers() {
     circle = node.circle;
     if (nvrgtr_data.variants.indexOf(var_name) != -1) {
       circle_colour_key = (nvrgtr_data.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
-      circle.attr({'r':nvrgtr_opts.sizes.big_marker_radius});
+      circle.attr({'r':nvrgtr_display_opts.sizes.big_marker_radius});
       changeNodeStateColour(var_name, node.label_highlight, 'label_mouseover', 'chosen');
     } else if (nvrgtr_data.available.indexOf(var_name) != -1) {
       circle_colour_key = 'available';
     } else if (nvrgtr_data.ignored.indexOf(var_name) != -1) {
       circle_colour_key = 'ignored';
-      circle.attr({'r':nvrgtr_opts.sizes.big_marker_radius});
+      circle.attr({'r':nvrgtr_display_opts.sizes.big_marker_radius});
     } else {
       circle_colour_key = 'default_node';
     }
@@ -575,12 +578,12 @@ function updateHistoSlider() {
 function addSingletonClusterObjRowHandlers(var_name, circle_obj, cluster_row) {
   // Adds an additional handler to each circle.mouseover and .mouseout; doesn't replace the existing handlers.
   circle_obj.mouseover(function() {
-    cluster_row.css('background-color', nvrgtr_opts.colours.cluster_highlight);
+    cluster_row.css('background-color', nvrgtr_display_opts.colours.cluster_highlight);
   }).mouseout(function() {
     cluster_row.css('background-color', '');
   });
   cluster_row.mouseenter(function() {
-    cluster_row.css('background-color', nvrgtr_opts.colours.cluster_highlight);
+    cluster_row.css('background-color', nvrgtr_display_opts.colours.cluster_highlight);
     nodeLabelMouseoverHandler(var_name);
   }).mouseleave(function() {
     cluster_row.css('background-color', '');
@@ -608,15 +611,15 @@ function addClusterObjRowHandlers(var_name, mouseover_obj, cluster_row) {
 }
 function clusterMouseoverHandler(var_name, cluster_row) {
   var cluster = nvrgtr_data.clusters[var_name];
-  cluster_row.css('background-color', nvrgtr_opts.colours.cluster_highlight);
-  cluster.cluster_obj.attr({fill:nvrgtr_opts.colours.cluster_highlight_trans});
+  cluster_row.css('background-color', nvrgtr_display_opts.colours.cluster_highlight);
+  cluster.cluster_obj.attr({fill:nvrgtr_display_opts.colours.cluster_highlight_trans});
   for (var i=0; i<cluster.nodes.length; ++i) {
     nodeLabelMouseoverHandler(cluster.nodes[i], false);
   }
 }
 function clusterMouseoutHandler(var_name, cluster_row) {
   var cluster = nvrgtr_data.clusters[var_name],
-    orig_colour = nvrgtr_opts.colours[cluster.colour_key];
+    orig_colour = nvrgtr_display_opts.colours[cluster.colour_key];
   cluster_row.css('background-color', '');
   cluster.cluster_obj.attr({fill:orig_colour});
   for (var i=0; i<cluster.nodes.length; ++i) {
