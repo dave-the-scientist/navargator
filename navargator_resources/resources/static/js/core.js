@@ -1,5 +1,6 @@
 // TODO:
 // - Finish parseBasicData(), the associated opts processing, and calculation of default values.
+// - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -163,12 +164,18 @@ function parseBasicData(data_obj) {
   updateDisplayOptions(display_opts);
   setColourPickers();
   updateClusterColours();
+  // Update spinners for the non-colour display options.
 }
 function calculateDefaultDisplayOpts(num_vars) {
   var display_opts = {};
-  if (num_vars > 200) {
-    display_opts['fonts'] = {'tree_font_size':0};
-    display_opts['sizes'] = {'small_marker_radius':1.5, 'big_marker_radius':2};
+  if (num_vars > 150) {
+    display_opts['fonts'] = {'tree_font_size':8};
+    display_opts['sizes'] = {'small_marker_radius':1.5, 'big_marker_radius':2.5};
+  }
+  if (num_vars > 250) {
+    display_opts.fonts.tree_font_size = 0;
+    display_opts.sizes.small_marker_radius = 1;
+    display_opts.sizes.big_marker_radius = 2;
   }
   if (num_vars > 400) {
     display_opts.sizes.small_marker_radius = 0.5;
