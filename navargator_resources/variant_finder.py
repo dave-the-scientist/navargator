@@ -4,14 +4,22 @@ Defines the following public functions:
 """
 import os, itertools, random, time
 from math import log, exp
+from copy import deepcopy
 import numpy as np
 from tree_parse import TreeParser
+
+# TODO:
+# - A vf can now save the new nvrgtr format. Finish writing the load methods.
+# - Would look a bit nicer if the tags were capitalized. Ensure there's no reason I can't just modify it here.
+# - vf.copy() should be a functional deepcopy, disassociating the new instance from the old. But might be able to do the same thing with just: return deepcopy(self). Set up a way to test it, and look at deepcopy docs.
 
 # # # # #  Variables  # # # # #
 chosen_nodes_tag = 'chosen variants'
 available_nodes_tag = 'available variants'
 ignore_nodes_tag = 'ignored variants'
+display_options_tag = 'display options - ' # The option category string is appended to this.
 tree_data_tag = 'newick tree'
+comment_prefix = '//'
 
 # # # # #  Misc functions  # # # # #
 def load_navargator_file(file_path, verbose=True):
@@ -45,7 +53,7 @@ def navargator_from_data(data_lines, verbose=False):
     tag, data_buff = '', []
     for line in data_lines:
         line = line.strip()
-        if not line or line.startswith('#'): continue
+        if not line or line.startswith(comment_prefix): continue
         if line.startswith('[') and line.endswith(']'):
             process_tag_data(tag, data_buff)
             tag, data_buff = line[1:-1], []
@@ -54,13 +62,11 @@ def navargator_from_data(data_lines, verbose=False):
     process_tag_data(tag, data_buff)
     # data is now filled out
     vfinder = VariantFinder(data[tree_data_tag], tree_format='newick', verbose=verbose)
-    chsn = data.get(chosen_nodes_tag)
+    chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
         vfinder.chosen = chsn
-    avail = data.get(available_nodes_tag)
     if avail:
         vfinder.available = avail
-    ignor = data.get(ignore_nodes_tag)
     if ignor:
         vfinder.ignored = ignor
     return vfinder
@@ -116,6 +122,7 @@ class VariantFinder(object):
         self._cluster_methods = set(['k medoids', 'brute force'])
         self._distance_scale_max = 1000
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
+        self._private_display_opts = set(['cluster_background_trans', 'cluster_highlight_trans'])
 
     # # # # #  Public methods  # # # # #
     def find_variants(self, num_variants, distance_scale=None, method=None, bootstraps=10):
@@ -169,18 +176,35 @@ class VariantFinder(object):
         buff = []
         if self.ignored:
             ignor_names = ', '.join(sorted(self.ignored))
-            buff.append('[%s]\n%s' % (ignore_nodes_tag, ignor_names))
+            buff.append('[({:s})]\n{:s}'.format(ignore_nodes_tag, ignor_names))
         if self.chosen:
             chsn_names = ', '.join(sorted(self.chosen))
-            buff.append('[%s]\n%s' % (chosen_nodes_tag, chsn_names))
+            buff.append('[({:s})]\n{:s}'.format(chosen_nodes_tag, chsn_names))
         if len(self.available) != len(self._not_ignored_inds):
             avail_names = ', '.join(sorted(self.available))
-            buff.append('[%s]\n%s' % (available_nodes_tag, avail_names))
-        buff.append('[%s]\n%s' % (tree_data_tag, self.tree_data))
+            buff.append('[({:s})]\n{:s}'.format(available_nodes_tag, avail_names))
+        # Write display options
+        if self.display_options:
+            for category in ('fonts', 'sizes', 'colours'):
+                if category not in self.display_options:
+                    continue
+                cat_buff = []
+                for key in sorted(self.display_options[category].keys()):
+                    if key in self._private_display_opts:
+                        continue
+                    cat_buff.append('{:s}: {:s}'.format(key, str(self.display_options[category][key])))
+                if cat_buff:
+                    cat_tag = display_options_tag + category
+                    cat_opts = '\n'.join(cat_buff) 
+                    buff.append('[({:s})]\n{:s}'.format(cat_tag, cat_opts))
+        # Write tree data
+        buff.append('[({:s})]\n{:s}'.format(tree_data_tag, self.tree_data))
+        # TODO: Write distance matrix
         return '\n\n'.join(buff)
 
     def copy(self):
         """Returns a deep copy of self"""
+        # dict.copy() works if all values are immutable, deepcopy(dict) otherwise.
         vf = VariantFinder(tree_input='', verbose=self.verbose, _blank_init=True)
         vf.leaves = self.leaves[::]
         vf.index = self.index.copy()
@@ -188,8 +212,9 @@ class VariantFinder(object):
         vf.dist = self.dist.copy()
         vf.tree_data = self.tree_data
         vf.phylo_xml_data = self.phylo_xml_data
-        vf.cache = self.cache
-        vf.normalize = self.normalize
+        vf.cache = deepcopy(self.cache)
+        vf.normalize = deepcopy(self.normalize)
+        vf.display_options = deepcopy(self.display_options)
         vf._not_ignored_inds = self._not_ignored_inds.copy()
         vf._ignored = self.ignored.copy()
         vf._chosen = self.chosen.copy()
