@@ -9,17 +9,19 @@ import numpy as np
 from tree_parse import TreeParser
 
 # TODO:
-# - A vf can now save the new nvrgtr format. Finish writing the load methods.
+# - Finish writing process_tag_data() to process display options.
 # - Would look a bit nicer if the tags were capitalized. Ensure there's no reason I can't just modify it here.
 # - vf.copy() should be a functional deepcopy, disassociating the new instance from the old. But might be able to do the same thing with just: return deepcopy(self). Set up a way to test it, and look at deepcopy docs.
+# - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 
-# # # # #  Variables  # # # # #
-chosen_nodes_tag = 'chosen variants'
-available_nodes_tag = 'available variants'
-ignore_nodes_tag = 'ignored variants'
-display_options_tag = 'display options - ' # The option category string is appended to this.
-tree_data_tag = 'newick tree'
+# # # # #  Session file strings  # # # # #
 comment_prefix = '//'
+tag_affixes = ('[(', ')]')
+chosen_nodes_tag = 'Chosen variants'
+available_nodes_tag = 'Available variants'
+ignore_nodes_tag = 'Ignored variants'
+display_options_tag = 'Display options - ' # The option category string is appended to this.
+tree_data_tag = 'Newick tree'
 
 # # # # #  Misc functions  # # # # #
 def load_navargator_file(file_path, verbose=True):
@@ -37,31 +39,41 @@ def navargator_from_data(data_lines, verbose=False):
     """Expects data as an iterable of lines. Should be either a file object or a str.splitlines()."""
     data = {}
     def process_tag_data(tag, data_buff):
+        tag = tag.capitalize()
         if tag in data:
-            print('Error: the navargator file %s has multiple sections labeled "[%s]".' % (file_path, tag))
+            print('Error: the given NaVARgator session file has multiple sections labeled "[(%s)]".' % (tag))
             exit()
         if not data_buff:
             return
         if tag in (chosen_nodes_tag, available_nodes_tag, ignore_nodes_tag): # These data to be split into lists
-            val = ','.join(data_buff)
+            val = ','.join(data_buff).replace(',,', ',')
             val_list = val.split(',')
             data[tag] = val_list
+        elif tag.startswith(display_options_tag):
+            category = tag[len(display_options_tag) : ].strip()
+            # store these options, then process them down below
         elif tag == tree_data_tag: # These data are stored as a single string
             data[tag] = data_buff[0]
         else:
             data[tag] = data_buff
+    # End of process_tag_data()
     tag, data_buff = '', []
     for line in data_lines:
         line = line.strip()
         if not line or line.startswith(comment_prefix): continue
-        if line.startswith('[') and line.endswith(']'):
+        if line.startswith(tag_affixes[0]) and line.endswith(tag_affixes[1]):
             process_tag_data(tag, data_buff)
-            tag, data_buff = line[1:-1], []
+            tag, data_buff = line[len(tag_affixes[0]):-len(tag_affixes[1])], []
         else:
             data_buff.append(line)
     process_tag_data(tag, data_buff)
-    # data is now filled out
-    vfinder = VariantFinder(data[tree_data_tag], tree_format='newick', verbose=verbose)
+    # data dict is now filled out
+    try:
+        tree_data = data[tree_data_tag]
+    except KeyError:
+        print('Error: could not identify the tree data in the given session file.')
+        exit()
+    vfinder = VariantFinder(tree_data, tree_format='newick', verbose=verbose)
     chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
         vfinder.chosen = chsn
@@ -173,16 +185,17 @@ class VariantFinder(object):
             print('\nData saved to %s' % file_path)
 
     def get_navargator_string(self):
+        tag_format_str = '{}{{:s}}{}\n{{:s}}'.format(*tag_affixes)
         buff = []
         if self.ignored:
             ignor_names = ', '.join(sorted(self.ignored))
-            buff.append('[({:s})]\n{:s}'.format(ignore_nodes_tag, ignor_names))
+            buff.append(tag_format_str.format(ignore_nodes_tag, ignor_names))
         if self.chosen:
             chsn_names = ', '.join(sorted(self.chosen))
-            buff.append('[({:s})]\n{:s}'.format(chosen_nodes_tag, chsn_names))
+            buff.append(tag_format_str.format(chosen_nodes_tag, chsn_names))
         if len(self.available) != len(self._not_ignored_inds):
             avail_names = ', '.join(sorted(self.available))
-            buff.append('[({:s})]\n{:s}'.format(available_nodes_tag, avail_names))
+            buff.append(tag_format_str.format(available_nodes_tag, avail_names))
         # Write display options
         if self.display_options:
             for category in ('fonts', 'sizes', 'colours'):
@@ -195,10 +208,10 @@ class VariantFinder(object):
                     cat_buff.append('{:s}: {:s}'.format(key, str(self.display_options[category][key])))
                 if cat_buff:
                     cat_tag = display_options_tag + category
-                    cat_opts = '\n'.join(cat_buff) 
-                    buff.append('[({:s})]\n{:s}'.format(cat_tag, cat_opts))
+                    cat_opts = '\n'.join(cat_buff)
+                    buff.append(tag_format_str.format(cat_tag, cat_opts))
         # Write tree data
-        buff.append('[({:s})]\n{:s}'.format(tree_data_tag, self.tree_data))
+        buff.append(tag_format_str.format(tree_data_tag, self.tree_data))
         # TODO: Write distance matrix
         return '\n\n'.join(buff)
 
