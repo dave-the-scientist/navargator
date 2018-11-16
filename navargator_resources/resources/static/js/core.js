@@ -1,5 +1,5 @@
 // TODO:
-// - Finish parseBasicData(), the associated opts processing, and calculation of default values.
+// - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
 // - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
@@ -164,7 +164,7 @@ function parseBasicData(data_obj) {
   updateDisplayOptions(display_opts);
   setColourPickers();
   updateClusterColours();
-  // Update spinners for the non-colour display options.
+  updateDisplayOptionSpinners();
 }
 function calculateDefaultDisplayOpts(num_vars) {
   var display_opts = {};
@@ -309,6 +309,10 @@ function updateVariantColoursFollowup() {
 }
 function updateClusterTransColourFollowup(key, trans_comp) {
   // Overwritten in results.js to update elements with new colours.
+}
+function updateDisplayOptionSpinners() {
+  $("#displayTreeFontSizeSpinner").spinner('value', nvrgtr_display_opts.fonts.tree_font_size);
+  $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
 }
 
 // =====  Page maintainance and management:

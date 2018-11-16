@@ -10,7 +10,6 @@ from tree_parse import TreeParser
 
 # TODO:
 # - Finish writing process_tag_data() to process display options.
-# - Would look a bit nicer if the tags were capitalized. Ensure there's no reason I can't just modify it here.
 # - vf.copy() should be a functional deepcopy, disassociating the new instance from the old. But might be able to do the same thing with just: return deepcopy(self). Set up a way to test it, and look at deepcopy docs.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 
@@ -51,7 +50,10 @@ def navargator_from_data(data_lines, verbose=False):
             data[tag] = val_list
         elif tag.startswith(display_options_tag):
             category = tag[len(display_options_tag) : ].strip()
-            # store these options, then process them down below
+            cat_dict = data.setdefault(display_options_tag, {}).setdefault(category, {})
+            for opt_line in data_buff:
+                opt, _, val = opt_line.partition(':')
+                cat_dict[opt.strip()] = val.strip()
         elif tag == tree_data_tag: # These data are stored as a single string
             data[tag] = data_buff[0]
         else:
@@ -81,6 +83,9 @@ def navargator_from_data(data_lines, verbose=False):
         vfinder.available = avail
     if ignor:
         vfinder.ignored = ignor
+    display_opts = data.get(display_options_tag, {})
+    if display_opts:
+        vfinder.display_options = display_opts
     return vfinder
 def binomial_coefficient(n, k):
     """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions, but is close enough for my purposes."""
