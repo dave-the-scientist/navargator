@@ -100,8 +100,14 @@
                 <tr>
                   <td><label class="display-options-label">Mouseover</label></td>
                   <td><input id="cluster_highlight_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
+                  <td><label class="display-options-label">Radial chart</label></td>
+                  <td><input id="bar_chart_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('bar_chart',this.jscolor)"></td>
+                </tr>
+                <tr>
                   <td><label class="display-options-label">Selection</label></td>
                   <td><input id="selection_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('selection',this.jscolor)"></td>
+                  <td><label class="display-options-label">Search</label></td>
+                  <td><input id="search_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('search',this.jscolor)"></td>
                 </tr>
               </tbody></table>
               <hr>
@@ -185,7 +191,7 @@
                 </button>
                 <span id="searchSelectConnectingSpan"></span>
               </div>
-              <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder="Search variants" autocomplete="off" />
+              <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder="Search variants" autocomplete="off" spellcheck="false" />
               <button id="varSearchButton" class="control-element control-pair-right"><span id="treeSearchSpanLine"></span><span id="treeSearchSpanCircle"></span></button>
             </div>
           </h2>

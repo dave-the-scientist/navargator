@@ -104,31 +104,37 @@
                   <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Variant colours</label></td>
                 </tr>
                 <tr>
-                  <td><label class="display-options-label">Available:</label></td>
+                  <td><label class="display-options-label">Available</label></td>
                   <td><input id="available_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('available',this.jscolor)"></td>
-                  <td><label class="display-options-label">Chosen:</label></td>
+                  <td><label class="display-options-label">Chosen</label></td>
                   <td><input id="chosen_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('chosen',this.jscolor)"></td>
                 </tr>
                 <tr>
-                  <td><label class="display-options-label">Ignored:</label></td>
+                  <td><label class="display-options-label">Ignored</label></td>
                   <td><input id="ignored_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('ignored',this.jscolor)"></td>
-                  <td><label class="display-options-label">Default:</label></td>
+                  <td><label class="display-options-label">Unassigned</label></td>
                   <td><input id="default_node_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('default_node',this.jscolor)"></td>
                 </tr>
                 <tr>
                   <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree colours</label></td>
                 </tr>
                 <tr>
-                  <td><label class="display-options-label">Clusters:</label></td>
+                  <td><label class="display-options-label">Clusters</label></td>
                   <td><input id="cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_background',this.jscolor)"></td>
-                  <td><label class="display-options-label">Singletons:</label></td>
+                  <td><label class="display-options-label">Singletons</label></td>
                   <td><input id="singleton_cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
                 </tr>
                 <tr>
-                  <td><label class="display-options-label">Mouseover:</label></td>
+                  <td><label class="display-options-label">Mouseover</label></td>
                   <td><input id="cluster_highlight_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
-                  <td><label class="display-options-label">Selection:</label></td>
+                  <td><label class="display-options-label">Radial chart</label></td>
+                  <td><input id="bar_chart_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('bar_chart',this.jscolor)"></td>
+                </tr>
+                <tr>
+                  <td><label class="display-options-label">Selection</label></td>
                   <td><input id="selection_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('selection',this.jscolor)"></td>
+                  <td><label class="display-options-label">Search</label></td>
+                  <td><input id="search_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('search',this.jscolor)"></td>
                 </tr>
               </tbody></table>
               <hr>
@@ -198,7 +204,7 @@
                 </button>
                 <span id="searchSelectConnectingSpan"></span>
               </div>
-              <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder="Search variants" autocomplete="off" />
+              <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder="Search variants" autocomplete="off" spellcheck="false" />
               <button id="varSearchButton" class="control-element control-pair-right"><span id="treeSearchSpanLine"></span><span id="treeSearchSpanCircle"></span></button>
             </div>
           </h2>

@@ -1,5 +1,7 @@
 // TODO:
+// - Finish display options setting in updateDisplayColour()
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
+// - Implement "restore defaults" button in display options.
 // - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
@@ -242,12 +244,9 @@ function updateDisplayOptions(display_opts={}) {
 }
 function setColourPickers() {
   /*Updates the colour pickers to reflect the current values in nvrgtr_display_opts.colours*/
-
-  //$("#cluster-colour")[0].jscolor.fromString(opts.colours.clusters); // Set colour
-  //opts.colours.bar_chart = '#' + $("#bar-colour")[0].value; // Get colour
-
-  //var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'bar_chart', 'cluster_highlight', 'selection', 'search'];
-  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'selection'];
+  //$("#element_ID")[0].jscolor.fromString('#aabbcc'); // Set colour
+  //colour_str = '#' + $("#element_ID")[0].value; // Get colour
+  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'bar_chart', 'selection', 'search'];
   var key, colour, picker_id;
   for (var i=0; i<key_list.length; ++i) {
     key = key_list[i];
@@ -263,29 +262,50 @@ function updateDisplayColour(key, jscolor) {
     nvrgtr_display_opts.colours[key] = colour;
     if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
       updateVariantColours();
+    } else if (['bar_chart', 'search', 'selection'].indexOf(key) > -1) {
+      updateLabelColours();
     } else if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
       //       ^ This list must match that in updateClusterColours().
       updateClusterTransColour(key, colour);
     }
     if (['cluster_highlight', 'selection'].indexOf(key) > -1) {
       // cluster_highlight must be in 2 categories; above for the clusters, here for the nodes/labels.
-      // Implement this.
+      // selection is nearly done. Need to change the "x available variants" label's selection colour; it is set in input.js:setupVariantSelection(). Remove it from this if() block.
+      // cluster_highlight, ie mouseover, is done for the cluster objects and cluster list. just need to set it for the nodes and labels.
     }
   } else {
     showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the NaVARgator github page.", "NaVARgator colour picker");
   }
 }
 function updateVariantColours() {
-  var colour;
+  var var_colour;
   $.each(nvrgtr_data.nodes, function(name, node) {
-    colour = nvrgtr_display_opts.colours[node.node_rest_key];
-    node.node_rest_colour = colour;
+    var_colour = nvrgtr_display_opts.colours[node.node_rest_key];
+    node.node_rest_colour = var_colour;
     if (!node.selected && !node.mouseover) {
-      node.circle.attr({fill:colour});
+      node.circle.attr({fill: var_colour});
     }
   });
   updateTreeLegend();
   updateVariantColoursFollowup();
+}
+function updateLabelColours() {
+  var chart_colour = nvrgtr_display_opts.colours.bar_chart, select_colour = nvrgtr_display_opts.colours.selection, search_colour = nvrgtr_display_opts.colours.search;
+  $.each(nvrgtr_data.nodes, function(name, node) {
+    if ('bar_chart' in node) {
+      node.bar_chart.attr({fill: chart_colour});
+    }
+    node.search_highlight.attr({fill: search_colour, stroke: search_colour});
+    if (node.node_selected_key == 'selection') {
+      node.node_selected_colour = select_colour;
+    }
+    if (node.label_selected_key == 'selection') {
+      node.label_selected_colour = select_colour;
+    }
+    if (node.selected) {
+      nodeLabelMouseclickHandler(name, false, true);
+    }
+  });
 }
 function updateClusterColours() {
   var key, keys = ['cluster_background', 'cluster_highlight'];
