@@ -262,16 +262,12 @@ function updateDisplayColour(key, jscolor) {
     nvrgtr_display_opts.colours[key] = colour;
     if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
       updateVariantColours();
-    } else if (['bar_chart', 'search', 'selection'].indexOf(key) > -1) {
-      updateLabelColours();
-    } else if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
-      //       ^ This list must match that in updateClusterColours().
-      updateClusterTransColour(key, colour);
+    } else if (['bar_chart', 'cluster_highlight', 'selection', 'search'].indexOf(key) > -1) {
+      updateLabelColours(key, colour);
     }
-    if (['cluster_highlight', 'selection'].indexOf(key) > -1) {
-      // cluster_highlight must be in 2 categories; above for the clusters, here for the nodes/labels.
-      // selection is nearly done. Need to change the "x available variants" label's selection colour; it is set in input.js:setupVariantSelection(). Remove it from this if() block.
-      // cluster_highlight, ie mouseover, is done for the cluster objects and cluster list. just need to set it for the nodes and labels.
+    if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
+      // ^ This list must match that in updateClusterColours().
+      updateClusterTransColour(key, colour);
     }
   } else {
     showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the NaVARgator github page.", "NaVARgator colour picker");
@@ -285,25 +281,46 @@ function updateVariantColours() {
     if (!node.selected && !node.mouseover) {
       node.circle.attr({fill: var_colour});
     }
+    if (node.label_mouseover_key == "chosen") {
+      // Because these nodes use a different mouseover colour.
+      node.label_mouseover_colour = nvrgtr_display_opts.colours.chosen;
+      if (!node.selected) {
+        node.label_highlight.attr({fill: nvrgtr_display_opts.colours.chosen});
+      }
+    }
   });
   updateTreeLegend();
   updateVariantColoursFollowup();
 }
-function updateLabelColours() {
-  var chart_colour = nvrgtr_display_opts.colours.bar_chart, select_colour = nvrgtr_display_opts.colours.selection, search_colour = nvrgtr_display_opts.colours.search;
+function updateLabelColours(key, colour) {
+  if (key == 'cluster_highlight') {
+    document.documentElement.style.setProperty('--highlight-colour', colour);
+  } else if (key == 'selection') {
+    document.documentElement.style.setProperty('--selection-colour', colour);
+  }
   $.each(nvrgtr_data.nodes, function(name, node) {
-    if ('bar_chart' in node) {
-      node.bar_chart.attr({fill: chart_colour});
-    }
-    node.search_highlight.attr({fill: search_colour, stroke: search_colour});
-    if (node.node_selected_key == 'selection') {
-      node.node_selected_colour = select_colour;
-    }
-    if (node.label_selected_key == 'selection') {
-      node.label_selected_colour = select_colour;
-    }
-    if (node.selected) {
-      nodeLabelMouseclickHandler(name, false, true);
+    if (key == 'bar_chart' && 'bar_chart' in node) {
+      node.bar_chart.attr({fill: colour});
+    } else if (key == 'cluster_highlight') {
+      node.node_mouseover_colour = colour;
+      if (node.label_mouseover_key == 'cluster_highlight') {
+        node.label_mouseover_colour = colour;
+        if (!node.selected) {
+          node.label_highlight.attr({fill: colour});
+        }
+      }
+    } else if (key == 'selection') {
+      if (node.node_selected_key == 'selection') {
+        node.node_selected_colour = colour;
+      }
+      if (node.label_selected_key == 'selection') {
+        node.label_selected_colour = colour;
+      }
+      if (node.selected) {
+        nodeLabelMouseclickHandler(name, false, true);
+      }
+    } else if (key == 'search') {
+      node.search_highlight.attr({fill: colour, stroke: colour});
     }
   });
 }

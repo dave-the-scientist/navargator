@@ -84,7 +84,7 @@
   left: 0px;
   width: 0px;
   height: 100%;
-  background-color: #92F7E4;
+  background-color: var(--highlight-colour);
   z-index: -2;
   transition: all var(--cubic-transition);
 }
@@ -96,7 +96,7 @@
   left: 0px;
   width: calc(100% - var(--var-assigned-border-width));
   height: 0px;
-  background-color: #FAB728;
+  background-color: var(--selection-colour);
   z-index: -1;
   transition: all var(--cubic-transition);
 }
@@ -109,7 +109,7 @@
   height: calc(100% - var(--var-assigned-border-width));
 }
 .var-assigned-div.var-assigned-selected { /* Part of the mouseover+selected effect. */
-  background-color: #FAB728;
+  background-color: var(--selection-colour);
 }
 .var-assigned-label { /* The "2 chosen variants" text.*/
   position: relative;

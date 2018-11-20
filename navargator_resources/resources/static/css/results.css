@@ -1,3 +1,8 @@
+/* ======  Result page CSS variables  ====== */
+:root {
+  --histo-bar-colour: var(--highlight-colour); /* This inheritence is intentionally broken by results.js:setupHistoSliderPane() */
+}
+
 #bodyMainDiv {
   display: flex;
   flex-direction: row;
@@ -83,7 +88,7 @@
   font-size: 14px;
 }
 .histo-bar {
-  fill: #92F7E4; /* The other histogram bars, in the moueover colour.*/
+  fill: var(--histo-bar-colour); /* The other histogram bars, in the moueover colour.*/
 }
 .histo-bar:first-of-type {
   fill: var(--major-accent-colour); /* The 'chosen' histogram bar.*/

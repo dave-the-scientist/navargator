@@ -85,6 +85,10 @@ function setupPage() {
   });
 }
 function setupHistoSliderPane() {
+  // Prevents the css property --histo-bar-colour from inheriting changes to --highlight-colour
+  var histo_colour = getComputedStyle(document.documentElement).getPropertyValue('--histo-bar-colour');
+  document.documentElement.style.setProperty('--histo-bar-colour', histo_colour);
+
   var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), right = $("#rightSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
   do_remove = false;
   var mid_offset = middle_span.css('left'), animation_speed = 150, animation_style = 'linear',
