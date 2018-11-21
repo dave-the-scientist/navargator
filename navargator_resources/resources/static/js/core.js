@@ -127,6 +127,26 @@ function setupDisplayOptionsPane() {
       nvrgtr_display_opts.sizes.labels_outline = parseFloat(this.value);
     }
   }).spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+  $("#displayTreeBigNodeSpinner").spinner({
+    min: 0, max: 10,
+    numberFormat: 'N1', step: 0.5,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.sizes.big_marker_radius = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.sizes.big_marker_radius = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.sizes.big_marker_radius);
+  $("#displayTreeSmallNodeSpinner").spinner({
+    min: 0, max: 10,
+    numberFormat: 'N1', step: 0.5,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.sizes.small_marker_radius = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.sizes.small_marker_radius = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.sizes.small_marker_radius);
   $("#redrawTreeButton").click(function() {
     redrawTree();
   });
@@ -350,6 +370,8 @@ function updateClusterTransColourFollowup(key, trans_comp) {
 function updateDisplayOptionSpinners() {
   $("#displayTreeFontSizeSpinner").spinner('value', nvrgtr_display_opts.fonts.tree_font_size);
   $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+  $("#displayTreeBigNodeSpinner").spinner('value', nvrgtr_display_opts.sizes.big_marker_radius);
+  $("#displayTreeSmallNodeSpinner").spinner('value', nvrgtr_display_opts.sizes.small_marker_radius);
 }
 
 // =====  Page maintainance and management:

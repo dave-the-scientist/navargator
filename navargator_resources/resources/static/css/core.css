@@ -494,8 +494,14 @@ button.control-element:active {
         -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
 }
-.param-spinner {
+.param-spinner { /* General purpose spinner*/
   width: 21px;
+}
+input.display-opt-spinner {
+  width: 18px;
+  height: 15px;
+  font-size: 0.8em;
+  margin: .2em 20px .2em .3em;
 }
 table.sortable th span,
 table.sortable th:after {
