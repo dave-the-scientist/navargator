@@ -143,10 +143,10 @@
                   <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree sizes</label></td>
                 </tr>
                 <tr>
-                  <td><label class="display-options-label">Tree font</label></td>
+                  <td><label class="display-options-label">Font</label></td>
                   <td><input id="displayTreeFontSizeSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Tree outline</label></td>
-                  <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
+                  <td><label class="display-options-label">Width</label></td>
+                  <td><input id="displayTreeWidthSpinner" class="display-opt-spinner" /></td>
                 </tr>
                 <tr>
                   <td><label class="display-options-label">Big node</label></td>
@@ -154,8 +154,15 @@
                   <td><label class="display-options-label">Small node</label></td>
                   <td><input id="displayTreeSmallNodeSpinner" class="display-opt-spinner" /></td>
                 </tr>
+                <tr>
+                  <td><label class="display-options-label">Radial bars</label></td>
+                  <td><input id="displayTreeBarChartSizeSpinner" class="display-opt-spinner" /></td>
+                  <td><label class="display-options-label">Tree outline</label></td>
+                  <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
+                </tr>
               </tbody></table>
               <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+              <label class="nvrgtr-checkbox-label"><input id="showLegendCheckbox" type="checkbox" checked />Show legend</label>
 
             </div>
           </div>
@@ -284,7 +291,7 @@
               <button id="leftSliderButton" class="control-element">Add to<br>selection</button>
               <span id="numSliderSpan">-- variants</span>
               <button id="middleSliderButton" class="control-element"><span id="midLeftArrow">&lt;&lt;</span><span id="middleSliderButtonSpan">Variants<br>below</span><span id="midRightArrow">&gt;&gt;</span></button>
-              <button id="rightSliderButton" class="control-element">Reset</button>
+              <button id="clearSliderButton" class="control-element">Reset</button>
             </div>
 
             <h2>Selected variants</h2>

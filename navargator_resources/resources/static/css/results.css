@@ -121,7 +121,7 @@
   padding: 0px 5px;
   width: 100%;
 }
-#leftSliderButton, #middleSliderButton, #rightSliderButton {
+#leftSliderButton, #middleSliderButton, #clearSliderButton {
   position: relative;
   width: var(--button-width);
   height: var(--button-height);
@@ -137,7 +137,7 @@
 #middleSliderButton {
   width: 65px;
 }
-#rightSliderButton {
+#clearSliderButton {
   font-size: 12px;
 }
 #middleSliderButtonSpan {

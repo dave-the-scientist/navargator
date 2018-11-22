@@ -49,8 +49,6 @@ function setupPage() {
   document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('browser ID:', nvrgtr_page.browser_id);
-  //var tree_width_str = $("#mainTreeDiv").css('width');
-  //nvrgtr_display_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   var graph_width_str = $("#selectionDiv").css('width'),
     graph_height_str = $("#histoSvg").css('height'),
     histo_l_margin_str = $("#histoSlider").css('marginLeft');
@@ -89,7 +87,7 @@ function setupHistoSliderPane() {
   var histo_colour = getComputedStyle(document.documentElement).getPropertyValue('--histo-bar-colour');
   document.documentElement.style.setProperty('--histo-bar-colour', histo_colour);
 
-  var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), right = $("#rightSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
+  var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), reset_button = $("#clearSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
   do_remove = false;
   var mid_offset = middle_span.css('left'), animation_speed = 150, animation_style = 'linear',
     mid_left_arrow = $("#midLeftArrow"), mid_right_arrow = $("#midRightArrow");
@@ -155,7 +153,7 @@ function setupHistoSliderPane() {
     setButtonAddToSelection();
     selectNamesByThreshold(slider_val, !select_below);
   });
-  right.click(function() {
+  reset_button.click(function() {
     var select_below = slider.slider('option', 'range') == 'min',
       slider_val = (select_below) ? 0 : nvrgtr_data.nice_max_var_dist;
     slider.slider('value', slider_val);
@@ -365,9 +363,9 @@ function checkForClusteringResults() {
   });
 }
 function redrawTree(initial_draw=false) {
-  // if nvrgtr_display_opts.sizes.tree is different from the default value, need to modify the css width and height here.
   drawTree(false);
   if (initial_draw == false) {
+    $("#clearSliderButton").click();
     drawBarGraphs();
     drawClusters();
     updateClusteredVariantMarkers();
@@ -397,6 +395,9 @@ function extendTreeLegend() {
       .text('Singleton cluster');
     var new_height = parseFloat($("#legendBorderRect").attr('height')) + 18;
     $("#legendBorderRect").attr('height', new_height);
+    // Update the size of the figure if necessary:
+    var canvas_height = calculateTreeCanvasHeight(nvrgtr_display_opts.sizes.tree);
+    $("#figureSvg").attr({'height':canvas_height});
   }
   updateTreeLegend();
 }

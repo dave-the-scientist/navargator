@@ -42,8 +42,6 @@ function setupPage() {
   nvrgtr_page.session_id = location.search.slice(1);
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
-  //var tree_width_str = $("#mainTreeDiv").css('width');
-  //nvrgtr_display_opts.sizes.tree = parseInt(tree_width_str.slice(0,-2));
   var score_graph_width_str = $("#scoreGraphSvg").css('width');
   nvrgtr_settings.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
   var score_graph_height_str = $("#scoreGraphSvg").css('height');
@@ -435,7 +433,6 @@ function newTreeLoaded(data_obj) {
   }
 }
 function redrawTree() {
-  // if nvrgtr_display_opts.sizes.tree is different from the default value, need to modify the css width and height here.
   drawTree();
   updateVarSelectList();
   updateRunOptions();

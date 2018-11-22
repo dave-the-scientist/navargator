@@ -1,5 +1,9 @@
+// NOTE:
+// - The minimum width for #mainTreeDiv is set in setupDisplayOptionsPane(), in the "Redraw tree" button functionality.
+
 // TODO:
-// - Finish display options setting in updateDisplayColour()
+// - showLegendCheckbox should be disabled at first, and enabled in input.js:newTreeLoaded() and results.js:checkForClusteringResults() respectively.
+// - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
 // - Implement "restore defaults" button in display options.
 // - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
@@ -117,16 +121,16 @@ function setupDisplayOptionsPane() {
       nvrgtr_display_opts.fonts.tree_font_size = parseInt(this.value);
     }
   }).spinner('value', nvrgtr_display_opts.fonts.tree_font_size);
-  $("#displayTreeLabelOutlineSpinner").spinner({
-    min: 0, max: 10,
-    numberFormat: 'N1', step: 0.1,
+  $("#displayTreeWidthSpinner").spinner({
+    min: 100, max: 10000,
+    numberFormat: 'N0', step: 1,
     spin: function(event, ui) {
-      nvrgtr_display_opts.sizes.labels_outline = ui.value;
+      nvrgtr_display_opts.sizes.tree = ui.value;
     },
     change: function(event, ui) {
-      nvrgtr_display_opts.sizes.labels_outline = parseFloat(this.value);
+      nvrgtr_display_opts.sizes.tree = parseInt(this.value);
     }
-  }).spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+  }).spinner('value', nvrgtr_display_opts.sizes.tree);
   $("#displayTreeBigNodeSpinner").spinner({
     min: 0, max: 10,
     numberFormat: 'N1', step: 0.5,
@@ -147,7 +151,47 @@ function setupDisplayOptionsPane() {
       nvrgtr_display_opts.sizes.small_marker_radius = parseFloat(this.value);
     }
   }).spinner('value', nvrgtr_display_opts.sizes.small_marker_radius);
+  $("#displayTreeBarChartSizeSpinner").spinner({
+    min: 0, max: 500,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.sizes.bar_chart_height = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.sizes.bar_chart_height = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.sizes.bar_chart_height);
+  $("#displayTreeLabelOutlineSpinner").spinner({
+    min: 0, max: 10,
+    numberFormat: 'N1', step: 0.1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.sizes.labels_outline = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.sizes.labels_outline = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+
+  $("#showLegendCheckbox").change(function() {
+    if ($("#showLegendCheckbox").is(':checked')) {
+      $("#treeLegendLeftGroup").show();
+    } else {
+      $("#treeLegendLeftGroup").hide();
+    }
+  });
+
+  var min_tree_div_width = 500, tree_div_width;
   $("#redrawTreeButton").click(function() {
+    // Clear any selection
+    $("#clearSelectionButton").click();
+    // Reset the tree view
+    $("#treeZoomResetButton").click();
+    // Clear any searches
+    $("#varSearchInput").val('');
+    $("#varSearchButton").click();
+    // Set the css property to its new value
+    tree_div_width = Math.max(nvrgtr_display_opts.sizes.tree, min_tree_div_width);
+    document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
     redrawTree();
   });
 }
@@ -369,9 +413,12 @@ function updateClusterTransColourFollowup(key, trans_comp) {
 }
 function updateDisplayOptionSpinners() {
   $("#displayTreeFontSizeSpinner").spinner('value', nvrgtr_display_opts.fonts.tree_font_size);
-  $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+  $("#displayTreeWidthSpinner").spinner('value', nvrgtr_display_opts.sizes.tree);
   $("#displayTreeBigNodeSpinner").spinner('value', nvrgtr_display_opts.sizes.big_marker_radius);
   $("#displayTreeSmallNodeSpinner").spinner('value', nvrgtr_display_opts.sizes.small_marker_radius);
+
+  $("#displayTreeBarChartSizeSpinner").spinner('value', nvrgtr_display_opts.sizes.bar_chart_height);
+  $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
 }
 
 // =====  Page maintainance and management:

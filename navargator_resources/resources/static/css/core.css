@@ -12,7 +12,7 @@
   --shadow-colour: #555555;
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
-  --tree-width: 700px; /* Must equal core.js:nvrgtr_default_display_opts.sizes.tree */
+  --tree-width: 700px; /* Should equal core.js:nvrgtr_default_display_opts.sizes.tree */
   --toggle-button-border-radius: 3px;
   --control-element-height: 25px;
   --control-element-border-width: 1px;
@@ -111,6 +111,7 @@ span {
 }
 #mainTreeDiv {
   width: var(--tree-width);
+  /* Minimum width is set in core.js:setupDisplayOptionsPane() */
 }
 #figureSvg {
   margin-top: 0px;
@@ -502,6 +503,10 @@ input.display-opt-spinner {
   height: 15px;
   font-size: 0.8em;
   margin: .2em 20px .2em .3em;
+}
+#displayTreeWidthSpinner {
+  /* Needs a wider spinner for longer numbers.*/
+  width: 25px;
 }
 table.sortable th span,
 table.sortable th:after {

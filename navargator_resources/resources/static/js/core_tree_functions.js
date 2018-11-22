@@ -56,14 +56,15 @@ function setupTreeElements() {
         nvrgtr_data.search_results.push(name);
       }
     }
-    var button_half_width, search_select_max_width;
+    var button_half_width, tree_div_width, search_select_max_width;
     if (query == '') { // The 'clear search' command.
       search_button.removeClass('tree-search-button-clear');
       search_hits_div.css('maxWidth', '0px');
       search_hits_div.css('width', '0px');
     } else { // A real query was searched.
       $("#varSearchNumHitsText").text(num_hits + ' hits');
-      search_select_max_width = (nvrgtr_display_opts.sizes.tree/2-total_right_offset) + 'px';
+      tree_div_width = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tree-width'));
+      search_select_max_width = (tree_div_width/2-total_right_offset) + 'px';
       search_button.addClass('tree-search-button-clear');
       setSearchSelectToAdd();
       search_hits_div.css('maxWidth', search_select_max_width);
@@ -265,13 +266,13 @@ function drawTree(marker_tooltips=true) {
   drawVariantObjects(marker_tooltips);
   drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
-  updateTreeLegend();
 
-  // If adding other elements, can modify figure size here, and set the offset of the tree as well.
-  $("#figureSvg").attr({'width':canvas_size, 'height':canvas_size});
+  var canvas_height = calculateTreeCanvasHeight(canvas_size);
+  $("#figureSvg").attr({'width':canvas_size, 'height':canvas_height});
   $("#treeSvg").attr({'x':0, 'y':0});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
+  updateTreeLegend(); // Must be called after setting figureSvg height.
 }
 function drawVariantObjects(marker_tooltips) {
   // Collects coordinates and angles for nodes and their names, and creates their markers and highlights.
@@ -368,9 +369,22 @@ function updateTreeLegend() {
   if ($("#legendSingletonMarker").length) {
     $("#legendSingletonMarker").attr({fill: nvrgtr_display_opts.colours.singleton_cluster_background});
   }
-  var border_height = $("#legendBorderRect").attr('height'),
-    legend_offset = nvrgtr_display_opts.sizes.tree - border_height - 1;
+  var border_height = parseFloat($("#legendBorderRect").attr('height')),
+    legend_offset = parseFloat($("#figureSvg").attr('height')) - border_height - 1;
   $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
+}
+function calculateTreeCanvasHeight(canvas_size) {
+  var radius = canvas_size / 2.0,
+    legend_width = parseFloat($("#legendBorderRect").attr('width')),
+    legend_height = parseFloat($("#legendBorderRect").attr('height'));
+  // Calculates if there is an overlap between the legend and the tree
+  var allowed_height = radius - Math.sqrt(legend_width * (2*radius - legend_width));
+  var overlap = legend_height - allowed_height;
+  if (overlap > 0) {
+    return canvas_size + overlap;
+  } else {
+    return canvas_size;
+  }
 }
 function drawBarGraphs() {
   var var_name, var_angle, dist, tooltip, path_str, bar_chart;
@@ -599,16 +613,16 @@ function bezierSplinePath(hull) {
       p3 = hull[i+1];
     }
     if (!l1 && !a1) {
-      l1 = {'x':p2.x-p1.x, 'y':p2.y-p1.y}; // Line segment between the points
+      l1 = {'x':p2.x-p1.x, 'y':p2.y-p1.y}; // Line segment between points p1 and p2
       a1 = {'x':(p1.x+p2.x)/2.0, 'y':(p1.y+p2.y)/2.0}; // Midpoint of l1
     } else {
       l1 = l2;
       a1 = a2;
     }
-    l2 = {'x':p3.x-p2.x, 'y':p3.y-p2.y};
-    a2 = {'x':(p2.x+p3.x)/2.0, 'y':(p2.y+p3.y)/2.0};
+    l2 = {'x':p3.x-p2.x, 'y':p3.y-p2.y}; // Line segment between p2 and p3
+    a2 = {'x':(p2.x+p3.x)/2.0, 'y':(p2.y+p3.y)/2.0}; // Midpoint of l2
     l_ratio = Math.sqrt(distSquared(l1)) / (Math.sqrt(distSquared(l1)) + Math.sqrt(distSquared(l2)));
-    b = {'x':a1.x*(1-l_ratio) + a2.x*l_ratio, 'y':a1.y*(1-l_ratio) + a2.y*l_ratio}; // Point on the a1a2 line.
+    b = {'x':a1.x*(1-l_ratio) + a2.x*l_ratio, 'y':a1.y*(1-l_ratio) + a2.y*l_ratio}; // Point on the a1a2 line, placed by the relative lengths of l1 and l2.
     shift = {'x':p2.x-b.x, 'y':p2.y-b.y}; // How to get from b to p2.
     cp1 = {'x':a1.x+shift.x, 'y':a1.y+shift.y}; // Transformation, so that the a1ba2 line intersects p2 at b.
     cp2 = {'x':a2.x+shift.x, 'y':a2.y+shift.y}; // These are the control points for the curve.
