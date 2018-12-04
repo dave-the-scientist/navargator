@@ -22,8 +22,6 @@ def daemonURL(url):
     return '/daemon' + url
 
 # TODO:
-# - Finish setting up the display options. In core.js, nvrgtr_opts should be renamed as default_nvrgtr_opts. This also means that I can have a "restore defaults" button in the "Display options" pane. In core.js:parseBasicData(), it should set nvrgtr_opts as a copy of the defaults, and then process the data.display_opts object, overwriting any valid values.
-
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.

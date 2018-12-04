@@ -21,11 +21,14 @@ $.extend(nvrgtr_settings.graph, {
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
+// - Implement button to export the distance histogram as an image.
+// - Option to toggle between histogram and cumulative graph.
+//   - Cumulative graph doesn't need bins, can be continuous on x-axis. y-axis is always num of sequences, or maybe percent.
+//   - Once thresholds are implemented, can have option to colour the x-axis of this and histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc.
+// - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
-// - Implement button to export the distance histogram as an image.
-// - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Add an option to visualize the data as a heatmap. Would be symmetrical, with variants on each side, and coloured by distance. The order of the variants would be chosen such that clusters are all together, and maybe keep the tree ordering inside each cluster?
 //   - Could just be a pop-up window, or, could potentially replace the tree. I think I could visualize everything from the tree on that heatmap. Useful?
 

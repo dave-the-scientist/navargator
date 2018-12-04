@@ -171,7 +171,6 @@ function setupDisplayOptionsPane() {
       nvrgtr_display_opts.sizes.labels_outline = parseFloat(this.value);
     }
   }).spinner('value', nvrgtr_display_opts.sizes.labels_outline);
-
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
       $("#treeLegendLeftGroup").show();
@@ -179,7 +178,9 @@ function setupDisplayOptionsPane() {
       $("#treeLegendLeftGroup").hide();
     }
   });
-
+  $("#resetDisplayOptsButton").click(function() {
+    processDisplayOptions({});
+  });
   var min_tree_div_width = 500, tree_div_width;
   $("#redrawTreeButton").click(function() {
     // Clear any selection
@@ -189,7 +190,7 @@ function setupDisplayOptionsPane() {
     // Clear any searches
     $("#varSearchInput").val('');
     $("#varSearchButton").click();
-    // Set the css property to its new value
+    // Set the tree size css property to its new value
     tree_div_width = Math.max(nvrgtr_display_opts.sizes.tree, min_tree_div_width);
     document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
     redrawTree();
@@ -223,9 +224,11 @@ function parseBasicData(data_obj) {
     clearInterval(nvrgtr_page.maintain_interval_obj);
     nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
-  display_opts = data.display_opts;
+  processDisplayOptions(data.display_opts);
+}
+function processDisplayOptions(display_opts) {
   if ($.isEmptyObject(display_opts)) {
-    display_opts = calculateDefaultDisplayOpts(data.leaves.length);
+    display_opts = calculateDefaultDisplayOpts(nvrgtr_data.leaves.length);
   }
   updateDisplayOptions(display_opts);
   setColourPickers();

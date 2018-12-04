@@ -13,8 +13,8 @@ To read more about NaVARgator, check out the publication (coming soon, hopefully
 How can I run NaVARgator?
 -------------------------
 
-NaVARgator can be run as an online tool or by installing it and running it on your own computer. The online version has restrictions on the size of trees and the type of clustering it can do, and can be found [right here, soon](www.google.com). The local version of the software has no limits, but does require you to install it.
+NaVARgator can be run as an online tool or by installing it and running it on your own computer. The online version has restrictions on the size of trees and the type of clustering it can do, and can be found [right here, soon](www.compsysbio.org/navargator). The local version of the software has no limits, but does require you to install it.
 
 ### Installation instructions
 
-Coming soon. For now, just ensure you have Python (2 or 3) installed, as well as the Python packages numpy, flask, and tkinter, and pull from this github repository. Then, in that directory, start it with `python navargator.py`.
+Coming soon. To install the current development version, ensure you have Python (2 or 3) installed, as well as the Python packages numpy, flask, and tkinter. Then you can clone this github repository. Finally, navigate into that cloned directory and start it with the command `python navargator.py`. You can use the interface to locate a phylogenetic tree in newick format, or a previously saved navargator session (.nvrgtr file). To directly load one of those files, use the command `python navargator.py INPUT_FILE`.
