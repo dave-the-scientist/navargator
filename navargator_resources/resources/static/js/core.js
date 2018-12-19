@@ -3,9 +3,12 @@
 
 // TODO:
 // - showLegendCheckbox should be disabled at first, and enabled in input.js:newTreeLoaded() and results.js:checkForClusteringResults() respectively.
+// - Need to add a scale bar to the tree. 
+//   - The Python clusterer object knows the full distance matrix, and I want to save as a property the max distance from a node to the root. That should be passed here in parseBasicData.
+//   - Then in drawTree, use that distance and the width of the tree (not including labels) to get a mapping of phylogenetic distance to pixels.
+//   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" clean distance value in that range. Draw line, and label.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
-// - Implement "restore defaults" button in display options.
 // - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.

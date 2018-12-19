@@ -249,7 +249,7 @@ function drawTree(marker_tooltips=true) {
   if (nvrgtr_page.page == 'results') { // If a bar chart is going to be drawn:
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;
   }
-  total_label_size *= 2.0;
+  total_label_size *= 2.0; // Convert from radius to diameter
 
   tree_params.Circular.bufferRadius = total_label_size/canvas_size;
   tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.big_marker_radius + 1;
