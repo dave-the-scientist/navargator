@@ -17,7 +17,6 @@ def new_random_port():
 
 
 # TODO:
-# -- Change nvrgtr file format. A sequence name could start with '[', which would mess it up. However, '[(' cannot happen in a newick tree, so that's how I should format my tag lines. A seq name could start with '#', so I think '//' is probably a better way to format comment lines.
 
 # BUG reports:
 

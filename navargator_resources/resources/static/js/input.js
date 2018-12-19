@@ -2,11 +2,13 @@
 
 // TODO:
 // - Finish display options in core.js
+// - In display options, make sure there's the option for max length of displayed names.
+// - When designing the threshold input window/frame:
+//   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
+//   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
+//   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
-// - After I've re-done the session file format, ensure setupUploadSaveButtons() handles the new suffixes.
-// - After the session file format is ready, make it save the user's display options.
-//   - These options should also be passed to the server and then to results.js as defaults.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
@@ -14,7 +16,6 @@
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
 //   - Could be 'none' instead of 'clear'.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
-// - In display options, make sure there's the option for max length of displayed names.
 
 //NOTE:
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
