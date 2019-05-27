@@ -55,7 +55,7 @@ class NavargatorDaemon(object):
             self.sessionID_length = 5 # Length of the unique session ID used.
             self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
             self.maintain_interval = 2 # Interval that the page sends a signal to maintain the navargator instance.
-            allowed_wait = 10 # Wait seconds before timing out navargator instances.
+            allowed_wait = 60 # Wait seconds before timing out navargator instances.
         else: # Live, hosted web server.
             self.sessionID_length = 20
             self.check_interval = 10
@@ -146,7 +146,8 @@ class NavargatorDaemon(object):
                 return msg
             elif s_id == self.local_input_session_id:
                 self.connections.close(s_id, None) # Needed because that particular s_id never times out.
-            new_s_id = self.new_variant_finder(tree_data)
+            tree_format = 'newick'
+            new_s_id = self.new_variant_finder(tree_data, tree_format)
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/upload-nvrgtr-file'), methods=['POST'])
         def upload_nvrgtr_file():
@@ -274,11 +275,11 @@ class NavargatorDaemon(object):
         def render_results_page():
             return render_template('results.html')
     # # # # #  Public methods  # # # # #
-    def new_variant_finder(self, tree_data, available=[], ignored=[], distance_scale=1.0):
+    def new_variant_finder(self, tree_data, tree_format, available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         s_id = self.generate_session_id()
-        vf = VariantFinder(tree_data, tree_format='newick', verbose=self.verbose)
+        vf = VariantFinder(tree_data, tree_format, verbose=self.verbose)
         vf.available = available
         vf.ignored = ignored
         vf.distance_scale = distance_scale
@@ -376,7 +377,7 @@ class NavargatorDaemon(object):
         data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}}
         vf = self.sessions.get(s_id)
         if vf != None:
-            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phylo_xml_data, 'display_opts':vf.display_options})
+            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options})
         return data_dict
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:

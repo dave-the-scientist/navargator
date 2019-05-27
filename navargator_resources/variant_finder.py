@@ -6,7 +6,8 @@ import os, itertools, random, time
 from math import log, exp
 from copy import deepcopy
 import numpy as np
-from tree_parse import TreeParser
+import phylo
+
 
 # TODO:
 # - Finish writing process_tag_data() to process display options.
@@ -123,13 +124,22 @@ class VariantFinder(object):
         self.normalize = self._empty_normalize()
         self.display_options = {}
         if not _blank_init:
-            tree = TreeParser(tree_input, tree_format=tree_format, verbose=verbose)
-            self.leaves = tree.leaves # List of all terminal leaves in tree_file
-            self.index = tree.index # The index of each sequence name in self.leaves
-            self.orig_dist = tree.dist.copy()
-            self.dist = tree.dist.copy()
-            self.tree_data = tree.tree_data
-            self.phylo_xml_data = tree.phylo_xml_data
+            tree_format = tree_format.lower().strip()
+            if tree_format == 'newick':
+                tree = phylo.load_newick_string(tree_input)
+            elif tree_format == 'nexus':
+                tree = phylo.load_nexus_string(tree_input)
+            elif tree_format == 'phyloxml':
+                tree = phylo.load_phyloxml_string(tree_input)
+            elif tree_format == 'nexml':
+                tree = phylo.load_nexml_string(tree_input)
+            else:
+                raise NavargatorValidationError("Error: the tree format '{}' was not recognized.".format(tree_format))
+            self.leaves, self.orig_dist = tree.get_distance_matrix()
+            self.index = {name:index for index, name in enumerate(self.leaves)}
+            self.dist = self.orig_dist.copy()
+            self.newick_tree_data = tree.newick_string(support_values=False, comments=False, internal_names=False, support_as_comment=False)
+            self.phyloxml_tree_data = tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
@@ -216,7 +226,7 @@ class VariantFinder(object):
                     cat_opts = '\n'.join(cat_buff)
                     buff.append(tag_format_str.format(cat_tag, cat_opts))
         # Write tree data
-        buff.append(tag_format_str.format(tree_data_tag, self.tree_data))
+        buff.append(tag_format_str.format(tree_data_tag, self.newick_tree_data))
         # TODO: Write distance matrix
         return '\n\n'.join(buff)
 
@@ -228,8 +238,8 @@ class VariantFinder(object):
         vf.index = self.index.copy()
         vf.orig_dist = self.orig_dist.copy()
         vf.dist = self.dist.copy()
-        vf.tree_data = self.tree_data
-        vf.phylo_xml_data = self.phylo_xml_data
+        vf.newick_tree_data = self.newick_tree_data
+        vf.phyloxml_tree_data = self.phyloxml_tree_data
         vf.cache = deepcopy(self.cache)
         vf.normalize = deepcopy(self.normalize)
         vf.display_options = deepcopy(self.display_options)

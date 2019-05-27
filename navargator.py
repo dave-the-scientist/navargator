@@ -27,6 +27,7 @@ if __name__ == '__main__':
     mute_opening_browser_warnings = True
     num_threads = 3
     verbose = False
+    tree_format = 'newick'
 
     daemon = navargator_daemon.NavargatorDaemon(server_port, threads=num_threads, verbose=verbose)
 
@@ -38,7 +39,8 @@ if __name__ == '__main__':
             vfinder = load_navargator_file(input_file, verbose=verbose)
             idnum = daemon.add_variant_finder(vfinder)
         else:
-            idnum = daemon.new_variant_finder(input_file)
+            tree_data = open(input_file).read().strip()
+            idnum = daemon.new_variant_finder(tree_data, tree_format)
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, idnum)
 
     if manually_open_browser:

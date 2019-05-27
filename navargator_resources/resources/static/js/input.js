@@ -85,10 +85,12 @@ function setupUploadSaveButtons() {
         suffix = parseFileSuffix(filename);
       if (suffix == 'nvrgtr') {
         upload_type_select.val('nvrgtr');
-      } else if (suffix == 'nwk' || suffix == 'tree') {
+      } else if (suffix == 'nwk' || suffix == 'tree' || suffix == 'newick') {
         upload_type_select.val('newick');
-      } else if (suffix == 'xml') {
+      } else if (suffix == 'xml' || suffix == 'phyloxml') {
         upload_type_select.val('phyloxml');
+      } else if (suffix == 'nxs' || suffix == 'nex' || suffix == 'nexus') {
+        upload_type_select.val('nexus');
       }
       upload_button.button('enable');
     } else {
@@ -113,6 +115,9 @@ function setupUploadSaveButtons() {
       upload_url = daemonURL('/upload-newick-tree');
     } else if (selected_file_type == 'phyloxml') {
       showErrorPopup("The PhyloXML tree format is not yet supported by NaVARgator.");
+      return false;
+    } else if (selected_file_type == 'nexus') {
+      showErrorPopup("The NEXUS tree format is not yet supported by NaVARgator.");
       return false;
     } else {
       showErrorPopup("No file type was selected for the input file. Please specify it and load the file again.");
