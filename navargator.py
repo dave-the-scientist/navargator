@@ -27,7 +27,7 @@ if __name__ == '__main__':
     mute_opening_browser_warnings = True
     num_threads = 3
     verbose = False
-    tree_format = 'newick'
+    tree_format = 'newick' # can also be "auto"
 
     daemon = navargator_daemon.NavargatorDaemon(server_port, threads=num_threads, verbose=verbose)
 

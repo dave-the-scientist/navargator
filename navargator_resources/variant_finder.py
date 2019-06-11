@@ -117,7 +117,7 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='newick', verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='auto', verbose=True, _blank_init=False):
         self.verbose = bool(verbose)
         self.leaves = []
         self.cache = {}
@@ -125,7 +125,9 @@ class VariantFinder(object):
         self.display_options = {}
         if not _blank_init:
             tree_format = tree_format.lower().strip()
-            if tree_format == 'newick':
+            if tree_format == 'auto':
+                tree = phylo.load_tree_string(tree_input)
+            elif tree_format == 'newick':
                 tree = phylo.load_newick_string(tree_input)
             elif tree_format == 'nexus':
                 tree = phylo.load_nexus_string(tree_input)
@@ -138,7 +140,7 @@ class VariantFinder(object):
             self.leaves, self.orig_dist = tree.get_distance_matrix()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             self.dist = self.orig_dist.copy()
-            self.newick_tree_data = tree.newick_string(support_values=False, comments=False, internal_names=False, support_as_comment=False)
+            self.newick_tree_data = tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
             self.phyloxml_tree_data = tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available

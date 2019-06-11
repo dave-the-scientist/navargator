@@ -7,6 +7,9 @@
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
 //   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree.
+// - It would be great if users could click/hover on a tree internal node and have all descendent nodes respond.
+//   - The Tree.get_ordered_nodes() method from phylo.py can help. If leaves are in that order, then all internal nodes only need to know the indices of their descendents in that list.
+//   - Not too sure how to get those node names here into js, and parse the tree to find the coordinates to draw a node object.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.

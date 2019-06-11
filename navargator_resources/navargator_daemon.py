@@ -137,6 +137,7 @@ class NavargatorDaemon(object):
         # # #  Input page listening routes:
         @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
         def upload_newick_tree():
+            # ensure the web site has a default format selection for 'auto-detect'. the current format-selecting code should be mostly removed, except for the .navargator suffix.
             try:
                 tree_data = request.files['upload-file'].read()
             except Exception as err:
@@ -146,7 +147,7 @@ class NavargatorDaemon(object):
                 return msg
             elif s_id == self.local_input_session_id:
                 self.connections.close(s_id, None) # Needed because that particular s_id never times out.
-            tree_format = 'newick'
+            tree_format = 'newick' # can also be 'auto' to automatically detect
             new_s_id = self.new_variant_finder(tree_data, tree_format)
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/upload-nvrgtr-file'), methods=['POST'])
