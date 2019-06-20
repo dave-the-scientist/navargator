@@ -6,8 +6,13 @@ import os, itertools, random, time
 from math import log, exp
 from copy import deepcopy
 import numpy as np
-import phylo
+from navargator_resources import phylo
+from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
 
+try:
+  basestring
+except NameError:
+  basestring = str
 
 # TODO:
 # - Finish writing process_tag_data() to process display options.
@@ -28,8 +33,7 @@ def load_navargator_file(file_path, verbose=True):
     if not file_path.lower().endswith('.nvrgtr'):
         file_path += '.nvrgtr'
     if not os.path.isfile(file_path):
-        print('Error: could not find the given navargator file "%s"' % file_path)
-        exit()
+        raise NavargatorValueError('Error: could not find the given navargator file "{}"'.format(file_path))
     if verbose:
         print('Loading information from %s...' % file_path)
     with open(file_path) as f:
@@ -41,8 +45,7 @@ def navargator_from_data(data_lines, verbose=False):
     def process_tag_data(tag, data_buff):
         tag = tag.capitalize()
         if tag in data:
-            print('Error: the given NaVARgator session file has multiple sections labeled "[(%s)]".' % (tag))
-            exit()
+            raise NavargatorValidationError('Error: the given NaVARgator session file has multiple sections labeled "[({})]".'.format(tag))
         if not data_buff:
             return
         if tag in (chosen_nodes_tag, available_nodes_tag, ignore_nodes_tag): # These data to be split into lists
@@ -74,8 +77,7 @@ def navargator_from_data(data_lines, verbose=False):
     try:
         tree_data = data[tree_data_tag]
     except KeyError:
-        print('Error: could not identify the tree data in the given session file.')
-        exit()
+        raise NavargatorValidationError('Error: could not identify the tree data in the given NaVARgator session file.')
     vfinder = VariantFinder(tree_data, tree_format='newick', verbose=verbose)
     chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
@@ -90,6 +92,10 @@ def navargator_from_data(data_lines, verbose=False):
     return vfinder
 def binomial_coefficient(n, k):
     """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions, but is close enough for my purposes."""
+    try:
+        xrange
+    except NameError:
+        xrange = range
     def log_factorial(num):
         _sum = 0
         for i in xrange(2, num+1):
@@ -126,22 +132,22 @@ class VariantFinder(object):
         if not _blank_init:
             tree_format = tree_format.lower().strip()
             if tree_format == 'auto':
-                tree = phylo.load_tree_string(tree_input)
+                self.tree = phylo.load_tree_string(tree_input)
             elif tree_format == 'newick':
-                tree = phylo.load_newick_string(tree_input)
+                self.tree = phylo.load_newick_string(tree_input)
             elif tree_format == 'nexus':
-                tree = phylo.load_nexus_string(tree_input)
+                self.tree = phylo.load_nexus_string(tree_input)
             elif tree_format == 'phyloxml':
-                tree = phylo.load_phyloxml_string(tree_input)
+                self.tree = phylo.load_phyloxml_string(tree_input)
             elif tree_format == 'nexml':
-                tree = phylo.load_nexml_string(tree_input)
+                self.tree = phylo.load_nexml_string(tree_input)
             else:
-                raise NavargatorValidationError("Error: the tree format '{}' was not recognized.".format(tree_format))
-            self.leaves, self.orig_dist = tree.get_distance_matrix()
+                raise NavargatorValueError("Error: the tree format '{}' was not recognized.".format(tree_format))
+            self.leaves, self.orig_dist = self.tree.get_distance_matrix()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             self.dist = self.orig_dist.copy()
-            self.newick_tree_data = tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
-            self.phyloxml_tree_data = tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+            self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
+            self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
@@ -157,8 +163,7 @@ class VariantFinder(object):
     def find_variants(self, num_variants, distance_scale=None, method=None, bootstraps=10):
         num_avail, num_chsn = len(self.available), len(self.chosen)
         if not num_chsn <= num_variants <= num_avail + num_chsn:
-            print('Error: num_variants must be an integer greater than the number of chosen nodes (currently: %i) but less than or equal to the number of available + chosen nodes (currently: %i).' % (num_chsn, num_avail + num_chsn))
-            exit()
+            raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than the number of chosen nodes (currently: {}) but less than or equal to the number of available + chosen nodes (currently: {}).'.format(num_chsn, num_avail + num_chsn))
         if distance_scale != None:
             self.distance_scale = distance_scale
         num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
@@ -185,12 +190,42 @@ class VariantFinder(object):
             fxn, args = self._cluster_k_medoids, (num_variants,)
             variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, bootstraps)
         else:
-            print('Error: clustering method "%s" is not recognized.' % method)
-            exit()
+            raise NavargatorValueError('Error: clustering method "{}" is not recognized.'.format(method))
         if self.verbose:
             self._print_clustering_results(num_variants, init_time, variants, scores, alt_variants)
         self._calculate_cache_values(params, variants, scores, alt_variants)
         return variants, scores, alt_variants
+
+    def root_midpoint(self):
+        self.tree.root_midpoint()
+        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
+        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+        if self.verbose:
+            print('\nRe-rooted the tree to its midpoint')
+
+    def root_outgroup(self, outgroup_names):
+        self.tree.root_outgroup(outgroup_names, distance=0.5, distance_proportion=True)
+        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
+        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+        if self.verbose:
+            print('\nRe-rooted the tree to the given outgroup')
+
+    def get_tree_string(self, tree_type):
+        if tree_type == 'newick':
+            return self.tree.newick_string()
+        elif tree_type == 'nexus':
+            return self.tree.nexus_string()
+        elif tree_type == 'phyloxml':
+            return self.tree.phyloxml_string()
+        elif tree_type == 'nexml':
+            return self.tree.nexml_string()
+
+    def save_tree_file(self, file_path, tree_type):
+        tree_str = self.get_tree_string(tree_type)
+        with open(file_path, 'w') as f:
+            f.write(tree_str)
+        if self.verbose:
+            print('\nTree saved to %s' % file_path)
 
     def save_navargator_file(self, file_path):
         if not file_path.lower().endswith('.nvrgtr'):
@@ -236,6 +271,7 @@ class VariantFinder(object):
         """Returns a deep copy of self"""
         # dict.copy() works if all values are immutable, deepcopy(dict) otherwise.
         vf = VariantFinder(tree_input='', verbose=self.verbose, _blank_init=True)
+        vf.tree = self.tree.copy()
         vf.leaves = self.leaves[::]
         vf.index = self.index.copy()
         vf.orig_dist = self.orig_dist.copy()
@@ -292,8 +328,7 @@ class VariantFinder(object):
                 best_med_inds, best_scores, best_score = med_inds, scores, score
                 alt_variants = []
         if best_med_inds == None:
-            print('Error: big problem in brute force clustering, no comparisons were made.')
-            exit()
+            raise NavargatorRuntimeError('Error: big problem in brute force clustering, no comparisons were made.')
         return best_med_inds, best_scores, alt_variants
     def _cluster_k_medoids(self, num_variants):
         avail_medoid_indices = sorted(self.index[n] for n in self.available)
@@ -387,14 +422,12 @@ class VariantFinder(object):
         else:
             method = method.lower()
         if method not in self._cluster_methods:
-            print('Error: the given clustering method "%s" is not supported (must be one of: %s).' % ( method, ', '.join(sorted(self._cluster_methods)) ))
-            exit()
+            raise NavargatorValueError('Error: the given clustering method "{}" is not supported (must be one of: {}).'.format( method, ', '.join(sorted(self._cluster_methods)) ))
         return method
     def _validate_node_name(self, node):
         node = node.strip()
         if node not in self.index:
-            print('Error: could not add "%s" to the ignored set, as it was not found in the tree.' % node)
-            exit()
+            raise NavargatorValueError('Error: could not add "{}" to the ignored set, as it was not found in the tree.'.format(node))
         return node
 
     # # # # #  Accessible attribute logic  # # # # #
@@ -409,8 +442,7 @@ class VariantFinder(object):
         for node in names:
             node = self._validate_node_name(node)
             if node in self.ignored:
-                print('Error: cannot set "%s" as both ignored and chosen.' % node)
-                exit()
+                raise NavargatorValueError('Error: cannot set "{}" as both ignored and chosen.'.format(node))
             if node in self.available:
                 self._available.remove(node)
             new_chosen.add(node)
@@ -431,8 +463,7 @@ class VariantFinder(object):
             if node in self.available:
                 self._available.remove(node)
             if node in self.chosen:
-                print('Error: cannot set "%s" as both ignored and chosen.' % node)
-                exit()
+                raise NavargatorValueError('Error: cannot set "{}" as both ignored and chosen.'.format(node))
             new_ingroup_inds.remove(self.index[node])
             new_ignored.add(node)
         if new_ignored != self._ignored:
@@ -465,24 +496,14 @@ class VariantFinder(object):
         try:
             val = float(val)
         except:
-            print('Error: distance_scale must be a number.')
-            exit()
+            raise NavargatorValueError('Error: distance_scale must be a number.')
         if val <= 0.0:
-            print('Error: distance_scale must be a strictly positive number.')
-            exit()
+            raise NavargatorValueError('Error: distance_scale must be a strictly positive number.')
         elif val > self._distance_scale_max:
-            print('Error: distance_scale must be less than %i.' % self._distance_scale_max)
-            exit()
+            raise NavargatorValueError('Error: distance_scale must be less than {}.'.format(self._distance_scale_max))
         self._distance_scale = val
         self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
         # self._clear_cache()
-
-class NavargatorValidationError(ValueError):
-    def __init__(self, *args, **kwargs):
-        ValueError.__init__(self, *args, **kwargs)
-class NavargatorRuntimeError(RuntimeError):
-    def __init__(self, *args, **kwargs):
-        RuntimeError.__init__(self, *args, **kwargs)
 
 
 # TODO:

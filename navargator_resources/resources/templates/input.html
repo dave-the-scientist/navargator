@@ -61,15 +61,30 @@
                 <input id="uploadFileInput" name="upload-file" type="file">
               </form>
               <select id="uploadFileTypeSelect">
-                <option disabled selected>Choose file type</option>
+                <option selected value="auto">Auto-detect tree format</option>
                 <option value="nvrgtr">NaVARgator file</option>
                 <option value="newick">Newick tree</option>
                 <option value="nexus">NEXUS tree</option>
                 <option value="phyloxml">PhyloXML tree</option>
+                <option value="nexml">NeXML tree</option>
               </select>
               <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
               <hr>
             </div>
+
+            <h2 class="collapsible-header">Tree manipulations</h2>
+            <div id="treeManipulationsPanel" class="collapsible-panel">
+              <button id="rootMidpointButton" class="jq-ui-button tree-manipulation-buttons">Midpoint root</button>
+              <button id="rootSelectionButton" class="jq-ui-button tree-manipulation-buttons">Set selection as outgroup</button>
+              <button id="saveTreeButton" class="jq-ui-button tree-manipulation-buttons">Save tree as</button>
+              <select id="saveTreeTypeSelect">
+                <option selected value="newick">Newick tree</option>
+                <option value="nexus">NEXUS tree</option>
+                <option value="phyloxml">PhyloXML tree</option>
+                <option value="nexml">NeXML tree</option>
+              </select>
+            </div>
+
             <h2 class="collapsible-header">Display options</h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
 

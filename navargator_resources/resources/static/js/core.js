@@ -3,17 +3,17 @@
 
 // TODO:
 // - showLegendCheckbox should be disabled at first, and enabled in input.js:newTreeLoaded() and results.js:checkForClusteringResults() respectively.
-// - Need to add a scale bar to the tree. 
+// - Need to add a scale bar to the tree.
 //   - The Python clusterer object knows the full distance matrix, and I want to save as a property the max distance from a node to the root. That should be passed here in parseBasicData.
 //   - Then in drawTree, use that distance and the width of the tree (not including labels) to get a mapping of phylogenetic distance to pixels.
-//   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" clean distance value in that range. Draw line, and label.
+//   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" clean distance value in that range (probably the first significant value). Draw line, and label.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
 // - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
-// - Finish defining error codes in processError().
+// - Ensure error codes in processError() match with error codes in navargator_daemon.py.
 
 // =====  Common options and parameters
 var nvrgtr_page = {
@@ -56,6 +56,12 @@ function processError(error, message) {
     showErrorPopup(message+", as the server didn't recognize the given session ID. This generally means your session has timed out.");
   } else if (error.status == 0) {
     showErrorPopup(message+", as no response was received. This generally means the program has stopped or the web server is down.");
+  } else if (error.status == 5505) {
+    showErrorPopup(message+"; something went wrong uploading the data.");
+  } else if (error.status == 5510) {
+    showErrorPopup(message+"; the file format was malformed and could not be parsed.");
+  } else if (error.status == 5511) {
+    showErrorPopup(message+"; "+error.responseText);
   } else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }
@@ -546,9 +552,9 @@ function saveDataString(data_str, file_name, file_type) {
   var download_link = document.createElement("a");
   download_link.href = data_url;
   download_link.download = file_name;
-  document.body.appendChild(download_link); // TESTING should be able to remove these 2 lines
+  //document.body.appendChild(download_link); // TESTING should be able to remove these 2 lines
   download_link.click();
-  document.body.removeChild(download_link); // TESTING should be able to remove these 2 lines
+  //document.body.removeChild(download_link); // TESTING should be able to remove these 2 lines
 }
 function calculateHistoTicks(max_var_dist) {
   // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.

@@ -17,9 +17,11 @@
 #            Ex: args=(1,2,3) will be unpacked and passed as three arguemnts.
 #            args=[1,2,3] or args=((1,2,3),) will be passed as one argument.
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-import threading
-import Queue
-import sys
+import sys, threading
+if sys.version_info >= (3,0): # Python 3.x imports
+    import queue as Queue
+else:
+    import Queue
 
 class JobQueue(Queue.Queue):
     """Class to be instantiated externally."""

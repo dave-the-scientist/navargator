@@ -4,6 +4,8 @@ from random import randint
 from flask import Flask, request, render_template, json
 from navargator_resources.variant_finder import VariantFinder, navargator_from_data
 from navargator_resources.job_queue import JobQueue
+from navargator_resources.phylo import PhyloParseError
+from navargator_resources.navargator_common import NavargatorRuntimeError
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
@@ -25,7 +27,8 @@ def daemonURL(url):
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
-# - When uploading a file, if the incorrect file type is specified, the daemon throws an error (which is fine) and then quits (which is not). Have to make damn sure the web version in particular cannot crash from something so simple.
+# - It almost works with python 3, just need a few tweaks to finish. It's mostly loading nvrgtr files that's the problem
+
 
 # BUG:
 # - The instance closed for no apparent reason.
@@ -42,6 +45,8 @@ class NavargatorDaemon(object):
     5507 - Error setting the normalization method. From set_normalization_method()
     5508 - Error, no session ID sent from the client. From get_instance().
     5509 - Error, no variant finder found for the session ID when one is expected. From calculate_global_normalization(), update_or_copy_vf().
+    5510 - Error parsing tree file. From upload_tree_file() and upload_nvrgtr_file().
+    5511 - Error manipulating tree object. From the rooting and re-ordering methods.
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         max_upload_size = 20*1024*1024 # 20 MB
@@ -135,20 +140,22 @@ class NavargatorDaemon(object):
             ret = {'global_value':vf.normalize['global_value'], 'global_max_count':vf.normalize['global_max_count']}
             return json.dumps(ret)
         # # #  Input page listening routes:
-        @self.server.route(daemonURL('/upload-newick-tree'), methods=['POST'])
-        def upload_newick_tree():
-            # ensure the web site has a default format selection for 'auto-detect'. the current format-selecting code should be mostly removed, except for the .navargator suffix.
+        @self.server.route(daemonURL('/upload-tree-file'), methods=['POST'])
+        def upload_tree_file():
             try:
                 tree_data = request.files['upload-file'].read()
+                tree_format = request.form['tree_format']
             except Exception as err:
                 return (str(err), 5505)
             vf, s_id, b_id, msg = self.get_instance(json_data=False)
             if s_id == None:
                 return msg
-            elif s_id == self.local_input_session_id:
-                self.connections.close(s_id, None) # Needed because that particular s_id never times out.
-            tree_format = 'newick' # can also be 'auto' to automatically detect
-            new_s_id = self.new_variant_finder(tree_data, tree_format)
+            try:
+                new_s_id = self.new_variant_finder(tree_data, tree_format)
+            except PhyloParseError as err:
+                return (str(err), 5510)
+            if s_id == self.local_input_session_id:
+                self.connections.close(s_id, None)
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(daemonURL('/upload-nvrgtr-file'), methods=['POST'])
         def upload_nvrgtr_file():
@@ -159,11 +166,56 @@ class NavargatorDaemon(object):
             vf, s_id, b_id, msg = self.get_instance(json_data=False)
             if s_id == None:
                 return msg
-            elif s_id == self.local_input_session_id:
-                self.connections.close(s_id, None) # Needed because that particular s_id never times out.
-            vf = navargator_from_data(nvrgtr_data.splitlines(), verbose=self.verbose)
+            try:
+                vf = navargator_from_data(nvrgtr_data.splitlines(), verbose=self.verbose)
+            except PhyloParseError as err:
+                return (str(err), 5510)
             new_s_id = self.add_variant_finder(vf)
+            if s_id == self.local_input_session_id:
+                self.connections.close(s_id, None) # Needed because that particular s_id never times out.
             return json.dumps(self.get_vf_data_dict(new_s_id))
+        @self.server.route(daemonURL('/reroot-tree'), methods=['POST'])
+        def reroot_tree():
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
+            root_method = request.json['root_method']
+            if root_method == 'midpoint':
+                vf.root_midpoint()
+            elif root_method == 'outgroup':
+                selected_names = request.json['selected']
+                if not selected_names:
+                    return ("no outgroup selected.", 5511)
+                try:
+                    vf.root_outgroup(selected_names)
+                except Exception as err:
+                    return (str(err), 5511)
+            return json.dumps(self.get_vf_data_dict(s_id))
+
+        @self.server.route(daemonURL('/save-tree-file'), methods=['POST'])
+        def save_tree_file():
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
+            tree_type = request.json['tree_type']
+            if tree_type == 'newick':
+                suffix = '.nwk'
+            elif tree_type == 'nexus':
+                suffix = '.nxs'
+            elif tree_type == 'phyloxml' or tree_type == 'nexml':
+                suffix = '.xml'
+            if self.web_server:
+                saved_locally = False
+                tree_string = vf.get_tree_string(tree_type)
+            else:
+                root = tk_root()
+                filename = saveAs(initialdir=os.getcwd(), initialfile='tree'+suffix, defaultextension=suffix)
+                root.destroy()
+                if filename:
+                    vf.save_tree_file(filename, tree_type)
+                saved_locally, tree_string = True, ''
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':tree_string, 'suffix':suffix})
+
         @self.server.route(daemonURL('/save-nvrgtr-file'), methods=['POST'])
         def save_nvrgtr_file():
             vf, s_id, msg = self.update_or_copy_vf()
@@ -309,7 +361,7 @@ class NavargatorDaemon(object):
                 self.parse_err_logs()
                 self.collect_garbage()
             self.parse_err_logs()
-            if self.error_occurred:
+            if self.error_occurred and self.verbose:
                 print("\nAt least one server call responded with an error. Session log:")
                 print(''.join(self.error_log))
         except Exception as error:
@@ -455,8 +507,7 @@ class ConnectionManager(object):
     def new_session(self, session_id):
         with self.lock:
             if session_id in self.session_connections:
-                print('Error: something weird. A new session was added to the connection manager that already existed.')
-                exit()
+                raise NavargatorRuntimeError('Error: something weird happened. A new session was added to the connection manager that already existed.')
             if self.local_input_dead != True:
                 self.local_input_maintained = False
                 self.local_input_dead = True

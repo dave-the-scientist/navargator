@@ -671,7 +671,7 @@ class Tree(object):
                 r_prev = True if rj == j else False
                 i = j
         except:
-            raise PhyloValueError('Error: malformed Newick data.')
+            raise PhyloParseError('Error: malformed Newick data.')
         self.process_tree_nodes()
     def save_newick(self, tree_filename, support_as_comment=False, support_values=True, comments=True, internal_names=True):
         tree_string = self.newick_string(support_as_comment, support_values, comments, internal_names)
@@ -693,7 +693,7 @@ class Tree(object):
     def parse_nexus(self, nexus_str, internal_as_names=False):
         tree_commands, translate_command = self.parse_nexus_tree_commands(nexus_str)
         if len(tree_commands) > 1:
-            raise PhyloValueError("Error: multiple trees detected. Use the function 'load_multiple_nexus()' instead.")
+            raise PhyloParseError("Error: multiple trees detected. Use the function 'load_multiple_nexus()' instead.")
         self.reset_nodes()
         tree_name, _, newick_str = tree_commands[0].partition('=')
         self.name = tree_name.strip()
@@ -742,7 +742,7 @@ class Tree(object):
     def parse_phyloxml(self, phylo_str):
         phylos, ns = self.parse_phyloxml_phylogenies(phylo_str)
         if len(phylos) > 1:
-            raise PhyloValueError("Error: multiple phylogenies detected. Use the function 'load_multiple_phyloxml()' instead.")
+            raise PhyloParseError("Error: multiple phylogenies detected. Use the function 'load_multiple_phyloxml()' instead.")
         else:
             phy = phylos[0]
         self.reset_nodes()
@@ -789,7 +789,7 @@ class Tree(object):
     def parse_nexml(self, nexml_str):
         otus, tree_es, ns = self.parse_nexml_otus_trees(nexml_str)
         if len(tree_es) > 1:
-            raise PhyloValueError("Error: multiple trees detected. Use the function 'load_multiple_nexml()' instead.")
+            raise PhyloParseError("Error: multiple trees detected. Use the function 'load_multiple_nexml()' instead.")
         self.reset_nodes()
         self.parse_nexml_tree_element(tree_es[0], ns)
         self.process_tree_nodes()
@@ -886,14 +886,14 @@ class Tree(object):
             if segs[0][0] != '[' and segs[1][0] == '[' and segs[2][0] == ':' and segs[3][0] == '[':
                 name, comment, branch, support = segs
             else:
-                raise PhyloValueError('Error: malformed Newick data.')
+                raise PhyloParseError('Error: malformed Newick data.')
         elif len(segs) == 3:
             if segs[0][0] != '[' and segs[1][0] == '[' and segs[2][0] == ':':
                 name, comment, branch = segs
             elif segs[0][0] == '[' and segs[1][0] == ':' and segs[2][0] == '[':
                 comment, branch, support = segs
             else:
-                raise PhyloValueError('Error: malformed Newick data.')
+                raise PhyloParseError('Error: malformed Newick data.')
         elif len(segs) == 2:
             if ':' in segs[0] and segs[1][0] == '[':
                 name_branch, support = segs
@@ -903,14 +903,14 @@ class Tree(object):
             elif segs[0][0] == '[' and segs[1][0] == ':':
                 comment, branch = segs
             else:
-                raise PhyloValueError('Error: malformed Newick data.')
+                raise PhyloParseError('Error: malformed Newick data.')
         elif len(segs) == 1:
             if segs[0][0] == '[':
                 comment = segs[0]
             else:
                 name, _, branch = segs[0].partition(':')
         else:
-            raise PhyloValueError('Error: malformed Newick data.')
+            raise PhyloParseError('Error: malformed Newick data.')
         if ':' in branch:
             branch = branch[1:]
         support, comment = support[1:-1], comment[1:-1] # Removes []
@@ -964,7 +964,7 @@ class Tree(object):
     def parse_nexus_blocks(self, nexus_str):
         nexus_str = nexus_str.strip()
         if nexus_str[:7].lower() != '#nexus\n':
-            raise PhyloValueError("Error: malformed NEXUS file.")
+            raise PhyloParseError("Error: malformed NEXUS file.")
         nexus_lines = [] # Ensures the only ; are outside of comments
         for data_str in self.separate_square_comments(nexus_str[7:]):
             if not data_str:
@@ -985,12 +985,12 @@ class Tree(object):
                 if cmd[0] != '[':
                     break
             else:
-                raise PhyloValueError("Error: malformed NEXUS file. No valid command found within line '{}'.".format(line))
+                raise PhyloParseError("Error: malformed NEXUS file. No valid command found within line '{}'.".format(line))
             cmd_line = ''.join(cmds[cmd_ind :]).strip()
             if cmd_line.lower().startswith('begin '):
                 block = cmd_line[6:].lower().strip()
                 if block in blocks:
-                    raise PhyloValueError("Error: the NEXUS file contains multiple '{}' blocks.".format(block))
+                    raise PhyloParseError("Error: the NEXUS file contains multiple '{}' blocks.".format(block))
                 commands = []
             elif cmd_line.lower() == 'end':
                 blocks[block] = commands
@@ -1001,21 +1001,21 @@ class Tree(object):
             else:
                 pass
         if block is not None:
-            raise PhyloValueError("Error: malformed NEXUS file. The final block had no end.")
+            raise PhyloParseError("Error: malformed NEXUS file. The final block had no end.")
         return blocks
     def parse_nexus_tree_commands(self, nexus_str):
         tree_commands, translate_command = [], None
         blocks = self.parse_nexus_blocks(nexus_str)
         trees_block = blocks.get('trees', None)
         if trees_block == None:
-            raise PhyloValueError('Error: no TREES block in the given NEXUS file.')
+            raise PhyloParseError('Error: malformed NEXUS file. No TREES block in the given NEXUS file.')
         for cmd, data in trees_block:
             if cmd == 'translate':
                 translate_command = data
             elif cmd == 'tree':
                 tree_commands.append(data)
         if not tree_commands:
-            raise PhyloValueError('Error: no trees found in the given NEXUS file.')
+            raise PhyloParseError('Error: malformed NEXUS file. No trees found in the given NEXUS file.')
         return tree_commands, translate_command
     def format_nexus_translation(self, translate_command):
         trans = {}
@@ -1043,13 +1043,13 @@ class Tree(object):
         try:
             ET_root = ET.fromstring(phylo_str.strip())
         except:
-            raise PhyloValueError("Error: malformed PhyloXML file.")
+            raise PhyloParseError("Error: malformed PhyloXML file.")
         if 'phyloxml' not in ET_root.tag:
-            raise PhyloValueError("Error: malformed file format. The first element of a PhyloXML file must have the tag 'phyloxml'.")
+            raise PhyloParseError("Error: malformed file format. The first element of a PhyloXML file must have the tag 'phyloxml'.")
         ns, _, _ = ET_root.tag.rpartition('phyloxml')
         phylos = ET_root.findall('phylogeny') + ET_root.findall(ns + 'phylogeny')
         if len(phylos) == 0:
-            raise PhyloValueError("Error: malformed file format. No phylogenies were found.")
+            raise PhyloParseError("Error: malformed file format. No phylogenies were found.")
         return phylos, ns
     def traverse_phyloxml(self, node, element, ns):
         for child_element in element.findall('clade') + element.findall(ns + 'clade'):
@@ -1110,9 +1110,9 @@ class Tree(object):
         try:
             ET_root = ET.fromstring(nexml_str.strip())
         except:
-            raise PhyloValueError("Error: malformed NeXML file.")
+            raise PhyloParseError("Error: malformed NeXML file.")
         if 'nexml' not in ET_root.tag:
-            raise PhyloValueError("Error: malformed NeXML file. The first element of a NeXML file must have the tag 'nexml'.")
+            raise PhyloParseError("Error: malformed NeXML file. The first element of a NeXML file must have the tag 'nexml'.")
         ns, _, _ = ET_root.tag.rpartition('nexml')
         otus = ET_root.find('otus')
         if otus == None:
@@ -1123,10 +1123,10 @@ class Tree(object):
         if trees_e == None:
             trees_e = ET_root.find(ns + 'trees')
         if trees_e == None:
-            raise PhyloValueError("Error: malformed NeXML file. No 'trees' block was found.")
+            raise PhyloParseError("Error: malformed NeXML file. No 'trees' block was found.")
         trees = trees_e.findall('tree') + trees_e.findall(ns + 'tree')
         if len(trees) == 0:
-            raise PhyloValueError("Error: malformed NeXML file. No 'tree' blocks were found.")
+            raise PhyloParseError("Error: malformed NeXML file. No 'tree' blocks were found.")
         return otus, trees, ns
     def parse_nexml_tree_element(self, tree_e, ns):
         self.name = tree_e.get('id')
@@ -1134,7 +1134,7 @@ class Tree(object):
         for node_e in tree_e.findall('node') + tree_e.findall(ns + 'node'):
             e_id = node_e.get('id')
             if e_id == None:
-                raise PhyloValueError("Error: malformed NeXML file. A node element was found with no 'id' attribute.")
+                raise PhyloParseError("Error: malformed NeXML file. A node element was found with no 'id' attribute.")
             node = self.new_tree_node()
             self.parse_nexml_element_info_to_node(node, node_e, ns)
             node_e_ids[e_id] = node
@@ -1142,7 +1142,7 @@ class Tree(object):
         for edge_e in tree_e.findall('edge') + tree_e.findall(ns + 'edge'):
             src, trg = edge_e.get('source'), edge_e.get('target')
             if src not in node_e_ids or trg not in node_e_ids:
-                raise PhyloValueError("Error: malformed NeXML file. An edge had an unrecognized source or target.")
+                raise PhyloParseError("Error: malformed NeXML file. An edge had an unrecognized source or target.")
             target_e_ids.add(trg)
             node_e_ids[trg].branch = edge_e.get('length', None)
             node_e_ids[trg].parent = node_e_ids[src]
@@ -1172,7 +1172,7 @@ class Tree(object):
                     node.comment = val
         if node_e.get('root','').lower() == 'true':
             if self.root != None:
-                raise PhyloValueError("Error: this software was not designed to parse trees with multiple roots.")
+                raise PhyloParseError("Error: this software was not designed to parse trees with multiple roots.")
             else:
                 self.root = node
     def add_nexml_otus(self, e_tree, otus):
@@ -1439,6 +1439,21 @@ class TreeNode(object):
         return '<phylo.TreeNode id={} at {}>'.format(self.id, hex(id(self)))
 
 # # #  Phylo errors
-class PhyloValueError(ValueError):
-    def __init__(self, *args, **kwargs):
-        ValueError.__init__(self, *args, **kwargs)
+class PhyloError(Exception):
+    """Base class for errors originating from this phylo module."""
+    def __init__(self, msg=None):
+        if msg == None:
+            msg = "Error: unspecified problem in phylo.py"
+        super(PhyloError, self).__init__(msg)
+class PhyloParseError(PhyloError):
+    """Error indicating the file could not be parsed."""
+    def __init__(self, msg=None):
+        if msg == None:
+            msg = "Error: problem parsing a phylogenetic tree"
+        super(PhyloParseError, self).__init__(msg)
+class PhyloValueError(PhyloError):
+    """Error indicating an inappropriate value was passed."""
+    def __init__(self, msg=None):
+        if msg == None:
+            msg = "Error: value error in phylo.py"
+        super(PhyloValueError, self).__init__(msg)

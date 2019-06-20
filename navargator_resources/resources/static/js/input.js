@@ -1,6 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - In treeManipulationsPanel, implement tree.reorder_children() button.
 // - Finish display options in core.js
 // - In display options, make sure there's the option for max length of displayed names.
 // - When designing the threshold input window/frame:
@@ -57,6 +58,7 @@ function setupPage() {
   setupScoresGraph();
   setupVariantSelection();
   setupUploadSaveButtons();
+  setupManipulationsPane();
 
   if (nvrgtr_page.session_id != '') {
     // This is only run for the local version.
@@ -80,20 +82,14 @@ function setupUploadSaveButtons() {
   var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveSessionButton");
   upload_button.button('disable');
   save_button.button('disable');
-
   file_input.change(function() {
     var file_obj = file_input[0].files[0];
     if (file_obj) {
-      var filename = file_obj.name,
-        suffix = parseFileSuffix(filename);
+      var filename = file_obj.name, suffix = parseFileSuffix(filename);
       if (suffix == 'nvrgtr') {
         upload_type_select.val('nvrgtr');
-      } else if (suffix == 'nwk' || suffix == 'tree' || suffix == 'newick') {
-        upload_type_select.val('newick');
-      } else if (suffix == 'xml' || suffix == 'phyloxml') {
-        upload_type_select.val('phyloxml');
-      } else if (suffix == 'nxs' || suffix == 'nex' || suffix == 'nexus') {
-        upload_type_select.val('nexus');
+      } else {
+        upload_type_select.val('auto');
       }
       upload_button.button('enable');
     } else {
@@ -110,21 +106,13 @@ function setupUploadSaveButtons() {
       return false;
     }
     var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
-    form_data.append('session_id', nvrgtr_page.session_id);
     var selected_file_type = upload_type_select.val();
+    form_data.append('session_id', nvrgtr_page.session_id);
+    form_data.append('tree_format', selected_file_type);
     if (selected_file_type == 'nvrgtr') {
       upload_url = daemonURL('/upload-nvrgtr-file');
-    } else if (selected_file_type == 'newick') {
-      upload_url = daemonURL('/upload-newick-tree');
-    } else if (selected_file_type == 'phyloxml') {
-      showErrorPopup("The PhyloXML tree format is not yet supported by NaVARgator.");
-      return false;
-    } else if (selected_file_type == 'nexus') {
-      showErrorPopup("The NEXUS tree format is not yet supported by NaVARgator.");
-      return false;
     } else {
-      showErrorPopup("No file type was selected for the input file. Please specify it and load the file again.");
-      return false;
+      upload_url = daemonURL('/upload-tree-file');
     }
     $.ajax({
       type: 'POST',
@@ -137,7 +125,7 @@ function setupUploadSaveButtons() {
         newTreeLoaded(data_obj);
       },
       error: function(error) {
-        processError(error, "Error uploading the input file. This may be due to the incorrect file format being specified");
+        processError(error, "Error uploading the input file");
       }
     });
   });
@@ -151,12 +139,41 @@ function setupUploadSaveButtons() {
         var data = $.parseJSON(data_obj);
         nvrgtr_page.session_id = data.session_id;
         if (data.saved_locally == true) {
-          console.log('file saved locally');
+          console.log('NaVARgator file saved locally');
         } else {
           saveDataString(data.nvrgtr_as_string, 'web_tree.nvrgtr', 'text/plain');
         }
       },
       error: function(error) { processError(error, "Error saving session file"); }
+    });
+  });
+}
+function setupManipulationsPane() {
+  $(".tree-manipulation-buttons").button('disable'); // Enabled in newTreeLoaded()
+  $("#rootMidpointButton").click(function() {
+    rerootTree('midpoint');
+  });
+  $("#rootSelectionButton").click(function() {
+    rerootTree('outgroup');
+  });
+  $("#saveTreeButton").click(function() {
+    var tree_type = $("#saveTreeTypeSelect").val();
+    $.ajax({
+      url: daemonURL('/save-tree-file'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'tree_type':tree_type}),
+      success: function(data_obj) {
+        var data = $.parseJSON(data_obj);
+        nvrgtr_page.session_id = data.session_id;
+        if (data.saved_locally == true) {
+          console.log('Tree file saved locally');
+        } else {
+          var filename = 'web_tree' + data.suffix;
+          saveDataString(data.tree_string, filename, 'text/plain');
+        }
+      },
+      error: function(error) { processError(error, "Error saving tree file"); }
     });
   });
 }
@@ -422,6 +439,7 @@ $(window).bind('beforeunload', function() {
 // =====  Page udating:
 function newTreeLoaded(data_obj) {
   // Returns true if a tree was loaded, false otherwise.
+  $("#clearSelectionButton").click();
   parseBasicData(data_obj);
   clearInterval(nvrgtr_page.maintain_interval_obj);
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
@@ -435,6 +453,7 @@ function newTreeLoaded(data_obj) {
     $("#uploadFileInput").val('');
     $("#saveSessionButton").button('enable');
     $("#uploadFileButton").button('disable');
+    $(".tree-manipulation-buttons").button('enable');
     clearHideResultsPane();
     return true;
   } else {
@@ -628,6 +647,19 @@ function updateVariantColoursFollowup() {
 }
 
 // =====  Callback and event handlers:
+function rerootTree(method) {
+  var selected_names = Object.keys(nvrgtr_data.selected);
+  $.ajax({
+    url: daemonURL('/reroot-tree'),
+    type: 'POST',
+    contentType: "application/json",
+    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'root_method':method, 'selected':selected_names}),
+    success: function(data_obj) {
+      newTreeLoaded(data_obj);
+    },
+    error: function(error) { processError(error, "Error rooting the tree"); }
+  });
+}
 function addAssignedLabelHandlers(label_ele, assigned_key) {
   label_ele.mouseenter(function() {
     var assigned_len = nvrgtr_data[assigned_key].length;
