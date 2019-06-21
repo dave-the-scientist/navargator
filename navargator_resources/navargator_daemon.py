@@ -191,7 +191,14 @@ class NavargatorDaemon(object):
                 except Exception as err:
                     return (str(err), 5511)
             return json.dumps(self.get_vf_data_dict(s_id))
-
+        @self.server.route(daemonURL('/reorder-tree-nodes'), methods=['POST'])
+        def reorder_tree_nodes():
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
+            increasing = True if request.json['increasing'] == "true" else False
+            vf.reorder_tree_nodes(increasing)
+            return json.dumps(self.get_vf_data_dict(s_id))
         @self.server.route(daemonURL('/save-tree-file'), methods=['POST'])
         def save_tree_file():
             vf, s_id, msg = self.update_or_copy_vf()
@@ -215,7 +222,6 @@ class NavargatorDaemon(object):
                     vf.save_tree_file(filename, tree_type)
                 saved_locally, tree_string = True, ''
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':tree_string, 'suffix':suffix})
-
         @self.server.route(daemonURL('/save-nvrgtr-file'), methods=['POST'])
         def save_nvrgtr_file():
             vf, s_id, msg = self.update_or_copy_vf()

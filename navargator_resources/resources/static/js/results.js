@@ -59,6 +59,8 @@ function setupPage() {
   nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
   nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
 
+  console.log(histo_l_margin_str); // Getting an occasional race condition on this one.
+
   maintainServer();
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   updateClusterColours();

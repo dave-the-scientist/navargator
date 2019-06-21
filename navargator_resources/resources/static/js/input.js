@@ -1,7 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - In treeManipulationsPanel, implement tree.reorder_children() button.
+// - If I load a tree, run clustering, open the result, then re-order/root, re-run clustering and open that result, it mostly works well. But sometimes (especially with k=3 on tbpb59_new), the histo graph gets its margined fucked.
 // - Finish display options in core.js
 // - In display options, make sure there's the option for max length of displayed names.
 // - When designing the threshold input window/frame:
@@ -11,6 +11,7 @@
 // - It would be great if users could click/hover on a tree internal node and have all descendent nodes respond.
 //   - The Tree.get_ordered_nodes() method from phylo.py can help. If leaves are in that order, then all internal nodes only need to know the indices of their descendents in that list.
 //   - Not too sure how to get those node names here into js, and parse the tree to find the coordinates to draw a node object.
+//   - If I do manage this, I'd like to add an option in Tree manipulations to save a subtree. Select all
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
@@ -47,10 +48,13 @@ function setupPage() {
   nvrgtr_page.session_id = location.search.slice(1);
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
-  var score_graph_width_str = $("#scoreGraphSvg").css('width');
-  nvrgtr_settings.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
-  var score_graph_height_str = $("#scoreGraphSvg").css('height');
-  nvrgtr_settings.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
+  //var score_graph_width_str = $("#scoreGraphSvg").css('width');
+  //nvrgtr_settings.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
+  //var score_graph_height_str = $("#scoreGraphSvg").css('height');
+  //nvrgtr_settings.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
+  nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
+  nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
+
   setupTreeElements();
   setupDisplayOptionsPane();
   setupNormalizationPane();
@@ -155,6 +159,22 @@ function setupManipulationsPane() {
   });
   $("#rootSelectionButton").click(function() {
     rerootTree('outgroup');
+  });
+  $("#reorderNodesButton").attr("increasing", "true"); // Sets order direction
+  $("#reorderNodesButton").click(function() {
+    $.ajax({
+      url: daemonURL('/reorder-tree-nodes'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'increasing':$("#reorderNodesButton").attr("increasing")}),
+      success: function(data_obj) {
+        newTreeLoaded(data_obj);
+      },
+      error: function(error) { processError(error, "Error re-ordering the tree nodes"); }
+    });
+    $("#reorderNodesButton").attr("increasing", function(index, attr) {
+      return attr == "true" ? "false" : "true";
+    }); // Toggles the attribute.
   });
   $("#saveTreeButton").click(function() {
     var tree_type = $("#saveTreeTypeSelect").val();

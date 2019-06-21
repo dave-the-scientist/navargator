@@ -190,7 +190,7 @@ class VariantFinder(object):
             fxn, args = self._cluster_k_medoids, (num_variants,)
             variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, bootstraps)
         else:
-            raise NavargatorValueError('Error: clustering method "{}" is not recognized.'.format(method))
+            raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         if self.verbose:
             self._print_clustering_results(num_variants, init_time, variants, scores, alt_variants)
         self._calculate_cache_values(params, variants, scores, alt_variants)
@@ -210,6 +210,13 @@ class VariantFinder(object):
         if self.verbose:
             print('\nRe-rooted the tree to the given outgroup')
 
+    def reorder_tree_nodes(self, increasing):
+        self.tree.reorder_children(increasing=increasing)
+        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
+        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+        if self.verbose:
+            print('\nRe-ordered the tree nodes')
+
     def get_tree_string(self, tree_type):
         if tree_type == 'newick':
             return self.tree.newick_string()
@@ -219,6 +226,8 @@ class VariantFinder(object):
             return self.tree.phyloxml_string()
         elif tree_type == 'nexml':
             return self.tree.nexml_string()
+        else:
+            raise NavargatorValueError('Error: tree format "{}" is not recognized'.format(tree_type))
 
     def save_tree_file(self, file_path, tree_type):
         tree_str = self.get_tree_string(tree_type)
