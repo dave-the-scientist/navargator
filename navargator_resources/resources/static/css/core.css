@@ -173,21 +173,26 @@ span {
 }
 
 /* ======  Custom checkbox and radio buttons  ====== */
-.nvrgtr-checkbox-label {
+.nvrgtr-checkbox-outer {
   position: relative;
-  display: inline-block;
-  padding-left: 25px;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 20px;
 }
-.nvrgtr-checkbox-label > input {
+.nvrgtr-checkbox-outer > input {
   position: absolute;
   opacity: 0;
 }
+.nvrgtr-checkbox-label {
+  line-height: 19px;
+}
+/* The check boxes: */
 .nvrgtr-checkbox, .nvrgtr-radio-checkbox {
   position: absolute;
   width: 14px;
   height: 14px;
-  bottom: 3px;
-  left: 5px;
+  left: 0px;
   background-color: white;
   /*box-shadow: inset -2px -2px 1px rgba(85,85,85,.1); Looks better without 3D I think.*/
   border: 1px solid var(--button-border-colour);
@@ -198,11 +203,12 @@ span {
 .nvrgtr-radio-checkbox {
   border-radius: 50%;
 }
+/* The check and dot objects: */
 .nvrgtr-checkbox:after, .nvrgtr-radio-checkbox:after {
   content: "";
   position: absolute;
   opacity: 0;
-  transition: .15s all;
+  transition: .15s opacity;
 }
 .nvrgtr-checkbox:after {
   width: 4px;
@@ -221,13 +227,29 @@ span {
   background-color: var(--dark-background-colour);
   border-radius: 50%;
 }
-.nvrgtr-checkbox-label:hover > .nvrgtr-radio-checkbox, .nvrgtr-checkbox-label:hover > .nvrgtr-checkbox {
+.nvrgtr-checkbox-outer > input:checked ~ .nvrgtr-checkbox:after,
+.nvrgtr-checkbox-outer > input:checked ~ .nvrgtr-radio-checkbox:after {
+  opacity: 1;
+}
+/* On hover: */
+.nvrgtr-checkbox-outer:hover > input:enabled ~ .nvrgtr-checkbox,
+.nvrgtr-checkbox-outer:hover > input:enabled ~ .nvrgtr-radio-checkbox {
   border-color: var(--button-border-hover-colour);
   /*box-shadow: 0px 0px 4px var(--major-accent-colour); Green outline; looks alright, kinda busy.*/
 }
-.nvrgtr-checkbox-label > input:checked + .nvrgtr-checkbox:after,
-.nvrgtr-checkbox-label > input:checked + .nvrgtr-radio-checkbox:after {
-  opacity: 1;
+/* When the input is disabled: */
+.nvrgtr-checkbox-outer > input:disabled + .nvrgtr-checkbox-label {
+  color: #AFAFAF;
+}
+.nvrgtr-checkbox-outer > input:disabled ~ .nvrgtr-checkbox,
+.nvrgtr-checkbox-outer > input:disabled ~ .nvrgtr-radio-checkbox {
+  background-color: #F3F3F3;
+}
+.nvrgtr-checkbox-outer > input:disabled ~ .nvrgtr-checkbox:after {
+  border-color: #AFAFAF;
+}
+.nvrgtr-checkbox-outer > input:disabled ~ .nvrgtr-radio-checkbox:after {
+  background-color: #AFAFAF;
 }
 
 /* ======  Collapsible panes  ====== */

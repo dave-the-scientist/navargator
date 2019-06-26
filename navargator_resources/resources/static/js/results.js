@@ -362,6 +362,8 @@ function checkForClusteringResults() {
         $("#treeSelectionDiv").show();
         $("#treeControlsDiv").show();
         $("#treeLegendLeftGroup").show();
+        $("#showLegendCheckbox").prop('disabled', false);
+        $("#redrawTreeButton").button('enable');
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }

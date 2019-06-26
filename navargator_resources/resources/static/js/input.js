@@ -1,7 +1,6 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - If I load a tree, run clustering, open the result, then re-order/root, re-run clustering and open that result, it mostly works well. But sometimes (especially with k=3 on tbpb59_new), the histo graph gets its margined fucked.
 // - Finish display options in core.js
 // - In display options, make sure there's the option for max length of displayed names.
 // - When designing the threshold input window/frame:
@@ -48,10 +47,8 @@ function setupPage() {
   nvrgtr_page.session_id = location.search.slice(1);
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
-  //var score_graph_width_str = $("#scoreGraphSvg").css('width');
-  //nvrgtr_settings.graph.total_width = parseInt(score_graph_width_str.slice(0,-2));
-  //var score_graph_height_str = $("#scoreGraphSvg").css('height');
-  //nvrgtr_settings.graph.total_height = parseInt(score_graph_height_str.slice(0,-2));
+  //These can be screwed over by a race condition. If so, may help to use parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2));
+  console.log('w', parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2)))
   nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
   nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
 
@@ -292,7 +289,7 @@ function setupRunOptions() {
   });
   $(".multiple-run-only").css('visibility', 'hidden');
   $("#rangeSpinner").parent().css('visibility', 'hidden');
-  $("#clustMethodSelect").selectmenu();
+  //$("#clustMethodSelect").selectmenu();
   //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
 
   // Button callbacks:
@@ -342,6 +339,7 @@ function setupRunOptions() {
       error: function(error) { processError(error, "Server error in finding variants"); }
     });
   });
+  $("#findVariantsButton").button('disable');
 }
 function setupScoresGraph() {
   var total_width = nvrgtr_settings.graph.total_width, total_height = nvrgtr_settings.graph.total_height, margin = nvrgtr_settings.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
@@ -474,6 +472,9 @@ function newTreeLoaded(data_obj) {
     $("#saveSessionButton").button('enable');
     $("#uploadFileButton").button('disable');
     $(".tree-manipulation-buttons").button('enable');
+    $("#showLegendCheckbox").prop('disabled', false);
+    $("#redrawTreeButton").button('enable');
+    $("#findVariantsButton").button('enable');
     clearHideResultsPane();
     return true;
   } else {

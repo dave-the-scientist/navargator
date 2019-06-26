@@ -82,13 +82,22 @@
             <h2>Results normalization</h2>
             <table><tbody>
               <tr><td>
-                <label class="nvrgtr-checkbox-label"><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />Self-normalized <span id="normSelfValSpan"></span></label>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
+                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
+                </label>
               </td></tr>
               <tr><td>
-                <label class="nvrgtr-checkbox-label"><input id="normGlobalRadio" type="radio" name="normalizeRadios" />Normalize across runs <span id="normGlobalValSpan"></span></label>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
+                </label>
               </td></tr>
               <tr><td>
-                <label class="nvrgtr-checkbox-label"><input id="normValRadio" type="radio" name="normalizeRadios" />Normalize to</label>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normValRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
+                </label>
                 <input id="normValInput" placeholder="value" />
                 <button id="normValGoButton" style="display:none">Ok</button>
               </td></tr>
@@ -161,8 +170,10 @@
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
-
-              <label class="nvrgtr-checkbox-label"><input id="showLegendCheckbox" type="checkbox" checked />Show legend</label>
+              <label class="nvrgtr-checkbox-outer">
+                <input id="showLegendCheckbox" type="checkbox" checked />
+                <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
+              </label>
               <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
               <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
             </div>

@@ -1,3 +1,6 @@
+:root {
+  --left-col-width: 250px;
+}
 #bodyMainDiv {
   display: flex;
   flex-direction: row;
@@ -6,7 +9,8 @@
 #mainLeftDiv {
   display: inline-flex;
   flex-direction: column;
-  --left-col-width: 250px;
+  /*--left-col-width: 250px;*/
+  
 }
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: var(--left-col-width);

@@ -2,7 +2,6 @@
 // - The minimum width for #mainTreeDiv is set in setupDisplayOptionsPane(), in the "Redraw tree" button functionality.
 
 // TODO:
-// - showLegendCheckbox should be disabled at first, and enabled in input.js:newTreeLoaded() and results.js:checkForClusteringResults() respectively.
 // - Need to add a scale bar to the tree.
 //   - The Python clusterer object knows the full distance matrix, and I want to save as a property the max distance from a node to the root. That should be passed here in parseBasicData.
 //   - Then in drawTree, use that distance and the width of the tree (not including labels) to get a mapping of phylogenetic distance to pixels.
@@ -71,8 +70,9 @@ function processError(error, message) {
 function initializeButtons() {
   // Standardizes appearances across browsers, and provides some additional functionality to various elements.
   $(".jq-ui-button").button(); // Converts html buttons into jQuery-themed buttons. Provides style and features, including .button('disable')
-  $(".nvrgtr-checkbox-label").addClass("prevent-text-selection").children("input[type=radio]").after("<span class='nvrgtr-radio-checkbox'></span>");
-  $(".nvrgtr-checkbox-label").children("input[type=checkbox]").after("<span class='nvrgtr-checkbox'></span>");
+  // Sets up my custom checkboxes and radio buttons:
+  $(".nvrgtr-checkbox-outer").addClass("prevent-text-selection").children("input[type=checkbox] + label.nvrgtr-checkbox-label").after("<span class='nvrgtr-checkbox'></span>");
+  $(".nvrgtr-checkbox-outer").children("input[type=radio] + label.nvrgtr-checkbox-label").after("<span class='nvrgtr-radio-checkbox'></span>");
 }
 function initializeErrorPopupWindow() {
   // Sets up error dialog, which is hidden until called with showErrorPopup(message, title).
@@ -204,6 +204,8 @@ function setupDisplayOptionsPane() {
     document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
     redrawTree();
   });
+  $("#redrawTreeButton").button('disable');
+  $("#showLegendCheckbox").prop('disabled', true);
 }
 function redrawTree() {
   // Overwritten in input.js and results.js to redraw the tree and reset visible elements.

@@ -151,8 +151,10 @@
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
-
-              <label class="nvrgtr-checkbox-label"><input id="showLegendCheckbox" type="checkbox" checked />Show legend</label>
+              <label class="nvrgtr-checkbox-outer">
+                <input id="showLegendCheckbox" type="checkbox" checked />
+                <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
+              </label>
               <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
               <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
               <hr>
@@ -164,17 +166,27 @@
             <h2>Results normalization</h2>
             <table><tbody>
               <tr><td>
-                <label class="nvrgtr-checkbox-label"><input id="normSelfRadio" type="radio" name="normalizeRadios" checked />Self-normalized</label>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
+                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
+                </label>
               </td></tr>
               <tr><td>
-                <label class="nvrgtr-checkbox-label"><input id="normGlobalRadio" type="radio" name="normalizeRadios" />Normalize across runs <span id="normGlobalValSpan"></span></label>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
+                </label>
               </td></tr>
               <tr><td>
-                <label class="nvrgtr-checkbox-label"><input id="normValRadio" type="radio" name="normalizeRadios" />Normalize to</label>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normValRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
+                </label>
                 <input id="normValInput" placeholder="value" />
                 <button id="normValGoButton" style="display:none">Ok</button>
               </td></tr>
             </tbody></table>
+
             <h2>Run options</h2>
             <div class="toggle-button-container">
               <input type="radio" id="singleRunCheckbox" name="run-type-choice" class="toggle-button-input" checked>
@@ -190,7 +202,11 @@
                 <input id="rangeSpinner" class="param-spinner" />
               </td></tr>
               <tr><td>
-                <label class="single-run-only nvrgtr-checkbox-label"><input id="autoOpenCheckbox" type="checkbox" checked />Auto-open results page</label>
+                <label class="single-run-only nvrgtr-checkbox-outer">
+                  <input id="autoOpenCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="autoOpenCheckbox">Auto-open results page</label>
+                </label>
+
               </td></tr>
               <tr><td>
                 <label for="clustMethodSelect">Clustering method</label>
