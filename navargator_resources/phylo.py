@@ -3,7 +3,7 @@
 Input/Output
 ============
 - Trees can be loaded from files or from strings, and the functions follow the naming conventions load_FORMAT(tree_filename) and load_FORMAT_string(tree_string); both return a Tree instance. For formats that support multiple trees, there are also load_multiple_FORMAT(tree_filename) and load_multiple_FORMAT_string(tree_string); both return a list of Tree instances. Some loading functions have specific arguments, but all respect the tree_args: support_label='bootstrap', remove_name_quotes=True. 'support_label' specifies the default type of branch support values, if any; this will be used unless one is specified in the formats that allow it (PhyloXML and NeXML). 'remove_name_quotes' will remove ' or " quotation marks surrounding the names of tree nodes, if present; some popular tree viewing programs add them.
-- Saving methods are called on Tree instances, and follow the naming conventions Tree.save_FORMAT(tree_filename) and Tree.FORMAT_string(); save_FORMAT writes to a file and returns None, while FORMAT_string returns the tree data as a string. There are also functions to save multiple trees to a supporting file format - note that these are module functions and so are not called on Tree instances - that follow the naming conventions save_multiple_FORMAT(trees, tree_filename) and multiple_FORMAT_string(trees); both expect 'trees' to be a list of Tree instances. All saving functions respect the save_args: support_values=True, comments=True, internal_names=True. The first two specify whether support values or comments, if present, should be saved; 'internal_names' indicates whether the names of internal nodes should be saved, if present.
+- Saving methods are called on Tree instances, and follow the naming conventions Tree.save_FORMAT(tree_filename) and Tree.FORMAT_string(); save_FORMAT writes to a file and returns None, while FORMAT_string returns the tree data as a string. There are also functions to save multiple trees to a supporting file format - note that these are module functions and so are not called on Tree instances - that follow the naming conventions save_multiple_FORMAT(trees, tree_filename) and multiple_FORMAT_string(trees); both expect 'trees' to be a list of Tree instances. All saving functions respect the save_args: support_values=True, comments=True, internal_names=True, max_name_length=None. The first two specify whether support values or comments, if present, should be saved; 'internal_names' indicates whether the names of internal nodes should be saved, if present; if 'max_name_length' is an integer it will truncate leaf names to a maximum of 'max_name_length' characters, if it is None no truncations will occur.
 
 Tree loading functions
 ----------------------
@@ -171,11 +171,11 @@ def load_multiple_nexus(tree_filename, internal_as_names=False, **kwargs):
 def load_multiple_nexus_string(tree_string, internal_as_names=False, **kwargs):
     tree = Tree(**kwargs)
     return tree.parse_multiple_nexus(tree_string, internal_as_names)
-def save_multiple_nexus(trees, tree_filename, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True):
-    tree_string = multiple_nexus_string(trees, translate_command, support_as_comment, support_values, comments, internal_names)
+def save_multiple_nexus(trees, tree_filename, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=None):
+    tree_string = multiple_nexus_string(trees, translate_command, support_as_comment, support_values, comments, internal_names, max_name_length)
     with open(tree_filename, 'w') as f:
         f.write(tree_string)
-def multiple_nexus_string(trees, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True):
+def multiple_nexus_string(trees, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=None):
     indent = '    '
     nexus_buff, tree_names = ['#NEXUS', '', 'BEGIN TREES;'], set()
     if translate_command:
@@ -225,11 +225,11 @@ def load_multiple_phyloxml(tree_filename, **kwargs):
 def load_multiple_phyloxml_string(tree_string, **kwargs):
     tree = Tree(**kwargs)
     return tree.parse_multiple_phyloxml(tree_string)
-def save_multiple_phyloxml(trees, tree_filename, support_values=True, comments=True, internal_names=True):
-    tree_string = multiple_phyloxml_string(trees, support_values, comments, internal_names)
+def save_multiple_phyloxml(trees, tree_filename, support_values=True, comments=True, internal_names=True, max_name_length=None):
+    tree_string = multiple_phyloxml_string(trees, support_values, comments, internal_names, max_name_length)
     with open(tree_filename, 'w') as f:
         f.write(tree_string)
-def multiple_phyloxml_string(trees, support_values=True, comments=True, internal_names=True):
+def multiple_phyloxml_string(trees, support_values=True, comments=True, internal_names=True, max_name_length=None):
     e_tree = ET.Element('phyloxml')
     e_tree.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
     e_tree.set('xsi:schemaLocation', 'http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd')
@@ -260,11 +260,11 @@ def load_multiple_nexml(tree_filename, **kwargs):
 def load_multiple_nexml_string(tree_string, **kwargs):
     tree = Tree(**kwargs)
     return tree.parse_multiple_nexml(tree_string)
-def save_multiple_nexml(trees, tree_filename, support_values=True, comments=True, internal_names=True):
-    tree_string = multiple_nexml_string(trees, support_values, comments, internal_names)
+def save_multiple_nexml(trees, tree_filename, support_values=True, comments=True, internal_names=True, max_name_length=None):
+    tree_string = multiple_nexml_string(trees, support_values, comments, internal_names, max_name_length)
     with open(tree_filename, 'w') as f:
         f.write(tree_string)
-def multiple_nexml_string(trees, support_values=True, comments=True, internal_names=True):
+def multiple_nexml_string(trees, support_values=True, comments=True, internal_names=True, max_name_length=None):
     e_tree = ET.Element('nexml')
     e_tree.set('version', '0.9')
     e_tree.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
@@ -673,11 +673,11 @@ class Tree(object):
         except:
             raise PhyloParseError('Error: malformed Newick data.')
         self.process_tree_nodes()
-    def save_newick(self, tree_filename, support_as_comment=False, support_values=True, comments=True, internal_names=True):
-        tree_string = self.newick_string(support_as_comment, support_values, comments, internal_names)
+    def save_newick(self, tree_filename, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=None):
+        tree_string = self.newick_string(support_as_comment, support_values, comments, internal_names, max_name_length)
         with open(tree_filename, 'w') as f:
             f.write(tree_string)
-    def newick_string(self, support_as_comment=False, support_values=True, comments=True, internal_names=True):
+    def newick_string(self, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=None):
         if internal_names: # Otherwise support_as_comment defaults to True
             internal_names = False
             for node in self.nodes:
@@ -687,7 +687,7 @@ class Tree(object):
         if support_values and internal_names: # The only way to save both supports and internal names.
             support_as_comment = True
         replacer_fxn = self.create_string_replacer_function(self._newick_replacements)
-        return self.format_newick_string(self.root, replacer_fxn, support_as_comment, support_values, comments, internal_names) + ';'
+        return self.format_newick_string(self.root, replacer_fxn, set(), support_as_comment, support_values, comments, internal_names, max_name_length) + ';'
 
     # # #  NEXUS parsing and saving functions
     def parse_nexus(self, nexus_str, internal_as_names=False):
@@ -720,11 +720,11 @@ class Tree(object):
                         node.rename(translation[node.name])
             trees.append(self.copy())
         return trees
-    def save_nexus(self, tree_filename, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True):
-        tree_string = self.nexus_string(translate_command, support_as_comment, support_values, comments, internal_names)
+    def save_nexus(self, tree_filename, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=None):
+        tree_string = self.nexus_string(translate_command, support_as_comment, support_values, comments, internal_names, max_name_length)
         with open(tree_filename, 'w') as f:
             f.write(tree_string)
-    def nexus_string(self, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True):
+    def nexus_string(self, translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=None):
         indent = '    '
         nexus_buff = ['#NEXUS', '', 'BEGIN TREES;']
         if translate_command:
@@ -766,11 +766,11 @@ class Tree(object):
             #self.process_tree_nodes() This is done in copy()
             trees.append(self.copy())
         return trees
-    def save_phyloxml(self, tree_filename, support_values=True, comments=True, internal_names=True):
-        tree_string = self.phyloxml_string(support_values, comments, internal_names)
+    def save_phyloxml(self, tree_filename, support_values=True, comments=True, internal_names=True, max_name_length=None):
+        tree_string = self.phyloxml_string(support_values, comments, internal_names, max_name_length)
         with open(tree_filename, 'w') as f:
             f.write(tree_string)
-    def phyloxml_string(self, support_values=True, comments=True, internal_names=True):
+    def phyloxml_string(self, support_values=True, comments=True, internal_names=True, max_name_length=None):
         e_tree = ET.Element('phyloxml')
         e_tree.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
         e_tree.set('xsi:schemaLocation', 'http://www.phyloxml.org http://www.phyloxml.org/1.10/phyloxml.xsd')
@@ -801,11 +801,11 @@ class Tree(object):
             self.parse_nexml_tree_element(tree_e, ns)
             trees.append(self.copy())
         return trees
-    def save_nexml(self, tree_filename, support_values=True, comments=True, internal_names=True):
-        tree_string = self.nexml_string(support_values, comments, internal_names)
+    def save_nexml(self, tree_filename, support_values=True, comments=True, internal_names=True, max_name_length=None):
+        tree_string = self.nexml_string(support_values, comments, internal_names, max_name_length)
         with open(tree_filename, 'w') as f:
             f.write(tree_string)
-    def nexml_string(self, support_values=True, comments=True, internal_names=True):
+    def nexml_string(self, support_values=True, comments=True, internal_names=True, max_name_length=None):
         e_tree = ET.Element('nexml')
         e_tree.set('version', '0.9')
         e_tree.set('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance')
@@ -928,8 +928,15 @@ class Tree(object):
             node.support = support
         if comment:
             node.comment = comment
-    def format_newick_string(self, node, replacer_fxn, support_as_comment, support_values, comments, internal_names):
+    def format_newick_string(self, node, replacer_fxn, all_names, support_as_comment, support_values, comments, internal_names, max_name_length):
         name = replacer_fxn(node.name) if node.name != node.id else ''
+        if max_name_length is not None:
+            name = name[:max_name_length]
+        if name != '':
+            if name in all_names:
+                raise PhyloValueError("Error: cannot save tree in Newick format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'.".format(name))
+            else:
+                all_names.add(name)
         comment = '[{}]'.format(node.comment) if node.comment else ''
         if node in self.leaves:
             if comments:
@@ -939,7 +946,7 @@ class Tree(object):
             else:
                 return '{}:{}'.format(name, self.format_branch(node.branch))
         else:
-            children_buff = ['(', ','.join(self.format_newick_string(child, replacer_fxn, support_as_comment, support_values, comments, internal_names) for child in node.children), ')']
+            children_buff = ['(', ','.join(self.format_newick_string(child, replacer_fxn, all_names, support_as_comment, support_values, comments, internal_names, max_name_length) for child in node.children), ')']
             if support_as_comment:
                 if internal_names and name:
                     children_buff.append(name)

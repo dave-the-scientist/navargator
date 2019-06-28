@@ -8,7 +8,7 @@
 //   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" clean distance value in that range (probably the first significant value). Draw line, and label.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
-// - Test the defaults in calculateDefaultDisplayOpts() with various sized trees.
+// - Test the defaults in updateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -213,7 +213,7 @@ function redrawTree() {
 
 // =====  Display option updating:
 function parseBasicData(data_obj) {
-  // Is always called before calling drawTree.
+  // Is always called before calling drawTree. Updates nvrgtr_default_display_opts based on the size of the given tree.
   var data = $.parseJSON(data_obj);
   nvrgtr_page.session_id = data.session_id;
   nvrgtr_data.tree_data = data.phyloxml_data;
@@ -235,36 +235,39 @@ function parseBasicData(data_obj) {
     clearInterval(nvrgtr_page.maintain_interval_obj);
     nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
+  updateDefaultDisplayOpts(data.leaves.length); // TESTING
   processDisplayOptions(data.display_opts);
 }
 function processDisplayOptions(display_opts) {
+  /*
   if ($.isEmptyObject(display_opts)) {
-    display_opts = calculateDefaultDisplayOpts(nvrgtr_data.leaves.length);
-  }
+    display_opts = updateDefaultDisplayOpts(nvrgtr_data.leaves.length);
+  }*/
+  console.log('opts', display_opts);
+
   updateDisplayOptions(display_opts);
   setColourPickers();
   updateClusterColours();
   updateDisplayOptionSpinners();
 }
-function calculateDefaultDisplayOpts(num_vars) {
-  var display_opts = {};
+function updateDefaultDisplayOpts(num_vars) {
   if (num_vars > 150) {
-    display_opts['fonts'] = {'tree_font_size':8};
-    display_opts['sizes'] = {'small_marker_radius':1.5, 'big_marker_radius':2.5};
+    nvrgtr_default_display_opts.fonts.tree_font_size = 8;
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 1.5;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 2.5;
   }
   if (num_vars > 250) {
-    display_opts.fonts.tree_font_size = 0;
-    display_opts.sizes.small_marker_radius = 1;
-    display_opts.sizes.big_marker_radius = 2;
+    nvrgtr_default_display_opts.fonts.tree_font_size = 0;
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 1;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 2;
   }
   if (num_vars > 400) {
-    display_opts.sizes.small_marker_radius = 0.5;
-    display_opts.sizes.big_marker_radius = 1;
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 0.5;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 1;
   }
   if (num_vars > 1400) {
-    display_opts.sizes.big_marker_radius = 0.5;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 0.5;
   }
-  return display_opts;
 }
 function validateDisplayOption(category, key, new_val) {
   var val_type = $.type(nvrgtr_default_display_opts[category][key]), value, is_valid;

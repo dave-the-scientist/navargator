@@ -78,7 +78,9 @@ def navargator_from_data(data_lines, verbose=False):
         tree_data = data[tree_data_tag]
     except KeyError:
         raise NavargatorValidationError('Error: could not identify the tree data in the given NaVARgator session file.')
-    vfinder = VariantFinder(tree_data, tree_format='newick', verbose=verbose)
+
+    display_options = data.get(display_options_tag, {})
+    vfinder = VariantFinder(tree_data, tree_format='newick', display_options=display_options, verbose=verbose)
     chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
         vfinder.chosen = chsn
@@ -86,9 +88,11 @@ def navargator_from_data(data_lines, verbose=False):
         vfinder.available = avail
     if ignor:
         vfinder.ignored = ignor
+    """
     display_opts = data.get(display_options_tag, {})
     if display_opts:
         vfinder.display_options = display_opts
+    """
     return vfinder
 def binomial_coefficient(n, k):
     """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions, but is close enough for my purposes."""
@@ -123,12 +127,12 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='auto', verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='auto', display_options={}, verbose=True, _blank_init=False):
         self.verbose = bool(verbose)
         self.leaves = []
         self.cache = {}
         self.normalize = self._empty_normalize()
-        self.display_options = {}
+        self.display_options = display_options
         if not _blank_init:
             tree_format = tree_format.lower().strip()
             if tree_format == 'auto':
@@ -146,8 +150,12 @@ class VariantFinder(object):
             self.leaves, self.orig_dist = self.tree.get_distance_matrix()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             self.dist = self.orig_dist.copy()
-            self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
-            self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+            max_name_length = self.display_options.setdefault('sizes', {}).get('max_variant_name_length', None)
+            if max_name_length == None:
+                max_name_length = str(max(len(name) for name in self.leaves))
+                self.display_options['sizes']['max_variant_name_length'] = max_name_length
+            self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=int(max_name_length))
+            self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=int(max_name_length))
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen

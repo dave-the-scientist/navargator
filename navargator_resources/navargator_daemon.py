@@ -338,7 +338,7 @@ class NavargatorDaemon(object):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         s_id = self.generate_session_id()
-        vf = VariantFinder(tree_data, tree_format, verbose=self.verbose)
+        vf = VariantFinder(tree_data, tree_format=tree_format, verbose=self.verbose)
         vf.available = available
         vf.ignored = ignored
         vf.distance_scale = distance_scale

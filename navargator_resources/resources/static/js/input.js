@@ -3,6 +3,12 @@
 // TODO:
 // - Finish display options in core.js
 // - In display options, make sure there's the option for max length of displayed names.
+//   - the vf now respect nvrgtr_display_opts.sizes.max_variant_name_length when loading nvrgtr files.
+//   - Now I need to add a button + input under Tree manipulations that will fire an ajax to modify the vf by updating self.newick_tree_data and self.phyloxml_tree_data. If successful, update the vf.display_options attribute in the vf method, then return. the js should handle everything from there.
+//   - Ensure the vf method has a description indicating that the tree object still contains the full length names, and is not losing any data.
+//   - Finish implementing max_name_length on all of the rest of the saving methods in phylo.py. Ensure each checks that variant names are unique. Add a new PhyloError specific to the case where names are not unique.
+//   - Ensure those new errors are handled if the user's choice of max_name_length is too small; the popup js message should indicate this.
+// - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
@@ -48,9 +54,17 @@ function setupPage() {
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
   //These can be screwed over by a race condition. If so, may help to use parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2));
-  console.log('w', parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2)))
-  nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
-  nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
+
+  console.log('w', parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2))); // TESTING
+  if ($("#scoreGraphSvg").width() == 0) {
+    setTimeout(function() {
+      nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
+      nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
+    }, 50);
+  } else {
+    nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
+    nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
+  }
 
   setupTreeElements();
   setupDisplayOptionsPane();
