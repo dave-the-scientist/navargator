@@ -127,12 +127,15 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='auto', display_options={}, verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='auto', display_options=None, verbose=True, _blank_init=False):
         self.verbose = bool(verbose)
         self.leaves = []
         self.cache = {}
         self.normalize = self._empty_normalize()
-        self.display_options = display_options
+        if display_options:
+            self.display_options = display_options
+        else:
+            self.display_options = {}
         if not _blank_init:
             tree_format = tree_format.lower().strip()
             if tree_format == 'auto':
@@ -224,6 +227,13 @@ class VariantFinder(object):
         self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
         if self.verbose:
             print('\nRe-ordered the tree nodes')
+
+    def truncate_names(self, truncate_length):
+        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
+        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
+        self.display_options['sizes']['max_variant_name_length'] = truncate_length
+        if self.verbose:
+            print('\nTruncated the tree names')
 
     def get_tree_string(self, tree_type):
         if tree_type == 'newick':

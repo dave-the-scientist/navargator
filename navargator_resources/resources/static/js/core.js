@@ -235,16 +235,10 @@ function parseBasicData(data_obj) {
     clearInterval(nvrgtr_page.maintain_interval_obj);
     nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
-  updateDefaultDisplayOpts(data.leaves.length); // TESTING
+  updateDefaultDisplayOpts(data.leaves.length);
   processDisplayOptions(data.display_opts);
 }
 function processDisplayOptions(display_opts) {
-  /*
-  if ($.isEmptyObject(display_opts)) {
-    display_opts = updateDefaultDisplayOpts(nvrgtr_data.leaves.length);
-  }*/
-  console.log('opts', display_opts);
-
   updateDisplayOptions(display_opts);
   setColourPickers();
   updateClusterColours();

@@ -181,15 +181,22 @@ def multiple_nexus_string(trees, translate_command=False, support_as_comment=Fal
     if translate_command:
         new_trees, trans_dict, trans_ind = [], {}, 1
         for tree in trees:
+            unique_names = set()
             new_tree = tree.copy()
             new_trees.append(new_tree)
-            nodes = new_tree.nodes if internal_names else new_tree.leaves
-            for node in nodes:
-                if node.name in trans_dict:
-                    new_name = trans_dict[node.name]
+            for node in new_tree.nodes:
+                if not (node.name != node.id and (node in new_tree.leaves or internal_names)):
+                    continue
+                old_name = node.name[:max_name_length]
+                if old_name in unique_names:
+                    raise PhyloUniqueNameError("Error: cannot save tree in NEXUS format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(old_name))
+                else:
+                    unique_names.add(old_name)
+                if old_name in trans_dict:
+                    new_name = trans_dict[old_name]
                 else:
                     new_name = str(trans_ind)
-                    trans_dict[node.name] = new_name
+                    trans_dict[old_name] = new_name
                     trans_ind += 1
                 node.rename(new_name)
         trees = new_trees
@@ -199,7 +206,10 @@ def multiple_nexus_string(trees, translate_command=False, support_as_comment=Fal
         nexus_buff.append('{}Translate\n{};'.format(indent, ',\n'.join(trans_buff)))
     for tree in trees:
         tree_name_ind = 2
-        newick_str = tree.newick_string(support_as_comment, support_values, comments, internal_names)
+        try:
+            newick_str = tree.newick_string(support_as_comment, support_values, comments, internal_names, max_name_length)
+        except PhyloUniqueNameError as err:
+            raise PhyloUniqueNameError(str(err).replace('Newick', 'NEXUS'))
         tree_name = tree.name if tree.name else 'tree'
         if tree_name in tree_names:
             while '{}_{}'.format(tree_name, tree_name_ind) in tree_names:
@@ -242,7 +252,10 @@ def multiple_phyloxml_string(trees, support_values=True, comments=True, internal
         if tree.name:
             name_e = ET.SubElement(phylogeny, 'name')
             name_e.text = replacer_fxn(tree.name)
-        tree.add_nodes_to_phyloxml(tree.root, phylogeny, replacer_fxn, support_values, comments, internal_names)
+        try:
+            tree.add_nodes_to_phyloxml(tree.root, phylogeny, replacer_fxn, set(), support_values, comments, internal_names, max_name_length)
+        except PhyloUniqueNameError as err:
+            raise PhyloUniqueNameError(str(err))
     return ET.tostring(e_tree, encoding='UTF-8', method='xml').decode()
 
 def load_nexml(tree_filename, **kwargs):
@@ -275,7 +288,7 @@ def multiple_nexml_string(trees, support_values=True, comments=True, internal_na
     replacer_fxn = Tree().create_string_replacer_function(Tree._nexml_replacements)
     all_otus = []
     for tree in trees:
-        all_otus.extend([replacer_fxn(node.name) for node in tree.nodes if node in tree.leaves or (internal_names and node.name != node.id)])
+        all_otus.extend([replacer_fxn(node.name)[:max_name_length] for node in tree.nodes if node in tree.leaves or (internal_names and node.name != node.id)])
     all_otus = sorted(set(all_otus))
     otus_id, node_ids = Tree().add_nexml_otus(e_tree, all_otus)
     trees_e = ET.SubElement(e_tree, 'trees')
@@ -290,7 +303,7 @@ def multiple_nexml_string(trees, support_values=True, comments=True, internal_na
                 tree_ids_ind += 1
             tree_id = '{}_{}'.format(tree_id, tree_ids_ind)
         tree_ids.add(tree_id)
-        tree.add_nexml_nodes_edges(trees_e, tree_id, node_ids, replacer_fxn, support_values, comments, internal_names)
+        tree.add_nexml_nodes_edges(trees_e, tree_id, node_ids, replacer_fxn, support_values, comments, internal_names, max_name_length)
     return ET.tostring(e_tree, encoding='UTF-8', method='xml').decode()
 
 
@@ -687,7 +700,11 @@ class Tree(object):
         if support_values and internal_names: # The only way to save both supports and internal names.
             support_as_comment = True
         replacer_fxn = self.create_string_replacer_function(self._newick_replacements)
-        return self.format_newick_string(self.root, replacer_fxn, set(), support_as_comment, support_values, comments, internal_names, max_name_length) + ';'
+        try:
+            return self.format_newick_string(self.root, replacer_fxn, set(), support_as_comment, support_values, comments, internal_names, max_name_length) + ';'
+        except PhyloUniqueNameError as err:
+            # This is so the entire recursive stack isn't printed on error
+            raise PhyloUniqueNameError(str(err))
 
     # # #  NEXUS parsing and saving functions
     def parse_nexus(self, nexus_str, internal_as_names=False):
@@ -729,9 +746,12 @@ class Tree(object):
         nexus_buff = ['#NEXUS', '', 'BEGIN TREES;']
         if translate_command:
             self = self.copy() # Nodes are renamed, so now the original Tree is unaffected.
-            trans_str = self.nexus_translate_string_dict(indent, internal_names)
+            trans_str = self.nexus_translate_string_dict(indent, internal_names, max_name_length)
             nexus_buff.append(trans_str)
-        newick_str = self.newick_string(support_as_comment, support_values, comments, internal_names)
+        try:
+            newick_str = self.newick_string(support_as_comment, support_values, comments, internal_names, max_name_length)
+        except PhyloUniqueNameError as err:
+            raise PhyloUniqueNameError(str(err).replace('Newick', 'NEXUS'))
         replacer_fxn = self.create_string_replacer_function(self._nexus_replacements)
         tree_name = replacer_fxn(self.name) if self.name else 'tree'
         nexus_buff.append('{}Tree {} = {}'.format(indent, tree_name, newick_str))
@@ -782,7 +802,10 @@ class Tree(object):
         if self.name:
             name_e = ET.SubElement(phylogeny, 'name')
             name_e.text = replacer_fxn(self.name)
-        self.add_nodes_to_phyloxml(self.root, phylogeny, replacer_fxn, support_values, comments, internal_names)
+        try:
+            self.add_nodes_to_phyloxml(self.root, phylogeny, replacer_fxn, set(), support_values, comments, internal_names, max_name_length)
+        except PhyloUniqueNameError as err:
+            raise PhyloUniqueNameError(str(err))
         return ET.tostring(e_tree, encoding='UTF-8', method='xml').decode()
 
     # # #  NeXML parsing and saving functions
@@ -814,13 +837,13 @@ class Tree(object):
         e_tree.set('xsi:schemaLocation', 'http://www.nexml.org/2009 http://www.nexml.org/2009/nexml.xsd')
         e_tree.set('generator', 'molecbio.phylo.py')
         replacer_fxn = self.create_string_replacer_function(self._nexml_replacements)
-        otus = sorted(replacer_fxn(node.name) for node in self.nodes if node in self.leaves or (internal_names and node.name != node.id))
+        otus = sorted(replacer_fxn(node.name)[:max_name_length] for node in self.nodes if node in self.leaves or (internal_names and node.name != node.id))
         otus_id, node_ids = self.add_nexml_otus(e_tree, otus)
         trees_e = ET.SubElement(e_tree, 'trees')
         trees_e.set('id', 'trees1')
         trees_e.set('otus', otus_id)
         tree_id = replacer_fxn(self.name) if self.name else 'tree1'
-        self.add_nexml_nodes_edges(trees_e, tree_id, node_ids, replacer_fxn, support_values, comments, internal_names)
+        self.add_nexml_nodes_edges(trees_e, tree_id, node_ids, replacer_fxn, support_values, comments, internal_names, max_name_length)
         return ET.tostring(e_tree, encoding='UTF-8', method='xml').decode()
 
     # # #  Misc rooting functions
@@ -929,12 +952,10 @@ class Tree(object):
         if comment:
             node.comment = comment
     def format_newick_string(self, node, replacer_fxn, all_names, support_as_comment, support_values, comments, internal_names, max_name_length):
-        name = replacer_fxn(node.name) if node.name != node.id else ''
-        if max_name_length is not None:
-            name = name[:max_name_length]
+        name = replacer_fxn(node.name)[:max_name_length] if node.name != node.id else ''
         if name != '':
             if name in all_names:
-                raise PhyloValueError("Error: cannot save tree in Newick format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'.".format(name))
+                raise PhyloUniqueNameError("Error: cannot save tree in Newick format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(name))
             else:
                 all_names.add(name)
         comment = '[{}]'.format(node.comment) if node.comment else ''
@@ -1030,14 +1051,14 @@ class Tree(object):
             name1, _, name2 = entry.strip().partition(' ')
             trans[name1] = name2
         return trans
-    def nexus_translate_string_dict(self, indent, internal_names):
+    def nexus_translate_string_dict(self, indent, internal_names, max_name_length):
         replacer_fxn = self.create_string_replacer_function(self._newick_replacements)
         trans_buff, trans_ind, uniq_names = [], 1, set()
         for node in self.nodes:
             if node.name != node.id and (internal_names or node in self.leaves):
-                clean_name = replacer_fxn(node.name)
+                clean_name = replacer_fxn(node.name)[:max_name_length]
                 if clean_name in uniq_names:
-                    raise PhyloValueError("Error: cannot save tree in NEXUS format. After removing restricted characters, two nodes ended up with the name '{}'.".format(clean_name))
+                    raise PhyloUniqueNameError("Error: cannot save tree in NEXUS format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(clean_name))
                 uniq_names.add(clean_name)
                 new_name = 'n{}'.format(trans_ind)
                 trans_ind += 1
@@ -1090,9 +1111,14 @@ class Tree(object):
         if prop_e is not None:
             if prop_e.get('applies_to') == 'clade' and prop_e.get('ref') == 'comment':
                 node.comment = prop_e.text
-    def add_nodes_to_phyloxml(self, node, parent_element, replacer_fxn, support_values, comments, internal_names):
+    def add_nodes_to_phyloxml(self, node, parent_element, replacer_fxn, all_names, support_values, comments, internal_names, max_name_length):
         element = ET.SubElement(parent_element, 'clade')
-        name = replacer_fxn(node.name) if node.name != node.id else ''
+        name = replacer_fxn(node.name)[:max_name_length] if node.name != node.id else ''
+        if name != '':
+            if name in all_names:
+                raise PhyloUniqueNameError("Error: cannot save tree in PhyloXML format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(name))
+            else:
+                all_names.add(name)
         if name and (internal_names or node in self.leaves):
             name_e = ET.Element('name')
             name_e.text = name
@@ -1110,7 +1136,7 @@ class Tree(object):
             prop_e.text = replacer_fxn(str(node.comment))
             element.append(prop_e)
         for child in node.children:
-            self.add_nodes_to_phyloxml(child, element, replacer_fxn, support_values, comments, internal_names)
+            self.add_nodes_to_phyloxml(child, element, replacer_fxn, all_names, support_values, comments, internal_names, max_name_length)
 
     # # #  Misc NeXML parsing and saving functions
     def parse_nexml_otus_trees(self, nexml_str):
@@ -1198,13 +1224,13 @@ class Tree(object):
                 otu_e.set('label', name)
             node_ids[name] = {'otu':otu_id}
         return otus_id, node_ids
-    def add_nexml_nodes_edges(self, trees_e, tree_id, node_ids, replacer_fxn, support_values, comments, internal_names):
+    def add_nexml_nodes_edges(self, trees_e, tree_id, node_ids, replacer_fxn, support_values, comments, internal_names, max_name_length):
         tree_e = ET.SubElement(trees_e, 'tree')
         tree_e.set('xsi:type', 'nex:FloatTree')
         tree_e.set('id', tree_id)
         ordered_nodes, clean_names, uniq_names = self.get_ordered_nodes(), {}, set()
         for i, node in enumerate(ordered_nodes):
-            clean_name = replacer_fxn(node.name)
+            clean_name = replacer_fxn(node.name)[:max_name_length]
             node_e = ET.SubElement(tree_e, 'node')
             node_id = 'n{}'.format(i)
             node_e.set('id', node_id)
@@ -1215,7 +1241,7 @@ class Tree(object):
                 if node.name != node.id:
                     node_e.set('label', clean_name)
                     if clean_name in uniq_names:
-                        raise PhyloValueError("Error: cannot save tree in NeXML format. After removing restricted characters, two nodes ended up with the name '{}'.".format(clean_name))
+                        raise PhyloValueError("Error: cannot save tree in NeXML format. After removing restricted characters, two nodes ended up with the name '{}'".format(clean_name))
                     uniq_names.add(clean_name)
             if support_values and node.support != None:
                 meta_id = node_id+'_s0'
@@ -1464,3 +1490,9 @@ class PhyloValueError(PhyloError):
         if msg == None:
             msg = "Error: value error in phylo.py"
         super(PhyloValueError, self).__init__(msg)
+class PhyloUniqueNameError(PhyloError):
+    """Error indicating multiple nodes ended up with the same name."""
+    def __init__(self, msg=None):
+        if msg == None:
+            msg = "Error: unique names error in phylo.py"
+        super(PhyloUniqueNameError, self).__init__(msg)

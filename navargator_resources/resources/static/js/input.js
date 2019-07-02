@@ -2,9 +2,7 @@
 
 // TODO:
 // - Finish display options in core.js
-// - In display options, make sure there's the option for max length of displayed names.
-//   - the vf now respect nvrgtr_display_opts.sizes.max_variant_name_length when loading nvrgtr files.
-//   - Now I need to add a button + input under Tree manipulations that will fire an ajax to modify the vf by updating self.newick_tree_data and self.phyloxml_tree_data. If successful, update the vf.display_options attribute in the vf method, then return. the js should handle everything from there.
+// - I've implemented a name truncation with truncateNamesButton. It's sort of working, but mostly really not working at all.
 //   - Ensure the vf method has a description indicating that the tree object still contains the full length names, and is not losing any data.
 //   - Finish implementing max_name_length on all of the rest of the saving methods in phylo.py. Ensure each checks that variant names are unique. Add a new PhyloError specific to the case where names are not unique.
 //   - Ensure those new errors are handled if the user's choice of max_name_length is too small; the popup js message should indicate this.
@@ -55,16 +53,10 @@ function setupPage() {
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
   //These can be screwed over by a race condition. If so, may help to use parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2));
 
-  console.log('w', parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2))); // TESTING
-  if ($("#scoreGraphSvg").width() == 0) {
-    setTimeout(function() {
-      nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
-      nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
-    }, 50);
-  } else {
-    nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
-    nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
-  }
+  console.log('w', parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2))); // TESTING - While the race condition still happens sometimes, I think I've solved it.
+  // These calls can occasionally incorrectly return 0. This is checked in updateScoreGraph()
+  nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
+  nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
 
   setupTreeElements();
   setupDisplayOptionsPane();
@@ -187,6 +179,29 @@ function setupManipulationsPane() {
       return attr == "true" ? "false" : "true";
     }); // Toggles the attribute.
   });
+  var trunc_name_min = 1;
+  $("#truncateNamesSpinner").spinner({
+    min: trunc_name_min, max: null,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 15);
+  $("#truncateNamesButton").click(function() {
+    var trunc_length = $("#truncateNamesSpinner").spinner('value');
+    if (trunc_length == null || trunc_length < trunc_name_min) {
+      showErrorPopup("Error: the truncation length for tree names must be a number >= "+trunc_name_min);
+      return false;
+    }
+    $.ajax({
+      url: daemonURL('/truncate-tree-names'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'truncate_length':trunc_length}),
+      success: function(data_obj) {
+        newTreeLoaded(data_obj);
+      },
+      error: function(error) { processError(error, "Error truncating the tree names"); }
+    });
+  });
+
   $("#saveTreeButton").click(function() {
     var tree_type = $("#saveTreeTypeSelect").val();
     $.ajax({
@@ -486,6 +501,7 @@ function newTreeLoaded(data_obj) {
     $("#saveSessionButton").button('enable');
     $("#uploadFileButton").button('disable');
     $(".tree-manipulation-buttons").button('enable');
+    $("#truncateNamesSpinner").spinner('value', nvrgtr_display_opts.sizes.max_variant_name_length);
     $("#showLegendCheckbox").prop('disabled', false);
     $("#redrawTreeButton").button('enable');
     $("#findVariantsButton").button('enable');
@@ -642,6 +658,14 @@ function checkIfProcessingDone() {
   });
 }
 function updateScoreGraph() {
+  if (nvrgtr_settings.graph.total_width == 0) {
+    nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
+    nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
+    console.log('reseting graph dims', $("#scoreGraphSvg").width(), $("#scoreGraphSvg").height());
+    nvrgtr_data.graph.g.remove();
+    setupScoresGraph();
+  }
+
   if (nvrgtr_data.result_links.var_nums.length == 1) {
     // No action currently taken.
   } else {

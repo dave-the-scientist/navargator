@@ -31,6 +31,7 @@ def daemonURL(url):
 
 
 # BUG:
+# - Looks like the daemon isn't shutting down when I close the web page for some reason. Sometimes. Especially when I run the program without a tree, load a tree, load a second tree, then close.
 # - The instance closed for no apparent reason.
 #   - Looking into it, it was because a time.time() call was sometimes returning a value ~15 sec too high. Then it just stopped happening. I'm guessing it was a vmware issue (as time.time is a pretty low-level function). Happened only once, I believe just after a system update.
 
@@ -199,6 +200,16 @@ class NavargatorDaemon(object):
             increasing = True if request.json['increasing'] == "true" else False
             vf.reorder_tree_nodes(increasing)
             return json.dumps(self.get_vf_data_dict(s_id))
+
+        @self.server.route(daemonURL('/truncate-tree-names'), methods=['POST'])
+        def truncate_tree_names():
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
+            truncate_length = int(request.json['truncate_length'])
+            vf.truncate_names(truncate_length)
+            return json.dumps(self.get_vf_data_dict(s_id))
+
         @self.server.route(daemonURL('/save-tree-file'), methods=['POST'])
         def save_tree_file():
             vf, s_id, msg = self.update_or_copy_vf()
