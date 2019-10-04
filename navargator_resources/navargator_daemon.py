@@ -19,9 +19,6 @@ else: # Python 2.x imports
     from Tkinter import Tk as tk_root
     from tkFileDialog import asksaveasfilename as saveAs
 
-def daemonURL(url):
-    """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js."""
-    return '/daemon' + url
 
 # TODO:
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
@@ -92,14 +89,14 @@ class NavargatorDaemon(object):
             else: # Setup tasks to begin for the local version.
                 pass
         # # #  General server listening routes:
-        @self.server.route(daemonURL('/maintain-server'), methods=['POST'])
+        @self.server.route(self.daemonURL('/maintain-server'), methods=['POST'])
         def maintain_server():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
                 return msg
             self.connections.maintain(s_id, b_id)
             return 'maintain-server successful.'
-        @self.server.route(daemonURL('/instance-closed'), methods=['POST'])
+        @self.server.route(self.daemonURL('/instance-closed'), methods=['POST'])
         def instance_closed():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
@@ -112,7 +109,7 @@ class NavargatorDaemon(object):
             if not self.web_server and self.connections.all_dead():
                 self.should_quit.set()
             return 'instance-closed successful.'
-        @self.server.route(daemonURL('/get-basic-data'), methods=['POST'])
+        @self.server.route(self.daemonURL('/get-basic-data'), methods=['POST'])
         def get_basic_data():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
@@ -120,7 +117,7 @@ class NavargatorDaemon(object):
             data_dict = self.get_vf_data_dict(s_id)
             data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
-        @self.server.route(daemonURL('/calculate-global-normalization'), methods=['POST'])
+        @self.server.route(self.daemonURL('/calculate-global-normalization'), methods=['POST'])
         def calculate_global_normalization():
             """For each set of params in the cache, gets the maximum distance from any variant to its cluster centre, and returns the largest of those. Used to normalize the tree graph and histogram so they can be compared between runs."""
             vf, s_id, b_id, msg = self.get_instance()
@@ -141,7 +138,7 @@ class NavargatorDaemon(object):
             ret = {'global_value':vf.normalize['global_value'], 'global_max_count':vf.normalize['global_max_count']}
             return json.dumps(ret)
         # # #  Input page listening routes:
-        @self.server.route(daemonURL('/upload-tree-file'), methods=['POST'])
+        @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])
         def upload_tree_file():
             try:
                 tree_data = request.files['upload-file'].read()
@@ -158,7 +155,7 @@ class NavargatorDaemon(object):
             if s_id == self.local_input_session_id:
                 self.connections.close(s_id, None)
             return json.dumps(self.get_vf_data_dict(new_s_id))
-        @self.server.route(daemonURL('/upload-nvrgtr-file'), methods=['POST'])
+        @self.server.route(self.daemonURL('/upload-nvrgtr-file'), methods=['POST'])
         def upload_nvrgtr_file():
             try:
                 nvrgtr_data = request.files['upload-file'].read()
@@ -175,7 +172,7 @@ class NavargatorDaemon(object):
             if s_id == self.local_input_session_id:
                 self.connections.close(s_id, None) # Needed because that particular s_id never times out.
             return json.dumps(self.get_vf_data_dict(new_s_id))
-        @self.server.route(daemonURL('/reroot-tree'), methods=['POST'])
+        @self.server.route(self.daemonURL('/reroot-tree'), methods=['POST'])
         def reroot_tree():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
@@ -192,7 +189,7 @@ class NavargatorDaemon(object):
                 except Exception as err:
                     return (str(err), 5511)
             return json.dumps(self.get_vf_data_dict(s_id))
-        @self.server.route(daemonURL('/reorder-tree-nodes'), methods=['POST'])
+        @self.server.route(self.daemonURL('/reorder-tree-nodes'), methods=['POST'])
         def reorder_tree_nodes():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
@@ -201,7 +198,7 @@ class NavargatorDaemon(object):
             vf.reorder_tree_nodes(increasing)
             return json.dumps(self.get_vf_data_dict(s_id))
 
-        @self.server.route(daemonURL('/truncate-tree-names'), methods=['POST'])
+        @self.server.route(self.daemonURL('/truncate-tree-names'), methods=['POST'])
         def truncate_tree_names():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
@@ -210,7 +207,7 @@ class NavargatorDaemon(object):
             vf.truncate_names(truncate_length)
             return json.dumps(self.get_vf_data_dict(s_id))
 
-        @self.server.route(daemonURL('/save-tree-file'), methods=['POST'])
+        @self.server.route(self.daemonURL('/save-tree-file'), methods=['POST'])
         def save_tree_file():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
@@ -233,7 +230,7 @@ class NavargatorDaemon(object):
                     vf.save_tree_file(filename, tree_type)
                 saved_locally, tree_string = True, ''
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':tree_string, 'suffix':suffix})
-        @self.server.route(daemonURL('/save-nvrgtr-file'), methods=['POST'])
+        @self.server.route(self.daemonURL('/save-nvrgtr-file'), methods=['POST'])
         def save_nvrgtr_file():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
@@ -249,7 +246,7 @@ class NavargatorDaemon(object):
                     vf.save_navargator_file(filename)
                 saved_locally, nvrgtr_str = True, ''
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str})
-        @self.server.route(daemonURL('/find-variants'), methods=['POST'])
+        @self.server.route(self.daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
@@ -265,7 +262,7 @@ class NavargatorDaemon(object):
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
             return json.dumps({'session_id':s_id})
-        @self.server.route(daemonURL('/check-results-done'), methods=['POST'])
+        @self.server.route(self.daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
@@ -289,7 +286,7 @@ class NavargatorDaemon(object):
                     var_scores.append(sum(results['scores']))
                     max_var_dists.append(results['max_distance'])
             return json.dumps({'var_nums':var_nums, 'var_scores':var_scores, 'max_var_dists':max_var_dists})
-        @self.server.route(daemonURL('/set-normalization-method'), methods=['POST'])
+        @self.server.route(self.daemonURL('/set-normalization-method'), methods=['POST'])
         def set_normalization_method():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == '' or s_id == self.local_input_session_id:
@@ -311,7 +308,7 @@ class NavargatorDaemon(object):
                 return (err_msg, 5507)
             return "normalization method set to %s" % norm_method
         # # #  Results page listening routes:
-        @self.server.route(daemonURL('/get-cluster-results'), methods=['POST'])
+        @self.server.route(self.daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
@@ -437,6 +434,13 @@ class NavargatorDaemon(object):
         vf.display_options = request.json.get('display_opts', {})
         return vf, s_id, msg
     # # # # #  Private methods  # # # # #
+    def daemonURL(self, url):
+        """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js.
+        IMPORTANT: When you configure Apache2 that all /daemon URLs should be processed by WSGI, it cuts off the /daemon part. NGINX does not so if deployed with that, the return should be the same as for the local version."""
+        if self.web_server:
+            return url
+        else:
+            return '/daemon' + url
     def generate_session_id(self):
         # Javascript has issues parsing a number if the string begins with a non-significant zero.
         s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])

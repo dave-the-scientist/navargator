@@ -6,7 +6,12 @@
 //   - Ensure the vf method has a description indicating that the tree object still contains the full length names, and is not losing any data.
 //   - Finish implementing max_name_length on all of the rest of the saving methods in phylo.py. Ensure each checks that variant names are unique. Add a new PhyloError specific to the case where names are not unique.
 //   - Ensure those new errors are handled if the user's choice of max_name_length is too small; the popup js message should indicate this.
+//   - Think I fixed these issues? Test it out.
+// - If you load a tree, set some as ignored, and clear the available, then re-order nodes, the new tree remembers the ignored, but sets everything else as available.
+// - If I load a large tree, then load a small tree, it keeps the (default) display options from the big tree. Not sure why.
+// - If you load a tree, but don't cluster or do anything with it, then open a different tree, then close the program, the daemon doesn't shut down. I'm thinking the original tree is still keeping it alive?
 // - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
+// - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
@@ -20,14 +25,15 @@
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
-// - The tree on the results page looks more cohesive, because it's incorporating colours from the page. The input tree looks better now with the header. Maybe make a circular gradient from the middle of the input tree, in the cluster colour. Probably not necessary though.
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
 //   - Could be 'none' instead of 'clear'.
+//   - I'd like to see the upper right buttons surrounded by a graphic indicating they all have to do with the selection. Should also have the num selected there. The upper left should indicate they have to do with zooming.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
 
 //NOTE:
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
 //   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and when finding variants if any of the assigned variants have changed. Those are all currently covered.
+//   - NEED TO CHECK THIS. After adding the re-ordering and rooting functions, make sure there's nothing more to do with them.
 
 // =====  Modified common variables:
 $.extend(nvrgtr_page, {

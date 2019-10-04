@@ -16,8 +16,10 @@
 
 // =====  Common options and parameters
 var nvrgtr_page = {
-  'server_url':'http://'+window.location.host, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
+  'server_url':null, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
 };
+var last_slash = window.location.href.lastIndexOf('/');
+nvrgtr_page.server_url = window.location.href.substring(0, last_slash);
 var nvrgtr_data = { // Variables used by each page.
   'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null
 };
