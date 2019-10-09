@@ -128,7 +128,7 @@ class NavargatorDaemon(object):
             dist_scale = 1.0
             cur_var = request.json['cur_var']
             max_var_dist = float(request.json['max_var_dist'])
-            bins = map(float, request.json['global_bins'])
+            bins = list(map(float, request.json['global_bins']))
             if not cur_var: # Called from input.js:calculateGlobalNormalization()
                 var_nums = map(int, request.json['var_nums'])
                 self.calc_global_normalization_values(var_nums, dist_scale, max_var_dist, bins, vf)
@@ -435,8 +435,8 @@ class NavargatorDaemon(object):
         return vf, s_id, msg
     # # # # #  Private methods  # # # # #
     def daemonURL(self, url):
-        """Prefix added to the routes that should only ever be called by the page itself, not people. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js.
-        IMPORTANT: When you configure Apache2 that all /daemon URLs should be processed by WSGI, it cuts off the /daemon part. NGINX does not so if deployed with that, the return should be the same as for the local version."""
+        """Prefix added to the routes that should only ever be called by the page itself. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js.
+        IMPORTANT: When you configure Apache2 that all '/daemon' URLs should be processed by WSGI, it cuts off the '/daemon' part when passing the requests. NGINX does not so if deployed with that, the return here should be the same as for the local version."""
         if self.web_server:
             return url
         else:
@@ -448,7 +448,7 @@ class NavargatorDaemon(object):
             s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return s_id
     def get_vf_data_dict(self, s_id):
-        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}}
+        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'maintain_interval':self.maintain_interval}
         vf = self.sessions.get(s_id)
         if vf != None:
             data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options})
@@ -491,7 +491,7 @@ class NavargatorDaemon(object):
     # # #  Server maintainence  # # #
     def collect_garbage(self):
         self.connections.clean_dead()
-        for s_id in self.sessions.keys():
+        for s_id in list(self.sessions.keys()):
             if self.connections.is_dead(s_id):
                 del self.sessions[s_id]
         if not self.web_server: # if personal server with no live instances.

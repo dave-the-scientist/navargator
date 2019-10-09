@@ -9,10 +9,14 @@ import numpy as np
 from navargator_resources import phylo
 from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
 
-try:
+try:              # For Python 2.x:
   basestring
-except NameError:
+  def to_string(string):
+      return string
+except NameError: # For Python 3.x
   basestring = str
+  def to_string(string):
+      return str(string, 'utf-8')
 
 # TODO:
 # - Finish writing process_tag_data() to process display options.
@@ -36,7 +40,7 @@ def load_navargator_file(file_path, verbose=True):
         raise NavargatorValueError('Error: could not find the given navargator file "{}"'.format(file_path))
     if verbose:
         print('Loading information from %s...' % file_path)
-    with open(file_path) as f:
+    with open(file_path, 'rb') as f:
         vfinder = navargator_from_data(f, verbose=verbose)
     return vfinder
 def navargator_from_data(data_lines, verbose=False):
@@ -65,7 +69,7 @@ def navargator_from_data(data_lines, verbose=False):
     # End of process_tag_data()
     tag, data_buff = '', []
     for line in data_lines:
-        line = line.strip()
+        line = to_string(line.strip())
         if not line or line.startswith(comment_prefix): continue
         if line.startswith(tag_affixes[0]) and line.endswith(tag_affixes[1]):
             process_tag_data(tag, data_buff)

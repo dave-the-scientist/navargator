@@ -19,7 +19,11 @@ var nvrgtr_page = {
   'server_url':null, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
 };
 var last_slash = window.location.href.lastIndexOf('/');
-nvrgtr_page.server_url = window.location.href.substring(0, last_slash);
+if (last_slash > 0) {
+  nvrgtr_page.server_url = window.location.href.substring(0, last_slash);
+} else {
+  showErrorPopup('Error: could not determine the base of the current URL.');
+}
 var nvrgtr_data = { // Variables used by each page.
   'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null
 };
@@ -231,7 +235,7 @@ function parseBasicData(data_obj) {
   if (nvrgtr_page.page == 'input') {
     nvrgtr_data.chosen = data.chosen;
   }
-  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval != nvrgtr_page.maintain_interval*1000) {
+  if (data.hasOwnProperty('maintain_interval') && data.maintain_interval*1000 != nvrgtr_page.maintain_interval) {
     maintainServer();
     nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
     clearInterval(nvrgtr_page.maintain_interval_obj);

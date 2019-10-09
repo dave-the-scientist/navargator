@@ -7,6 +7,8 @@
 //   - Finish implementing max_name_length on all of the rest of the saving methods in phylo.py. Ensure each checks that variant names are unique. Add a new PhyloError specific to the case where names are not unique.
 //   - Ensure those new errors are handled if the user's choice of max_name_length is too small; the popup js message should indicate this.
 //   - Think I fixed these issues? Test it out.
+// - When loading input.html on the web version, the display options are not filled out. That happens when a tree is actually loaded.
+//   - Not super important, but it'd be nice if the options were already there.
 // - If you load a tree, set some as ignored, and clear the available, then re-order nodes, the new tree remembers the ignored, but sets everything else as available.
 // - If I load a large tree, then load a small tree, it keeps the (default) display options from the big tree. Not sure why.
 // - If you load a tree, but don't cluster or do anything with it, then open a different tree, then close the program, the daemon doesn't shut down. I'm thinking the original tree is still keeping it alive?

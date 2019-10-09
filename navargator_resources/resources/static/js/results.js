@@ -25,6 +25,8 @@ $.extend(nvrgtr_settings.graph, {
 // - Option to toggle between histogram and cumulative graph.
 //   - Cumulative graph doesn't need bins, can be continuous on x-axis. y-axis is always num of sequences, or maybe percent.
 //   - Once thresholds are implemented, can have option to colour the x-axis of this and histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc.
+// - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
+// - The summary stats pane text moves around depending on the number of decimals of the avg dists.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
