@@ -256,14 +256,18 @@ function setupNormalizationPane() {
   });
 }
 function setupExportPane() {
-  var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
+  var export_file, export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
   export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
   function formatDisplayExportNames() {
     // Function to format the information based on the user's selection.
-    var delimiter = $("#exportDelimiterSelect").val();
-    if (delimiter == 'tab') {
+    var delimiter, delimiter_type = $("#exportDelimiterSelect").val();
+    if (delimiter_type == 'tab') {
       delimiter = '\t';
-    } else if (delimiter == 'newline') {
+    } else if (delimiter_type == 'comma') {
+      delimiter = ', ';
+    } else if (delimiter_type == 'space') {
+      delimiter = ' ';
+    } else if (delimiter_type == 'newline') {
       delimiter = '\n';
     }
     var names = export_pane.data('names'),
@@ -285,11 +289,13 @@ function setupExportPane() {
   // Button callbacks:
   $("#exportChosenButton").click(function() {
     // Sets 'names' to a list of the chosen variants.
+    export_file = 'navargator_chosen.txt';
     export_pane.data('names', nvrgtr_data.variants.slice());
     formatDisplayExportNames();
   });
   $("#exportSelectionButton").click(function() {
     // Sets 'names' to a list of the selected variants. The order is undefined.
+    export_file = 'navargator_selection.txt';
     export_pane.data('names', Object.keys(nvrgtr_data.selected));
     formatDisplayExportNames();
   });
@@ -306,12 +312,13 @@ function setupExportPane() {
       }
       clusters.push(names);
     }
+    export_file = 'navargator_clusters.txt';
     export_pane.data('names', clusters);
     formatDisplayExportNames();
   });
   $("#exportTreeButton").click(function() {
-    var svg_data = $("#figureSvg")[0].outerHTML;
-    downloadData("nvrgtr_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
+    var svg_data = $("#figureSvg")[0].outerHTML; // This may not work in IE
+    downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   // Functionality of the export pane:
   $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
@@ -326,7 +333,7 @@ function setupExportPane() {
   });
   $("#exportNamesSaveButton").click(function() {
     var text_data = export_text.val();
-    downloadData("nvrgtr_data.txt", text_data, "text/plain");
+    downloadData(export_file, text_data, "text/plain");
   });
 }
 
@@ -875,6 +882,8 @@ function downloadData(filename, data, blob_type) {
     download_link = document.createElement("a");
   download_link.href = blob_url;
   download_link.download = filename;
+  document.body.appendChild(download_link);
   download_link.click();
+  document.body.removeChild(download_link);
   download_link = null; // Removes the element
 }

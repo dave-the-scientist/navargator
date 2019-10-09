@@ -2,21 +2,27 @@
 Defines the following public functions:
   load_navargator_file(file_path)
 """
-import os, itertools, random, time
+import os, sys, itertools, random, time
 from math import log, exp
 from copy import deepcopy
 import numpy as np
 from navargator_resources import phylo
 from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
 
-try:              # For Python 2.x:
-  basestring
-  def to_string(string):
-      return string
-except NameError: # For Python 3.x
-  basestring = str
-  def to_string(string):
-      return str(string, 'utf-8')
+if sys.version_info >= (3,0):
+    basestring = str
+"""
+    def to_string(string):
+        return str(string, 'utf-8')
+else:
+    def to_string(string):
+        return string
+"""
+def to_string(string, py3=sys.version_info >= (3,0)):
+    if py3:
+        return str(string, 'utf-8')
+    else:
+        return string
 
 # TODO:
 # - Finish writing process_tag_data() to process display options.

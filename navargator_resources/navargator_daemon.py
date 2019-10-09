@@ -21,10 +21,10 @@ else: # Python 2.x imports
 
 
 # TODO:
+# - Adjust check_interval, maintain_interval, and allowed_wait; especially for the server version.
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
-# - It almost works with python 3, just need a few tweaks to finish. It's mostly loading nvrgtr files that's the problem
 
 
 # BUG:
