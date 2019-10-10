@@ -221,6 +221,9 @@ function redrawTree() {
 function parseBasicData(data_obj) {
   // Is always called before calling drawTree. Updates nvrgtr_default_display_opts based on the size of the given tree.
   var data = $.parseJSON(data_obj);
+  if (nvrgtr_page.session_id != data.session_id) {
+    changeSessionID(data.session_id);
+  }
   nvrgtr_page.session_id = data.session_id;
   nvrgtr_data.tree_data = data.phyloxml_data;
   nvrgtr_data.leaves = data.leaves;
@@ -465,6 +468,20 @@ function maintainServer() {
       }
     });
   }
+}
+function changeSessionID(new_s_id) {
+  var old_s_id = nvrgtr_page.session_id;
+  nvrgtr_page.session_id = new_s_id;
+  $.ajax({
+    url: daemonURL('/instance-closed'),
+    type: 'POST',
+    contentType: "application/json",
+    data: JSON.stringify({'session_id':old_s_id, 'browser_id': nvrgtr_page.browser_id}),
+    error: function(error) {
+      console.log("Error closing your instance:");
+      console.log(error);
+    }
+  });
 }
 function closeInstance() {
   nvrgtr_page.instance_closed = true;

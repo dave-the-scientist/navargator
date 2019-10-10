@@ -81,7 +81,7 @@ function setupPage() {
       url: daemonURL('/get-basic-data'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id}),
       success: function(data_obj) {
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
           $("#loadInputHeader").click(); //   open collapsible pane.
@@ -123,15 +123,11 @@ function setupUploadSaveButtons() {
     var form_data = new FormData($('#uploadFilesForm')[0]), upload_url = '';
     var selected_file_type = upload_type_select.val();
     form_data.append('session_id', nvrgtr_page.session_id);
+    form_data.append('browser_id', nvrgtr_page.browser_id);
     form_data.append('tree_format', selected_file_type);
-    if (selected_file_type == 'nvrgtr') {
-      upload_url = daemonURL('/upload-nvrgtr-file');
-    } else {
-      upload_url = daemonURL('/upload-tree-file');
-    }
     $.ajax({
       type: 'POST',
-      url: upload_url,
+      url: daemonURL('/upload-tree-file'),
       contentType: false, // Not using contentType: "application/json" here,
       data: form_data, //    or JSON.stringify here, as it's sending files.
       cache: false,
@@ -149,14 +145,16 @@ function setupUploadSaveButtons() {
       url: daemonURL('/save-nvrgtr-file'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        nvrgtr_page.session_id = data.session_id;
+        if (nvrgtr_page.session_id != data.session_id) {
+          changeSessionID(data.session_id);
+        }
         if (data.saved_locally == true) {
           console.log('NaVARgator file saved locally');
         } else {
-          saveDataString(data.nvrgtr_as_string, 'web_tree.nvrgtr', 'text/plain');
+          saveDataString(data.nvrgtr_as_string, 'navargator_session.nvrgtr', 'text/plain');
         }
       },
       error: function(error) { processError(error, "Error saving session file"); }
@@ -177,7 +175,7 @@ function setupManipulationsPane() {
       url: daemonURL('/reorder-tree-nodes'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'increasing':$("#reorderNodesButton").attr("increasing")}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'increasing':$("#reorderNodesButton").attr("increasing")}),
       success: function(data_obj) {
         newTreeLoaded(data_obj);
       },
@@ -202,7 +200,7 @@ function setupManipulationsPane() {
       url: daemonURL('/truncate-tree-names'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'truncate_length':trunc_length}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'truncate_length':trunc_length}),
       success: function(data_obj) {
         newTreeLoaded(data_obj);
       },
@@ -216,10 +214,12 @@ function setupManipulationsPane() {
       url: daemonURL('/save-tree-file'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'tree_type':tree_type}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'tree_type':tree_type}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        nvrgtr_page.session_id = data.session_id;
+        if (nvrgtr_page.session_id != data.session_id) {
+          changeSessionID(data.session_id);
+        }
         if (data.saved_locally == true) {
           console.log('Tree file saved locally');
         } else {
@@ -359,12 +359,11 @@ function setupRunOptions() {
       url: daemonURL('/find-variants'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'display_opts':nvrgtr_display_opts}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'display_opts':nvrgtr_display_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
-        var new_s_id = data.session_id;
-        if (new_s_id != nvrgtr_page.session_id) {
-          nvrgtr_page.session_id = new_s_id;
+        if (nvrgtr_page.session_id != data.session_id) {
+          changeSessionID(data.session_id);
           setNormalizationMethod();
           clearHideResultsPane();
         }
@@ -629,7 +628,7 @@ function checkIfProcessingDone() {
     url: daemonURL('/check-results-done'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'var_nums': nvrgtr_data.result_links.var_nums}),
+    data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'var_nums':nvrgtr_data.result_links.var_nums}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
@@ -720,7 +719,7 @@ function rerootTree(method) {
     url: daemonURL('/reroot-tree'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'root_method':method, 'selected':selected_names}),
+    data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'root_method':method, 'selected':selected_names}),
     success: function(data_obj) {
       newTreeLoaded(data_obj);
     },

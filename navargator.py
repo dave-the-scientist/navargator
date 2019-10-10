@@ -17,6 +17,8 @@ def new_random_port():
 
 
 # TODO:
+# - Actually put this together with the option menus.
+# - Ensure that a message is printed indicating the server may hang, but ctrl-c can be used to stop the program at any time.
 
 # BUG reports:
 

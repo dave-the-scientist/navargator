@@ -5,7 +5,7 @@ from flask import Flask, request, render_template, json
 from navargator_resources.variant_finder import VariantFinder, navargator_from_data
 from navargator_resources.job_queue import JobQueue
 from navargator_resources.phylo import PhyloParseError
-from navargator_resources.navargator_common import NavargatorRuntimeError
+from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
@@ -21,7 +21,6 @@ else: # Python 2.x imports
 
 
 # TODO:
-# - Adjust check_interval, maintain_interval, and allowed_wait; especially for the server version.
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
@@ -29,8 +28,7 @@ else: # Python 2.x imports
 
 # BUG:
 # - Looks like the daemon isn't shutting down when I close the web page for some reason. Sometimes. Especially when I run the program without a tree, load a tree, load a second tree, then close.
-# - The instance closed for no apparent reason.
-#   - Looking into it, it was because a time.time() call was sometimes returning a value ~15 sec too high. Then it just stopped happening. I'm guessing it was a vmware issue (as time.time is a pretty low-level function). Happened only once, I believe just after a system update.
+
 
 class NavargatorDaemon(object):
     """Background daemon to serve NaVARgator requests.
@@ -47,30 +45,26 @@ class NavargatorDaemon(object):
     5511 - Error manipulating tree object. From the rooting and re-ordering methods.
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
-        max_upload_size = 20*1024*1024 # 20 MB
-        error_log_lines = 10000
+        self.sessionID_length = 20 # Length of the unique session ID used
+        self.check_interval = 30 # Garbage collection interval
+        self.maintain_interval = 30 # Interval the client sends a signal to maintain the session
         self.server_port = server_port
         self.web_server = web_server
         self.verbose = verbose
         self.sessions = {} # Holds the navargator instances, with session IDs as keys.
         self.job_queue = JobQueue(threads)
-        if not web_server: # Running locally.
-            self.sessionID_length = 5 # Length of the unique session ID used.
-            self.check_interval = 3 # Repeatedly wait this many seconds between running server tasks.
-            self.maintain_interval = 2 # Interval that the page sends a signal to maintain the navargator instance.
-            allowed_wait = 60 # Wait seconds before timing out navargator instances.
-        else: # Live, hosted web server.
-            self.sessionID_length = 20
-            self.check_interval = 10
-            self.maintain_interval = 9
-            allowed_wait = 30
+        # # #  Options to secure the server:
+        max_upload_size = 1024*1024 * 20 # 20 MB; maximum allowed file size
+        inactive_time = 3600 # Seconds of inactivity before timing out (server only)
+        inactive_num = 50 # Number of sessions allowed before inactive_time is used (server only)
+        max_sessions = 100 # The hard cap on the number of concurrent sessions (server only)
         # # #  Server activity and error logging:
         self.local_input_session_id = 'local_input_page' # Should match setupPage in input.js
-        self.connections = ConnectionManager(allowed_wait, self.local_input_session_id, web_server)
+        self.connections = ConnectionManager(self.local_input_session_id, web_server, inactive_time, inactive_num, max_sessions)
         self.should_quit = threading.Event()
         self.buff_lock = threading.Lock()
         self.log_buffer = StringIO()
-        self.error_log = deque([], error_log_lines)
+        self.error_log = deque([], 10000)
         self.error_occurred = False
         # # #  Server setup:
         module_dir = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +88,7 @@ class NavargatorDaemon(object):
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
                 return msg
+            print('\nmaintain from', s_id, b_id) # TESTING
             self.connections.maintain(s_id, b_id)
             return 'maintain-server successful.'
         @self.server.route(self.daemonURL('/instance-closed'), methods=['POST'])
@@ -102,7 +97,7 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg # Will almost certainly never actually be processed by the closing browser.
             elif s_id == '':
-                return 'web server input closed'
+                return 'web server input closed before uploading'
             self.connections.close(s_id, b_id)
             if vf and self.connections.is_dead(s_id):
                 del self.sessions[s_id]
@@ -115,7 +110,6 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg
             data_dict = self.get_vf_data_dict(s_id)
-            data_dict.update({'maintain_interval':self.maintain_interval})
             return json.dumps(data_dict)
         @self.server.route(self.daemonURL('/calculate-global-normalization'), methods=['POST'])
         def calculate_global_normalization():
@@ -141,36 +135,25 @@ class NavargatorDaemon(object):
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])
         def upload_tree_file():
             try:
-                tree_data = request.files['upload-file'].read()
-                tree_format = request.form['tree_format']
+                file_data = request.files['upload-file'].read()
+                file_format = request.form['tree_format']
             except Exception as err:
                 return (str(err), 5505)
             vf, s_id, b_id, msg = self.get_instance(json_data=False)
             if s_id == None:
                 return msg
             try:
-                new_s_id = self.new_variant_finder(tree_data, tree_format)
+                if file_format == 'nvrgtr':
+                    vf = navargator_from_data(file_data.splitlines(), verbose=self.verbose)
+                    new_s_id = self.add_variant_finder(vf)
+                else:
+                    new_s_id = self.new_variant_finder(file_data, file_format)
             except PhyloParseError as err:
                 return (str(err), 5510)
-            if s_id == self.local_input_session_id:
-                self.connections.close(s_id, None)
-            return json.dumps(self.get_vf_data_dict(new_s_id))
-        @self.server.route(self.daemonURL('/upload-nvrgtr-file'), methods=['POST'])
-        def upload_nvrgtr_file():
-            try:
-                nvrgtr_data = request.files['upload-file'].read()
-            except Exception as err:
-                return (str(err), 5505)
-            vf, s_id, b_id, msg = self.get_instance(json_data=False)
-            if s_id == None:
-                return msg
-            try:
-                vf = navargator_from_data(nvrgtr_data.splitlines(), verbose=self.verbose)
-            except PhyloParseError as err:
+            except NavargatorError as err:
                 return (str(err), 5510)
-            new_s_id = self.add_variant_finder(vf)
-            if s_id == self.local_input_session_id:
-                self.connections.close(s_id, None) # Needed because that particular s_id never times out.
+            if s_id != '': # It's '' only from the input page on the web server.
+                self.connections.close(s_id, b_id) # Since the new session was created successfully.
             return json.dumps(self.get_vf_data_dict(new_s_id))
         @self.server.route(self.daemonURL('/reroot-tree'), methods=['POST'])
         def reroot_tree():
@@ -197,7 +180,6 @@ class NavargatorDaemon(object):
             increasing = True if request.json['increasing'] == "true" else False
             vf.reorder_tree_nodes(increasing)
             return json.dumps(self.get_vf_data_dict(s_id))
-
         @self.server.route(self.daemonURL('/truncate-tree-names'), methods=['POST'])
         def truncate_tree_names():
             vf, s_id, msg = self.update_or_copy_vf()
@@ -206,7 +188,6 @@ class NavargatorDaemon(object):
             truncate_length = int(request.json['truncate_length'])
             vf.truncate_names(truncate_length)
             return json.dumps(self.get_vf_data_dict(s_id))
-
         @self.server.route(self.daemonURL('/save-tree-file'), methods=['POST'])
         def save_tree_file():
             vf, s_id, msg = self.update_or_copy_vf()
@@ -517,9 +498,19 @@ class NavargatorDaemon(object):
 
 class ConnectionManager(object):
     """New instances that do exist but have not yet been maintained are identified by self.session_connections[s_id] = None. This should only happen when a new VariantFinder is instanciated."""
-    def __init__(self, allowed_wait, local_input_session_id, web_server):
-        self.allowed_wait = allowed_wait
+    def __init__(self, local_input_session_id, web_server, inactive_time, inactive_num, max_sessions):
         self.local_input_session_id = local_input_session_id
+        self.web_server = web_server
+
+        # needs a bunch of rewriting.
+        # inactive_time should only be used for the web_server
+        # when collecting garbage and num sessions <= inactive_num, there are no timeouts. while > inactive_num, close the oldest that are > inactive_time. need fxn to return list of s_id + b_id to collect_garbage().
+        # when inactive_num < num sessions < max_sessions, the inactive_time threshold is respected
+        # if num sessions = max_sessions, throw an error when attempting to add a new one (needs to propagate to the client's page about trying again later, possibly contacting us).
+        self.inactive_time = inactive_time
+        self.inactive_num = inactive_num
+        self.max_sessions = max_sessions
+
         self.session_connections = {}
         self.lock = threading.Lock()
         self.local_input_dead = web_server
@@ -538,6 +529,7 @@ class ConnectionManager(object):
         with self.lock:
             if session_id == self.local_input_session_id:
                 self.local_input_maintained = time.time()
+                self.local_input_dead = False
             elif self.session_connections.get(session_id, None) == None:
                 self.session_connections[session_id] = {browser_id: time.time()}
             else:
@@ -573,18 +565,21 @@ class ConnectionManager(object):
 
     def clean_dead(self):
         """Removes any browserIDs that have timed out, and then any sessionIDs that no longer have any live browserIDs."""
+        print('\ncleaning dead') # TESTING
+        print(self.local_input_maintained, self.local_input_dead) # TESTING
+        print(self.session_connections) # TESTING
         with self.lock:
             cur_time = time.time()
-            if self.local_input_maintained and cur_time - self.local_input_maintained > self.allowed_wait:
+            if self.local_input_maintained and cur_time - self.local_input_maintained > self.inactive_time:
                 self.local_input_maintained = False
                 self.local_input_dead = True
             s_ids_to_remove = []
             for s_id, connections in self.session_connections.items():
                 if connections == None:
-                    continue
+                    continue # Means it has been recently created.
                 b_ids_to_remove = []
                 for b_id, last_maintain in connections.items():
-                    if cur_time - last_maintain > self.allowed_wait:
+                    if cur_time - last_maintain > self.inactive_time:
                         b_ids_to_remove.append(b_id)
                 for b_id in b_ids_to_remove:
                     del self.session_connections[s_id][b_id]
