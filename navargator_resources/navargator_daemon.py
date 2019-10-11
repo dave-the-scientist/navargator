@@ -5,19 +5,25 @@ from flask import Flask, request, render_template, json
 from navargator_resources.variant_finder import VariantFinder, navargator_from_data
 from navargator_resources.job_queue import JobQueue
 from navargator_resources.phylo import PhyloParseError
-from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError
+from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError, NavargatorCapacityError
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
-    from tkinter import Tk as tk_root
-    from tkinter.filedialog import asksaveasfilename as saveAs
+    try:
+        from tkinter import Tk as tk_root
+        from tkinter.filedialog import asksaveasfilename as saveAs
+    except ImportError:
+        saveAs = None # Files will just be saved in the browser's default download location.
 else: # Python 2.x imports
     try:
         from cStringIO import StringIO
     except ImportError:
         from StringIO import StringIO
-    from Tkinter import Tk as tk_root
-    from tkFileDialog import asksaveasfilename as saveAs
+    try:
+        from Tkinter import Tk as tk_root
+        from tkFileDialog import asksaveasfilename as saveAs
+    except ImportError:
+        saveAs = None
 
 
 # TODO:
@@ -27,7 +33,6 @@ else: # Python 2.x imports
 
 
 # BUG:
-# - Looks like the daemon isn't shutting down when I close the web page for some reason. Sometimes. Especially when I run the program without a tree, load a tree, load a second tree, then close.
 
 
 class NavargatorDaemon(object):
@@ -41,12 +46,13 @@ class NavargatorDaemon(object):
     5507 - Error setting the normalization method. From set_normalization_method()
     5508 - Error, no session ID sent from the client. From get_instance().
     5509 - Error, no variant finder found for the session ID when one is expected. From calculate_global_normalization(), update_or_copy_vf().
-    5510 - Error parsing tree file. From upload_tree_file() and upload_nvrgtr_file().
+    5510 - Error parsing tree file. From upload_tree_file().
     5511 - Error manipulating tree object. From the rooting and re-ordering methods.
+    5512 - Error creating a new session as the server is at capacity. Likelky from upload_tree_file(), rarely from anything that calls update_or_copy_vf().
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         self.sessionID_length = 20 # Length of the unique session ID used
-        self.check_interval = 30 # Garbage collection interval
+        self.check_interval = 30 # Garbage collection interval on server
         self.maintain_interval = 30 # Interval the client sends a signal to maintain the session
         self.server_port = server_port
         self.web_server = web_server
@@ -54,10 +60,10 @@ class NavargatorDaemon(object):
         self.sessions = {} # Holds the navargator instances, with session IDs as keys.
         self.job_queue = JobQueue(threads)
         # # #  Options to secure the server:
-        max_upload_size = 1024*1024 * 20 # 20 MB; maximum allowed file size
-        inactive_time = 3600 # Seconds of inactivity before timing out (server only)
-        inactive_num = 50 # Number of sessions allowed before inactive_time is used (server only)
-        max_sessions = 100 # The hard cap on the number of concurrent sessions (server only)
+        max_upload_size = 1024*1024 * 10 # 10 MB; maximum allowed file size
+        inactive_time = 3600 # Seconds of inactivity before sessions time out (server only)
+        inactive_num = 100 # Number of sessions allowed before inactive_time is used (server only)
+        max_sessions = 200 # The hard cap on the number of concurrent sessions (server only)
         # # #  Server activity and error logging:
         self.local_input_session_id = 'local_input_page' # Should match setupPage in input.js
         self.connections = ConnectionManager(self.local_input_session_id, web_server, inactive_time, inactive_num, max_sessions)
@@ -88,7 +94,6 @@ class NavargatorDaemon(object):
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
                 return msg
-            print('\nmaintain from', s_id, b_id) # TESTING
             self.connections.maintain(s_id, b_id)
             return 'maintain-server successful.'
         @self.server.route(self.daemonURL('/instance-closed'), methods=['POST'])
@@ -145,9 +150,11 @@ class NavargatorDaemon(object):
             try:
                 if file_format == 'nvrgtr':
                     vf = navargator_from_data(file_data.splitlines(), verbose=self.verbose)
-                    new_s_id = self.add_variant_finder(vf)
+                    new_s_id = self.add_variant_finder(vf, browser_id=b_id)
                 else:
-                    new_s_id = self.new_variant_finder(file_data, file_format)
+                    new_s_id = self.new_variant_finder(file_data, file_format, browser_id=b_id)
+            except NavargatorCapacityError as err:
+                return (str(err), 5512)
             except PhyloParseError as err:
                 return (str(err), 5510)
             except NavargatorError as err:
@@ -195,38 +202,42 @@ class NavargatorDaemon(object):
                 return msg
             tree_type = request.json['tree_type']
             if tree_type == 'newick':
-                suffix = '.nwk'
+                suffix = 'nwk'
             elif tree_type == 'nexus':
-                suffix = '.nxs'
+                suffix = 'nxs'
             elif tree_type == 'phyloxml' or tree_type == 'nexml':
-                suffix = '.xml'
-            if self.web_server:
-                saved_locally = False
-                tree_string = vf.get_tree_string(tree_type)
-            else:
+                suffix = 'xml'
+            default_filename = 'navargator_tree.{}'.format(suffix)
+            if saveAs and self.web_server == False:
                 root = tk_root()
-                filename = saveAs(initialdir=os.getcwd(), initialfile='tree'+suffix, defaultextension=suffix)
+                root.withdraw()
+                filename = saveAs(initialdir=os.getcwd(), initialfile=default_filename)
                 root.destroy()
                 if filename:
                     vf.save_tree_file(filename, tree_type)
                 saved_locally, tree_string = True, ''
-            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':tree_string, 'suffix':suffix})
+            else:
+                saved_locally = False
+                tree_string = vf.get_tree_string(tree_type)
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':tree_string, 'filename':default_filename})
         @self.server.route(self.daemonURL('/save-nvrgtr-file'), methods=['POST'])
         def save_nvrgtr_file():
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
                 return msg
-            if self.web_server:
-                saved_locally = False
-                nvrgtr_str = vf.get_navargator_string()
-            else:
+            default_filename = 'navargator_session.nvrgtr'
+            if saveAs and self.web_server == False:
                 root = tk_root()
-                filename = saveAs()
+                root.withdraw()
+                filename = saveAs(initialdir=os.getcwd(), initialfile=default_filename)
                 root.destroy()
                 if filename:
                     vf.save_navargator_file(filename)
                 saved_locally, nvrgtr_str = True, ''
-            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str})
+            else:
+                saved_locally = False
+                nvrgtr_str = vf.get_navargator_string()
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str, 'filename':default_filename})
         @self.server.route(self.daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
             vf, s_id, msg = self.update_or_copy_vf()
@@ -323,20 +334,17 @@ class NavargatorDaemon(object):
         def render_results_page():
             return render_template('results.html')
     # # # # #  Public methods  # # # # #
-    def new_variant_finder(self, tree_data, tree_format, available=[], ignored=[], distance_scale=1.0):
+    def new_variant_finder(self, tree_data, tree_format, browser_id='unknown', available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
-        s_id = self.generate_session_id()
         vf = VariantFinder(tree_data, tree_format=tree_format, verbose=self.verbose)
         vf.available = available
         vf.ignored = ignored
         vf.distance_scale = distance_scale
-        self.connections.new_session(s_id)
-        self.sessions[s_id] = vf
-        return s_id
-    def add_variant_finder(self, vf):
+        return self.add_variant_finder(vf, browser_id)
+    def add_variant_finder(self, vf, browser_id='unknown'):
         s_id = self.generate_session_id()
-        self.connections.new_session(s_id)
+        self.connections.new_session(s_id, browser_id)
         self.sessions[s_id] = vf
         return s_id
 
@@ -397,12 +405,12 @@ class NavargatorDaemon(object):
         else:
             return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
     def update_or_copy_vf(self):
-        """Called from save-nvrgtr-file and find-variants routes. If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set. Updates the display_opts dict of the vf instance."""
+        """Called from save-nvrgtr-file and find-variants routes. If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set. Updates the display_opts dict of the vf instance. Functions that call this should all check if s_id is None, and if so return msg to the client, which will cause an error popup on the page."""
         vf, s_id, b_id, msg = self.get_instance()
         if s_id == None:
             return None, None, msg
         elif vf == None:
-            return None, None, ("error in update_or_copy_vf, there is no valid variant finder for session ID '%s'" % s_id, 5509)
+            return None, None, ("error in update_or_copy_vf, there is no valid variant finder for session ID '{}'".format(s_id), 5509)
         chsn = set(request.json['chosen'])
         ignrd = set(request.json['ignored'])
         avail = set(request.json['available'])
@@ -410,7 +418,10 @@ class NavargatorDaemon(object):
             vf = vf.copy()
             vf.chosen = []; vf.ignored = []; vf.available = []
             vf.chosen = chsn; vf.ignored = ignrd; vf.available = avail
-            s_id = self.add_variant_finder(vf)
+            try:
+                s_id = self.add_variant_finder(vf, browser_id=b_id)
+            except NavargatorCapacityError as err:
+                return None, None, (str(err), 5512)
             msg = "vf replaced; new session ID '%s'" % s_id
         vf.display_options = request.json.get('display_opts', {})
         return vf, s_id, msg
@@ -501,37 +512,35 @@ class ConnectionManager(object):
     def __init__(self, local_input_session_id, web_server, inactive_time, inactive_num, max_sessions):
         self.local_input_session_id = local_input_session_id
         self.web_server = web_server
-
-        # needs a bunch of rewriting.
-        # inactive_time should only be used for the web_server
-        # when collecting garbage and num sessions <= inactive_num, there are no timeouts. while > inactive_num, close the oldest that are > inactive_time. need fxn to return list of s_id + b_id to collect_garbage().
-        # when inactive_num < num sessions < max_sessions, the inactive_time threshold is respected
-        # if num sessions = max_sessions, throw an error when attempting to add a new one (needs to propagate to the client's page about trying again later, possibly contacting us).
         self.inactive_time = inactive_time
         self.inactive_num = inactive_num
         self.max_sessions = max_sessions
-
         self.session_connections = {}
         self.lock = threading.Lock()
         self.local_input_dead = web_server
         self.local_input_maintained = None # None means it hasn't been maintained yet, False means it's been closed or timed out. Otherwise is a time.
 
-    def new_session(self, session_id):
+    def new_session(self, session_id, browser_id):
+        if len(self.session_connections) >= self.max_sessions:
+            raise NavargatorCapacityError()
         with self.lock:
             if session_id in self.session_connections:
                 raise NavargatorRuntimeError('Error: something weird happened. A new session was added to the connection manager that already existed.')
             if self.local_input_dead != True:
                 self.local_input_maintained = False
                 self.local_input_dead = True
-            self.session_connections[session_id] = None
+            self.session_connections[session_id] = {browser_id: time.time()}
 
     def maintain(self, session_id, browser_id):
         with self.lock:
             if session_id == self.local_input_session_id:
                 self.local_input_maintained = time.time()
                 self.local_input_dead = False
-            elif self.session_connections.get(session_id, None) == None:
+            elif session_id not in self.session_connections:
                 self.session_connections[session_id] = {browser_id: time.time()}
+            elif 'unknown' in self.session_connections[session_id]:
+                del self.session_connections[session_id]['unknown']
+                self.session_connections[session_id][browser_id] = time.time()
             else:
                 self.session_connections[session_id][browser_id] = time.time()
 
@@ -541,13 +550,10 @@ class ConnectionManager(object):
                 self.local_input_maintained = False
                 self.local_input_dead = True
             elif session_id in self.session_connections:
-                if self.session_connections[session_id] == None:
+                if browser_id in self.session_connections[session_id]:
+                    del self.session_connections[session_id][browser_id]
+                if len(self.session_connections[session_id]) == 0:
                     del self.session_connections[session_id]
-                else:
-                    if browser_id in self.session_connections[session_id]:
-                        del self.session_connections[session_id][browser_id]
-                    if len(self.session_connections[session_id]) == 0:
-                        del self.session_connections[session_id]
 
     def is_dead(self, session_id):
         """Assumes self.clean_dead has just been called, and so does not check if the connections are live again. If a new VariantFinder has just been created, but not yet maintained, this returns False."""
@@ -564,26 +570,19 @@ class ConnectionManager(object):
         return True
 
     def clean_dead(self):
-        """Removes any browserIDs that have timed out, and then any sessionIDs that no longer have any live browserIDs."""
-        print('\ncleaning dead') # TESTING
-        print(self.local_input_maintained, self.local_input_dead) # TESTING
-        print(self.session_connections) # TESTING
+        """If there are fewer sessions than self.inactive_num, none are removed. If more, removes any browserIDs that haven't been maintained within self.inactive_time seconds, and then any sessionIDs that no longer have any live browserIDs."""
+        if len(self.session_connections) <= self.inactive_num:
+            return # Don't bother killing old sessions if under this number
         with self.lock:
             cur_time = time.time()
-            if self.local_input_maintained and cur_time - self.local_input_maintained > self.inactive_time:
-                self.local_input_maintained = False
-                self.local_input_dead = True
-            s_ids_to_remove = []
+            sess_ages = []
             for s_id, connections in self.session_connections.items():
-                if connections == None:
-                    continue # Means it has been recently created.
-                b_ids_to_remove = []
                 for b_id, last_maintain in connections.items():
-                    if cur_time - last_maintain > self.inactive_time:
-                        b_ids_to_remove.append(b_id)
-                for b_id in b_ids_to_remove:
+                    sess_ages.append((cur_time-last_maintain, s_id, b_id))
+            for age, s_id, b_id in sorted(sess_ages, key=lambda sess: -sess[0]):
+                if len(self.session_connections) <= self.inactive_num:
+                    break
+                if age > self.inactive_time:
                     del self.session_connections[s_id][b_id]
                 if len(self.session_connections[s_id]) == 0:
-                    s_ids_to_remove.append(s_id)
-            for s_id in s_ids_to_remove:
-                del self.session_connections[s_id]
+                    del self.session_connections[s_id]

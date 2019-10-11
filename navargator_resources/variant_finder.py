@@ -11,13 +11,6 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 
 if sys.version_info >= (3,0):
     basestring = str
-"""
-    def to_string(string):
-        return str(string, 'utf-8')
-else:
-    def to_string(string):
-        return string
-"""
 def to_string(string, py3=sys.version_info >= (3,0)):
     if py3:
         return str(string, 'utf-8')

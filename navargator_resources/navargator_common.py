@@ -26,3 +26,10 @@ class NavargatorRuntimeError(NavargatorError):
         if msg == None:
             msg = "Error: NaVARgator runtime error"
         super(NavargatorRuntimeError, self).__init__(msg)
+
+class NavargatorCapacityError(NavargatorError):
+    """Error indicating the server is over capacity as defined by the max_sessions attribute of the NavargatorDaemon class."""
+    def __init__(self, msg=None):
+        if msg == None:
+            msg = "unable to create a new NaVARgator session as the server is currently over capacity. Please try again at a later time. If the problem persists, please contact the webmaster."
+        super(NavargatorCapacityError, self).__init__(msg)

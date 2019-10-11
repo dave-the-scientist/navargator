@@ -39,11 +39,11 @@ if __name__ == '__main__':
         input_file = sys.argv[1].strip()
         if input_file.lower().endswith('.nvrgtr'):
             vfinder = load_navargator_file(input_file, verbose=verbose)
-            idnum = daemon.add_variant_finder(vfinder)
+            session_id = daemon.add_variant_finder(vfinder)
         else:
             tree_data = open(input_file).read().strip()
-            idnum = daemon.new_variant_finder(tree_data, tree_format)
-        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, idnum)
+            session_id = daemon.new_variant_finder(tree_data, tree_format)
+        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, session_id)
 
     if manually_open_browser:
         print('Open a browser to the following URL:\n%s' % input_url)

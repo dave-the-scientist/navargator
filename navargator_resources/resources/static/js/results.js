@@ -317,7 +317,7 @@ function setupExportPane() {
     formatDisplayExportNames();
   });
   $("#exportTreeButton").click(function() {
-    var svg_data = $("#figureSvg")[0].outerHTML; // This may not work in IE
+    var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   // Functionality of the export pane:

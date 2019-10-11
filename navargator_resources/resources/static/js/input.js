@@ -154,7 +154,8 @@ function setupUploadSaveButtons() {
         if (data.saved_locally == true) {
           console.log('NaVARgator file saved locally');
         } else {
-          saveDataString(data.nvrgtr_as_string, 'navargator_session.nvrgtr', 'text/plain');
+          var filename = data.filename;
+          saveDataString(data.nvrgtr_as_string, filename, 'text/plain');
         }
       },
       error: function(error) { processError(error, "Error saving session file"); }
@@ -223,7 +224,7 @@ function setupManipulationsPane() {
         if (data.saved_locally == true) {
           console.log('Tree file saved locally');
         } else {
-          var filename = 'web_tree' + data.suffix;
+          var filename = data.filename;
           saveDataString(data.tree_string, filename, 'text/plain');
         }
       },

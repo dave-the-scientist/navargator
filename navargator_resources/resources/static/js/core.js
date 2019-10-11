@@ -67,6 +67,8 @@ function processError(error, message) {
     showErrorPopup(message+"; the file format was malformed and could not be parsed.");
   } else if (error.status == 5511) {
     showErrorPopup(message+"; "+error.responseText);
+  } else if (error.status == 5512) {
+    showErrorPopup(message+"; "+error.responseText);
   } else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }
