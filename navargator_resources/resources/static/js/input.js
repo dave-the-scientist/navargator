@@ -7,11 +7,15 @@
 //   - Finish implementing max_name_length on all of the rest of the saving methods in phylo.py. Ensure each checks that variant names are unique. Add a new PhyloError specific to the case where names are not unique.
 //   - Ensure those new errors are handled if the user's choice of max_name_length is too small; the popup js message should indicate this.
 //   - Think I fixed these issues? Test it out.
+// - For test_tree_4173, clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
+// - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
+//   - Could be 'none' instead of 'clear'.
+//   - I'd like to see the upper right buttons surrounded by a graphic indicating they all have to do with the selection. Should also have the num selected there. The upper left should indicate they have to do with zooming.
+// - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 // - When loading input.html on the web version, the display options are not filled out. That happens when a tree is actually loaded.
 //   - Not super important, but it'd be nice if the options were already there.
 // - If you load a tree, set some as ignored, and clear the available, then re-order nodes, the new tree remembers the ignored, but sets everything else as available.
 // - If I load a large tree, then load a small tree, it keeps the (default) display options from the big tree. Not sure why.
-// - If you load a tree, but don't cluster or do anything with it, then open a different tree, then close the program, the daemon doesn't shut down. I'm thinking the original tree is still keeping it alive?
 // - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
@@ -27,9 +31,6 @@
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
-// - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
-//   - Could be 'none' instead of 'clear'.
-//   - I'd like to see the upper right buttons surrounded by a graphic indicating they all have to do with the selection. Should also have the num selected there. The upper left should indicate they have to do with zooming.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
 
 //NOTE:
