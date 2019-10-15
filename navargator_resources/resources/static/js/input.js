@@ -192,7 +192,9 @@ function setupManipulationsPane() {
     min: trunc_name_min, max: null,
     numberFormat: 'N0', step: 1
   }).spinner('value', 15);
+  $("#truncateNamesSpinner").attr("last_good_value", 0); // Used to store successful values.
   $("#truncateNamesButton").click(function() {
+    var last_good = null;
     var trunc_length = $("#truncateNamesSpinner").spinner('value');
     if (trunc_length == null || trunc_length < trunc_name_min) {
       showErrorPopup("Error: the truncation length for tree names must be a number >= "+trunc_name_min);
@@ -205,8 +207,12 @@ function setupManipulationsPane() {
       data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'truncate_length':trunc_length}),
       success: function(data_obj) {
         newTreeLoaded(data_obj);
+        $("#truncateNamesSpinner").attr("last_good_value", trunc_length);
       },
-      error: function(error) { processError(error, "Error truncating the tree names"); }
+      error: function(error) {
+        $("#truncateNamesSpinner").spinner('value', $("#truncateNamesSpinner").attr("last_good_value"));
+        processError(error, "Error truncating the tree names");
+      }
     });
   });
 

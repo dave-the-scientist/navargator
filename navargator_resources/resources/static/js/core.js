@@ -69,6 +69,8 @@ function processError(error, message) {
     showErrorPopup(message+"; "+error.responseText);
   } else if (error.status == 5512) {
     showErrorPopup(message+"; "+error.responseText);
+  } else if (error.status == 5513) {
+    showErrorPopup(message+"; "+error.responseText);
   } else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }

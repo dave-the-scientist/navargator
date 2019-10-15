@@ -4,7 +4,7 @@ from random import randint
 from flask import Flask, request, render_template, json
 from navargator_resources.variant_finder import VariantFinder, navargator_from_data
 from navargator_resources.job_queue import JobQueue
-from navargator_resources.phylo import PhyloParseError
+from navargator_resources.phylo import PhyloParseError, PhyloUniqueNameError
 from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError, NavargatorCapacityError
 
 if sys.version_info >= (3,0): # Python 3.x imports
@@ -48,7 +48,8 @@ class NavargatorDaemon(object):
     5509 - Error, no variant finder found for the session ID when one is expected. From calculate_global_normalization(), update_or_copy_vf().
     5510 - Error parsing tree file. From upload_tree_file().
     5511 - Error manipulating tree object. From the rooting and re-ordering methods.
-    5512 - Error creating a new session as the server is at capacity. Likelky from upload_tree_file(), rarely from anything that calls update_or_copy_vf().
+    5512 - Error truncating tree names because names became non-unique. From truncate_tree_names().
+    5513 - Error creating a new session as the server is at capacity. Likelky from upload_tree_file(), rarely from anything that calls update_or_copy_vf().
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         self.sessionID_length = 20 # Length of the unique session ID used
@@ -154,7 +155,7 @@ class NavargatorDaemon(object):
                 else:
                     new_s_id = self.new_variant_finder(file_data, file_format, browser_id=b_id)
             except NavargatorCapacityError as err:
-                return (str(err), 5512)
+                return (str(err), 5513)
             except PhyloParseError as err:
                 return (str(err), 5510)
             except NavargatorError as err:
@@ -193,7 +194,10 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg
             truncate_length = int(request.json['truncate_length'])
-            vf.truncate_names(truncate_length)
+            try:
+                vf.truncate_names(truncate_length)
+            except PhyloUniqueNameError as err:
+                return (str(err), 5512)
             return json.dumps(self.get_vf_data_dict(s_id))
         @self.server.route(self.daemonURL('/save-tree-file'), methods=['POST'])
         def save_tree_file():
@@ -338,9 +342,6 @@ class NavargatorDaemon(object):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         vf = VariantFinder(tree_data, tree_format=tree_format, verbose=self.verbose)
-        vf.available = available
-        vf.ignored = ignored
-        vf.distance_scale = distance_scale
         return self.add_variant_finder(vf, browser_id)
     def add_variant_finder(self, vf, browser_id='unknown'):
         s_id = self.generate_session_id()
@@ -421,14 +422,14 @@ class NavargatorDaemon(object):
             try:
                 s_id = self.add_variant_finder(vf, browser_id=b_id)
             except NavargatorCapacityError as err:
-                return None, None, (str(err), 5512)
+                return None, None, (str(err), 5513)
             msg = "vf replaced; new session ID '%s'" % s_id
         vf.display_options = request.json.get('display_opts', {})
         return vf, s_id, msg
     # # # # #  Private methods  # # # # #
     def daemonURL(self, url):
         """Prefix added to the routes that should only ever be called by the page itself. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js.
-        IMPORTANT: When you configure Apache2 that all '/daemon' URLs should be processed by WSGI, it cuts off the '/daemon' part when passing the requests. NGINX does not so if deployed with that, the return here should be the same as for the local version."""
+        IMPORTANT: When you configure Apache2 that all '/daemon' URLs should be processed by WSGI, it cuts off the '/daemon' part when passing the requests. NGINX does not, so if deployed with that the return here should be the same as for the local version."""
         if self.web_server:
             return url
         else:

@@ -19,8 +19,8 @@ def to_string(string, py3=sys.version_info >= (3,0)):
 
 # TODO:
 # - Finish writing process_tag_data() to process display options.
-# - vf.copy() should be a functional deepcopy, disassociating the new instance from the old. But might be able to do the same thing with just: return deepcopy(self). Set up a way to test it, and look at deepcopy docs.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
+# - Implement threshold clustering.
 
 # # # # #  Session file strings  # # # # #
 comment_prefix = '//'
@@ -91,11 +91,6 @@ def navargator_from_data(data_lines, verbose=False):
         vfinder.available = avail
     if ignor:
         vfinder.ignored = ignor
-    """
-    display_opts = data.get(display_options_tag, {})
-    if display_opts:
-        vfinder.display_options = display_opts
-    """
     return vfinder
 def binomial_coefficient(n, k):
     """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions, but is close enough for my purposes."""
@@ -232,8 +227,28 @@ class VariantFinder(object):
             print('\nRe-ordered the tree nodes')
 
     def truncate_names(self, truncate_length):
-        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
-        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
+        # Don't set either attribute until both of the calls return error-free:
+        newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
+        phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
+        self.newick_tree_data = newick_tree_data
+        self.phyloxml_tree_data = phyloxml_tree_data
+        # Update leaf names in relevant variables:
+        new_leaves = [name[:truncate_length] for name in self.tree.get_named_leaves()]
+        trans = dict((old_name, new_name) for old_name,new_name in zip(self.leaves, new_leaves))
+        self.index = {name:index for index, name in enumerate(new_leaves)}
+        self._available = set(trans[name] for name in self.available)
+        self._chosen = set(trans[name] for name in self.chosen)
+        self._ignored = set(trans[name] for name in self.ignored)
+        self.leaves = new_leaves
+        # Don't have to modify self._not_ignored_inds as the order of self.leaves hasn't changed.
+        # Re-generate the cache; names have changed, but cluster patterns and scores haven't:
+        old_cache = self.cache
+        self.cache = {}
+        for params, info in old_cache.items():
+            variant_inds = np.array([self.leaves.index(trans[name]) for name in info['variants']])
+            scores = info['scores'][::]
+            alt_variants = [alt.copy() for alt in info['alt_variants']]
+            self._calculate_cache_values(params, variant_inds, scores, alt_variants)
         self.display_options['sizes']['max_variant_name_length'] = truncate_length
         if self.verbose:
             print('\nTruncated the tree names')
@@ -409,6 +424,7 @@ class VariantFinder(object):
         """
         return {'method':'self', 'custom_value':None, 'custom_max_count':0, 'global_value':None, 'global_max_count':0, 'global_nums':set(), 'global_bins':[]}
     def _calculate_cache_values(self, params, variant_inds, scores, alt_variants):
+        """Fills out the self.cache entry for the given clustering run. 'params'=(number_variants, distance_scale); 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]"""
         cluster_inds = self._partition_nearest(variant_inds)
         variants = [self.leaves[i] for i in variant_inds]
         clusters = [[self.leaves[i] for i in clst] for clst in cluster_inds]
@@ -457,7 +473,7 @@ class VariantFinder(object):
     def _validate_node_name(self, node):
         node = node.strip()
         if node not in self.index:
-            raise NavargatorValueError('Error: could not add "{}" to the ignored set, as it was not found in the tree.'.format(node))
+            raise NavargatorValueError('Error: could not add "{}" to the assigned set, as it was not found in the tree.'.format(node))
         return node
 
     # # # # #  Accessible attribute logic  # # # # #
@@ -472,7 +488,7 @@ class VariantFinder(object):
         for node in names:
             node = self._validate_node_name(node)
             if node in self.ignored:
-                raise NavargatorValueError('Error: cannot set "{}" as both ignored and chosen.'.format(node))
+                self._ignored.remove(node)
             if node in self.available:
                 self._available.remove(node)
             new_chosen.add(node)
@@ -493,7 +509,7 @@ class VariantFinder(object):
             if node in self.available:
                 self._available.remove(node)
             if node in self.chosen:
-                raise NavargatorValueError('Error: cannot set "{}" as both ignored and chosen.'.format(node))
+                self._chosen.remove(node)
             new_ingroup_inds.remove(self.index[node])
             new_ignored.add(node)
         if new_ignored != self._ignored:
@@ -507,14 +523,14 @@ class VariantFinder(object):
     def available(self, names):
         if isinstance(names, basestring):
             names = [names]
-        if not names:
-            new_avail = set(node for node in self.leaves if node not in self.ignored|self.chosen)
-        else:
-            new_avail = set()
-            for node in names:
-                node = self._validate_node_name(node)
-                if node not in self.ignored|self.chosen:
-                    new_avail.add(node)
+        new_avail = set()
+        for node in names:
+            node = self._validate_node_name(node)
+            if node in self.chosen:
+                self._chosen.remove(node)
+            if node in self.ignored:
+                self._ignored.remove(node)
+            new_avail.add(node)
         if new_avail != self._available:
             self._available = new_avail
             self._clear_cache()
