@@ -371,7 +371,9 @@ function updateTreeLegend() {
   }
   var border_height = parseFloat($("#legendBorderRect").attr('height')),
     legend_offset = parseFloat($("#figureSvg").attr('height')) - border_height - 1;
-  $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
+  if (!isNaN(legend_offset)) {
+    $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
+  }
 }
 function calculateTreeCanvasHeight(canvas_size) {
   var radius = canvas_size / 2.0,

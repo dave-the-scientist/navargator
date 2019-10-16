@@ -2,19 +2,14 @@
 
 // TODO:
 // - Finish display options in core.js
-// - I've implemented a name truncation with truncateNamesButton. It's sort of working, but mostly really not working at all.
-//   - Ensure the vf method has a description indicating that the tree object still contains the full length names, and is not losing any data.
-//   - Finish implementing max_name_length on all of the rest of the saving methods in phylo.py. Ensure each checks that variant names are unique. Add a new PhyloError specific to the case where names are not unique.
-//   - Ensure those new errors are handled if the user's choice of max_name_length is too small; the popup js message should indicate this.
-//   - Think I fixed these issues? Test it out.
 // - For test_tree_4173, clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
 //   - Could be 'none' instead of 'clear'.
 //   - I'd like to see the upper right buttons surrounded by a graphic indicating they all have to do with the selection. Should also have the num selected there. The upper left should indicate they have to do with zooming.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
+//   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
 // - When loading input.html on the web version, the display options are not filled out. That happens when a tree is actually loaded.
-//   - Not super important, but it'd be nice if the options were already there.
-// - If you load a tree, set some as ignored, and clear the available, then re-order nodes, the new tree remembers the ignored, but sets everything else as available.
+//   - Should be an easy fix, just reset the display options to default in the 'else' clause of the conditional that initially calls /get-basic-data
 // - If I load a large tree, then load a small tree, it keeps the (default) display options from the big tree. Not sure why.
 // - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.

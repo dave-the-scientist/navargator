@@ -153,10 +153,9 @@ class VariantFinder(object):
             self.dist = self.orig_dist.copy()
             max_name_length = self.display_options.setdefault('sizes', {}).get('max_variant_name_length', None)
             if max_name_length == None:
-                max_name_length = str(max(len(name) for name in self.leaves))
+                max_name_length = max(len(name) for name in self.leaves)
                 self.display_options['sizes']['max_variant_name_length'] = max_name_length
-            self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=int(max_name_length))
-            self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=int(max_name_length))
+            self.update_tree_data()
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
@@ -207,33 +206,39 @@ class VariantFinder(object):
 
     def root_midpoint(self):
         self.tree.root_midpoint()
-        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
-        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+        self.update_tree_data()
         if self.verbose:
             print('\nRe-rooted the tree to its midpoint')
 
     def root_outgroup(self, outgroup_names):
-        self.tree.root_outgroup(outgroup_names, distance=0.5, distance_proportion=True)
-        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
-        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+        # self.tree needs the original leaf names to re-root them
+        full_leaves = set(self.tree.get_named_leaves())
+        full_outgroup = []
+        for name in outgroup_names:
+            if name in full_leaves:
+                full_outgroup.append(name)
+            else:
+                for leaf in full_leaves:
+                    if leaf.startswith(name):
+                        # this works as names are guaranteed to be unique at the current truncation
+                        full_outgroup.append(leaf)
+                        break
+        self.tree.root_outgroup(full_outgroup, distance=0.5, distance_proportion=True)
+        self.update_tree_data()
         if self.verbose:
             print('\nRe-rooted the tree to the given outgroup')
 
     def reorder_tree_nodes(self, increasing):
         self.tree.reorder_children(increasing=increasing)
-        self.newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False)
-        self.phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False)
+        self.update_tree_data()
         if self.verbose:
             print('\nRe-ordered the tree nodes')
 
-    def truncate_names(self, truncate_length):
-        # Don't set either attribute until both of the calls return error-free:
-        newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
-        phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=truncate_length)
-        self.newick_tree_data = newick_tree_data
-        self.phyloxml_tree_data = phyloxml_tree_data
+    def truncate_names(self, truncation):
+        """Truncates the names of the leaf nodes. This is a VariantFinder-specific change, as the self.tree object will alway contain the full node names."""
+        self.update_tree_data(truncation=truncation)
         # Update leaf names in relevant variables:
-        new_leaves = [name[:truncate_length] for name in self.tree.get_named_leaves()]
+        new_leaves = [name[:truncation] for name in self.tree.get_named_leaves()]
         trans = dict((old_name, new_name) for old_name,new_name in zip(self.leaves, new_leaves))
         self.index = {name:index for index, name in enumerate(new_leaves)}
         self._available = set(trans[name] for name in self.available)
@@ -249,19 +254,29 @@ class VariantFinder(object):
             scores = info['scores'][::]
             alt_variants = [alt.copy() for alt in info['alt_variants']]
             self._calculate_cache_values(params, variant_inds, scores, alt_variants)
-        self.display_options['sizes']['max_variant_name_length'] = truncate_length
+        self.display_options['sizes']['max_variant_name_length'] = truncation
         if self.verbose:
             print('\nTruncated the tree names')
 
+    def update_tree_data(self, truncation=None):
+        """Ensures both trees can be formatted before updating the attributes."""
+        if truncation == None:
+            truncation = int(self.display_options['sizes']['max_variant_name_length'])
+        newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=truncation)
+        phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=truncation)
+        self.newick_tree_data = newick_tree_data
+        self.phyloxml_tree_data = phyloxml_tree_data
+
     def get_tree_string(self, tree_type):
+        truncation = int(self.display_options['sizes']['max_variant_name_length'])
         if tree_type == 'newick':
-            return self.tree.newick_string()
+            return self.tree.newick_string(support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         elif tree_type == 'nexus':
-            return self.tree.nexus_string()
+            return self.tree.nexus_string(translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         elif tree_type == 'phyloxml':
-            return self.tree.phyloxml_string()
+            return self.tree.phyloxml_string(support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         elif tree_type == 'nexml':
-            return self.tree.nexml_string()
+            return self.tree.nexml_string(support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         else:
             raise NavargatorValueError('Error: tree format "{}" is not recognized'.format(tree_type))
 

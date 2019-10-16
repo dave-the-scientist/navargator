@@ -5,7 +5,11 @@
 // - Need to add a scale bar to the tree.
 //   - The Python clusterer object knows the full distance matrix, and I want to save as a property the max distance from a node to the root. That should be passed here in parseBasicData.
 //   - Then in drawTree, use that distance and the width of the tree (not including labels) to get a mapping of phylogenetic distance to pixels.
-//   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" clean distance value in that range (probably the first significant value). Draw line, and label.
+//   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" in that range. Draw line, and label.
+//     - If both min and max range have same number of digits before zero: Convert both to strings, start at beginning, find first digit that is different, pick nice digit between them; else just pick nice integer between them (maybe ceiling of their mean or something).
+//   - Add checkbox "Show scale bar" along with input so users can pick a new value
+// - If the user changes display options, then loads a new tree/session, the changed options are lost (replaced by those in the session file, which is good, or by default options, which I don't want). Since there's a reset button, don't need to reset options between loads.
+//   - Should be easy enough, just modify updateDisplayOptions(). Still want to iterate over the default options, but now accept passed option > current option > default option.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
 // - Test the defaults in updateDefaultDisplayOpts() with various sized trees.
@@ -341,6 +345,7 @@ function setColourPickers() {
     colour = nvrgtr_display_opts.colours[key];
     picker_id = '#' + key + "_colourPicker";
     $(picker_id)[0].jscolor.fromString(colour);
+    updateDisplayColour(key, $(picker_id)[0].jscolor);
   }
 }
 function updateDisplayColour(key, jscolor) {
