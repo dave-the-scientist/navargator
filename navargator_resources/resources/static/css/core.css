@@ -476,18 +476,24 @@ button.control-element:active {
   font-size: 0.7em;
 }
 
-/* ======  Normalization radios  ====== */
-#normValInput {
+/* ======  Normalization and scale bar inputs  ====== */
+#normValInput,
+#scaleBarInput {
   width: 50px;
   padding: 1px 3px;
   outline: none;
   border: 1px solid transparent;
   transition: border-color 0.2s ease-in-out;
 }
-#normValInput:hover, #normValInput:focus {
+#scaleBarInput {
+  width: 30px;
+}
+#normValInput:hover, #normValInput:focus,
+#scaleBarInput:hover, #scaleBarInput:focus {
   border-color: black;
 }
-#normValGoButton {
+#normValGoButton,
+#scaleBarInputGoButton {
   line-height: 17px;
   margin-top: 0px;
   margin-bottom: 0px;
@@ -500,10 +506,12 @@ button.control-element:active {
   background: linear-gradient(#FAFAFA, #DCDCDC);
   box-shadow: inset 2px 2px 4px rgba(255,255,255,.3), inset -2px -2px 4px rgba(201,201,201,.5);
 }
-#normValGoButton:hover {
+#normValGoButton:hover,
+#scaleBarInputGoButton:hover {
   border-color: var(--button-border-hover-colour);
 }
-#normValGoButton:active {
+#normValGoButton:active,
+#scaleBarInputGoButton:active {
   background: linear-gradient(#DCDCDC, #FAFAFA);
   box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
 }
@@ -521,14 +529,10 @@ button.control-element:active {
   width: 21px;
 }
 input.display-opt-spinner {
-  width: 18px;
+  width: 22px;
   height: 15px;
   font-size: 0.8em;
   margin: .2em 20px .2em .3em;
-}
-#displayTreeWidthSpinner {
-  /* Needs a wider spinner for longer numbers.*/
-  width: 25px;
 }
 table.sortable th span,
 table.sortable th:after {

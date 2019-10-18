@@ -57,7 +57,6 @@ function setupPage() {
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
   //These can be screwed over by a race condition. If so, may help to use parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2));
 
-  console.log('w', parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2))); // TESTING - While the race condition still happens sometimes, I think I've solved it.
   // These calls can occasionally incorrectly return 0. This is checked in updateScoreGraph()
   nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
   nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
@@ -280,10 +279,10 @@ function setupNormalizationPane() {
     if (isNaN(val)) {
       val = '';
     }
-    if (val == custom_input.data('prev_val')) {
+    custom_input.val(val);
+    if (val == custom_input.data('prev_val') || !custom_go_button.is(':active') && !custom_radio.is(':checked')) {
       hideGoButton();
     }
-    custom_input.val(val);
   });
   custom_go_button.click(function(event) {
     hideGoButton();
@@ -506,6 +505,7 @@ function newTreeLoaded(data_obj) {
     $("#treeSelectionDiv").show();
     $("#treeControlsDiv").show();
     $("#treeLegendLeftGroup").show();
+    $("#treeScaleBarGroup").show();
     redrawTree();
     $("#uploadFileInput").val('');
     $("#saveSessionButton").button('enable');
@@ -513,6 +513,7 @@ function newTreeLoaded(data_obj) {
     $(".tree-manipulation-buttons").button('enable');
     $("#truncateNamesSpinner").spinner('value', nvrgtr_display_opts.sizes.max_variant_name_length);
     $("#showLegendCheckbox").prop('disabled', false);
+    $("#showScaleBarCheckbox").prop('disabled', false);
     $("#redrawTreeButton").button('enable');
     $("#findVariantsButton").button('enable');
     clearHideResultsPane();

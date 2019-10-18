@@ -1,3 +1,6 @@
+//TODO:
+// - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is legative space for the tree on the canvas. Check for this. Related: in those cases a negative value is passed to updateScaleBar, which should never happen. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
+
 // =====  Tree setup functions:
 function setupTreeElements() {
   $("#selectAllButton").click(function() {
@@ -231,6 +234,8 @@ function clearTree() {
   $("#treeGroup").empty();
 }
 function drawTree(marker_tooltips=true) {
+  var min_tree_div_width = 500;
+
   clearTree();
   loadPhyloSVG(); // Reloads jsPhyloSVG.
 
@@ -250,6 +255,7 @@ function drawTree(marker_tooltips=true) {
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;
   }
   total_label_size *= 2.0; // Convert from radius to diameter
+  nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
 
   tree_params.Circular.bufferRadius = total_label_size/canvas_size;
   tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.big_marker_radius + 1;
@@ -261,18 +267,22 @@ function drawTree(marker_tooltips=true) {
     'circular'
   );
   $("#svgCanvas > svg").attr("id", "treeSvg");
-  nvrgtr_data.r_paper = phylocanvas.getSvg().svg;
 
+  nvrgtr_data.r_paper = phylocanvas.getSvg().svg;
   drawVariantObjects(marker_tooltips);
   drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
-
+  // Adjust the div holding the tree:
+  var tree_div_width = Math.max(sizes.tree, min_tree_div_width);
+  document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
+  // Finalize the SVGs:
   var canvas_height = calculateTreeCanvasHeight(canvas_size);
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_height});
   $("#treeSvg").attr({'x':0, 'y':0});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
   updateTreeLegend(); // Must be called after setting figureSvg height.
+  updateScaleBar();
 }
 function drawVariantObjects(marker_tooltips) {
   // Collects coordinates and angles for nodes and their names, and creates their markers and highlights.
@@ -375,6 +385,65 @@ function updateTreeLegend() {
     $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
   }
 }
+function updateScaleBar(bar_dist) {
+  var max_root_px = nvrgtr_data.max_root_pixels,
+    px_scale_factor = nvrgtr_data.max_root_distance / max_root_px, bar_px;
+  if (isNaN(bar_dist) || bar_dist <= 0) {
+    // Find an appropriate scale bar size if a valid size was not given:
+    var min_pix = 100, max_pix = 200; // Default scale bar size range
+    bar_dist = findNiceNumber(min_pix*px_scale_factor, max_pix*px_scale_factor);
+  }
+  bar_px = bar_dist / px_scale_factor;
+  // Reconfigure the scale bar to that size:
+  var bar_text_dist = 7, bar_buffer = 3;
+  var bar_xoffset = parseFloat($("#figureSvg").attr('width')) - bar_px - bar_buffer,
+    bar_yoffset = parseFloat($("#figureSvg").attr('height')) - bar_text_dist - bar_buffer;
+  // Check to ensure bar_px isn't too wide for the current tree (figuresvg width - legend width). If it is, throw error popup, return '', set $("#scaleBarInput") to ''.
+  if (!isNaN(bar_xoffset) && !isNaN(bar_yoffset)) {
+    $("#treeScaleBarText").text(bar_dist);
+    $("#treeScaleBarText").attr('x', bar_xoffset + bar_px/2.0);
+    $("#treeScaleBar").attr({'x1':bar_xoffset, 'x2':bar_xoffset+bar_px});
+    $("#treeScaleBarGroup").attr('transform', 'translate(0,'+bar_yoffset+')');
+    $("#scaleBarInput").val(bar_dist);
+  }
+  return bar_dist;
+}
+
+function findNiceNumber(min_num, max_num) {
+  // Convert numbers to strings and then arrays
+  var min_arr = min_num.toString().split(''), max_arr = max_num.toString().split('');
+  var min_dec = min_arr.indexOf('.'), max_dec = max_arr.indexOf('.');
+  // Ensure both numbers are floats, not integers
+  if (min_dec == -1) {
+    min_dec = min_arr.length;
+    min_arr.push('.');
+    min_arr.push('0')
+  }
+  if (max_dec == -1) {
+    max_dec = max_arr.length;
+    max_arr.push('.');
+    max_arr.push('0')
+  }
+  // Find a nice value between the numbers
+  var nice_arr = [], nice_num, new_num;
+  if (min_dec == max_dec) { // If decimals are in the same place:
+    for (var i=0; i<Math.min(min_arr.length, max_arr.length); ++i) {
+      if (min_arr[i] == max_arr[i]) {
+        nice_arr.push(min_arr[i]);
+      } else {
+        new_num = Math.ceil((parseFloat(min_arr[i]) + parseFloat(max_arr[i])) / 2.0).toString();
+        nice_arr.push(new_num);
+        break;
+      }
+    }
+    nice_num = parseFloat(nice_arr.join(''));
+  } else { // The integers are very different, so can discard the decimal information:
+    new_num = parseFloat(min_arr.slice(0,min_dec).join('')) + parseFloat(max_arr.slice(0,max_dec).join(''));
+    nice_num = Math.ceil(new_num / 2.0);
+  }
+  return nice_num;
+}
+
 function calculateTreeCanvasHeight(canvas_size) {
   var radius = canvas_size / 2.0,
     legend_width = parseFloat($("#legendBorderRect").attr('width')),

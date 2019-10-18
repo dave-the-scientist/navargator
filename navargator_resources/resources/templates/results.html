@@ -134,9 +134,9 @@
                   <td><input id="singleton_cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
                 </tr>
                 <tr>
-                  <td><label class="display-options-label">Mouseover</label></td>
+                  <td><label class="display-options-label">Highlight</label></td>
                   <td><input id="cluster_highlight_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
-                  <td><label class="display-options-label">Radial chart</label></td>
+                  <td><label class="display-options-label">Radial bars</label></td>
                   <td><input id="bar_chart_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('bar_chart',this.jscolor)"></td>
                 </tr>
                 <tr>
@@ -170,12 +170,19 @@
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
+              <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
+              <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
               <label class="nvrgtr-checkbox-outer">
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
-              <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+              <label class="nvrgtr-checkbox-outer">
+                <input id="showScaleBarCheckbox" type="checkbox" checked />
+                <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
+              </label>
+              <label style="font-size:0.8em;margin-left:10px">Length:</label>
+              <input id="scaleBarInput" placeholder="value" />
+              <button id="scaleBarInputGoButton" style="display:none">Ok</button>
             </div>
           </div>
 
@@ -274,14 +281,18 @@
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
             <g id="treeLegendLeftGroup" style="display:none">
-              <rect id="legendBorderRect" x="1" y="0" width="115" height="82" style="fill:white;stroke:black;stroke-width:1" />
+              <rect id="legendBorderRect" x="1" y="0" width="115" height="82" style="fill:white;stroke:black;stroke-width:1"></rect>
               <text x="18" y="20" style="font-size:18px; font-family:Helvetica,Arial,sans-serif">Legend</text>
-              <circle id="legendAvailMarker" cx="10" cy="34" r="4" fill="#24B1F0" />
+              <circle id="legendAvailMarker" cx="10" cy="34" r="4" fill="#24B1F0"></circle>
               <text x="18" y="38" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Available variant</text>
-              <circle id="legendChosenMarker" cx="10" cy="52" r="4" fill="#24F030" />
+              <circle id="legendChosenMarker" cx="10" cy="52" r="4" fill="#24F030"></circle>
               <text x="18" y="56" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Chosen variant</text>
-              <circle id="legendIgnoredMarker" cx="10" cy="70" r="4" fill="#5D5D5D" />
+              <circle id="legendIgnoredMarker" cx="10" cy="70" r="4" fill="#5D5D5D"></circle>
               <text x="18" y="74" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Ignored variant</text>
+            </g>
+            <g id="treeScaleBarGroup" style="display:none">
+              <text id="treeScaleBarText" x="624" y="0" text-anchor="middle" style="font-size:14px; font-family:Helvetica,Arial,sans-serif">13.42</text>
+              <line id="treeScaleBar" x1="549" y1="7" x2="699" y2="7" style="stroke:black;stroke-width:1"></line>
             </g>
             <g id="treeLoadingMessageGroup">
               <rect x="5" y="5" width="690" height="690" style="fill:white;fill-opacity:0.7" />

@@ -179,6 +179,7 @@ function setupNormalizationPane() {
   var go_button_shown = false;
   var self_radio = $("#normSelfRadio"), global_radio = $("#normGlobalRadio"), custom_radio = $("#normValRadio");
   var custom_input = $("#normValInput"), custom_go_button = $("#normValGoButton");
+  custom_input.data('prev_val', '');
   function showGoButton() {
     if (go_button_shown == false) {
       custom_go_button.show(100);
@@ -221,9 +222,7 @@ function setupNormalizationPane() {
       return false; // Prevents the button from being actually selected.
     }
   }).on("change", function(event) {
-    nvrgtr_data.normalized_max_distance = custom_input.val();
-    nvrgtr_data.normalized_max_count = 0; // Get from UI
-    normalizeResults();
+    custom_go_button.click();
   });
   custom_input.on("keydown", function(event) {
     if (event.which == 13) { // 'Enter' key
@@ -238,21 +237,29 @@ function setupNormalizationPane() {
       val = '';
     }
     custom_input.val(val);
-    if (!custom_go_button.is(':active') && !custom_radio.is(':checked')) {
+    if (val == custom_input.data('prev_val') || !custom_go_button.is(':active') && !custom_radio.is(':checked')) {
       hideGoButton();
     }
   });
-  custom_go_button.click(function() {
+  custom_go_button.click(function(event) {
+    hideGoButton();
     var val = custom_input.val();
-    if (val == '') {
-      return false;
-    } else if (val <= 0) {
-      showErrorPopup("Error: the 'normalize' value must be a positive number.");
+    if (val != '' && val <= 0) {
+      showErrorPopup("Error: the 'normalize to' value must be a positive number.");
+      val = '';
       custom_input.val('');
+    }
+    custom_input.data('prev_val', val);
+    if (val == '') {
+      if (custom_radio.is(':checked')) {
+        self_radio.prop('checked', true).change();
+      }
       return false;
     }
-    hideGoButton();
-    custom_radio.prop('checked', true).change();
+    custom_radio.prop('checked', true);
+    nvrgtr_data.normalized_max_distance = val;
+    nvrgtr_data.normalized_max_count = 0; // Get from UI
+    normalizeResults();
   });
 }
 function setupExportPane() {
@@ -371,7 +378,9 @@ function checkForClusteringResults() {
         $("#treeSelectionDiv").show();
         $("#treeControlsDiv").show();
         $("#treeLegendLeftGroup").show();
+        $("#treeScaleBarGroup").show();
         $("#showLegendCheckbox").prop('disabled', false);
+        $("#showScaleBarCheckbox").prop('disabled', false);
         $("#redrawTreeButton").button('enable');
       }
     },

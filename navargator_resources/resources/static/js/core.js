@@ -1,15 +1,8 @@
 // NOTE:
-// - The minimum width for #mainTreeDiv is set in setupDisplayOptionsPane(), in the "Redraw tree" button functionality.
 
 // TODO:
-// - Need to add a scale bar to the tree.
-//   - The Python clusterer object knows the full distance matrix, and I want to save as a property the max distance from a node to the root. That should be passed here in parseBasicData.
-//   - Then in drawTree, use that distance and the width of the tree (not including labels) to get a mapping of phylogenetic distance to pixels.
-//   - Have a pre-defined range of pixels for the scale bar (it'll go in the bottom right), then just find a "nice" in that range. Draw line, and label.
-//     - If both min and max range have same number of digits before zero: Convert both to strings, start at beginning, find first digit that is different, pick nice digit between them; else just pick nice integer between them (maybe ceiling of their mean or something).
-//   - Add checkbox "Show scale bar" along with input so users can pick a new value
-// - If the user changes display options, then loads a new tree/session, the changed options are lost (replaced by those in the session file, which is good, or by default options, which I don't want). Since there's a reset button, don't need to reset options between loads.
-//   - Should be easy enough, just modify updateDisplayOptions(). Still want to iterate over the default options, but now accept passed option > current option > default option.
+// - Would be nice to have an ajax call update the vf display options when the user minimizes the display options section.
+//   - As it is, if a user sets options then clusters, it transfers those selections. But if they cluster, look at results, then go back to change something, they'd have to run another clustering run (or re-root, etc) to get the changes into results. Or maybe I can do that when a user clicks a results link? That would really ensure changes always get transfered.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 // - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
 // - Test the defaults in updateDefaultDisplayOpts() with various sized trees.
@@ -29,7 +22,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null, 'max_root_distance':0.0, 'max_root_pixels':0.0
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
   'graph' : {
@@ -201,8 +194,58 @@ function setupDisplayOptionsPane() {
       $("#treeLegendLeftGroup").hide();
     }
   });
+  $("#showScaleBarCheckbox").change(function() {
+    if ($("#showScaleBarCheckbox").is(':checked')) {
+      $("#treeScaleBarGroup").show();
+    } else {
+      $("#treeScaleBarGroup").hide();
+    }
+  });
+  var sb_button_shown = false, sb_input = $("#scaleBarInput"), sb_go_button = $("#scaleBarInputGoButton");
+  sb_input.data('prev_val', '');
+  function showSbGoButton() {
+    if (sb_button_shown == false) {
+      sb_go_button.show(100);
+      sb_button_shown = true;
+    }
+  }
+  function hideSbGoButton() {
+    if (sb_button_shown == true) {
+      sb_go_button.hide(100);
+      sb_button_shown = false;
+    }
+  }
+  sb_input.on("keydown", function(event) {
+    if (event.which == 13) { // 'Enter' key
+      sb_input.blur();
+      sb_go_button.click();
+      return false;
+    }
+    showSbGoButton();
+  }).blur(function(event) {
+    var val = parseFloat(sb_input.val());
+    if (isNaN(val)) {
+      val = '';
+    }
+    sb_input.val(val);
+    if (val == sb_input.data('prev_val')) {
+      hideSbGoButton();
+    }
+  });
+  sb_go_button.click(function(event) {
+    var val = sb_input.val();
+    if (val != '' && val < 0) {
+      showErrorPopup("Error: the scale bar value must be a positive number.");
+      sb_input.val(sb_input.data('prev_val'));
+      return false;
+    }
+    hideSbGoButton();
+    sb_input.data('prev_val', updateScaleBar(val));
+    $("#showScaleBarCheckbox").prop('checked', true).change();
+  });
+
   $("#resetDisplayOptsButton").click(function() {
-    processDisplayOptions({});
+    processDisplayOptions(nvrgtr_default_display_opts);
   });
   var min_tree_div_width = 500, tree_div_width;
   $("#redrawTreeButton").click(function() {
@@ -213,13 +256,11 @@ function setupDisplayOptionsPane() {
     // Clear any searches
     $("#varSearchInput").val('');
     $("#varSearchButton").click();
-    // Set the tree size css property to its new value
-    tree_div_width = Math.max(nvrgtr_display_opts.sizes.tree, min_tree_div_width);
-    document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
     redrawTree();
   });
   $("#redrawTreeButton").button('disable');
   $("#showLegendCheckbox").prop('disabled', true);
+  $("#showScaleBarCheckbox").prop('disabled', true);
 }
 function redrawTree() {
   // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
@@ -246,6 +287,7 @@ function parseBasicData(data_obj) {
   if (nvrgtr_page.page == 'input') {
     nvrgtr_data.chosen = data.chosen;
   }
+  nvrgtr_data.max_root_distance = data.max_root_distance;
   if (data.hasOwnProperty('maintain_interval') && data.maintain_interval*1000 != nvrgtr_page.maintain_interval) {
     maintainServer();
     nvrgtr_page.maintain_interval = data.maintain_interval * 1000;
@@ -317,7 +359,8 @@ function validateDisplayOption(category, key, new_val) {
 function updateDisplayOptions(display_opts={}) {
   // Sets nvrgtr_display_opts to the default values, updated by the passed 'opts' object. So if 'opts' is empty, nvrgtr_display_opts will be reset to default values. Any display options passed will be validated before being accepted.
   var new_opts = {}, new_val;
-  $.each(nvrgtr_default_display_opts, function(category, opts) {
+  //$.each(nvrgtr_default_display_opts, function(category, opts) {
+  $.each(nvrgtr_display_opts, function(category, opts) {
     if (category in display_opts) { // validate the passed options.
       new_opts[category] = {};
       $.each(opts, function(key, old_val) {
@@ -329,7 +372,7 @@ function updateDisplayOptions(display_opts={}) {
         }
       });
     } else { // set the whole category to default values.
-      new_opts[category] = $.extend(true, {}, opts);
+      new_opts[category] = $.extend(true, {}, opts); // Does a deep copy
     }
   });
   nvrgtr_display_opts = new_opts;

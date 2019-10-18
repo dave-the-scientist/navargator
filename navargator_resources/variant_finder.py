@@ -156,6 +156,7 @@ class VariantFinder(object):
                 max_name_length = max(len(name) for name in self.leaves)
                 self.display_options['sizes']['max_variant_name_length'] = max_name_length
             self.update_tree_data()
+            self.max_root_distance = self._calc_max_root_dist()
         self._ignored = set() # Accessible as self.ignored
         self._available = set(self.leaves) # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
@@ -341,6 +342,7 @@ class VariantFinder(object):
         vf.cache = deepcopy(self.cache)
         vf.normalize = deepcopy(self.normalize)
         vf.display_options = deepcopy(self.display_options)
+        vf.max_root_distance = self.max_root_distance
         vf._not_ignored_inds = self._not_ignored_inds.copy()
         vf._ignored = self.ignored.copy()
         vf._chosen = self.chosen.copy()
@@ -451,6 +453,14 @@ class VariantFinder(object):
                 if dist > max_var_dist:
                     max_var_dist = dist
         self.cache[params] = {'variants':variants, 'scores':scores, 'clusters':clusters, 'variant_distance':variant_distance, 'max_distance':max_var_dist, 'alt_variants':alt_variants}
+    def _calc_max_root_dist(self):
+        max_dist = 0.0
+        root = self.tree.root
+        for node in self.tree.leaves:
+            dist = self.tree.node_distance(root, node)
+            if dist > max_dist:
+                max_dist = dist
+        return max_dist
     def _print_clustering_results(self, num_variants, init_time, variants, scores, alt_variants):
         run_time = time.time() - init_time
         if alt_variants:
