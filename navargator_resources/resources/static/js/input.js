@@ -1,16 +1,13 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Finish display options in core.js
 // - For test_tree_4173, clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
 //   - Could be 'none' instead of 'clear'.
-//   - I'd like to see the upper right buttons surrounded by a graphic indicating they all have to do with the selection. Should also have the num selected there. The upper left should indicate they have to do with zooming.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
 // - When loading input.html on the web version, the display options are not filled out. That happens when a tree is actually loaded.
 //   - Should be an easy fix, just reset the display options to default in the 'else' clause of the conditional that initially calls /get-basic-data
-// - If I load a large tree, then load a small tree, it keeps the (default) display options from the big tree. Not sure why.
 // - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
@@ -120,6 +117,7 @@ function setupUploadSaveButtons() {
     form_data.append('session_id', nvrgtr_page.session_id);
     form_data.append('browser_id', nvrgtr_page.browser_id);
     form_data.append('tree_format', selected_file_type);
+    form_data.append('file_name', file_obj.name);
     $.ajax({
       type: 'POST',
       url: daemonURL('/upload-tree-file'),
@@ -506,6 +504,7 @@ function newTreeLoaded(data_obj) {
     $("#treeControlsDiv").show();
     $("#treeLegendLeftGroup").show();
     $("#treeScaleBarGroup").show();
+    $("#currentTreeFile").html(nvrgtr_data.file_name);
     redrawTree();
     $("#uploadFileInput").val('');
     $("#saveSessionButton").button('enable');
@@ -809,7 +808,11 @@ function nodeLabelMouseclickHandlerCallback(var_name, label_colour) {
 }
 function numSelectedCallback() {
   // Update span indicating number of selected variants:
-  $("#currentSelectionNum").html(nvrgtr_data.num_selected);
+  if (nvrgtr_data.num_selected == 0) {
+    $("#selectionGroupText").html('Selection');
+  } else {
+    $("#selectionGroupText").html(nvrgtr_data.num_selected+' selected');
+  }
   // Update assigned labels and controlling variable:
   if (nvrgtr_data.assigned_selected == 'chosen') {
     $("#chosenAssignedDiv").removeClass('var-assigned-selected');

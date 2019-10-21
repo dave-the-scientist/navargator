@@ -4,7 +4,7 @@
 // - Would be nice to have an ajax call update the vf display options when the user minimizes the display options section.
 //   - As it is, if a user sets options then clusters, it transfers those selections. But if they cluster, look at results, then go back to change something, they'd have to run another clustering run (or re-root, etc) to get the changes into results. Or maybe I can do that when a user clicks a results link? That would really ensure changes always get transfered.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
-// - Finish implementing the rest of the display options in parseBasicData(); set up GUI elements to pick them, and all that.
+//   - Why?
 // - Test the defaults in updateDefaultDisplayOpts() with various sized trees.
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
@@ -22,7 +22,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'r_paper':null, 'pan_zoom':null, 'max_root_distance':0.0, 'max_root_pixels':0.0
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'r_paper':null, 'pan_zoom':null, 'max_root_distance':0.0, 'max_root_pixels':0.0
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
   'graph' : {
@@ -287,6 +287,7 @@ function parseBasicData(data_obj) {
   if (nvrgtr_page.page == 'input') {
     nvrgtr_data.chosen = data.chosen;
   }
+  nvrgtr_data.file_name = data.file_name;
   nvrgtr_data.max_root_distance = data.max_root_distance;
   if (data.hasOwnProperty('maintain_interval') && data.maintain_interval*1000 != nvrgtr_page.maintain_interval) {
     maintainServer();

@@ -7,7 +7,9 @@
   display: flex;
   flex-direction: column;
   margin: 0px;
-  padding: 0px;
+  padding: 0px 4px 5px 4px;
+  border: 1px solid var(--major-accent-colour);
+  border-top: none;
 }
 .tree-control-row, .tree-control-row-rj {
   position: relative;
@@ -17,8 +19,13 @@
 .tree-control-row-rj { /* Right-justified row.*/
   justify-content: flex-end;
 }
-/* If I don't end up putting anything else in the top corners, can merge tree-control-div and tree-control-row. Probably don't need to be classes either.*/
-
+.tree-control-div-title {
+  position: absolute;
+  bottom: -9px;
+  font-size: 14px;
+  color: var(--dark-background-colour);
+  background: white;
+}
 
 #treeSearchDiv {
   --tree-search-button-height: 23px;
@@ -175,7 +182,7 @@
 /*         Top left panel/buttons: */
 #treeControlsDiv {
   top: 30px;
-  left: 15px;
+  left: 10px;
 }
 #treeZoomOutButton, #treeZoomInButton {
   font-size: 12px;
@@ -198,10 +205,13 @@
   padding-left: 3px;
   width: 22px;
 }
+#zoomGroupText {
+  left: 5px;
+}
 /*         Top right panel: */
 #treeSelectionDiv {
   top: 30px;
-  right: 15px;
+  right: 10px;
 }
 #selectNamesGroupDiv {
   display: flex;
@@ -246,4 +256,7 @@
 }
 #selectAllButton {
   margin-left: 4px;
+}
+#selectionGroupText {
+  right: 5px;
 }

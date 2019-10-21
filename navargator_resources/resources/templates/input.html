@@ -10,7 +10,7 @@
     <script>
       var is_IE = /MSIE|Trident|Edge\//.test(window.navigator.userAgent);
       if (is_IE) {
-        alert("You appear to be using Internet Explorer or Edge! Unfortunately NaVARgator doesn't work well with either, so you'll probably have to try with another browser.\n\nIf you're running the command line version, include the XX flag to prevent the automatic use of your default browser.");
+        alert("You appear to be using Internet Explorer or Edge! Unfortunately NaVARgator doesn't work well with either, so you'll probably have to try with another browser.\n\nIf you're running the command line version, include the XXX flag to prevent the automatic use of your default browser.");
       }
     </script>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
@@ -62,7 +62,7 @@
         <div id="mainLeftDiv">
           <div id="inputOptionsDiv" class="style-box">
             <h2 id="loadInputHeader" class="collapsible-header">Load input file</h2>
-            <div class="collapsible-panel">
+            <div id="loadInputPanel" class="collapsible-panel">
               <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
                 <input id="uploadFileInput" name="upload-file" type="file">
               </form>
@@ -79,19 +79,25 @@
 
             <h2 class="collapsible-header">Tree manipulations</h2>
             <div id="treeManipulationsPanel" class="collapsible-panel">
-              <button id="reorderNodesButton" class="jq-ui-button tree-manipulation-buttons">Re-order nodes</button>
-              <button id="rootMidpointButton" class="jq-ui-button tree-manipulation-buttons">Midpoint root</button>
-              <button id="rootSelectionButton" class="jq-ui-button tree-manipulation-buttons">Set selection as outgroup</button>
-              <button id="truncateNamesButton" class="jq-ui-button tree-manipulation-buttons">Truncate names</button>
-              <input id="truncateNamesSpinner" class="param-spinner" />
+              <div id="treeManipButtonGroup1">
+                <button id="reorderNodesButton" class="jq-ui-button tree-manipulation-buttons">Re-order nodes</button>
+                <button id="rootMidpointButton" class="jq-ui-button tree-manipulation-buttons">Midpoint root</button>
+                <button id="rootSelectionButton" class="jq-ui-button tree-manipulation-buttons">Set selection as outgroup</button>
+              </div>
               <hr>
-              <button id="saveTreeButton" class="jq-ui-button tree-manipulation-buttons">Save tree as</button>
-              <select id="saveTreeTypeSelect">
-                <option selected value="newick">Newick tree</option>
-                <option value="nexus">NEXUS tree</option>
-                <option value="phyloxml">PhyloXML tree</option>
-                <option value="nexml">NeXML tree</option>
-              </select>
+              <div id="treeManipTruncDiv">
+                <button id="truncateNamesButton" class="jq-ui-button tree-manipulation-buttons">Truncate name length</button>
+                <input id="truncateNamesSpinner" class="param-spinner" />
+              </div>
+              <div id="treeManipSaveDiv">
+                <button id="saveTreeButton" class="jq-ui-button tree-manipulation-buttons">Save tree as</button>
+                <select id="saveTreeTypeSelect">
+                  <option selected value="newick">Newick tree</option>
+                  <option value="nexus">NEXUS tree</option>
+                  <option value="phyloxml">PhyloXML tree</option>
+                  <option value="nexml">NeXML tree</option>
+                </select>
+              </div>
             </div>
 
             <h2 class="collapsible-header">Display options</h2>
@@ -159,19 +165,23 @@
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
-              <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
-              <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+              <div id="resetRedrawButtonsDiv">
+                <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
+                <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+              </div>
               <label class="nvrgtr-checkbox-outer">
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <label class="nvrgtr-checkbox-outer">
-                <input id="showScaleBarCheckbox" type="checkbox" checked />
-                <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
-              </label>
-              <label style="font-size:0.8em;margin-left:10px">Length:</label>
-              <input id="scaleBarInput" placeholder="value" />
-              <button id="scaleBarInputGoButton" style="display:none">Ok</button>
+              <div id="scaleBarDiv">
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="showScaleBarCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
+                </label>
+                <label style="font-size:0.8em;margin-left:10px">Length:</label>
+                <input id="scaleBarInput" placeholder="size" />
+                <button id="scaleBarInputGoButton" style="display:none">Ok</button>
+              </div>
               <hr>
             </div>
             <button id="saveSessionButton" class="jq-ui-button">Save session file</button>
@@ -242,7 +252,7 @@
         </div>
 
         <div id="mainTreeDiv" class="style-box">
-          <h2 id="mainTreeHeader">Selected variants: <span id="currentSelectionNum">0</span>
+          <h2 id="mainTreeHeader"><span id="currentTreeFile">No tree loaded</span>
             <div id="treeSearchDiv">
               <div id="varSearchHitsDiv">
                 <button id="searchToSelectButton" class="control-element">
@@ -265,6 +275,7 @@
               <button id="treeZoomResetButton" class="control-element control-pair-right" type="button">Reset</button>
               <button id="scrollZoomButton" class="control-element" type="button"><span id="scrollZoomText">Scroll<br>Zoom</span><span id="scrollZoomStatus">Off</span></button>
             </div>
+            <label id="zoomGroupText" class="tree-control-div-title">Zoom</label>
           </div>
 
           <div id="treeSelectionDiv" class="tree-control-div" style="display:none">
@@ -291,6 +302,7 @@
               <button id="selectAllButton" class="control-element control-pair-left">Select all</button>
               <button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
             </div>
+            <label id="selectionGroupText" class="tree-control-div-title">Selection</label>
           </div>
 
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
@@ -325,13 +337,13 @@
             <div id="varAssignTableDiv">
               <table id="varAssignTable"><tbody>
                 <tr>
-                  <td><div id="availAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numAvailSpan">0</span> available variants</label><div class="var-assigned-button-group"><label id="addAvailButton" class="var-assigned-add"><span class="var-assigned-add-span1"></span><span class="var-assigned-add-span2"></span></label><span class="var-assigned-sep"></span><label id="clearAvailButton" class="var-assigned-clear" title="Clear 'available variants'."><span class="var-assigned-clear-span1"></span><span class="var-assigned-clear-span2"></span></label></div></div></td>
+                  <td><div id="availAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numAvailSpan">0</span> available</label><div class="var-assigned-button-group"><label id="addAvailButton" class="var-assigned-add"><span class="var-assigned-add-span1"></span><span class="var-assigned-add-span2"></span></label><span class="var-assigned-sep"></span><label id="clearAvailButton" class="var-assigned-clear" title="Clear 'available variants'."><span class="var-assigned-clear-span1"></span><span class="var-assigned-clear-span2"></span></label></div></div></td>
                 </tr>
                 <tr>
-                  <td><div id="chosenAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numChosenSpan">0</span> chosen variants</label><div class="var-assigned-button-group"><label id="addChosenButton" class="var-assigned-add"><span class="var-assigned-add-span1"></span><span class="var-assigned-add-span2"></span></label><span class="var-assigned-sep"></span><label id="clearChosenButton" class="var-assigned-clear" title="Clear 'chosen variants'."><span class="var-assigned-clear-span1"></span><span class="var-assigned-clear-span2"></span></label></div></div></td>
+                  <td><div id="chosenAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numChosenSpan">0</span> chosen</label><div class="var-assigned-button-group"><label id="addChosenButton" class="var-assigned-add"><span class="var-assigned-add-span1"></span><span class="var-assigned-add-span2"></span></label><span class="var-assigned-sep"></span><label id="clearChosenButton" class="var-assigned-clear" title="Clear 'chosen variants'."><span class="var-assigned-clear-span1"></span><span class="var-assigned-clear-span2"></span></label></div></div></td>
                 </tr>
                 <tr>
-                  <td><div id="ignoredAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numIgnoredSpan">0</span> ignored variants</label><div class="var-assigned-button-group"><label id="addIgnoredButton" class="var-assigned-add"><span class="var-assigned-add-span1"></span><span class="var-assigned-add-span2"></span></label><span class="var-assigned-sep"></span><label id="clearIgnoredButton" class="var-assigned-clear" title="Clear 'ignored variants'."><span class="var-assigned-clear-span1"></span><span class="var-assigned-clear-span2"></span></label></div></div></td>
+                  <td><div id="ignoredAssignedDiv" class="var-assigned-div prevent-text-selection"><label class="var-assigned-label"><span id="numIgnoredSpan">0</span> ignored</label><div class="var-assigned-button-group"><label id="addIgnoredButton" class="var-assigned-add"><span class="var-assigned-add-span1"></span><span class="var-assigned-add-span2"></span></label><span class="var-assigned-sep"></span><label id="clearIgnoredButton" class="var-assigned-clear" title="Clear 'ignored variants'."><span class="var-assigned-clear-span1"></span><span class="var-assigned-clear-span2"></span></label></div></div></td>
                 </tr>
               </tbody></table>
             </div>

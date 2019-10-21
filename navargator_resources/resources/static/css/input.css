@@ -10,7 +10,7 @@
   display: inline-flex;
   flex-direction: column;
   /*--left-col-width: 250px;*/
-  
+
 }
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: var(--left-col-width);
@@ -18,6 +18,30 @@
 #mainVariantSelectDiv {
   min-width: 280px;/* 400px;*/
   margin-right: 0px;
+}
+
+/* Load input settints: */
+#loadInputPanel {
+  align-items: flex-start;
+}
+#loadInputPanel > * {
+  margin-left: 0px;
+}
+
+/* Tree manipulation settings: */
+#treeManipButtonGroup1,
+#treeManipTruncDiv,
+#treeManipSaveDiv {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+}
+#treeManipButtonGroup1 > button,
+#treeManipTruncDiv > button,
+#treeManipSaveDiv > button {
+  margin-left: unset;
+  margin-right: unset;
 }
 
 /* Run options: */
@@ -119,7 +143,7 @@
   position: relative;
   margin: 3px 5px 2px 4px;
   flex-grow: 1;
-  min-width: 150px;
+  min-width: 90px;
 }
 .var-assigned-button-group { /* The add/subtract and clear buttons.*/
   align-self: flex-end;

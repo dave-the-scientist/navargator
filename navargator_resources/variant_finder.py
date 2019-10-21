@@ -39,10 +39,11 @@ def load_navargator_file(file_path, verbose=True):
         raise NavargatorValueError('Error: could not find the given navargator file "{}"'.format(file_path))
     if verbose:
         print('Loading information from %s...' % file_path)
+    file_name = os.path.basename(file_path)
     with open(file_path, 'rb') as f:
-        vfinder = navargator_from_data(f, verbose=verbose)
+        vfinder = navargator_from_data(f, file_name=file_name, verbose=verbose)
     return vfinder
-def navargator_from_data(data_lines, verbose=False):
+def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     """Expects data as an iterable of lines. Should be either a file object or a str.splitlines()."""
     data = {}
     def process_tag_data(tag, data_buff):
@@ -83,7 +84,7 @@ def navargator_from_data(data_lines, verbose=False):
         raise NavargatorValidationError('Error: could not identify the tree data in the given NaVARgator session file.')
 
     display_options = data.get(display_options_tag, {})
-    vfinder = VariantFinder(tree_data, tree_format='newick', display_options=display_options, verbose=verbose)
+    vfinder = VariantFinder(tree_data, tree_format='newick', file_name=file_name, display_options=display_options, verbose=verbose)
     chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
         vfinder.chosen = chsn
@@ -125,7 +126,8 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='auto', display_options=None, verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='auto', file_name='unknown file', display_options=None, verbose=True, _blank_init=False):
+        self.file_name = file_name
         self.verbose = bool(verbose)
         self.leaves = []
         self.cache = {}
@@ -342,6 +344,7 @@ class VariantFinder(object):
         vf.cache = deepcopy(self.cache)
         vf.normalize = deepcopy(self.normalize)
         vf.display_options = deepcopy(self.display_options)
+        vf.file_name = self.file_name
         vf.max_root_distance = self.max_root_distance
         vf._not_ignored_inds = self._not_ignored_inds.copy()
         vf._ignored = self.ignored.copy()

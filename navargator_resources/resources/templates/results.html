@@ -170,19 +170,23 @@
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
-              <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
-              <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+              <div id="resetRedrawButtonsDiv">
+                <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
+                <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+              </div>
               <label class="nvrgtr-checkbox-outer">
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <label class="nvrgtr-checkbox-outer">
-                <input id="showScaleBarCheckbox" type="checkbox" checked />
-                <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
-              </label>
-              <label style="font-size:0.8em;margin-left:10px">Length:</label>
-              <input id="scaleBarInput" placeholder="value" />
-              <button id="scaleBarInputGoButton" style="display:none">Ok</button>
+              <div id="scaleBarDiv">
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="showScaleBarCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
+                </label>
+                <label style="font-size:0.8em;margin-left:10px">Length:</label>
+                <input id="scaleBarInput" placeholder="size" />
+                <button id="scaleBarInputGoButton" style="display:none">Ok</button>
+              </div>
             </div>
           </div>
 
@@ -227,7 +231,7 @@
         </div>
 
         <div id="mainTreeDiv" class="style-box">
-          <h2 id="mainTreeHeader">Selected variants: <span id="currentSelectionNum">0</span>
+          <h2 id="mainTreeHeader"><span id="currentTreeFile">No tree loaded</span>
             <div id="treeSearchDiv">
               <div id="varSearchHitsDiv">
                 <button id="searchToSelectButton" class="control-element">
@@ -250,6 +254,7 @@
               <button id="treeZoomResetButton" class="control-element control-pair-right" type="button">Reset</button>
               <button id="scrollZoomButton" class="control-element" type="button"><span id="scrollZoomText">Scroll<br>Zoom</span><span id="scrollZoomStatus">Off</span></button>
             </div>
+            <label id="zoomGroupText" class="tree-control-div-title">Zoom</label>
           </div>
 
           <div id="treeSelectionDiv" class="tree-control-div" style="display:none">
@@ -276,6 +281,7 @@
               <button id="selectAllButton" class="control-element control-pair-left">Select all</button>
               <button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
             </div>
+            <label id="selectionGroupText" class="tree-control-div-title">Selection</label>
           </div>
 
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">

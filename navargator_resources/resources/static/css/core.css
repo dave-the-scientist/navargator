@@ -283,14 +283,20 @@ span {
   transform: translate3d(-2.5px, 0, 0) rotate(-45deg);
 }
 div.collapsible-panel {
+  display: flex;
+  flex-direction: column;
+
   margin: 0px;
   overflow: hidden;
   transition: .15s all;
   max-height: 0px; /* This is modified on click */
 }
-div.collapsible-panel > * {
+div.collapsible-panel > :not(div) {
   margin-top: 5px;
   margin-bottom: 5px;
+}
+div.collapsible-panel > hr {
+  width: 100%;
 }
 
 /* ======  Floating slide-out panes  ====== */
@@ -474,6 +480,19 @@ button.control-element:active {
   height: 14px;
   padding: 0px 1px;
   font-size: 0.7em;
+}
+#resetRedrawButtonsDiv {
+  display: flex;
+  justify-content: space-between;
+}
+#scaleBarDiv {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+#resetDisplayOptsButton, #redrawTreeButton {
+  margin-left: unset;
+  margin-right: unset;
 }
 
 /* ======  Normalization and scale bar inputs  ====== */

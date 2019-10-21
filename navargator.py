@@ -18,6 +18,7 @@ def new_random_port():
 
 # TODO:
 # - Actually put this together with the option menus.
+#   - When done, edit the IE warning message at the top of input.html to include the correct command line flag.
 # - Ensure that a message is printed indicating the server may hang, but ctrl-c can be used to stop the program at any time.
 
 # BUG reports:
@@ -37,12 +38,13 @@ if __name__ == '__main__':
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_session_id)
     else:
         input_file = sys.argv[1].strip()
+        file_name = os.path.basename(input_file)
         if input_file.lower().endswith('.nvrgtr'):
             vfinder = load_navargator_file(input_file, verbose=verbose)
             session_id = daemon.add_variant_finder(vfinder)
         else:
             tree_data = open(input_file).read().strip()
-            session_id = daemon.new_variant_finder(tree_data, tree_format)
+            session_id = daemon.new_variant_finder(tree_data, tree_format, file_name=file_name)
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, session_id)
 
     if manually_open_browser:

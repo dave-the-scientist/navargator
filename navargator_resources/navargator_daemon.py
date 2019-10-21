@@ -143,6 +143,7 @@ class NavargatorDaemon(object):
             try:
                 file_data = request.files['upload-file'].read()
                 file_format = request.form['tree_format']
+                file_name = request.form['file_name']
             except Exception as err:
                 return (str(err), 5505)
             vf, s_id, b_id, msg = self.get_instance(json_data=False)
@@ -150,10 +151,10 @@ class NavargatorDaemon(object):
                 return msg
             try:
                 if file_format == 'nvrgtr':
-                    vf = navargator_from_data(file_data.splitlines(), verbose=self.verbose)
+                    vf = navargator_from_data(file_data.splitlines(), file_name=file_name, verbose=self.verbose)
                     new_s_id = self.add_variant_finder(vf, browser_id=b_id)
                 else:
-                    new_s_id = self.new_variant_finder(file_data, file_format, browser_id=b_id)
+                    new_s_id = self.new_variant_finder(file_data, file_format, file_name=file_name, browser_id=b_id)
             except NavargatorCapacityError as err:
                 return (str(err), 5513)
             except PhyloParseError as err:
@@ -338,10 +339,10 @@ class NavargatorDaemon(object):
         def render_results_page():
             return render_template('results.html')
     # # # # #  Public methods  # # # # #
-    def new_variant_finder(self, tree_data, tree_format, browser_id='unknown', available=[], ignored=[], distance_scale=1.0):
+    def new_variant_finder(self, tree_data, tree_format, file_name='unknown file', browser_id='unknown', available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
-        vf = VariantFinder(tree_data, tree_format=tree_format, verbose=self.verbose)
+        vf = VariantFinder(tree_data, tree_format=tree_format, file_name=file_name, verbose=self.verbose)
         return self.add_variant_finder(vf, browser_id)
     def add_variant_finder(self, vf, browser_id='unknown'):
         s_id = self.generate_session_id()
@@ -441,10 +442,10 @@ class NavargatorDaemon(object):
             s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return s_id
     def get_vf_data_dict(self, s_id):
-        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'max_root_distance':0.0, 'maintain_interval':self.maintain_interval}
+        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'file_name':'unknown file', 'max_root_distance':0.0, 'maintain_interval':self.maintain_interval}
         vf = self.sessions.get(s_id)
         if vf != None:
-            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'max_root_distance':vf.max_root_distance})
+            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'file_name':vf.file_name, 'max_root_distance':vf.max_root_distance})
         return data_dict
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:

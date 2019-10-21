@@ -366,6 +366,7 @@ function checkForClusteringResults() {
         setTimeout(checkForClusteringResults, nvrgtr_page.check_results_interval);
       } else {
         $("#treeLoadingMessageGroup").remove();
+        $("#currentTreeFile").html(nvrgtr_data.file_name);
         parseClusteredData(data);
         drawBarGraphs();
         extendTreeLegend();
@@ -665,7 +666,11 @@ function clusterMouseclickHandler(var_name) {
   numSelectedCallback();
 }
 function numSelectedCallback() {
-  $("#currentSelectionNum").html(nvrgtr_data.num_selected);
+  if (nvrgtr_data.num_selected == 0) {
+    $("#selectionGroupText").html('Selection');
+  } else {
+    $("#selectionGroupText").html(nvrgtr_data.num_selected+' selected');
+  }
 }
 function selectNamesByThreshold(threshold, select_below) {
   // Could implement a short-circuit in case the threshold hasn't changed.
