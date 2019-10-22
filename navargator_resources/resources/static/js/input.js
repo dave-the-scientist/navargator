@@ -2,8 +2,6 @@
 
 // TODO:
 // - For test_tree_4173, clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
-// - I could re-design the select all / clear button group. Maybe button starts as "[All | X]"; on mouseover of left, the dividing border could move to the right, making "X" smaller and changing text to "Select all"; likewise on mouseover of right side, it expands and the left button shrinks.
-//   - Could be 'none' instead of 'clear'.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
 // - When loading input.html on the web version, the display options are not filled out. That happens when a tree is actually loaded.
@@ -62,7 +60,7 @@ function setupPage() {
   setupDisplayOptionsPane();
   setupNormalizationPane();
   setupRunOptions();
-  setupScoresGraph();
+  setupResultsPane();
   setupVariantSelection();
   setupUploadSaveButtons();
   setupManipulationsPane();
@@ -126,6 +124,7 @@ function setupUploadSaveButtons() {
       cache: false,
       processData: false,
       success: function(data_obj) {
+        nvrgtr_display_opts.sizes.scale_bar_distance = 0.0; // Resets the scale bar distance, so a default value will be calculated
         newTreeLoaded(data_obj);
       },
       error: function(error) {
@@ -377,6 +376,9 @@ function setupRunOptions() {
   });
   $("#findVariantsButton").button('disable');
 }
+function setupResultsPane() {
+  setupScoresGraph();
+}
 function setupScoresGraph() {
   var total_width = nvrgtr_settings.graph.total_width, total_height = nvrgtr_settings.graph.total_height, margin = nvrgtr_settings.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
   // Set up svg and g objects:
@@ -604,12 +606,22 @@ function updateResultsPane(num_vars, num_vars_range) {
     if (nvrgtr_data.result_links.hasOwnProperty(var_num)) { continue; }
     results_url = nvrgtr_page.server_url + '/results?' + nvrgtr_page.session_id + '_' + var_num;
     result_description = var_num + ' clusters';
-    result_link_obj = $('<a href="'+results_url+'" title="'+result_description+'" target="_blank">'+result_description+' [processing...]</a>');
+    result_link_obj = $('<a class="result-link" href="'+results_url+'" title="'+result_description+'" target="_blank">'+result_description+' [processing...]</a>');
     result_list_obj = result_link_obj.wrap('<li class="result-link-li">').parent();
     result_list_obj.attr("variantNumber", var_num);
     links_list.append(result_list_obj);
     nvrgtr_data.result_links[var_num] = {'url':results_url, 'link':result_link_obj, 'score':null};
     nvrgtr_data.result_links.var_nums.push(var_num);
+    // Update the display options just-in-time before a results page is opened.
+    result_link_obj.click(function() {
+      $.ajax({
+        url: daemonURL('/update-display-options'),
+        type: 'POST',
+        contentType: "application/json",
+        data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'display_opts':nvrgtr_display_opts}),
+        error: function(error) { processError(error, "Error updating display options"); }
+      });
+    });
   }
   // Sort the internal representation of the results:
   nvrgtr_data.result_links.var_nums.sort(function(a,b) { return a-b; });
@@ -811,7 +823,7 @@ function numSelectedCallback() {
   if (nvrgtr_data.num_selected == 0) {
     $("#selectionGroupText").html('Selection');
   } else {
-    $("#selectionGroupText").html(nvrgtr_data.num_selected+' selected');
+    $("#selectionGroupText").html('<b>'+nvrgtr_data.num_selected+'</b> selected');
   }
   // Update assigned labels and controlling variable:
   if (nvrgtr_data.assigned_selected == 'chosen') {

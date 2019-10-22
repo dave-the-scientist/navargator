@@ -1,8 +1,6 @@
 // NOTE:
 
 // TODO:
-// - Would be nice to have an ajax call update the vf display options when the user minimizes the display options section.
-//   - As it is, if a user sets options then clusters, it transfers those selections. But if they cluster, look at results, then go back to change something, they'd have to run another clustering run (or re-root, etc) to get the changes into results. Or maybe I can do that when a user clicks a results link? That would really ensure changes always get transfered.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
 // - Test the defaults in updateDefaultDisplayOpts() with various sized trees.
@@ -22,7 +20,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'r_paper':null, 'pan_zoom':null, 'max_root_distance':0.0, 'max_root_pixels':0.0
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
   'graph' : {
@@ -34,7 +32,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
   },
   'sizes' : {
-    'tree':700, 'max_variant_name_length':15, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
+    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
   },
   'colours' : {
     'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
@@ -357,10 +355,9 @@ function validateDisplayOption(category, key, new_val) {
   }
   return value;
 }
-function updateDisplayOptions(display_opts={}) {
-  // Sets nvrgtr_display_opts to the default values, updated by the passed 'opts' object. So if 'opts' is empty, nvrgtr_display_opts will be reset to default values. Any display options passed will be validated before being accepted.
+function updateDisplayOptions(display_opts) {
+  // Updates nvrgtr_display_opts. If an option is not present in the passed obj, the current value will be used. Any display options passed will be validated before being accepted.
   var new_opts = {}, new_val;
-  //$.each(nvrgtr_default_display_opts, function(category, opts) {
   $.each(nvrgtr_display_opts, function(category, opts) {
     if (category in display_opts) { // validate the passed options.
       new_opts[category] = {};

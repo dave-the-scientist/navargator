@@ -164,6 +164,14 @@ class NavargatorDaemon(object):
             if s_id != '': # It's '' only from the input page on the web server.
                 self.connections.close(s_id, b_id) # Since the new session was created successfully.
             return json.dumps(self.get_vf_data_dict(new_s_id))
+        @self.server.route(self.daemonURL('/update-display-options'), methods=['POST'])
+        def update_display_options():
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            display_opts = request.json['display_opts']
+            vf.display_options = display_opts
+            return "display options updated for {}".format(s_id)
         @self.server.route(self.daemonURL('/reroot-tree'), methods=['POST'])
         def reroot_tree():
             vf, s_id, msg = self.update_or_copy_vf()

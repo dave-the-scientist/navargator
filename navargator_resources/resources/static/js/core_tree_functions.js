@@ -1,5 +1,5 @@
 //TODO:
-// - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is legative space for the tree on the canvas. Check for this. Related: in those cases a negative value is passed to updateScaleBar, which should never happen. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
+// - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is negative space for the tree on the canvas. Check for this. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
 
 // =====  Tree setup functions:
 function setupTreeElements() {
@@ -282,7 +282,7 @@ function drawTree(marker_tooltips=true) {
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
   updateTreeLegend(); // Must be called after setting figureSvg height.
-  updateScaleBar();
+  updateScaleBar(sizes.scale_bar_distance);
 }
 function drawVariantObjects(marker_tooltips) {
   // Collects coordinates and angles for nodes and their names, and creates their markers and highlights.
@@ -394,6 +394,7 @@ function updateScaleBar(bar_dist) {
     bar_dist = findNiceNumber(min_pix*px_scale_factor, max_pix*px_scale_factor);
   }
   bar_px = bar_dist / px_scale_factor;
+  nvrgtr_display_opts.sizes.scale_bar_distance = bar_dist;
   // Reconfigure the scale bar to that size:
   var bar_text_dist = 7, bar_buffer = 3;
   var bar_xoffset = parseFloat($("#figureSvg").attr('width')) - bar_px - bar_buffer,
