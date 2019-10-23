@@ -72,6 +72,7 @@ function setupPage() {
   setupDisplayOptionsPane();
   setupExportPane();
   setupTreeElements();
+  $("#treeLoadingMessageGroup").show();
 
   $.ajax({
     url: daemonURL('/get-basic-data'),
@@ -84,6 +85,8 @@ function setupPage() {
       $("#numClustersSpan").html(nvrgtr_data.num_variants);
       $("#numNodesSpan").html(nvrgtr_data.leaves.length);
       redrawTree(true);
+      $("#treeGroup").attr("opacity", "0.4"); // Fades the tree and
+      $("#calculatingMessageGroup").show();   // displays the loading message
       checkForClusteringResults();
     },
     error: function(error) { processError(error, "Error loading input data from the server"); }
@@ -365,7 +368,8 @@ function checkForClusteringResults() {
       if (data.variants == false) {
         setTimeout(checkForClusteringResults, nvrgtr_page.check_results_interval);
       } else {
-        $("#treeLoadingMessageGroup").remove();
+        $("#calculatingMessageGroup").remove();
+        $("#treeGroup").attr("opacity", "1.0");
         $("#currentTreeFile").html(nvrgtr_data.file_name);
         parseClusteredData(data);
         drawBarGraphs();

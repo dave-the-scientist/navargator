@@ -1,11 +1,10 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// - Think I might be overwriting the size-specific display options. Ensure they're being used.
 // - For test_tree_4173, clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
-// - When loading input.html on the web version, the display options are not filled out. That happens when a tree is actually loaded.
-//   - Should be an easy fix, just reset the display options to default in the 'else' clause of the conditional that initially calls /get-basic-data
 // - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
@@ -47,12 +46,12 @@ function setupPage() {
   initializeErrorPopupWindow();
   initializeCollapsibleElements();
   initializeFloatingPanes();
+
   nvrgtr_page.session_id = location.search.slice(1);
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
-  //These can be screwed over by a race condition. If so, may help to use parseInt(getComputedStyle($("#scoreGraphSvg")[0]).getPropertyValue('width').slice(0,-2));
 
-  // These calls can occasionally incorrectly return 0. This is checked in updateScoreGraph()
+  // These calls can occasionally incorrectly return 0 from a race condition. This is checked in updateScoreGraph()
   nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
   nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
 
@@ -66,7 +65,10 @@ function setupPage() {
   setupManipulationsPane();
 
   if (nvrgtr_page.session_id != '') {
-    // This is only run for the local version.
+    // The instance is from the local version of NaVARgator
+    if (nvrgtr_page.session_id != 'local_input_page') {
+      showTreeLoading();
+    }
     $.ajax({
       url: daemonURL('/get-basic-data'),
       type: 'POST',
@@ -74,13 +76,15 @@ function setupPage() {
       data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id}),
       success: function(data_obj) {
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
-          $("#loadInputHeader").click(); //   open collapsible pane.
+          $("#loadInputHeader").click(); //   open collapsible pane
+          // Display options are set to default by parseBasicData()
         }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
-  } else {
+  } else { // The instance is from the online version of NaVARgator
     $("#loadInputHeader").click(); // Opens collapsible pane
+    processDisplayOptions(nvrgtr_default_display_opts); // Sets display options to default
   }
 }
 function setupUploadSaveButtons() {
@@ -116,6 +120,7 @@ function setupUploadSaveButtons() {
     form_data.append('browser_id', nvrgtr_page.browser_id);
     form_data.append('tree_format', selected_file_type);
     form_data.append('file_name', file_obj.name);
+    showTreeLoading();
     $.ajax({
       type: 'POST',
       url: daemonURL('/upload-tree-file'),
@@ -164,6 +169,7 @@ function setupManipulationsPane() {
   });
   $("#reorderNodesButton").attr("increasing", "true"); // Sets order direction
   $("#reorderNodesButton").click(function() {
+    showTreeLoading();
     $.ajax({
       url: daemonURL('/reorder-tree-nodes'),
       type: 'POST',
@@ -191,6 +197,7 @@ function setupManipulationsPane() {
       showErrorPopup("Error: the truncation length for tree names must be a number >= "+trunc_name_min);
       return false;
     }
+    showTreeLoading();
     $.ajax({
       url: daemonURL('/truncate-tree-names'),
       type: 'POST',
@@ -202,6 +209,7 @@ function setupManipulationsPane() {
       },
       error: function(error) {
         $("#truncateNamesSpinner").spinner('value', $("#truncateNamesSpinner").attr("last_good_value"));
+        $("#treeLoadingMessageGroup").hide();
         processError(error, "Error truncating the tree names");
       }
     });
@@ -483,9 +491,10 @@ function setupVariantSelection() {
     clearAssignedButtonHandler(event, 'ignored', ignored_assigned_div);
   });
 }
+
 $(document).ready(function(){
   // Called once the document has loaded.
-  setTimeout(setupPage, 10); // setTimeout is used because otherwise the setInterval call sometimes hangs. I think it's due to the page not being ready when the call happens. I no longer believe that, and I think those issues were caused by the html document loading the js files asynch. Should be fixed now.
+  setTimeout(setupPage, 10);
 });
 $(window).bind('beforeunload', function() {
   // Lets the background server know this instance has been closed.
@@ -493,6 +502,11 @@ $(window).bind('beforeunload', function() {
 });
 
 // =====  Page udating:
+function showTreeLoading() {
+  clearTree();
+  $("#introMessageGroup").remove();
+  $("#treeLoadingMessageGroup").show();
+}
 function newTreeLoaded(data_obj) {
   // Returns true if a tree was loaded, false otherwise.
   $("#clearSelectionButton").click();
@@ -501,13 +515,12 @@ function newTreeLoaded(data_obj) {
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   if (nvrgtr_data.tree_data) {
     setNormalizationMethod();
-    $("#introMessageGroup").remove();
     $("#treeSelectionDiv").show();
     $("#treeControlsDiv").show();
     $("#treeLegendLeftGroup").show();
     $("#treeScaleBarGroup").show();
     $("#currentTreeFile").html(nvrgtr_data.file_name);
-    redrawTree();
+    redrawTree(); // May take a long time for large trees
     $("#uploadFileInput").val('');
     $("#saveSessionButton").button('enable');
     $("#uploadFileButton").button('disable');
@@ -730,6 +743,7 @@ function updateVariantColoursFollowup() {
 // =====  Callback and event handlers:
 function rerootTree(method) {
   var selected_names = Object.keys(nvrgtr_data.selected);
+  showTreeLoading();
   $.ajax({
     url: daemonURL('/reroot-tree'),
     type: 'POST',

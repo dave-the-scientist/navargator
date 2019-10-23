@@ -9,23 +9,26 @@
 #mainLeftDiv {
   display: inline-flex;
   flex-direction: column;
-  /*--left-col-width: 250px;*/
-
 }
 #inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
   width: var(--left-col-width);
 }
 #mainVariantSelectDiv {
-  min-width: 280px;/* 400px;*/
+  min-width: 220px;/* 400px;*/
   margin-right: 0px;
 }
 
 /* Load input settints: */
-#loadInputPanel {
-  align-items: flex-start;
-}
 #loadInputPanel > * {
   margin-left: 0px;
+}
+#loadInputSelectButtonDiv {
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#uploadFileTypeSelect {
+  width: 140px;
 }
 
 /* Tree manipulation settings: */

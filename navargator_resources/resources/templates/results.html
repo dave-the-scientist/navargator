@@ -297,13 +297,18 @@
               <text x="18" y="74" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Ignored variant</text>
             </g>
             <g id="treeScaleBarGroup" style="display:none">
-              <text id="treeScaleBarText" x="624" y="0" text-anchor="middle" style="font-size:14px; font-family:Helvetica,Arial,sans-serif">13.42</text>
+              <text id="treeScaleBarText" x="624" y="0" text-anchor="middle" style="font-size:14px; font-family:Helvetica,Arial,sans-serif">Scale</text>
               <line id="treeScaleBar" x1="549" y1="7" x2="699" y2="7" style="stroke:black;stroke-width:1"></line>
             </g>
-            <g id="treeLoadingMessageGroup">
-              <rect x="5" y="5" width="690" height="690" style="fill:white;fill-opacity:0.7" />
-              <text x="100" y="140" style="font-size:28px; font-family:Helvetica,Arial,sans-serif">Clustering calculations in progress...</text>
-              <text x="40" y="250" style="font-size:28px; font-family:Helvetica,Arial,sans-serif">This page will automatically update when finished.</text>
+            <g id="treeLoadingMessageGroup" style="display:none;">
+              <text x="5" y="70" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Loading and drawing tree...</text>
+            </g>
+            <g id="calculatingMessageGroup" style="display:none;">
+              <text x="5" y="70" style="font-size:28px; font-family:Helvetica,Arial,sans-serif">Clustering calculations in progress...</text>
+              <text x="5" y="140" style="font-size:28px; font-family:Helvetica,Arial,sans-serif">
+                <tspan>This page will automatically update</tspan>
+                <tspan x="5" dy="35">when finished.</tspan>
+              </text>
             </g>
           </svg>
           <div id="svgCanvas"></div>

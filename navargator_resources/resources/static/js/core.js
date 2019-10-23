@@ -254,6 +254,7 @@ function setupDisplayOptionsPane() {
     // Clear any searches
     $("#varSearchInput").val('');
     $("#varSearchButton").click();
+    showTreeLoading();
     redrawTree();
   });
   $("#redrawTreeButton").button('disable');
@@ -526,7 +527,7 @@ function changeSessionID(new_s_id) {
     url: daemonURL('/instance-closed'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({'session_id':old_s_id, 'browser_id': nvrgtr_page.browser_id}),
+    data: JSON.stringify({'session_id':old_s_id, 'browser_id':nvrgtr_page.browser_id}),
     error: function(error) {
       console.log("Error closing your instance:");
       console.log(error);

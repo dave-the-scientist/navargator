@@ -66,15 +66,17 @@
               <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
                 <input id="uploadFileInput" name="upload-file" type="file">
               </form>
-              <select id="uploadFileTypeSelect">
-                <option selected value="auto">Auto-detect tree format</option>
-                <option value="nvrgtr">NaVARgator file</option>
-                <option value="newick">Newick tree</option>
-                <option value="nexus">NEXUS tree</option>
-                <option value="phyloxml">PhyloXML tree</option>
-                <option value="nexml">NeXML tree</option>
-              </select>
-              <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
+              <div id="loadInputSelectButtonDiv">
+                <select id="uploadFileTypeSelect">
+                  <option selected value="auto">Auto-detect tree format</option>
+                  <option value="nvrgtr">NaVARgator file</option>
+                  <option value="newick">Newick tree</option>
+                  <option value="nexus">NEXUS tree</option>
+                  <option value="phyloxml">PhyloXML tree</option>
+                  <option value="nexml">NeXML tree</option>
+                </select>
+                <button id="uploadFileButton" class="jq-ui-button"><b>Load file</b></button>
+              </div>
             </div>
 
             <h2 class="collapsible-header">Tree manipulations</h2>
@@ -307,9 +309,9 @@
 
           <svg id="figureSvg" xmlns="http://www.w3.org/2000/svg" version="1.1">
             <g id="introMessageGroup">
-              <text x="10" y="20" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:
-                <tspan x="20" y="50" style="font-size:17px">Choose a phylogenetic tree or a previously saved .nvrgtr session file.</tspan>
-                <tspan x="20" y="80" style="font-size:17px">Press "Load file".</tspan>
+              <text x="5" y="20" style="font-size:25px;font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:
+                <tspan x="5" y="50" style="font-size:17px">Choose a phylogenetic tree or a previously saved .nvrgtr session file.</tspan>
+                <tspan x="5" y="80" style="font-size:17px">Press "Load file".</tspan>
               </text>
             </g>
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
@@ -324,8 +326,11 @@
               <text x="18" y="74" style="font-size:12px; font-family:Helvetica,Arial,sans-serif">Ignored variant</text>
             </g>
             <g id="treeScaleBarGroup" style="display:none">
-              <text id="treeScaleBarText" x="624" y="0" text-anchor="middle" style="font-size:14px; font-family:Helvetica,Arial,sans-serif">13.42</text>
+              <text id="treeScaleBarText" x="624" y="0" text-anchor="middle" style="font-size:14px; font-family:Helvetica,Arial,sans-serif">Scale</text>
               <line id="treeScaleBar" x1="549" y1="7" x2="699" y2="7" style="stroke:black;stroke-width:1"></line>
+            </g>
+            <g id="treeLoadingMessageGroup" style="display:none;">
+              <text x="5" y="70" style="font-size:25px; font-family:Helvetica,Arial,sans-serif">Loading and drawing tree...</text>
             </g>
           </svg>
           <div id="svgCanvas"></div>

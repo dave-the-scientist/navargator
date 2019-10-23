@@ -234,11 +234,11 @@ function clearTree() {
   $("#treeGroup").empty();
 }
 function drawTree(marker_tooltips=true) {
+  // Assumes that clearTree() has already been called.
+  // Assumes the "Loading..." message has already been shown: $("#treeLoadingMessageGroup").show()
+
   var min_tree_div_width = 500;
-
-  clearTree();
   loadPhyloSVG(); // Reloads jsPhyloSVG.
-
   var tree_params = Smits.PhyloCanvas.Render.Parameters,
     tree_style = Smits.PhyloCanvas.Render.Style,
     sizes = nvrgtr_display_opts.sizes;
@@ -283,6 +283,8 @@ function drawTree(marker_tooltips=true) {
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
   updateTreeLegend(); // Must be called after setting figureSvg height.
   updateScaleBar(sizes.scale_bar_distance);
+
+  $("#treeLoadingMessageGroup").hide(); // Hides the "Loading..." message
 }
 function drawVariantObjects(marker_tooltips) {
   // Collects coordinates and angles for nodes and their names, and creates their markers and highlights.
