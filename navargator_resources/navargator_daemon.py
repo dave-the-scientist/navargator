@@ -61,7 +61,7 @@ class NavargatorDaemon(object):
         self.sessions = {} # Holds the navargator instances, with session IDs as keys.
         self.job_queue = JobQueue(threads)
         # # #  Options to secure the server:
-        max_upload_size = 1024*1024 * 10 # 10 MB; maximum allowed file size
+        max_upload_size = 1024*1024 * 20 # 20 MB; maximum allowed upload file size
         inactive_time = 3600 # Seconds of inactivity before sessions time out (server only)
         inactive_num = 100 # Number of sessions allowed before inactive_time is used (server only)
         max_sessions = 200 # The hard cap on the number of concurrent sessions (server only)
@@ -242,7 +242,7 @@ class NavargatorDaemon(object):
             else:
                 saved_locally = False
                 nvrgtr_str = vf.get_navargator_string()
-            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str, 'filename':default_filename})
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str, 'filename':default_filename}, ensure_ascii=False)
         @self.server.route(self.daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
             vf, s_id, msg = self.update_or_copy_vf()

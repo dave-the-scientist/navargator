@@ -2,34 +2,63 @@
 Defines the following public functions:
   load_navargator_file(file_path)
 """
-import os, sys, itertools, random, time
+import os, sys, itertools, random, time, base64
 from math import log, exp
+from io import BytesIO
 from copy import deepcopy
 import numpy as np
 from navargator_resources import phylo
 from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
 
-if sys.version_info >= (3,0):
-    basestring = str
-def to_string(string, py3=sys.version_info >= (3,0)):
-    if py3:
-        return str(string, 'utf-8')
-    else:
-        return string
 
 # TODO:
-# - Finish writing process_tag_data() to process display options.
+# - Finish cleaning up and moving the new dist mat saving functions
+# - See how much load time is saved on the massive tree by saving the dist mat. ensure it works, see how insane the file size is, etc. double check saving nvrgtr via js also works.
+# - Saving the distance matrix increases the file size exponentially. have an option to skip it (also have to implement a checkbox in input.html to specify this).
+# - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 # - Implement threshold clustering.
 
+# NOTE:
+# - I originally had allowed comments in nvrgtr files, but large encoded distance matrices spawned too many random characters that duplicated it.
+
+
 # # # # #  Session file strings  # # # # #
-comment_prefix = '//'
 tag_affixes = ('[(', ')]')
 chosen_nodes_tag = 'Chosen variants'
 available_nodes_tag = 'Available variants'
 ignore_nodes_tag = 'Ignored variants'
 display_options_tag = 'Display options - ' # The option category string is appended to this.
 tree_data_tag = 'Newick tree'
+dist_matrix_tag = 'Distance matrix'
+
+
+# MOVE these functions to appropriate places. in vf class, or below loading scripts. fill out the documentation first, as they're a little complex
+def flatten_distance_matrix(dist):
+    """As dist is symmetrical, this keeps only the upper triangluar values in order to save space."""
+    inds = np.triu_indices(dist.shape[0])
+    return dist[inds]
+def unflatten_distance_matrix(flat):
+    """Takes a flattened array of the upper trianglular values of a distance matrix, and rebuilds the full symmetrical distance matrix."""
+    # WHEN THIS IS USED, ENSURE A TRY BLOCK WILL CATCH ERRORS. they mean the data has been corrupted
+    # (size * (size+1)) / 2 = len(flat)
+    size = int(round(max(np.roots([1, 1, -2*len(flat)])))) # Solves quadratic. The 'round' is very needed to deal with floating point errors.
+    inds = np.triu_indices(size)
+    dist = np.zeros((size, size))
+    dist[inds] = flat
+    return dist + np.tril(dist.T, -1)
+def encode_distance_matrix(dist):
+    """."""
+    flat = flatten_distance_matrix(dist)
+    with BytesIO() as b:
+        np.save(b, flat, allow_pickle=False)
+        bin_data = b.getvalue() # Bytes object, can't be JSON serialized
+    encoded = base64.encodestring(bin_data).decode('ascii') # str/unicode, can be JSON serialized
+    return encoded
+def decode_distance_matrix(encoded):
+    bin_data = base64.decodestring(encoded.encode()) # From ascii string to Bytes object
+    flat = np.load(BytesIO(bin_data), allow_pickle=False)
+    return unflatten_distance_matrix(flat)
 
 # # # # #  Misc functions  # # # # #
 def load_navargator_file(file_path, verbose=True):
@@ -40,7 +69,7 @@ def load_navargator_file(file_path, verbose=True):
     if verbose:
         print('Loading information from %s...' % file_path)
     file_name = os.path.basename(file_path)
-    with open(file_path, 'rb') as f:
+    with open(file_path, 'r') as f:
         vfinder = navargator_from_data(f, file_name=file_name, verbose=verbose)
     return vfinder
 def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
@@ -49,7 +78,7 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     def process_tag_data(tag, data_buff):
         tag = tag.capitalize()
         if tag in data:
-            raise NavargatorValidationError('Error: the given NaVARgator session file has multiple sections labeled "[({})]".'.format(tag))
+            raise NavargatorValidationError('Error: the given NaVARgator session file has multiple sections labeled "{}{}{}".'.format(tag_affixes[0], tag, tag_affixes[1]))
         if not data_buff:
             return
         if tag in (chosen_nodes_tag, available_nodes_tag, ignore_nodes_tag): # These data to be split into lists
@@ -64,13 +93,15 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
                 cat_dict[opt.strip()] = val.strip()
         elif tag == tree_data_tag: # These data are stored as a single string
             data[tag] = data_buff[0]
+        elif tag == dist_matrix_tag:
+            data[tag] = '\n'.join(data_buff) + '\n'
         else:
             data[tag] = data_buff
     # End of process_tag_data()
     tag, data_buff = '', []
     for line in data_lines:
-        line = to_string(line.strip())
-        if not line or line.startswith(comment_prefix): continue
+        line = line.strip()
+        if not line: continue
         if line.startswith(tag_affixes[0]) and line.endswith(tag_affixes[1]):
             process_tag_data(tag, data_buff)
             tag, data_buff = line[len(tag_affixes[0]):-len(tag_affixes[1])], []
@@ -82,9 +113,16 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
         tree_data = data[tree_data_tag]
     except KeyError:
         raise NavargatorValidationError('Error: could not identify the tree data in the given NaVARgator session file.')
-
+    # Check if some optional information is present:
     display_options = data.get(display_options_tag, {})
-    vfinder = VariantFinder(tree_data, tree_format='newick', file_name=file_name, display_options=display_options, verbose=verbose)
+    encoded_distance_matrix = data.get(dist_matrix_tag)
+    if encoded_distance_matrix:
+        distance_matrix = decode_distance_matrix(encoded_distance_matrix)
+    else:
+        distance_matrix = None
+    # Create the VF object:
+    vfinder = VariantFinder(tree_data, tree_format='newick', file_name=file_name, display_options=display_options, distance_matrix=distance_matrix, verbose=verbose)
+    # Fill out the assigned variants if present:
     chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
         vfinder.chosen = chsn
@@ -126,7 +164,7 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='auto', file_name='unknown file', display_options=None, verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='auto', file_name='unknown file', display_options=None, distance_matrix=None, verbose=True, _blank_init=False):
         self.file_name = file_name
         self.verbose = bool(verbose)
         self.leaves = []
@@ -150,7 +188,15 @@ class VariantFinder(object):
                 self.tree = phylo.load_nexml_string(tree_input)
             else:
                 raise NavargatorValueError("Error: the tree format '{}' was not recognized.".format(tree_format))
-            self.leaves, self.orig_dist = self.tree.get_distance_matrix()
+            if distance_matrix is not None:
+                self.leaves = self.tree.get_named_leaves()
+                if type(distance_matrix) != type(np.zeros(1)):
+                    raise NavargatorValueError("Error: cannot initiate VariantFinder with the given 'distance_matrix' as it is an unknown object type")
+                elif distance_matrix.shape != (len(self.leaves), len(self.leaves)):
+                    raise NavargatorValueError("Error: cannot initiate VariantFinder with the given 'distance_matrix' as its shape {} is incompatible with the  given tree of length {}".format(distance_matrix.shape, len(self.leaves)))
+                self.orig_dist = distance_matrix
+            else:
+                self.leaves, self.orig_dist = self.tree.get_distance_matrix()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             self.dist = self.orig_dist.copy()
             max_name_length = self.display_options.setdefault('sizes', {}).get('max_variant_name_length', None)
@@ -327,7 +373,9 @@ class VariantFinder(object):
                     buff.append(tag_format_str.format(cat_tag, cat_opts))
         # Write tree data
         buff.append(tag_format_str.format(tree_data_tag, self.newick_tree_data))
-        # TODO: Write distance matrix
+        # Write distance matrix if requested
+        buff.append(tag_format_str.format(dist_matrix_tag, encode_distance_matrix(self.dist)))
+        data_string = encode_distance_matrix(self.dist)
         return '\n\n'.join(buff)
 
     def copy(self):
@@ -510,8 +558,6 @@ class VariantFinder(object):
         return self._chosen
     @chosen.setter
     def chosen(self, names):
-        if isinstance(names, basestring):
-            names = [names]
         new_chosen = set()
         for node in names:
             node = self._validate_node_name(node)
@@ -528,8 +574,6 @@ class VariantFinder(object):
         return self._ignored
     @ignored.setter
     def ignored(self, names):
-        if isinstance(names, basestring):
-            names = [names]
         new_ignored = set()
         new_ingroup_inds = set(range(len(self.leaves)))
         for node in names:
@@ -549,8 +593,6 @@ class VariantFinder(object):
         return self._available
     @available.setter
     def available(self, names):
-        if isinstance(names, basestring):
-            names = [names]
         new_avail = set()
         for node in names:
             node = self._validate_node_name(node)
