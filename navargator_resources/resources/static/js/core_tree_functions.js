@@ -1,5 +1,6 @@
 //TODO:
 // - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is negative space for the tree on the canvas. Check for this. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
+// - The button to allow search results to be added to the selection doesn't show up on the 4173 tree (and the 1399). The search itself works fine, and I can click the button using js, but it's just not visible.
 
 // =====  Tree setup functions:
 function setupTreeElements() {

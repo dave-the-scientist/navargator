@@ -97,6 +97,11 @@
   fill: #000;
   font: 10px sans-serif;
 }
+.histo-line {
+  stroke-width: 2px;
+  stroke: var(--dark-background-colour);
+  fill: none;
+}
 #histoSlider {
   margin: 0px 18px 5px 18px;
 }

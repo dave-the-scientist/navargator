@@ -231,17 +231,18 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg
             default_filename = 'navargator_session.nvrgtr'
+            include_distances = request.json['include_distances']
             if saveAs and self.web_server == False:
                 root = tk_root()
                 root.withdraw()
                 filename = saveAs(initialdir=os.getcwd(), initialfile=default_filename)
                 root.destroy()
                 if filename:
-                    vf.save_navargator_file(filename)
+                    vf.save_navargator_file(filename, include_distances=include_distances)
                 saved_locally, nvrgtr_str = True, ''
             else:
                 saved_locally = False
-                nvrgtr_str = vf.get_navargator_string()
+                nvrgtr_str = vf.get_navargator_string(include_distances=include_distances)
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str, 'filename':default_filename}, ensure_ascii=False)
         @self.server.route(self.daemonURL('/find-variants'), methods=['POST'])
         def find_variants():

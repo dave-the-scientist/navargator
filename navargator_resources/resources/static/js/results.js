@@ -9,7 +9,7 @@ $.extend(nvrgtr_page, {
 });
 $.extend(nvrgtr_data, {
   'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[],
-  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'bins':null, 'x_axis':null, 'y_axis':null, 'x_ticks':[]}
+  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[]}
 });
 $.extend(nvrgtr_settings.graph, {
   'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
@@ -22,8 +22,10 @@ $.extend(nvrgtr_settings.graph, {
 
 //TODO:
 // - Implement button to export the distance histogram as an image.
-// - Option to toggle between histogram and cumulative graph.
-//   - Cumulative graph doesn't need bins, can be continuous on x-axis. y-axis is always num of sequences, or maybe percent.
+// - Finish writing updateHistoGraph()
+//   - Cumulative graph has right axis, and is total number (not percent). It should only go to the zero on the x axis I think (not over the 'chosen' bar).
+//   - As user moves the slider, I'd like a circle to follow it on the cdf line, and have the space below the line to that point get some coloured (but partly see through) fill.
+//   - When the user hits the "variants below" button, the cdf should invert (so it's low on the right side, 100% at left side). The coloured area should also switch sides.
 //   - Once thresholds are implemented, can have option to colour the x-axis of this and histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - The summary stats pane text moves around depending on the number of decimals of the avg dists.
@@ -378,8 +380,8 @@ function checkForClusteringResults() {
         updateNormalizationPane();
         drawClusters();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
-        drawDistanceHistogram();
-        updateHistoSlider(); // Must be after drawDistanceHistogram
+        drawDistanceGraphs();
+        updateHistoSlider(); // Must be after drawDistanceGraphs
         $("#treeSelectionDiv").show();
         $("#treeControlsDiv").show();
         $("#treeLegendLeftGroup").show();
@@ -539,7 +541,7 @@ function updateClusterTransColourFollowup(key, trans_comp) {
 }
 function normalizeResults() {
   updateBarGraphHeights();
-  updateHistogram();
+  updateDistanceGraphs();
   updateHistoSlider();
 }
 function updateBarGraphHeights() {
@@ -554,7 +556,8 @@ function updateBarGraphHeights() {
     }
   }
 }
-function drawDistanceHistogram() {
+function drawDistanceGraphs() {
+  // Only called once to initiate the graphs
   var margin = nvrgtr_settings.graph.margin,
     total_width = nvrgtr_settings.graph.total_width,
     total_height = nvrgtr_settings.graph.total_height;
@@ -572,6 +575,9 @@ function drawDistanceHistogram() {
   nvrgtr_data.graph.y_fxn = d3.scaleLinear()
     .range([0, nvrgtr_data.graph.height])
     .clamp(true);
+  nvrgtr_data.graph.y_fxn2 = d3.scaleLinear()
+    .range([0, nvrgtr_data.graph.height])
+    .domain([nvrgtr_data.sorted_names.length, 0]); // The other domains are dynomic, this one isn't
   // Graph title:
   /*svg.append("text")
     .attr("class", "histo-title")
@@ -582,11 +588,14 @@ function drawDistanceHistogram() {
   // Graph axes:
   nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
   nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn).tickValues([]).tickSize(0);
+  nvrgtr_data.graph.y_axis2 = d3.axisRight(nvrgtr_data.graph.y_fxn2);
   nvrgtr_data.graph.g.append("g")
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + nvrgtr_data.graph.height + ")");
   nvrgtr_data.graph.g.append("g")
     .attr("class", "y-axis");
+  nvrgtr_data.graph.g.append("g")
+    .attr("class", "y-axis2");
   var y_axis_vert_offset = 5, y_axis_horiz_offset = -6;
   nvrgtr_data.graph.g.append("text") // y axis label
     .attr("class", "histo-axis-label")
@@ -595,11 +604,26 @@ function drawDistanceHistogram() {
     .attr("y", 0 + y_axis_horiz_offset)
     .attr("transform", "rotate(-90)")
     .text("Number of variants");
-
+  // Calculate the cumulative data:
+  nvrgtr_data.graph.cumulative_data = [{'x':-10, 'y':0}]; // A zero for the graph. The negative x-value will be adjusted when the x-axis is modified.
+  var last_dist = -10, total = 0, cdata = nvrgtr_data.graph.cumulative_data, name, dist;
+  for (var i=0; i<nvrgtr_data.sorted_names.length; ++i) {
+    name = nvrgtr_data.sorted_names[i];
+    dist = nvrgtr_data.variant_distance[name];
+    total += 1;
+    if (dist == last_dist) {
+      cdata[cdata.length-1].y = total;
+    } else {
+      cdata.push({'x':dist, 'y':total});
+    }
+    last_dist = dist;
+  }
+  nvrgtr_data.graph.g.append("path").attr("class", "histo-line");
   // Draw the graph:
-  updateHistogram();
+  updateDistanceGraphs();
 }
-function updateHistogram() {
+function updateDistanceGraphs() {
+  // Called when the graph is first drawn, and when the normalization settings are changed.
   updateHistoBins();
   updateHistoGraph();
   updateHistoAxes();
@@ -712,6 +736,7 @@ function selectNamesByThreshold(threshold, select_below) {
 
 // =====  Graph functions:
 function updateHistoBins() {
+  // Don't need to adjust the cumulative graph, as it uses the same x-axis (which is getting update) and its y-axis never changes for a given tree.
   var x_ticks = calculateHistoTicks(nvrgtr_data.normalized_max_distance);
   nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
   nvrgtr_data.graph.x_fxn.domain([x_ticks[0], nvrgtr_data.nice_max_var_dist]); // Needed to include the final tick
@@ -734,6 +759,7 @@ function updateHistoBins() {
   }
   var max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
   nvrgtr_data.graph.y_fxn.domain([0, max_y]);
+  nvrgtr_data.graph.cumulative_data[0].x = x_ticks[0]; // Updates the one negative x value.
   nvrgtr_data.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
@@ -793,8 +819,24 @@ function updateHistoGraph() {
     })
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.exit().remove();
-  // A transparent full-sized rect on top to capture mouse events:
-  var bar_mouseovers = nvrgtr_data.graph.g.selectAll(".histo-overlay")
+
+  // Draw the cumulative line
+  var line_fxn = d3.line()
+    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.x) })
+    .y(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) })
+    .curve(d3.curveBasis);
+  nvrgtr_data.graph.g.select(".histo-line").raise()
+    .transition()
+    .attr("d", function() { return line_fxn(nvrgtr_data.graph.cumulative_data); });
+
+  // Also try .curveNatural, .curveCardinal, and .curveStep, as .curveBasis is an interpolation (doesn't pass through all points)
+  // Change y_fxn2 to return a percent instead of count. Add a final value to cumulative_data: x=final_x_tick(updated in updateHistoBins()), y=100; this will cause the graph to stay at 100% when x-axis is increased
+  // Transform the yaxis2 over to the right side, add label, set ticks [0%, 100%] increase the graph margins to hold this.
+  // Need 2nd line here that uses the same line_fxn (which should be moved to the setup phase), no stroke, but filled with semi-transparent. The fill needs to drop down to the axis (look for examples), and respond to a nvrgtr_data variable that is updated by the histo slider.
+  // There should be a circle that moves using the same fxn; don't know if that goes here or somewhere else. Though circle is probably not needed if the fill thing works. Though it might be nice to have a horizontal line go from circle to 2nd y-axis, give a good idea of percent.
+
+  // A transparent full-sized rect on top of the bars to capture mouse events:
+  var bar_mouseovers = nvrgtr_data.graph.g.selectAll(".histo-overlay").raise()
     .data(nvrgtr_data.graph.bins);
   bar_mouseovers.enter().append("rect")
     .attr("class", "histo-overlay")
@@ -838,6 +880,9 @@ function updateHistoAxes() {
   nvrgtr_data.graph.g.select(".y-axis")
     .transition()
     .call(nvrgtr_data.graph.y_axis);
+  nvrgtr_data.graph.g.select(".y-axis2")
+    .transition()
+    .call(nvrgtr_data.graph.y_axis2);
 }
 
 // =====  Data parsing:

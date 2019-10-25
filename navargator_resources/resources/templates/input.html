@@ -54,7 +54,7 @@
     <div id="pageDiv">
       <div id="headerDiv">
         <div id="headerInnerDiv">
-          <h1 title="NaVARgator">NaVARgator</h1>
+          <h1>NaVARgator</h1>
         </div>
       </div>
 
@@ -186,7 +186,13 @@
               </div>
               <hr>
             </div>
-            <button id="saveSessionButton" class="jq-ui-button">Save session file</button>
+            <div id="saveSessionDiv">
+              <button id="saveSessionButton" class="jq-ui-button">Save session</button>
+              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times, but can dramatically increase the file size for trees with over 500 leaves.">
+                <input id="sessionIncludeDistancesCheckbox" type="checkbox" checked />
+                <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">Include distances</label>
+              </label>
+            </div>
           </div>
 
           <div id="runOptionsDiv" class="style-box">

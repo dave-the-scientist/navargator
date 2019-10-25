@@ -12,15 +12,13 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 
 
 # TODO:
-# - Finish cleaning up and moving the new dist mat saving functions
-# - See how much load time is saved on the massive tree by saving the dist mat. ensure it works, see how insane the file size is, etc. double check saving nvrgtr via js also works.
-# - Saving the distance matrix increases the file size exponentially. have an option to skip it (also have to implement a checkbox in input.html to specify this).
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 # - Implement threshold clustering.
 
 # NOTE:
 # - I originally had allowed comments in nvrgtr files, but large encoded distance matrices spawned too many random characters that duplicated it.
+# - Calculating the distance matrix for a tree of 4173 leaves took around 67 seconds, while loading it's nvrgtr file took 4. The file was 94MB though.
 
 
 # # # # #  Session file strings  # # # # #
@@ -31,34 +29,6 @@ ignore_nodes_tag = 'Ignored variants'
 display_options_tag = 'Display options - ' # The option category string is appended to this.
 tree_data_tag = 'Newick tree'
 dist_matrix_tag = 'Distance matrix'
-
-
-# MOVE these functions to appropriate places. in vf class, or below loading scripts. fill out the documentation first, as they're a little complex
-def flatten_distance_matrix(dist):
-    """As dist is symmetrical, this keeps only the upper triangluar values in order to save space."""
-    inds = np.triu_indices(dist.shape[0])
-    return dist[inds]
-def unflatten_distance_matrix(flat):
-    """Takes a flattened array of the upper trianglular values of a distance matrix, and rebuilds the full symmetrical distance matrix."""
-    # WHEN THIS IS USED, ENSURE A TRY BLOCK WILL CATCH ERRORS. they mean the data has been corrupted
-    # (size * (size+1)) / 2 = len(flat)
-    size = int(round(max(np.roots([1, 1, -2*len(flat)])))) # Solves quadratic. The 'round' is very needed to deal with floating point errors.
-    inds = np.triu_indices(size)
-    dist = np.zeros((size, size))
-    dist[inds] = flat
-    return dist + np.tril(dist.T, -1)
-def encode_distance_matrix(dist):
-    """."""
-    flat = flatten_distance_matrix(dist)
-    with BytesIO() as b:
-        np.save(b, flat, allow_pickle=False)
-        bin_data = b.getvalue() # Bytes object, can't be JSON serialized
-    encoded = base64.encodestring(bin_data).decode('ascii') # str/unicode, can be JSON serialized
-    return encoded
-def decode_distance_matrix(encoded):
-    bin_data = base64.decodestring(encoded.encode()) # From ascii string to Bytes object
-    flat = np.load(BytesIO(bin_data), allow_pickle=False)
-    return unflatten_distance_matrix(flat)
 
 # # # # #  Misc functions  # # # # #
 def load_navargator_file(file_path, verbose=True):
@@ -117,7 +87,11 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     display_options = data.get(display_options_tag, {})
     encoded_distance_matrix = data.get(dist_matrix_tag)
     if encoded_distance_matrix:
-        distance_matrix = decode_distance_matrix(encoded_distance_matrix)
+        try:
+            distance_matrix = decode_distance_matrix(encoded_distance_matrix)
+        except Exception as err:
+            print('Warning: could not load the distance matrix from the .nvrgtr file as it appears to be corrupted; it will be calculated de novo. The generated error: {}'.format(err))
+            distance_matrix = None
     else:
         distance_matrix = None
     # Create the VF object:
@@ -131,6 +105,23 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     if ignor:
         vfinder.ignored = ignor
     return vfinder
+def decode_distance_matrix(encoded):
+    """Takes an ascii string representing a flattened numpy array, decodes it, then rebuilds and returns the full distance matrix."""
+    bin_data = base64.decodestring(encoded.encode()) # From ascii string to decoded Bytes object
+    flat = np.load(BytesIO(bin_data), allow_pickle=False) # Load the flattened numpy array
+    return unflatten_distance_matrix(flat)
+def unflatten_distance_matrix(flat):
+    """Takes a flattened array of the upper trianglular values of a distance matrix, and rebuilds the full symmetrical distance matrix."""
+    # (size * (size+1)) / 2 = len(flat)
+    size = int(round(max(np.roots([1, 1, -2*len(flat)])))) # Solves the quadratic equation. The 'round' is very needed to deal with floating point errors.
+    inds = np.triu_indices(size)
+    dist = np.zeros((size, size))
+    dist[inds] = flat
+    return dist + np.tril(dist.T, -1)
+def flatten_distance_matrix(dist):
+    """As dist is symmetrical, this keeps only the upper triangluar values in order to save space."""
+    inds = np.triu_indices(dist.shape[0])
+    return dist[inds]
 def binomial_coefficient(n, k):
     """Quickly computes the binomial coefficient of n-choose-k. This may not be exact due to floating point errors and the log conversions, but is close enough for my purposes."""
     try:
@@ -336,16 +327,16 @@ class VariantFinder(object):
         if self.verbose:
             print('\nTree saved to %s' % file_path)
 
-    def save_navargator_file(self, file_path):
+    def save_navargator_file(self, file_path, include_distances=True):
         if not file_path.lower().endswith('.nvrgtr'):
             file_path += '.nvrgtr'
-        nvrgtr_str = self.get_navargator_string()
+        nvrgtr_str = self.get_navargator_string(include_distances=include_distances)
         with open(file_path, 'w') as f:
             f.write(nvrgtr_str)
         if self.verbose:
             print('\nData saved to %s' % file_path)
 
-    def get_navargator_string(self):
+    def get_navargator_string(self, include_distances=True):
         tag_format_str = '{}{{:s}}{}\n{{:s}}'.format(*tag_affixes)
         buff = []
         if self.ignored:
@@ -374,9 +365,18 @@ class VariantFinder(object):
         # Write tree data
         buff.append(tag_format_str.format(tree_data_tag, self.newick_tree_data))
         # Write distance matrix if requested
-        buff.append(tag_format_str.format(dist_matrix_tag, encode_distance_matrix(self.dist)))
-        data_string = encode_distance_matrix(self.dist)
+        if include_distances:
+            buff.append(tag_format_str.format(dist_matrix_tag, self.encode_distance_matrix()))
         return '\n\n'.join(buff)
+
+    def encode_distance_matrix(self):
+        """Takes the current distance matrix, discards the unnecessary values, saves it in a binary format, then decodes that into an ascii representation that can be handled by JSON."""
+        flat = flatten_distance_matrix(self.dist)
+        with BytesIO() as b:
+            np.save(b, flat, allow_pickle=False)
+            bin_data = b.getvalue() # Bytes object, can't be JSON serialized
+        encoded = base64.encodestring(bin_data).decode('ascii') # str/unicode, can be JSON serialized
+        return encoded
 
     def copy(self):
         """Returns a deep copy of self"""

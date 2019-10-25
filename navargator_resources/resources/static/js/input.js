@@ -1,11 +1,9 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
-// - Think I might be overwriting the size-specific display options. Ensure they're being used.
-// - For test_tree_4173, clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
+// - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
-// - Need to add some kind of overlay when loading a tree; sometimes it takes a few seconds, and the fact that it is working should be communicated to the user. It should be displayed on load, as well as with the tree manipulations.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
@@ -64,10 +62,13 @@ function setupPage() {
   setupUploadSaveButtons();
   setupManipulationsPane();
 
+  $("#sessionIncludeDistancesCheckbox").prop('disabled', true);
+
   if (nvrgtr_page.session_id != '') {
     // The instance is from the local version of NaVARgator
     if (nvrgtr_page.session_id != 'local_input_page') {
-      showTreeLoading();
+      $("#introMessageGroup").remove();
+      treeIsLoading(); // A tree is being automatically loaded
     }
     $.ajax({
       url: daemonURL('/get-basic-data'),
@@ -75,6 +76,8 @@ function setupPage() {
       contentType: "application/json",
       data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id}),
       success: function(data_obj) {
+        var num_vars = $.parseJSON(data_obj).leaves.length;
+        calcSpecificDefaultDisplayOpts(num_vars);
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
           $("#loadInputHeader").click(); //   open collapsible pane
           // Display options are set to default by parseBasicData()
@@ -83,8 +86,8 @@ function setupPage() {
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
   } else { // The instance is from the online version of NaVARgator
-    $("#loadInputHeader").click(); // Opens collapsible pane
     processDisplayOptions(nvrgtr_default_display_opts); // Sets display options to default
+    $("#loadInputHeader").click(); // Opens collapsible pane
   }
 }
 function setupUploadSaveButtons() {
@@ -120,7 +123,8 @@ function setupUploadSaveButtons() {
     form_data.append('browser_id', nvrgtr_page.browser_id);
     form_data.append('tree_format', selected_file_type);
     form_data.append('file_name', file_obj.name);
-    showTreeLoading();
+    $("#introMessageGroup").remove();
+    treeIsLoading();
     $.ajax({
       type: 'POST',
       url: daemonURL('/upload-tree-file'),
@@ -129,7 +133,8 @@ function setupUploadSaveButtons() {
       cache: false,
       processData: false,
       success: function(data_obj) {
-        nvrgtr_display_opts.sizes.scale_bar_distance = 0.0; // Resets the scale bar distance, so a default value will be calculated
+        var num_vars = $.parseJSON(data_obj).leaves.length;
+        calcSpecificDefaultDisplayOpts(num_vars);
         newTreeLoaded(data_obj);
       },
       error: function(error) {
@@ -142,7 +147,7 @@ function setupUploadSaveButtons() {
       url: daemonURL('/save-nvrgtr-file'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'include_distances':$("#sessionIncludeDistancesCheckbox").is(':checked'), 'display_opts':nvrgtr_display_opts}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         if (nvrgtr_page.session_id != data.session_id) {
@@ -169,7 +174,7 @@ function setupManipulationsPane() {
   });
   $("#reorderNodesButton").attr("increasing", "true"); // Sets order direction
   $("#reorderNodesButton").click(function() {
-    showTreeLoading();
+    treeIsLoading();
     $.ajax({
       url: daemonURL('/reorder-tree-nodes'),
       type: 'POST',
@@ -197,7 +202,7 @@ function setupManipulationsPane() {
       showErrorPopup("Error: the truncation length for tree names must be a number >= "+trunc_name_min);
       return false;
     }
-    showTreeLoading();
+    treeIsLoading();
     $.ajax({
       url: daemonURL('/truncate-tree-names'),
       type: 'POST',
@@ -502,10 +507,38 @@ $(window).bind('beforeunload', function() {
 });
 
 // =====  Page udating:
-function showTreeLoading() {
-  clearTree();
-  $("#introMessageGroup").remove();
-  $("#treeLoadingMessageGroup").show();
+function calcSpecificDefaultDisplayOpts(num_vars) {
+  // Calculates new default values for certain options that are tree-specific. These will be overwritten by any loaded session values. Other display options will be taken from their current values on the page.
+  nvrgtr_display_opts.sizes.scale_bar_distance = 0.0; // Resets the scale bar distance, so a default value will be calculated
+  if (num_vars == 0) {
+    return; // Happens for local version of the input page with no tree pre-loaded
+  }
+  if (num_vars > 150) {
+    nvrgtr_default_display_opts.fonts.tree_font_size = 8;
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 1.5;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 2.5;
+    nvrgtr_display_opts.fonts.tree_font_size = 8;
+    nvrgtr_display_opts.sizes.small_marker_radius = 1.5;
+    nvrgtr_display_opts.sizes.big_marker_radius = 2.5;
+  }
+  if (num_vars > 250) {
+    nvrgtr_default_display_opts.fonts.tree_font_size = 0;
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 1;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 2;
+    nvrgtr_display_opts.fonts.tree_font_size = 0;
+    nvrgtr_display_opts.sizes.small_marker_radius = 1;
+    nvrgtr_display_opts.sizes.big_marker_radius = 2;
+  }
+  if (num_vars > 400) {
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 0.5;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 1;
+    nvrgtr_display_opts.sizes.small_marker_radius = 0.5;
+    nvrgtr_display_opts.sizes.big_marker_radius = 1;
+  }
+  if (num_vars > 1400) {
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 0.5;
+    nvrgtr_display_opts.sizes.big_marker_radius = 0.5;
+  }
 }
 function newTreeLoaded(data_obj) {
   // Returns true if a tree was loaded, false otherwise.
@@ -528,6 +561,7 @@ function newTreeLoaded(data_obj) {
     $("#truncateNamesSpinner").spinner('value', nvrgtr_display_opts.sizes.max_variant_name_length);
     $("#showLegendCheckbox").prop('disabled', false);
     $("#showScaleBarCheckbox").prop('disabled', false);
+    $("#sessionIncludeDistancesCheckbox").prop('disabled', false);
     $("#redrawTreeButton").button('enable');
     $("#findVariantsButton").button('enable');
     clearHideResultsPane();
@@ -743,7 +777,7 @@ function updateVariantColoursFollowup() {
 // =====  Callback and event handlers:
 function rerootTree(method) {
   var selected_names = Object.keys(nvrgtr_data.selected);
-  showTreeLoading();
+  treeIsLoading();
   $.ajax({
     url: daemonURL('/reroot-tree'),
     type: 'POST',

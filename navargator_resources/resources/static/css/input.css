@@ -47,6 +47,20 @@
   margin-right: unset;
 }
 
+/* Save session options: */
+#saveSessionDiv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#saveSessionButton {
+  margin-left: unset;
+  margin-right: unset;
+}
+#sessionIncludeDistancesLabel {
+  font-size: 14px;
+}
+
 /* Run options: */
 #clustMethodSelect {
   width: 110px;

@@ -43,9 +43,6 @@ if __name__ == '__main__':
         input_file = sys.argv[1].strip()
         file_name = os.path.basename(input_file)
 
-        import time
-        t0 = time.time()
-
         if input_file.lower().endswith('.nvrgtr'):
             vfinder = load_navargator_file(input_file, verbose=verbose)
             session_id = daemon.add_variant_finder(vfinder)
@@ -53,9 +50,6 @@ if __name__ == '__main__':
             tree_data = open(input_file).read().strip()
             session_id = daemon.new_variant_finder(tree_data, tree_format, file_name=file_name)
         input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, session_id)
-
-        t1 = time.time()
-    print('{} seconds'.format(t1-t0))
 
     if manually_open_browser:
         print('Open a browser to the following URL:\n%s' % input_url)
