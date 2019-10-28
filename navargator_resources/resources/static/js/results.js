@@ -9,10 +9,10 @@ $.extend(nvrgtr_page, {
 });
 $.extend(nvrgtr_data, {
   'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[],
-  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[]}
+  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'line_fxn':null, 'area_fxn':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[], 'line_graph':null, 'area_graph':null}
 });
 $.extend(nvrgtr_settings.graph, {
-  'margin':{top:0, right:18, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
+  'margin':{top:5, right:27, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
 });
 
 // Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by adding a middle variable
@@ -21,12 +21,10 @@ $.extend(nvrgtr_settings.graph, {
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
+// - As the slider is being dragged (during mousedown), I want a floating box to appear over the 2nd y-axis label: [13%]. Should follow the height of the current cdf position (buffered at either end).
+//   - Will let me get rid of the 2nd y-axis ticks. Should mean I can set nvrgtr_settings.graph.margin.top back to 0.
 // - Implement button to export the distance histogram as an image.
-// - Finish writing updateHistoGraph()
-//   - Cumulative graph has right axis, and is total number (not percent). It should only go to the zero on the x axis I think (not over the 'chosen' bar).
-//   - As user moves the slider, I'd like a circle to follow it on the cdf line, and have the space below the line to that point get some coloured (but partly see through) fill.
-//   - When the user hits the "variants below" button, the cdf should invert (so it's low on the right side, 100% at left side). The coloured area should also switch sides.
-//   - Once thresholds are implemented, can have option to colour the x-axis of this and histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc.
+// - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - The summary stats pane text moves around depending on the number of decimals of the avg dists.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
@@ -100,7 +98,7 @@ function setupHistoSliderPane() {
   document.documentElement.style.setProperty('--histo-bar-colour', histo_colour);
 
   var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), reset_button = $("#clearSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
-  do_remove = false;
+  do_remove = false, select_below = true;
   var mid_offset = middle_span.css('left'), animation_speed = 150, animation_style = 'linear',
     mid_left_arrow = $("#midLeftArrow"), mid_right_arrow = $("#midRightArrow");
   function setButtonAddToSelection() {
@@ -116,11 +114,12 @@ function setupHistoSliderPane() {
     min: 0, max: 1.0,
     value: 0, step: 0.001,
     create: function() {
-      $("#histoSliderHandle").text($(this).slider("value"));
+      slider_handle.text($(this).slider("value"));
     },
     slide: function(event, ui) {
-      $("#histoSliderHandle").text(ui.value);
-      if (selectNamesByThreshold(ui.value, slider.slider('option', 'range') == 'min') == true
+      slider_handle.text(ui.value);
+      updateAreaGraph(ui.value, select_below);
+      if (selectNamesByThreshold(ui.value, select_below) == true
           && do_remove == true) {
         setButtonAddToSelection();
       }
@@ -143,8 +142,7 @@ function setupHistoSliderPane() {
     }
   });
   middle.click(function() {
-    var select_below = slider.slider('option', 'range') == 'min',
-      slider_val = slider.slider('value');
+    var slider_val = slider.slider('value');
     if (slider_val == 0) { slider_val = nvrgtr_data.nice_max_var_dist; }
     else if (slider_val == nvrgtr_data.nice_max_var_dist) { slider_val = 0; }
     if (select_below) { // Switch to above
@@ -153,23 +151,36 @@ function setupHistoSliderPane() {
       middle_span.animate({left: '-'+mid_offset}, animation_speed, animation_style);
       mid_left_arrow.animate({opacity:0}, animation_speed, animation_style);
       mid_right_arrow.animate({opacity:1}, animation_speed, animation_style);
+      // Invert the CDF
+      nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(100-d.y) });
+      nvrgtr_data.graph.line_graph.transition().attr("d", function() {
+        return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data);
+      });
+
     } else { // Switch to below
       slider.slider('option', 'range', 'min');
       middle_span.html('Variants<br>below');
       middle_span.animate({left: mid_offset}, animation_speed, animation_style);
       mid_left_arrow.animate({opacity:1}, animation_speed, animation_style);
       mid_right_arrow.animate({opacity:0}, animation_speed, animation_style);
+      // Reset the CDF
+      nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) });
+      nvrgtr_data.graph.line_graph.transition().attr("d", function() {
+        return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data);
+      });
     }
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
     setButtonAddToSelection();
+    updateAreaGraph(slider_val, !select_below);
     selectNamesByThreshold(slider_val, !select_below);
+    select_below = !select_below;
   });
   reset_button.click(function() {
-    var select_below = slider.slider('option', 'range') == 'min',
-      slider_val = (select_below) ? 0 : nvrgtr_data.nice_max_var_dist;
+    var slider_val = (select_below) ? 0 : nvrgtr_data.nice_max_var_dist;
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
+    updateAreaGraph(slider_val, select_below);
     selectNamesByThreshold(slider_val, select_below);
   });
   $("#numSliderSpan").hide();
@@ -571,13 +582,23 @@ function drawDistanceGraphs() {
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   // Set up scales and data objects:
   nvrgtr_data.graph.x_fxn = d3.scaleLinear()
-    .rangeRound([0, nvrgtr_data.graph.width]);
+    .rangeRound([0, nvrgtr_data.graph.width])
+    .clamp(true);
   nvrgtr_data.graph.y_fxn = d3.scaleLinear()
     .range([0, nvrgtr_data.graph.height])
     .clamp(true);
-  nvrgtr_data.graph.y_fxn2 = d3.scaleLinear()
+  nvrgtr_data.graph.y_fxn2 = d3.scaleLinear() // Used by the cumulative line and area graphs.
     .range([0, nvrgtr_data.graph.height])
-    .domain([nvrgtr_data.sorted_names.length, 0]); // The other domains are dynomic, this one isn't
+    .domain([100, 0]) // The other domains are dynomic, this one isn't
+    .clamp(true);
+  nvrgtr_data.graph.line_fxn = d3.line()
+    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.x) })
+    .y(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) })
+    .curve(d3.curveBasis); // An interpolation, but looks the best.
+  nvrgtr_data.graph.area_fxn = d3.area()
+    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.x) })
+    .y0(nvrgtr_data.graph.height)
+    .y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) });
   // Graph title:
   /*svg.append("text")
     .attr("class", "histo-title")
@@ -588,29 +609,38 @@ function drawDistanceGraphs() {
   // Graph axes:
   nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
   nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn).tickValues([]).tickSize(0);
-  nvrgtr_data.graph.y_axis2 = d3.axisRight(nvrgtr_data.graph.y_fxn2);
+  nvrgtr_data.graph.y_axis2 = d3.axisRight(nvrgtr_data.graph.y_fxn2).tickValues([0, 100]);
   nvrgtr_data.graph.g.append("g")
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + nvrgtr_data.graph.height + ")");
   nvrgtr_data.graph.g.append("g")
     .attr("class", "y-axis");
   nvrgtr_data.graph.g.append("g")
-    .attr("class", "y-axis2");
-  var y_axis_vert_offset = 5, y_axis_horiz_offset = -6;
+    .attr("class", "y-axis2")
+    .attr("transform", "translate(" + nvrgtr_data.graph.width + ", 0)");
+  var y_axis_vert_offset = 0, y_axis_horiz_offset = -6, y_axis2_horiz_offset = 16;
   nvrgtr_data.graph.g.append("text") // y axis label
     .attr("class", "histo-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
     .attr("y", 0 + y_axis_horiz_offset)
     .attr("transform", "rotate(-90)")
-    .text("Number of variants");
+    .text("Number of variants"); // "Variants (count)" if I want to add ticks
+  nvrgtr_data.graph.g.append("text") // y axis 2 label
+    .attr("class", "histo-axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
+    .attr("y", nvrgtr_data.graph.width + y_axis2_horiz_offset)
+    .attr("transform", "rotate(-90)")
+    .text("Cumulative (%)");
   // Calculate the cumulative data:
   nvrgtr_data.graph.cumulative_data = [{'x':-10, 'y':0}]; // A zero for the graph. The negative x-value will be adjusted when the x-axis is modified.
-  var last_dist = -10, total = 0, cdata = nvrgtr_data.graph.cumulative_data, name, dist;
+  var last_dist = -10, total = 0, percent_per = 100.0/nvrgtr_data.sorted_names.length,
+    cdata = nvrgtr_data.graph.cumulative_data, name, dist;
   for (var i=0; i<nvrgtr_data.sorted_names.length; ++i) {
     name = nvrgtr_data.sorted_names[i];
     dist = nvrgtr_data.variant_distance[name];
-    total += 1;
+    total += percent_per;
     if (dist == last_dist) {
       cdata[cdata.length-1].y = total;
     } else {
@@ -618,7 +648,9 @@ function drawDistanceGraphs() {
     }
     last_dist = dist;
   }
-  nvrgtr_data.graph.g.append("path").attr("class", "histo-line");
+  nvrgtr_data.graph.cumulative_data.push({'x':last_dist+10, 'y':100}); // So the 100% line continues
+  nvrgtr_data.graph.line_graph = nvrgtr_data.graph.g.append("path").attr("class", "histo-line");
+  nvrgtr_data.graph.area_graph = nvrgtr_data.graph.g.append("path").attr("class", "histo-area");
   // Draw the graph:
   updateDistanceGraphs();
 }
@@ -760,6 +792,7 @@ function updateHistoBins() {
   var max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
   nvrgtr_data.graph.y_fxn.domain([0, max_y]);
   nvrgtr_data.graph.cumulative_data[0].x = x_ticks[0]; // Updates the one negative x value.
+  nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-1].x = nvrgtr_data.nice_max_var_dist; // Updates the final tick
   nvrgtr_data.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
@@ -820,20 +853,14 @@ function updateHistoGraph() {
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.exit().remove();
 
-  // Draw the cumulative line
-  var line_fxn = d3.line()
-    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.x) })
-    .y(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) })
-    .curve(d3.curveBasis);
-  nvrgtr_data.graph.g.select(".histo-line").raise()
-    .transition()
-    .attr("d", function() { return line_fxn(nvrgtr_data.graph.cumulative_data); });
+  // Draw the area that responds to the histoSlider
+  nvrgtr_data.graph.area_graph.raise().transition();
+  var select_below = $("#histoSlider").slider('option', 'range') == 'min';
+  updateAreaGraph($("#histoSlider").slider('value'), select_below, true);
 
-  // Also try .curveNatural, .curveCardinal, and .curveStep, as .curveBasis is an interpolation (doesn't pass through all points)
-  // Change y_fxn2 to return a percent instead of count. Add a final value to cumulative_data: x=final_x_tick(updated in updateHistoBins()), y=100; this will cause the graph to stay at 100% when x-axis is increased
-  // Transform the yaxis2 over to the right side, add label, set ticks [0%, 100%] increase the graph margins to hold this.
-  // Need 2nd line here that uses the same line_fxn (which should be moved to the setup phase), no stroke, but filled with semi-transparent. The fill needs to drop down to the axis (look for examples), and respond to a nvrgtr_data variable that is updated by the histo slider.
-  // There should be a circle that moves using the same fxn; don't know if that goes here or somewhere else. Though circle is probably not needed if the fill thing works. Though it might be nice to have a horizontal line go from circle to 2nd y-axis, give a good idea of percent.
+  // Draw the cumulative line
+  nvrgtr_data.graph.line_graph.raise().transition()
+    .attr("d", function() { return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data); });
 
   // A transparent full-sized rect on top of the bars to capture mouse events:
   var bar_mouseovers = nvrgtr_data.graph.g.selectAll(".histo-overlay").raise()
@@ -883,6 +910,47 @@ function updateHistoAxes() {
   nvrgtr_data.graph.g.select(".y-axis2")
     .transition()
     .call(nvrgtr_data.graph.y_axis2);
+}
+function updateAreaGraph(distance, select_below, do_transition=false) {
+  var filtered_data = [];
+  if (select_below == true) {
+    // Standard y1 function
+    nvrgtr_data.graph.area_fxn.y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) });
+    // Fill out filtered_data, if needed:
+    if (distance > 0) {
+      filtered_data = nvrgtr_data.graph.cumulative_data.filter(function(d) {
+        return d.x <= distance
+      });
+      if (distance > filtered_data[filtered_data.length-1].x) {
+        // Spoofs a point that follows the slider
+        filtered_data.push({'x':distance, 'y':filtered_data[filtered_data.length-1].y});
+      }
+    }
+  } else { // Selecting variants above "distance":
+    // Inverted y1 function so that cumulative is 0 at highest distance.
+    nvrgtr_data.graph.area_fxn.y1(function(d) { return nvrgtr_data.graph.y_fxn2(100-d.y) });
+    // Fill out filtered_data, if needed:
+    if (distance < nvrgtr_data.nice_max_var_dist) {  // filtered_data should not be empty:
+      filtered_data = nvrgtr_data.graph.cumulative_data.filter(function(d) {
+        return d.x >= distance
+      });
+      // Spoofs a point that follows the slider
+      if (distance == 0) { // Negative distance to cover the "chosen" histogram bar
+        filtered_data.unshift({'x':nvrgtr_data.graph.x_ticks[0], 'y':0.0});
+      } else if (distance < filtered_data[0].x) {
+        filtered_data.unshift({'x':distance, 'y':filtered_data[0].y});
+      }
+    }
+  }
+  if (do_transition == true) {
+    nvrgtr_data.graph.area_graph.transition().attr("d", function() {
+      return nvrgtr_data.graph.area_fxn(filtered_data);
+    });
+  } else {
+    nvrgtr_data.graph.area_graph.attr("d", function() {
+      return nvrgtr_data.graph.area_fxn(filtered_data);
+    });
+}
 }
 
 // =====  Data parsing:

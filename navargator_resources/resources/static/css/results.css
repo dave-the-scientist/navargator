@@ -102,8 +102,14 @@
   stroke: var(--dark-background-colour);
   fill: none;
 }
+.histo-area {
+  stroke-width: 1px;
+  stroke: var(--dark-background-colour);
+  fill: var(--cluster-background-colour);
+  opacity: 0.8;
+}
 #histoSlider {
-  margin: 0px 18px 5px 18px;
+  margin: 0px 27px 5px 18px;
 }
 #histoSliderHandle {
   width: 3em;

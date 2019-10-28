@@ -6,6 +6,7 @@
   --major-accent-colour: #24F030;
   --highlight-colour: #92F7E4;
   --selection-colour: #FAB728;
+  --cluster-background-colour: #EAFEEC;
   --button-border-colour: #8A8A8A;
   --button-border-hover-colour: #4F4F4F;
   --style-box-background-colour: #FFFFFF;
@@ -450,7 +451,7 @@ label.control-element, span.control-element {
   border: 0;
 }
 button.control-element:active {
-  background-color: #EAFEEC;
+  background-color: var(--cluster-background-colour);
   /*var(--dark-background-colour)*/
 }
 .control-element:hover {
