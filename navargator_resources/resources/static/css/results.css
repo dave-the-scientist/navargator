@@ -1,6 +1,6 @@
 /* ======  Result page CSS variables  ====== */
 :root {
-  --histo-bar-colour: var(--highlight-colour); /* This inheritence is intentionally broken by results.js:setupHistoSliderPane() */
+  --histo-bar-colour: var(--cluster-background-colour); /* This inheritence is intentionally broken by results.js:setupHistoSliderPane() */
 }
 
 #bodyMainDiv {
@@ -88,7 +88,9 @@
   font-size: 14px;
 }
 .histo-bar {
-  fill: var(--histo-bar-colour); /* The other histogram bars, in the moueover colour.*/
+  fill: var(--histo-bar-colour); /* The other histogram bars, in the cluster colour.*/
+  stroke: var(--shadow-colour);
+  stroke-width: 0.2px;
 }
 .histo-bar:first-of-type {
   fill: var(--major-accent-colour); /* The 'chosen' histogram bar.*/
@@ -98,15 +100,26 @@
   font: 10px sans-serif;
 }
 .histo-line {
-  stroke-width: 2px;
+  stroke-width: 1.5px;
   stroke: var(--dark-background-colour);
   fill: none;
 }
 .histo-area {
-  stroke-width: 1px;
+  stroke-width: 0.5px;
   stroke: var(--dark-background-colour);
-  fill: var(--cluster-background-colour);
-  opacity: 0.8;
+  fill: var(--highlight-colour);
+  opacity: 0.5;
+}
+.histo-ind-rect {
+  stroke: var(--major-accent-colour);
+  stroke-width: 1px;
+  fill: var(--dark-background-colour);
+  width: 33px;
+  height: 20px;
+}
+.histo-ind-text {
+  font: 12px sans-serif;
+  fill: white;
 }
 #histoSlider {
   margin: 0px 27px 5px 18px;

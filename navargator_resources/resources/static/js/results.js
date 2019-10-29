@@ -9,10 +9,10 @@ $.extend(nvrgtr_page, {
 });
 $.extend(nvrgtr_data, {
   'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[],
-  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'line_fxn':null, 'area_fxn':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[], 'line_graph':null, 'area_graph':null}
+  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'line_fxn':null, 'area_fxn':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[], 'line_graph':null, 'area_graph':null, 'histo_indicator':null, 'histo_ind_text':null, 'histo_ind_x':null}
 });
 $.extend(nvrgtr_settings.graph, {
-  'margin':{top:5, right:27, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
+  'margin':{top:2, right:27, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
 });
 
 // Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by adding a middle variable
@@ -21,8 +21,6 @@ $.extend(nvrgtr_settings.graph, {
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
-// - As the slider is being dragged (during mousedown), I want a floating box to appear over the 2nd y-axis label: [13%]. Should follow the height of the current cdf position (buffered at either end).
-//   - Will let me get rid of the 2nd y-axis ticks. Should mean I can set nvrgtr_settings.graph.margin.top back to 0.
 // - Implement button to export the distance histogram as an image.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
@@ -93,7 +91,7 @@ function setupPage() {
   });
 }
 function setupHistoSliderPane() {
-  // Prevents the css property --histo-bar-colour from inheriting changes to --highlight-colour
+  // Prevents the css property --histo-bar-colour from inheriting changes to --cluster-background-colour by overwriting the variable with a value
   var histo_colour = getComputedStyle(document.documentElement).getPropertyValue('--histo-bar-colour');
   document.documentElement.style.setProperty('--histo-bar-colour', histo_colour);
 
@@ -118,7 +116,7 @@ function setupHistoSliderPane() {
     },
     slide: function(event, ui) {
       slider_handle.text(ui.value);
-      updateAreaGraph(ui.value, select_below);
+      updateAreaGraphAndIndicator(ui.value, select_below);
       if (selectNamesByThreshold(ui.value, select_below) == true
           && do_remove == true) {
         setButtonAddToSelection();
@@ -128,6 +126,17 @@ function setupHistoSliderPane() {
       // Can put selection code here if its too laggy.
     }
   });
+  // Show / hide the histoIndicator:
+  slider.on("mousedown", function() {
+    nvrgtr_data.graph.histo_indicator.attr("display", "");
+  });
+  $("#selectionDiv").on("mouseup", function() {
+    nvrgtr_data.graph.histo_indicator.attr("display", "none");
+  });
+  $("#selectionDiv").on("mouseleave", function() {
+    nvrgtr_data.graph.histo_indicator.attr("display", "none");
+  });
+  // Histogram button functionalities:
   left.click(function() {
     var slider_keys = Object.keys(nvrgtr_data.considered_variants), var_name;
     for (var i=0; i<slider_keys.length; ++i) {
@@ -152,7 +161,7 @@ function setupHistoSliderPane() {
       mid_left_arrow.animate({opacity:0}, animation_speed, animation_style);
       mid_right_arrow.animate({opacity:1}, animation_speed, animation_style);
       // Invert the CDF
-      nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(100-d.y) });
+      nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(d.inv) });
       nvrgtr_data.graph.line_graph.transition().attr("d", function() {
         return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data);
       });
@@ -164,7 +173,7 @@ function setupHistoSliderPane() {
       mid_left_arrow.animate({opacity:1}, animation_speed, animation_style);
       mid_right_arrow.animate({opacity:0}, animation_speed, animation_style);
       // Reset the CDF
-      nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) });
+      nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) });
       nvrgtr_data.graph.line_graph.transition().attr("d", function() {
         return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data);
       });
@@ -172,7 +181,7 @@ function setupHistoSliderPane() {
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
     setButtonAddToSelection();
-    updateAreaGraph(slider_val, !select_below);
+    updateAreaGraphAndIndicator(slider_val, !select_below);
     selectNamesByThreshold(slider_val, !select_below);
     select_below = !select_below;
   });
@@ -180,7 +189,7 @@ function setupHistoSliderPane() {
     var slider_val = (select_below) ? 0 : nvrgtr_data.nice_max_var_dist;
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
-    updateAreaGraph(slider_val, select_below);
+    updateAreaGraphAndIndicator(slider_val, select_below);
     selectNamesByThreshold(slider_val, select_below);
   });
   $("#numSliderSpan").hide();
@@ -592,13 +601,13 @@ function drawDistanceGraphs() {
     .domain([100, 0]) // The other domains are dynomic, this one isn't
     .clamp(true);
   nvrgtr_data.graph.line_fxn = d3.line()
-    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.x) })
-    .y(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) })
+    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.dist) })
+    .y(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) })
     .curve(d3.curveBasis); // An interpolation, but looks the best.
   nvrgtr_data.graph.area_fxn = d3.area()
-    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.x) })
+    .x(function(d) { return nvrgtr_data.graph.x_fxn(d.dist) })
     .y0(nvrgtr_data.graph.height)
-    .y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) });
+    .y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) });
   // Graph title:
   /*svg.append("text")
     .attr("class", "histo-title")
@@ -609,7 +618,7 @@ function drawDistanceGraphs() {
   // Graph axes:
   nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
   nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn).tickValues([]).tickSize(0);
-  nvrgtr_data.graph.y_axis2 = d3.axisRight(nvrgtr_data.graph.y_fxn2).tickValues([0, 100]);
+  nvrgtr_data.graph.y_axis2 = d3.axisRight(nvrgtr_data.graph.y_fxn2).tickValues([]).tickSize(0);
   nvrgtr_data.graph.g.append("g")
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + nvrgtr_data.graph.height + ")");
@@ -634,24 +643,50 @@ function drawDistanceGraphs() {
     .attr("transform", "rotate(-90)")
     .text("Cumulative (%)");
   // Calculate the cumulative data:
-  nvrgtr_data.graph.cumulative_data = [{'x':-10, 'y':0}]; // A zero for the graph. The negative x-value will be adjusted when the x-axis is modified.
+  nvrgtr_data.graph.cumulative_data = [];
   var last_dist = -10, total = 0, percent_per = 100.0/nvrgtr_data.sorted_names.length,
     cdata = nvrgtr_data.graph.cumulative_data, name, dist;
   for (var i=0; i<nvrgtr_data.sorted_names.length; ++i) {
     name = nvrgtr_data.sorted_names[i];
     dist = nvrgtr_data.variant_distance[name];
-    total += percent_per;
+    total += percent_per; // The percent of non-ignored variants found <= this distance
     if (dist == last_dist) {
-      cdata[cdata.length-1].y = total;
+      cdata[cdata.length-1].cumul = total;
+      cdata[cdata.length-1].count += 1;
     } else {
-      cdata.push({'x':dist, 'y':total});
+      cdata.push({'dist':dist, 'cumul':total, 'count':1});
     }
     last_dist = dist;
   }
-  nvrgtr_data.graph.cumulative_data.push({'x':last_dist+10, 'y':100}); // So the 100% line continues
+  for (var i=cdata.length-1; i>=0; --i) {
+    // The percent of non-ignored variants found >= this distance
+    cdata[i]['inv'] = 100 - cdata[i].cumul + (cdata[i].count * percent_per);
+  }
+  nvrgtr_data.graph.cumulative_data.unshift({'dist':-10, 'cumul':0, 'inv':100}); // A zero for the graph. The negative x-value will be adjusted when the x-axis is modified.
+  nvrgtr_data.graph.cumulative_data.push({'dist':last_dist+10, 'cumul':100, 'inv':0}); // So the 100% line continues
+  // Create the line and area charts
   nvrgtr_data.graph.line_graph = nvrgtr_data.graph.g.append("path").attr("class", "histo-line");
   nvrgtr_data.graph.area_graph = nvrgtr_data.graph.g.append("path").attr("class", "histo-area");
-  // Draw the graph:
+
+  // Draw the cumulative indicator:
+  nvrgtr_data.graph.histo_ind_x = nvrgtr_data.graph.width - 8;
+  nvrgtr_data.graph.histo_indicator = nvrgtr_data.graph.g.append("g")
+    .attr("display", "none")
+    .attr("transform", "translate(" + nvrgtr_data.graph.histo_ind_x + ", 100)");
+  nvrgtr_data.graph.histo_indicator.append("rect")
+    .attr("class", "histo-ind-rect")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("rx", 3)
+    .attr("ry", 10);
+  nvrgtr_data.graph.histo_ind_text = nvrgtr_data.graph.histo_indicator.append("text")
+    .attr("class", "histo-ind-text")
+    .attr("x", 16.5)
+    .attr("y", 10)
+    .attr("dy", ".35em") // essentially a vertical-align: middle.
+    .attr("text-anchor", "middle")
+    .html("0%");
+  // Draw the graphs:
   updateDistanceGraphs();
 }
 function updateDistanceGraphs() {
@@ -661,6 +696,7 @@ function updateDistanceGraphs() {
   updateHistoAxes();
 }
 function updateHistoSlider() {
+  // Would be kind of nice to animate this (250 ms), but probably more trouble than it's worth.
   $("#histoSlider").slider({
     max:nvrgtr_data.nice_max_var_dist
   });
@@ -791,8 +827,8 @@ function updateHistoBins() {
   }
   var max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
   nvrgtr_data.graph.y_fxn.domain([0, max_y]);
-  nvrgtr_data.graph.cumulative_data[0].x = x_ticks[0]; // Updates the one negative x value.
-  nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-1].x = nvrgtr_data.nice_max_var_dist; // Updates the final tick
+  nvrgtr_data.graph.cumulative_data[0].dist = x_ticks[0]; // Updates the one negative x value.
+  nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-1].dist = nvrgtr_data.nice_max_var_dist; // Updates the final tick
   nvrgtr_data.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
@@ -856,11 +892,14 @@ function updateHistoGraph() {
   // Draw the area that responds to the histoSlider
   nvrgtr_data.graph.area_graph.raise().transition();
   var select_below = $("#histoSlider").slider('option', 'range') == 'min';
-  updateAreaGraph($("#histoSlider").slider('value'), select_below, true);
+  updateAreaGraphAndIndicator($("#histoSlider").slider('value'), select_below, true);
 
   // Draw the cumulative line
   nvrgtr_data.graph.line_graph.raise().transition()
     .attr("d", function() { return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data); });
+
+  // Raise the histoIndicator so it's not behind the bars
+  nvrgtr_data.graph.histo_indicator.raise();
 
   // A transparent full-sized rect on top of the bars to capture mouse events:
   var bar_mouseovers = nvrgtr_data.graph.g.selectAll(".histo-overlay").raise()
@@ -911,37 +950,42 @@ function updateHistoAxes() {
     .transition()
     .call(nvrgtr_data.graph.y_axis2);
 }
-function updateAreaGraph(distance, select_below, do_transition=false) {
-  var filtered_data = [];
+function updateAreaGraphAndIndicator(distance, select_below, do_transition=false) {
+  var filtered_data = [], cur_percent;
   if (select_below == true) {
     // Standard y1 function
-    nvrgtr_data.graph.area_fxn.y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.y) });
-    // Fill out filtered_data, if needed:
-    if (distance > 0) {
+    nvrgtr_data.graph.area_fxn.y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) });
+    if (distance == 0) { // filtered_data should remain empty
+      cur_percent = 0;
+    } else { // Fill out filtered_data:
       filtered_data = nvrgtr_data.graph.cumulative_data.filter(function(d) {
-        return d.x <= distance
+        return d.dist <= distance
       });
-      if (distance > filtered_data[filtered_data.length-1].x) {
+      if (distance > filtered_data[filtered_data.length-1].dist) {
         // Spoofs a point that follows the slider
-        filtered_data.push({'x':distance, 'y':filtered_data[filtered_data.length-1].y});
+        filtered_data.push({'dist':distance, 'cumul':filtered_data[filtered_data.length-1].cumul, 'inv':filtered_data[filtered_data.length-1].inv});
       }
+      cur_percent = filtered_data[filtered_data.length-1].cumul;
     }
   } else { // Selecting variants above "distance":
     // Inverted y1 function so that cumulative is 0 at highest distance.
-    nvrgtr_data.graph.area_fxn.y1(function(d) { return nvrgtr_data.graph.y_fxn2(100-d.y) });
-    // Fill out filtered_data, if needed:
-    if (distance < nvrgtr_data.nice_max_var_dist) {  // filtered_data should not be empty:
+    nvrgtr_data.graph.area_fxn.y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.inv) });
+    if (distance == nvrgtr_data.nice_max_var_dist) { // filtered_data should remain empty
+      cur_percent = 0;
+    } else { // Fill out filtered_data:
       filtered_data = nvrgtr_data.graph.cumulative_data.filter(function(d) {
-        return d.x >= distance
+        return d.dist >= distance
       });
       // Spoofs a point that follows the slider
       if (distance == 0) { // Negative distance to cover the "chosen" histogram bar
-        filtered_data.unshift({'x':nvrgtr_data.graph.x_ticks[0], 'y':0.0});
-      } else if (distance < filtered_data[0].x) {
-        filtered_data.unshift({'x':distance, 'y':filtered_data[0].y});
+        filtered_data.unshift({'dist':nvrgtr_data.graph.x_ticks[0], 'cumul':0, 'inv':100});
+      } else if (distance < filtered_data[0].dist) {
+        filtered_data.unshift({'dist':distance, 'cumul':filtered_data[0].cumul, 'inv':filtered_data[0].inv});
       }
+      cur_percent = filtered_data[0].inv;
     }
   }
+  // Get the area graph to change:
   if (do_transition == true) {
     nvrgtr_data.graph.area_graph.transition().attr("d", function() {
       return nvrgtr_data.graph.area_fxn(filtered_data);
@@ -950,7 +994,18 @@ function updateAreaGraph(distance, select_below, do_transition=false) {
     nvrgtr_data.graph.area_graph.attr("d", function() {
       return nvrgtr_data.graph.area_fxn(filtered_data);
     });
-}
+  }
+  // Update the histoIndicator:
+  if (nvrgtr_data.graph.histo_ind_text != null) {
+    nvrgtr_data.graph.histo_ind_text.html(roundFloat(cur_percent, 0)+'%');
+  }
+  if (nvrgtr_data.graph.histo_indicator != null) {
+    var ind_y = nvrgtr_data.graph.y_fxn2(cur_percent);
+    var max_y = nvrgtr_settings.graph.total_height - nvrgtr_settings.graph.margin.top - nvrgtr_settings.graph.margin.bottom - 20; // 20 is the css height of the rect
+    ind_y = Math.min(ind_y, max_y);
+    nvrgtr_data.graph.histo_indicator
+      .attr("transform", "translate("+nvrgtr_data.graph.histo_ind_x+", "+ind_y+")");
+  }
 }
 
 // =====  Data parsing:
