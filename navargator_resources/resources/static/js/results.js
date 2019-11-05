@@ -12,7 +12,7 @@ $.extend(nvrgtr_data, {
   'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'line_fxn':null, 'area_fxn':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[], 'line_graph':null, 'area_graph':null, 'histo_indicator':null, 'histo_ind_text':null, 'histo_ind_x':null}
 });
 $.extend(nvrgtr_settings.graph, {
-  'margin':{top:2, right:27, bottom:30, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null
+  'margin':{top:2, right:20, bottom:44, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null, 'label_font':'Helvetica, Arial, sans-serif', 'label_font_size':'14px', 'histo_font_size':'10px', 'line_stroke_width':'1.5px', 'area_stroke_width':'0.5px', 'histo_stroke_width':'0.2px', 'area_opacity':'0.5', 'line_area_stroke':null, 'area_fill':null, 'histo_first_bar':null, 'histo_bar':'#EAFEEC', 'histo_stroke':'#555555'
 });
 
 // Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by adding a middle variable
@@ -21,7 +21,6 @@ $.extend(nvrgtr_settings.graph, {
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
-// - Implement button to export the distance histogram as an image.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - The summary stats pane text moves around depending on the number of decimals of the avg dists.
@@ -52,14 +51,6 @@ function setupPage() {
   document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('browser ID:', nvrgtr_page.browser_id);
-  var graph_width_str = $("#selectionDiv").css('width'),
-    graph_height_str = $("#histoSvg").css('height'),
-    histo_l_margin_str = $("#histoSlider").css('marginLeft');
-  nvrgtr_settings.graph.total_width = parseInt(graph_width_str.slice(0,-2));
-  nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
-  nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
-
-  console.log(histo_l_margin_str); // Getting an occasional race condition on this one. Still happening as of oct
 
   maintainServer();
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
@@ -91,10 +82,6 @@ function setupPage() {
   });
 }
 function setupHistoSliderPane() {
-  // Prevents the css property --histo-bar-colour from inheriting changes to --cluster-background-colour by overwriting the variable with a value
-  var histo_colour = getComputedStyle(document.documentElement).getPropertyValue('--histo-bar-colour');
-  document.documentElement.style.setProperty('--histo-bar-colour', histo_colour);
-
   var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), reset_button = $("#clearSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
   do_remove = false, select_below = true;
   var mid_offset = middle_span.css('left'), animation_speed = 150, animation_style = 'linear',
@@ -352,6 +339,10 @@ function setupExportPane() {
     var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
+  $("#exportHistoButton").click(function() {
+    var svg_data = $("#histoSvg")[0].outerHTML;
+    downloadData("navargator_histogram.svg", svg_data, "image/svg+xml;charset=utf-8");
+  });
   // Functionality of the export pane:
   $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
     formatDisplayExportNames();
@@ -577,7 +568,20 @@ function updateBarGraphHeights() {
   }
 }
 function drawDistanceGraphs() {
-  // Only called once to initiate the graphs
+  // Function is only called once to initiate the graphs
+  // Parse required variables:
+  var graph_width_str = $("#selectionDiv").css('width'),
+    graph_height_str = $("#histoSvg").css('height'),
+    histo_l_margin_str = $("#histoSlider").css('marginLeft');
+  nvrgtr_settings.graph.total_width = parseInt(graph_width_str.slice(0,-2));
+  nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
+  nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
+  nvrgtr_settings.graph.line_area_stroke = getComputedStyle(document.documentElement)
+    .getPropertyValue('--dark-background-colour');
+  nvrgtr_settings.graph.area_fill = getComputedStyle(document.documentElement)
+    .getPropertyValue('--highlight-colour');
+  nvrgtr_settings.graph.histo_first_bar = getComputedStyle(document.documentElement)
+    .getPropertyValue('--major-accent-colour');
   var margin = nvrgtr_settings.graph.margin,
     total_width = nvrgtr_settings.graph.total_width,
     total_height = nvrgtr_settings.graph.total_height;
@@ -608,13 +612,6 @@ function drawDistanceGraphs() {
     .x(function(d) { return nvrgtr_data.graph.x_fxn(d.dist) })
     .y0(nvrgtr_data.graph.height)
     .y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) });
-  // Graph title:
-  /*svg.append("text")
-    .attr("class", "histo-title")
-    .attr("dy", "0.8em") //.attr("dy", ".35em")
-    .attr("x", total_width / 2)
-    .attr("text-anchor", "middle")
-    .text("Distribution of distances");*/
   // Graph axes:
   nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
   nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn).tickValues([]).tickSize(0);
@@ -627,9 +624,20 @@ function drawDistanceGraphs() {
   nvrgtr_data.graph.g.append("g")
     .attr("class", "y-axis2")
     .attr("transform", "translate(" + nvrgtr_data.graph.width + ", 0)");
-  var y_axis_vert_offset = 0, y_axis_horiz_offset = -6, y_axis2_horiz_offset = 16;
+  var x_axis_vert_offset = -3, y_axis_vert_offset = 0, y_axis_horiz_offset = -6, y_axis2_horiz_offset = 16;
+  nvrgtr_data.graph.g.append("text") // x axis label
+    .attr("class", "histo-axis-label")
+    .attr("font-family", nvrgtr_settings.graph.label_font)
+    .attr("font-size", nvrgtr_settings.graph.label_font_size)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "text-after-edge")
+    .attr("x", nvrgtr_data.graph.width/2)
+    .attr("y", total_height + x_axis_vert_offset)
+    .text("Phylogenetic distance");
   nvrgtr_data.graph.g.append("text") // y axis label
     .attr("class", "histo-axis-label")
+    .attr("font-family", nvrgtr_settings.graph.label_font)
+    .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
     .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
     .attr("y", 0 + y_axis_horiz_offset)
@@ -637,11 +645,43 @@ function drawDistanceGraphs() {
     .text("Number of variants"); // "Variants (count)" if I want to add ticks
   nvrgtr_data.graph.g.append("text") // y axis 2 label
     .attr("class", "histo-axis-label")
+    .attr("font-family", nvrgtr_settings.graph.label_font)
+    .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
     .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
     .attr("y", nvrgtr_data.graph.width + y_axis2_horiz_offset)
     .attr("transform", "rotate(-90)")
     .text("Cumulative (%)");
+  // Create the line and area charts
+  nvrgtr_data.graph.line_graph = nvrgtr_data.graph.g.append("path")
+    .attr("class", "histo-line")
+    .attr("stroke-width", nvrgtr_settings.graph.line_stroke_width)
+    .attr("stroke", nvrgtr_settings.graph.line_area_stroke)
+    .attr("fill", "none");
+  nvrgtr_data.graph.area_graph = nvrgtr_data.graph.g.append("path")
+    .attr("class", "histo-area")
+    .attr("stroke-width", nvrgtr_settings.graph.area_stroke_width)
+    .attr("stroke", nvrgtr_settings.graph.line_area_stroke)
+    .attr("opacity", nvrgtr_settings.graph.area_opacity)
+    .attr("fill", nvrgtr_settings.graph.area_fill);
+  // Draw the cumulative indicator:
+  nvrgtr_data.graph.histo_ind_x = nvrgtr_data.graph.width - 14;
+  nvrgtr_data.graph.histo_indicator = nvrgtr_data.graph.g.append("g")
+    .attr("display", "none")
+    .attr("transform", "translate(" + nvrgtr_data.graph.histo_ind_x + ", 100)");
+  nvrgtr_data.graph.histo_indicator.append("rect")
+    .attr("id", "histo-ind-rect")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("rx", 3)
+    .attr("ry", 10);
+  nvrgtr_data.graph.histo_ind_text = nvrgtr_data.graph.histo_indicator.append("text")
+    .attr("id", "histo-ind-text")
+    .attr("x", 16.5)
+    .attr("y", 10)
+    .attr("dy", ".35em") // essentially a vertical-align: middle.
+    .attr("text-anchor", "middle")
+    .html("0%");
   // Calculate the cumulative data:
   nvrgtr_data.graph.cumulative_data = [];
   var last_dist = -10, total = 0, percent_per = 100.0/nvrgtr_data.sorted_names.length,
@@ -664,28 +704,6 @@ function drawDistanceGraphs() {
   }
   nvrgtr_data.graph.cumulative_data.unshift({'dist':-10, 'cumul':0, 'inv':100}); // A zero for the graph. The negative x-value will be adjusted when the x-axis is modified.
   nvrgtr_data.graph.cumulative_data.push({'dist':last_dist+10, 'cumul':100, 'inv':0}); // So the 100% line continues
-  // Create the line and area charts
-  nvrgtr_data.graph.line_graph = nvrgtr_data.graph.g.append("path").attr("class", "histo-line");
-  nvrgtr_data.graph.area_graph = nvrgtr_data.graph.g.append("path").attr("class", "histo-area");
-
-  // Draw the cumulative indicator:
-  nvrgtr_data.graph.histo_ind_x = nvrgtr_data.graph.width - 8;
-  nvrgtr_data.graph.histo_indicator = nvrgtr_data.graph.g.append("g")
-    .attr("display", "none")
-    .attr("transform", "translate(" + nvrgtr_data.graph.histo_ind_x + ", 100)");
-  nvrgtr_data.graph.histo_indicator.append("rect")
-    .attr("class", "histo-ind-rect")
-    .attr("x", 0)
-    .attr("y", 0)
-    .attr("rx", 3)
-    .attr("ry", 10);
-  nvrgtr_data.graph.histo_ind_text = nvrgtr_data.graph.histo_indicator.append("text")
-    .attr("class", "histo-ind-text")
-    .attr("x", 16.5)
-    .attr("y", 10)
-    .attr("dy", ".35em") // essentially a vertical-align: middle.
-    .attr("text-anchor", "middle")
-    .html("0%");
   // Draw the graphs:
   updateDistanceGraphs();
 }
@@ -765,7 +783,7 @@ function numSelectedCallback() {
   if (nvrgtr_data.num_selected == 0) {
     $("#selectionGroupText").html('Selection');
   } else {
-    $("#selectionGroupText").html(nvrgtr_data.num_selected+' selected');
+    $("#selectionGroupText").html('<b>'+nvrgtr_data.num_selected+'</b> selected');
   }
 }
 function selectNamesByThreshold(threshold, select_below) {
@@ -828,7 +846,10 @@ function updateHistoBins() {
   var max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
   nvrgtr_data.graph.y_fxn.domain([0, max_y]);
   nvrgtr_data.graph.cumulative_data[0].dist = x_ticks[0]; // Updates the one negative x value.
-  nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-1].dist = nvrgtr_data.nice_max_var_dist; // Updates the final tick
+  if (nvrgtr_data.nice_max_var_dist > nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-2].dist) {
+    // if the graph x-axis is larger than the largest distance in the tree:
+    nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-1].dist = nvrgtr_data.nice_max_var_dist; // Updates the final spoofed value
+  }
   nvrgtr_data.graph.x_ticks = x_ticks;
 }
 function updateHistoGraph() {
@@ -842,6 +863,9 @@ function updateHistoGraph() {
     .data(nvrgtr_data.graph.bins);
   bar_elements.enter().append("rect")
     .attr("class", "histo-bar")
+    .attr("stroke-width", nvrgtr_settings.graph.histo_stroke_width)
+    .attr("stroke", nvrgtr_settings.graph.histo_stroke)
+    .attr("fill", nvrgtr_settings.graph.histo_bar)
     .attr("x", init_bar_x)
     .attr("y", nvrgtr_data.graph.height)
     .attr("width", bar_width)
@@ -851,6 +875,8 @@ function updateHistoGraph() {
     .attr("transform", function(d) {
       return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-nvrgtr_data.graph.y_fxn(d.length)) + ")";
     });
+  nvrgtr_data.graph.g.select(".histo-bar") // Gives the first bar an accent colour
+    .attr("fill", nvrgtr_settings.graph.histo_first_bar);
   bar_elements.transition()
     .attr("x", init_bar_x)
     .attr("width", bar_width)
@@ -872,6 +898,8 @@ function updateHistoGraph() {
     .data(nvrgtr_data.graph.bins);
   bar_texts.enter().append("text")
     .attr("class", "histo-text prevent-text-selection")
+    .attr("font-family", nvrgtr_settings.graph.label_font)
+    .attr("font-size", nvrgtr_settings.graph.histo_font_size)
     .attr("x", init_text_x)
     .attr("y", max_text_y)
     .attr("dy", ".35em") // essentially a vertical-align: middle.
@@ -909,7 +937,9 @@ function updateHistoGraph() {
     .attr("x", function(d) { return nvrgtr_data.graph.x_fxn(d.x0); })
     .attr("width", col_width)
     .attr("height", nvrgtr_data.graph.height)
-    .attr("fill", "transparent").attr("stroke-width", 0).attr("stroke", "none")
+    .attr("opacity", "0")
+    .attr("stroke-width", "0px")
+    .attr("stroke", "none")
     .on("mouseover", function(d) {
       for (var i=0; i<d.names.length; ++i) { nodeLabelMouseoverHandler(d.names[i]); }
     })

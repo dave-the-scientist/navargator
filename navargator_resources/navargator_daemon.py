@@ -14,6 +14,8 @@ if sys.version_info >= (3,0): # Python 3.x imports
         from tkinter.filedialog import asksaveasfilename as saveAs
     except ImportError:
         saveAs = None # Files will just be saved in the browser's default download location.
+    def as_string(_string):
+        return str(_string, 'utf-8')
 else: # Python 2.x imports
     try:
         from cStringIO import StringIO
@@ -24,6 +26,8 @@ else: # Python 2.x imports
         from tkFileDialog import asksaveasfilename as saveAs
     except ImportError:
         saveAs = None
+    def as_string(_string):
+        return _string
 
 
 # TODO:
@@ -141,7 +145,7 @@ class NavargatorDaemon(object):
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])
         def upload_tree_file():
             try:
-                file_data = request.files['upload-file'].read()
+                file_data = as_string(request.files['upload-file'].read())
                 file_format = request.form['tree_format']
                 file_name = request.form['file_name']
             except Exception as err:

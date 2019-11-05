@@ -513,15 +513,21 @@ function calcSpecificDefaultDisplayOpts(num_vars) {
   if (num_vars == 0) {
     return; // Happens for local version of the input page with no tree pre-loaded
   }
-  if (num_vars > 150) {
+  if (num_vars <= 150) {
+    nvrgtr_default_display_opts.fonts.tree_font_size = 13;
+    nvrgtr_default_display_opts.sizes.small_marker_radius = 2;
+    nvrgtr_default_display_opts.sizes.big_marker_radius = 3;
+    nvrgtr_display_opts.fonts.tree_font_size = 13;
+    nvrgtr_display_opts.sizes.small_marker_radius = 2;
+    nvrgtr_display_opts.sizes.big_marker_radius = 3;
+  } else if (num_vars > 150 && num_vars <= 250) {
     nvrgtr_default_display_opts.fonts.tree_font_size = 8;
     nvrgtr_default_display_opts.sizes.small_marker_radius = 1.5;
     nvrgtr_default_display_opts.sizes.big_marker_radius = 2.5;
     nvrgtr_display_opts.fonts.tree_font_size = 8;
     nvrgtr_display_opts.sizes.small_marker_radius = 1.5;
     nvrgtr_display_opts.sizes.big_marker_radius = 2.5;
-  }
-  if (num_vars > 250) {
+  } else if (num_vars > 250) {
     nvrgtr_default_display_opts.fonts.tree_font_size = 0;
     nvrgtr_default_display_opts.sizes.small_marker_radius = 1;
     nvrgtr_default_display_opts.sizes.big_marker_radius = 2;
@@ -954,6 +960,10 @@ function validateFindVariantsCall() {
   }
   var num_vars_int = parseInt(num_vars), num_vars_range_int = parseInt(num_vars_range),
     do_find_vars = false;
+  if (nvrgtr_data.available.length + nvrgtr_data.chosen.length == num_vars_range_int) {
+    showErrorPopup("Cannot perform clustering if all non-Ignored nodes are either Available or Chosen. Please reduce the number of variants to find.");
+    return false;
+  }
   for (var i=num_vars_int; i<=num_vars_range_int; ++i) {
     if (!nvrgtr_data.result_links.hasOwnProperty(i)) {
       do_find_vars = true;

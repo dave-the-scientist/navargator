@@ -640,3 +640,43 @@ function validateSpinner(spinner, description) {
     return false;
   }
 }
+
+// Sigmoidal curve-fitting:
+function testCurves() { // TESTING
+  //var alpha = 0.2, epochs = 500;
+  var alpha = 0.2, epochs = 1;
+  var data = [{'x':0.05, 'y':0.9}, {'x':0.09, 'y':0.98}, {'x':0.15, 'y':0.8}, {'x':0.25, 'y':0.83}, {'x':0.35, 'y':0.25}, {'x':0.4, 'y':0.15}, {'x':0.48, 'y':0.12}];
+  console.log('data', data);
+  var init_params = predictInitialParams(data);
+  var final_params = fitSigmoidCurve(data, init_params, alpha, epochs);
+}
+function predictInitialParams(data) {
+  // Given some data, calculates reasonable starting parameters for the sigmoid function. Returns an object with values for 'l' (maximum y-value), 'k' (slope of the curve), and 'm' (x-value of the curve's midpoint).
+  var x_vals = Array.from(data, d => d.x).sort(), y_vals = Array.from(data, d => d.y);
+  var max_x = Math.max(...x_vals), max_y = Math.max(...y_vals), med_x_ind = Math.floor(x_vals.length / 2), med_x;
+  if (x_vals.length % 2 !== 0) { // Odd length
+    med_x = x_vals[med_x_ind]; // Direct median
+  } else { // Even length
+    med_x = (x_vals[med_x_ind] + x_vals[med_x_ind - 1]) / 2; // Averaged median
+  }
+  return {'l':max_y, 'k':12/max_x, 'm':med_x};
+}
+function fitSigmoidCurve(data, init_params, alpha, epochs) {
+  var l = init_params.l, k = init_params.k, m = init_params.m;
+  var pred_y, error;
+  for (var i=0; i<epochs; ++i) {
+    data.forEach(function(d) {
+      pred_y = sigmoid(d.x, l, k, m);
+      error = pred_y - d.y;
+      console.log('pre', l, k, m);
+      console.log('error', error);
+      l = l + alpha * -error * pred_y * (1 - pred_y) * d.x; // These don't look right
+      k = k + alpha * -error * pred_y * (1 - pred_y) * d.x;
+      m = m + alpha * -error * pred_y * (1 - pred_y) * d.x;
+      console.log('post', l, k, m);
+    });
+  }
+}
+function sigmoid(x, l, k, m) {
+  return l / (1 + Math.exp(-k * (m - x)));
+}

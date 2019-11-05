@@ -14,8 +14,9 @@
   width: var(--left-col-width);
 }
 #mainVariantSelectDiv {
-  min-width: 220px;/* 400px;*/
+  min-width: 220px;
   margin-right: 0px;
+  overflow: hidden;
 }
 
 /* Load input settints: */
@@ -238,6 +239,10 @@
 .var-assigned-div .var-assigned-add.var-assigned-added:hover > span,
 .var-assigned-div .var-assigned-clear:hover > span {
   background-color: var(--var-assigned-el-rem-colour);
+}
+#varSelectDiv {
+  max-height: calc(var(--tree-width) + 4px); /*There's 4px worth of space in mainTreeDiv under figureSvg for some reason.*/
+  overflow-y: auto;
 }
 #varSelectHeader {
   display: inline-block;
