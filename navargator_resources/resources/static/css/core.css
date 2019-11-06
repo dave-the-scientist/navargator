@@ -496,14 +496,56 @@ button.control-element:active {
   margin-right: unset;
 }
 
-/* ======  Normalization and scale bar inputs  ====== */
-#normValInput,
-#scaleBarInput {
-  width: 50px;
+/* ======  Distance threshold  ====== */
+/* The floating box: */
+#thresholdOutsideDiv {
+  position: relative;
+  z-index: 5;
+}
+#thresholdInput {
+  width: 40px;
   padding: 1px 3px;
   outline: none;
   border: 1px solid transparent;
   transition: border-color 0.2s ease-in-out;
+}
+#thresholdComputePane {
+  top: -36px;
+  left: calc(100% + 15px);
+}
+#thresholdPaneMainDiv {
+  display: flex;
+}
+#thresholdPaneLeftColumn, #thresholdPaneRightColumn {
+  display: flex;
+  flex-direction: column;
+  padding: 0px 5px 5px 5px;
+}
+#thresholdPaneLeftColumn {
+  padding-left: 10px;
+}
+#thresholdPaneRightColumn {
+  padding-right: 10px;
+}
+#thresholdDataText {
+  width: 320px;
+  height: 150px;
+}
+/* The always-visible stuff: */
+#thresholdInput:hover, #thresholdInput:focus {
+  border-color: black;
+}
+
+/* ======  Normalization and scale bar inputs  ====== */
+#normValInput,
+#scaleBarInput {
+  padding: 1px 3px;
+  outline: none;
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease-in-out;
+}
+#normValInput {
+  width: 50px;
 }
 #scaleBarInput {
   width: 30px;

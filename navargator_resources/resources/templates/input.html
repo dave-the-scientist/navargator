@@ -104,7 +104,6 @@
 
             <h2 class="collapsible-header">Display options</h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
-
               <table class="display-options-table"><tbody>
                 <tr>
                   <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Variant colours</label></td>
@@ -184,8 +183,35 @@
                 <input id="scaleBarInput" placeholder="size" />
                 <button id="scaleBarInputGoButton" style="display:none">Ok</button>
               </div>
-              <hr>
             </div>
+
+            <h2>Distance threshold</h2>
+            <div id="thresholdOutsideDiv">
+              <div id="thresholdComputePane" class="floating-pane">
+                <div>
+                  <h2 class="floating-pane-header">Compute distance threshold</h2>
+                  <button class="floating-pane-close"></button>
+                </div>
+                <div id="thresholdPaneMainDiv">
+                  <div id="thresholdPaneLeftColumn">
+                    <button id="thresholdLoadDataButton">Load file</button>
+                    <textarea id="thresholdDataText" autocomplete="off" spellcheck="false"></textarea>
+                    <button>Validate names</button>
+                    <button><b>Fit curve</b></button>
+                  </div>
+                  <div id="thresholdPaneRightColumn">
+                    <button>Graph button</button>
+                    <label>Graph goes here.</label>
+                  </div>
+                </div>
+              </div>
+
+              <label>Critical threshold:</label>
+              <input id="thresholdInput" placeholder="None" />
+              <button id="thresholdComputeButton" class="jq-ui-button">Compute from data</button>
+            </div>
+            <hr>
+
             <div id="saveSessionDiv">
               <button id="saveSessionButton" class="jq-ui-button">Save session</button>
               <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves.">

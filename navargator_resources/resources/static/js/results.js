@@ -59,6 +59,7 @@ function setupPage() {
   setupSelectionPane();
   setupNormalizationPane();
   setupDisplayOptionsPane();
+  setupThresholdPane();
   setupExportPane();
   setupTreeElements();
   $("#treeLoadingMessageGroup").show();
@@ -607,11 +608,12 @@ function drawDistanceGraphs() {
   nvrgtr_data.graph.line_fxn = d3.line()
     .x(function(d) { return nvrgtr_data.graph.x_fxn(d.dist) })
     .y(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) })
-    .curve(d3.curveBasis); // An interpolation, but looks the best.
+    .curve(d3.curveStepAfter);
   nvrgtr_data.graph.area_fxn = d3.area()
     .x(function(d) { return nvrgtr_data.graph.x_fxn(d.dist) })
     .y0(nvrgtr_data.graph.height)
-    .y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) });
+    .y1(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) })
+    .curve(d3.curveStepAfter);
   // Graph axes:
   nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
   nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn).tickValues([]).tickSize(0);
@@ -858,6 +860,7 @@ function updateHistoGraph() {
     bar_margin = col_width * nvrgtr_settings.graph.bar_margin_ratio / 2,
     bar_width = col_width - bar_margin * 2,
     init_bar_x = nvrgtr_data.graph.width - bar_width;
+
   // The bars of the graph:
   var bar_elements = nvrgtr_data.graph.g.selectAll(".histo-bar")
     .data(nvrgtr_data.graph.bins);
@@ -889,6 +892,7 @@ function updateHistoGraph() {
     .attr("height", 0)
     .attr("transform", "translate(0,0)")
     .remove();
+
   // The text label for each bar:
   var text_y_offset = 10,
     half_col = col_width / 2,

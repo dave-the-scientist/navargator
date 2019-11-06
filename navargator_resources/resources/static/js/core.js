@@ -1,6 +1,8 @@
 // NOTE:
 
 // TODO:
+// - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
+//   - Do I need 5000 epochs? It could mean a second of processing time for a large dataset.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
@@ -244,7 +246,6 @@ function setupDisplayOptionsPane() {
   $("#resetDisplayOptsButton").click(function() {
     processDisplayOptions(nvrgtr_default_display_opts);
   });
-  var min_tree_div_width = 500, tree_div_width;
   $("#redrawTreeButton").click(function() {
     // Clear any selection
     $("#clearSelectionButton").click();
@@ -259,6 +260,17 @@ function setupDisplayOptionsPane() {
   $("#redrawTreeButton").button('disable');
   $("#showLegendCheckbox").prop('disabled', true);
   $("#showScaleBarCheckbox").prop('disabled', true);
+}
+function setupThresholdPane() {
+  // Have to ajax to get all of the distances. Sucks, because fitSigmoidCurve() is now useless. Move that to snippets somewhere; it's useful and cool I got it working.
+  // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
+  var compute_pane = $("#thresholdComputePane");
+  $("#thresholdComputeButton").click(function() {
+    showFloatingPane(compute_pane);
+  });
+  $("#thresholdLoadDataButton").click(function() {
+    $("#thresholdDataText").val("Hps.Strain5.Unk\tApp.h222.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21");
+  });
 }
 function treeIsLoading() {
   clearTree();
@@ -577,6 +589,63 @@ function calculateMinimumTransparency(initial_val, desired_val, background_val) 
   return min_trans;
 }
 
+// =====  Sigmoidal curve-fitting:
+function fitSigmoidCurve(data) {
+  var init_params = predictInitialSigmoidParams(data);
+  var cur_error = sigmoidSquaredError(data, init_params), cur_params = init_params, error, params,
+    alphas = [0.5, 0.3, 0.2, 0.1, 0.2, 0.01], epochs = 5000;
+  for (var i=0; i<alphas.length; ++i) {
+    params = doSigmoidCurveFitting(data, cur_params, alphas[i], epochs);
+    error = sigmoidSquaredError(data, params);
+    if (error < cur_error) {
+      console.log('Curve fitting improved after alpha='+alphas[i]+' to '+error);
+      cur_error = error;
+      cur_params = params;
+    }
+  }
+  return {'a':cur_params.a, 'b':cur_params.b, 'r':cur_params.r};
+}
+function sigmoid(x, a, b, r) {
+  return (r/2)*((a-b*x) / Math.sqrt((a-b*x)**2 + 1) + 1);
+}
+function sigmoidSquaredError(data, params) {
+  var a = params.a, b = params.b, r = params.r, sq_error = 0;
+  data.forEach(function(d) {
+    sq_error += (d.y - sigmoid(d.x, a, b, r))**2;
+  });
+  return sq_error;
+}
+function predictInitialSigmoidParams(data) {
+  // Given some data, calculates reasonable starting parameters for the sigmoid function. Returns an object with values for 'a' (x-value of the curve's midpoint * b), 'b' (slope of the curve), and 'r' (maximum y-value).
+  var x_vals = Array.from(data, d => d.x).sort(), y_vals = Array.from(data, d => d.y);
+  var min_x = Math.min(...x_vals), max_x = Math.max(...x_vals), max_y = Math.max(...y_vals);;
+  var b = 7.0 / max_x;
+  var a = (min_x + max_x) / 2.0 * b;
+  var r = max_y;
+  return {'a':a, 'b':b, 'r':r};
+}
+function doSigmoidCurveFitting(data, init_params, alpha, epochs) {
+  // Adapted from http://rstudio-pubs-static.s3.amazonaws.com/252141_6c6b1b2857a04a80a6bbfbc0481e1469.html with a different sigmoiod function that always has a lower y-bound of 0. Partial derivatives calculated by https://www.derivative-calculator.net/
+  // Quite fast; 14 data points with 15,000 epochs == 7 points with 30,000 epochs takes ~100 ms.
+  var a = init_params.a, b = init_params.b, r = init_params.r;
+  var a_grad, b_grad, r_grad, abx, abxs1, sqabxs1;
+  for (var i=0; i<epochs; ++i) {
+    a_grad = 0, b_grad = 0, r_grad = 0;
+    data.forEach(function(d) {
+      abx = a - b*d.x; // Common quantity.
+      abxs1 = abx**2 + 1; // Common quantity.
+      sqabxs1 = Math.sqrt(abxs1); // Common quantity.
+      a_grad += (r*r*(sqabxs1 + abx)) / (2*abxs1**2) - r*d.y/(abxs1**(3/2)); // Partial derivative.
+      b_grad += (r*d.x*( (2*d.y-r)*sqabxs1 - r*abx )) / (2*abxs1**2); // Partial derivative.
+      r_grad += -0.5*(abx/sqabxs1 + 1)*(2*d.y - r*(abx/sqabxs1 + 1)); // Partial derivative.
+    });
+    a = a - alpha*a_grad;
+    b = b - alpha*b_grad;
+    r = r - alpha*r_grad;
+  }
+  return {'a':a, 'b':b, 'r':r};
+}
+
 // =====  Misc common functions:
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
@@ -639,76 +708,4 @@ function validateSpinner(spinner, description) {
     showErrorPopup(msg, "Parameter error");
     return false;
   }
-}
-
-// Sigmoidal curve-fitting:
-function testCurves(alpha) { // TESTING
-  //var alpha = 0.2, epochs = 15000; // Gets close to scipy's pred for 7 points
-  var params, error;
-  var data = [{'x':0.05, 'y':0.9}, {'x':0.09, 'y':0.98}, {'x':0.15, 'y':0.8}, {'x':0.25, 'y':0.83}, {'x':0.35, 'y':0.25}, {'x':0.4, 'y':0.15}, {'x':0.48, 'y':0.12}];
-  var init_params = predictInitialParams(data);
-  console.log('init squared error = '+squared_error(data, init_params));
-  var init_time = performance.now();
-  params = fitSigmoidCurve(data, init_params, 0.2, 15000);
-  console.log(data.length+' points, time: '+(performance.now() - init_time)+' ms');
-  console.log('a, b, r = '+params.a+', '+params.b+', '+params.r);
-  console.log('0.2 squared error = '+squared_error(data, params));
-
-  init_time = performance.now();
-  // This is working quite well. I'd like to really stress test it, especially if the y-values are logarithmic, or if there are data from 2 curves. Do I need 5000 epochs? Could approach a second of processing for a large dataset
-  var cur_error = squared_error(data, init_params), cur_params = init_params,
-    alphas = [0.5, 0.3, 0.2, 0.1, 0.2, 0.01], epochs = 5000;
-  for (var i=0; i<alphas.length; ++i) {
-    params = fitSigmoidCurve(data, cur_params, alphas[i], epochs);
-    error = squared_error(data, params);
-    console.log('alpha='+alphas[i]+', error = '+error);
-    console.log('a, b, r = '+params.a+', '+params.b+', '+params.r);
-    if (error < cur_error) {
-      cur_error = error;
-      cur_params = params;
-    }
-  }
-  console.log(data.length+' points, time: '+(performance.now() - init_time)+' ms');
-  console.log('a, b, r = '+cur_params.a+', '+cur_params.b+', '+cur_params.r);
-  console.log('step squared error = '+cur_error);
-}
-function sigmoid(x, a, b, r) {
-  return (r/2)*((a-b*x) / Math.sqrt((a-b*x)**2 + 1) + 1);
-}
-function squared_error(data, params) {
-  var a = params.a, b = params.b, r = params.r, sq_error = 0;
-  data.forEach(function(d) {
-    sq_error += (d.y - sigmoid(d.x, a, b, r))**2;
-  });
-  return sq_error;
-}
-function predictInitialParams(data) {
-  // Given some data, calculates reasonable starting parameters for the sigmoid function. Returns an object with values for 'a' (x-value of the curve's midpoint * b), 'b' (slope of the curve), and 'r' (maximum y-value).
-  var x_vals = Array.from(data, d => d.x).sort(), y_vals = Array.from(data, d => d.y);
-  var min_x = Math.min(...x_vals), max_x = Math.max(...x_vals), max_y = Math.max(...y_vals);;
-  var b = 7.0 / max_x;
-  var a = (min_x + max_x) / 2.0 * b;
-  var r = max_y;
-  return {'a':a, 'b':b, 'r':r};
-}
-function fitSigmoidCurve(data, init_params, alpha, epochs) {
-  // Adapted from http://rstudio-pubs-static.s3.amazonaws.com/252141_6c6b1b2857a04a80a6bbfbc0481e1469.html with a different function that always has a lower y-bound of 0. Partial derivatives calculated by https://www.derivative-calculator.net/
-  // Quite fast; 14 points with 15,000 epochs == 7 points with 30,000 epochs ~= 100 ms.
-  var a = init_params.a, b = init_params.b, r = init_params.r;
-  var a_grad, b_grad, r_grad, abx, abxs1, sqabxs1;
-  for (var i=0; i<epochs; ++i) {
-    a_grad = 0, b_grad = 0, r_grad = 0;
-    data.forEach(function(d) {
-      abx = a - b*d.x; // Common quantity.
-      abxs1 = abx**2 + 1; // Common quantity.
-      sqabxs1 = Math.sqrt(abxs1); // Common quantity.
-      a_grad += (r*r*(sqabxs1 + abx)) / (2*abxs1**2) - r*d.y/(abxs1**(3/2)); // Partial derivative.
-      b_grad += (r*d.x*( (2*d.y-r)*sqabxs1 - r*abx )) / (2*abxs1**2); // Partial derivative.
-      r_grad += -0.5*(abx/sqabxs1 + 1)*(2*d.y - r*(abx/sqabxs1 + 1)); // Partial derivative.
-    });
-    a = a - alpha*a_grad;
-    b = b - alpha*b_grad;
-    r = r - alpha*r_grad;
-  }
-  return {'a':a, 'b':b, 'r':r};
 }

@@ -79,35 +79,9 @@
                 <td><b><span id="distTotalSpan">--</span></b></td>
               </tr>
             </tbody></table>
-            <h2>Results normalization</h2>
-            <table><tbody>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
-                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
-                </label>
-              </td></tr>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
-                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
-                </label>
-              </td></tr>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normValRadio" type="radio" name="normalizeRadios" />
-                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
-                </label>
-                <input id="normValInput" placeholder="value" />
-                <button id="normValGoButton" style="display:none">Ok</button>
-              </td></tr>
-            </tbody></table>
-          </div>
 
-          <div id="displayOptionsDiv" class="style-box">
             <h2 class="collapsible-header">Display options</h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
-
               <table class="display-options-table"><tbody>
                 <tr>
                   <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Variant colours</label></td>
@@ -190,9 +164,34 @@
             </div>
           </div>
 
+          <div id="resultsNormalizationDiv" class="style-box">
+            <h2>Results normalization</h2>
+            <table><tbody>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
+                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normValRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
+                </label>
+                <input id="normValInput" placeholder="value" />
+                <button id="normValGoButton" style="display:none">Ok</button>
+              </td></tr>
+            </tbody></table>
+          </div>
+
           <div id="exportDataDiv" class="style-box">
             <h2>Export data</h2>
-
             <div id="exportNamesPane" class="floating-pane">
               <div>
                 <h2 class="floating-pane-header">Export variant names</h2>
@@ -221,7 +220,6 @@
                 </div>
               </div>
             </div>
-
             <button id="exportChosenButton">Export chosen</button>
             <button id="exportSelectionButton">Export selection</button>
             <button id="exportClustersButton">Export clusters</button>
@@ -229,6 +227,7 @@
             <button id="exportTreeButton">Save tree image</button>
             <button id="exportHistoButton">Save histogram image</button>
           </div>
+
         </div>
 
         <div id="mainTreeDiv" class="style-box">

@@ -61,6 +61,7 @@ function setupPage() {
   setupVariantSelection();
   setupUploadSaveButtons();
   setupManipulationsPane();
+  setupThresholdPane();
 
   $("#sessionIncludeDistancesCheckbox").prop('disabled', true);
 
@@ -90,7 +91,8 @@ function setupPage() {
     $("#loadInputHeader").click(); // Opens collapsible pane
   }
 
-  testCurves(); // TESTING
+  var data = [{'x':0.05, 'y':0.9}, {'x':0.09, 'y':0.98}, {'x':0.15, 'y':0.8}, {'x':0.25, 'y':0.83}, {'x':0.35, 'y':0.25}, {'x':0.4, 'y':0.15}, {'x':0.48, 'y':0.12}];
+  fitSigmoidCurve(data); // TESTING
 }
 function setupUploadSaveButtons() {
   var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveSessionButton");

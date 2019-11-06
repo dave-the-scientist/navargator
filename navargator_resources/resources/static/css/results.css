@@ -8,15 +8,12 @@
   display: inline-flex;
   flex-direction: column;
 }
-#summaryStatsDiv, #displayOptionsDiv, #exportDataDiv {
+#summaryStatsDiv, #resultsNormalizationDiv, #exportDataDiv {
   width: 250px;
 }
 #selectionDiv, #clustersListDiv {
   width: 400px;
 }
-
-/* Display options pane settings: */
-
 
 /* Export pane settings: */
 #exportDataDiv {
