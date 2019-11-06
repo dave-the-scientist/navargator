@@ -89,6 +89,8 @@ function setupPage() {
     processDisplayOptions(nvrgtr_default_display_opts); // Sets display options to default
     $("#loadInputHeader").click(); // Opens collapsible pane
   }
+
+  testCurves(); // TESTING
 }
 function setupUploadSaveButtons() {
   var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveSessionButton");

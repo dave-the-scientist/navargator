@@ -16,7 +16,7 @@ if sys.version_info >= (3,0): # Python 3.x imports
         saveAs = None # Files will just be saved in the browser's default download location.
     def as_string(_string):
         return str(_string, 'utf-8')
-else: # Python 2.x imports
+elif sys.version_info >= (2,6): # Python 2.x imports
     try:
         from cStringIO import StringIO
     except ImportError:
@@ -28,6 +28,9 @@ else: # Python 2.x imports
         saveAs = None
     def as_string(_string):
         return _string
+else:
+    print('\nError: NaVARgator requires Python version >= 2.6 to run.\n')
+    exit()
 
 
 # TODO:

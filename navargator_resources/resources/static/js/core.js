@@ -642,41 +642,73 @@ function validateSpinner(spinner, description) {
 }
 
 // Sigmoidal curve-fitting:
-function testCurves() { // TESTING
-  //var alpha = 0.2, epochs = 500;
-  var alpha = 0.2, epochs = 1;
+function testCurves(alpha) { // TESTING
+  //var alpha = 0.2, epochs = 15000; // Gets close to scipy's pred for 7 points
+  var params, error;
   var data = [{'x':0.05, 'y':0.9}, {'x':0.09, 'y':0.98}, {'x':0.15, 'y':0.8}, {'x':0.25, 'y':0.83}, {'x':0.35, 'y':0.25}, {'x':0.4, 'y':0.15}, {'x':0.48, 'y':0.12}];
-  console.log('data', data);
   var init_params = predictInitialParams(data);
-  var final_params = fitSigmoidCurve(data, init_params, alpha, epochs);
+  console.log('init squared error = '+squared_error(data, init_params));
+  var init_time = performance.now();
+  params = fitSigmoidCurve(data, init_params, 0.2, 15000);
+  console.log(data.length+' points, time: '+(performance.now() - init_time)+' ms');
+  console.log('a, b, r = '+params.a+', '+params.b+', '+params.r);
+  console.log('0.2 squared error = '+squared_error(data, params));
+
+  init_time = performance.now();
+  // This is working quite well. I'd like to really stress test it, especially if the y-values are logarithmic, or if there are data from 2 curves. Do I need 5000 epochs? Could approach a second of processing for a large dataset
+  var cur_error = squared_error(data, init_params), cur_params = init_params,
+    alphas = [0.5, 0.3, 0.2, 0.1, 0.2, 0.01], epochs = 5000;
+  for (var i=0; i<alphas.length; ++i) {
+    params = fitSigmoidCurve(data, cur_params, alphas[i], epochs);
+    error = squared_error(data, params);
+    console.log('alpha='+alphas[i]+', error = '+error);
+    console.log('a, b, r = '+params.a+', '+params.b+', '+params.r);
+    if (error < cur_error) {
+      cur_error = error;
+      cur_params = params;
+    }
+  }
+  console.log(data.length+' points, time: '+(performance.now() - init_time)+' ms');
+  console.log('a, b, r = '+cur_params.a+', '+cur_params.b+', '+cur_params.r);
+  console.log('step squared error = '+cur_error);
+}
+function sigmoid(x, a, b, r) {
+  return (r/2)*((a-b*x) / Math.sqrt((a-b*x)**2 + 1) + 1);
+}
+function squared_error(data, params) {
+  var a = params.a, b = params.b, r = params.r, sq_error = 0;
+  data.forEach(function(d) {
+    sq_error += (d.y - sigmoid(d.x, a, b, r))**2;
+  });
+  return sq_error;
 }
 function predictInitialParams(data) {
-  // Given some data, calculates reasonable starting parameters for the sigmoid function. Returns an object with values for 'l' (maximum y-value), 'k' (slope of the curve), and 'm' (x-value of the curve's midpoint).
+  // Given some data, calculates reasonable starting parameters for the sigmoid function. Returns an object with values for 'a' (x-value of the curve's midpoint * b), 'b' (slope of the curve), and 'r' (maximum y-value).
   var x_vals = Array.from(data, d => d.x).sort(), y_vals = Array.from(data, d => d.y);
-  var max_x = Math.max(...x_vals), max_y = Math.max(...y_vals), med_x_ind = Math.floor(x_vals.length / 2), med_x;
-  if (x_vals.length % 2 !== 0) { // Odd length
-    med_x = x_vals[med_x_ind]; // Direct median
-  } else { // Even length
-    med_x = (x_vals[med_x_ind] + x_vals[med_x_ind - 1]) / 2; // Averaged median
-  }
-  return {'l':max_y, 'k':12/max_x, 'm':med_x};
+  var min_x = Math.min(...x_vals), max_x = Math.max(...x_vals), max_y = Math.max(...y_vals);;
+  var b = 7.0 / max_x;
+  var a = (min_x + max_x) / 2.0 * b;
+  var r = max_y;
+  return {'a':a, 'b':b, 'r':r};
 }
 function fitSigmoidCurve(data, init_params, alpha, epochs) {
-  var l = init_params.l, k = init_params.k, m = init_params.m;
-  var pred_y, error;
+  // Adapted from http://rstudio-pubs-static.s3.amazonaws.com/252141_6c6b1b2857a04a80a6bbfbc0481e1469.html with a different function that always has a lower y-bound of 0. Partial derivatives calculated by https://www.derivative-calculator.net/
+  // Quite fast; 14 points with 15,000 epochs == 7 points with 30,000 epochs ~= 100 ms.
+  var a = init_params.a, b = init_params.b, r = init_params.r;
+  var a_grad, b_grad, r_grad, abx, abxs1, sqabxs1;
   for (var i=0; i<epochs; ++i) {
+    a_grad = 0, b_grad = 0, r_grad = 0;
     data.forEach(function(d) {
-      pred_y = sigmoid(d.x, l, k, m);
-      error = pred_y - d.y;
-      console.log('pre', l, k, m);
-      console.log('error', error);
-      l = l + alpha * -error * pred_y * (1 - pred_y) * d.x; // These don't look right
-      k = k + alpha * -error * pred_y * (1 - pred_y) * d.x;
-      m = m + alpha * -error * pred_y * (1 - pred_y) * d.x;
-      console.log('post', l, k, m);
+      abx = a - b*d.x; // Common quantity.
+      abxs1 = abx**2 + 1; // Common quantity.
+      sqabxs1 = Math.sqrt(abxs1); // Common quantity.
+      a_grad += (r*r*(sqabxs1 + abx)) / (2*abxs1**2) - r*d.y/(abxs1**(3/2)); // Partial derivative.
+      b_grad += (r*d.x*( (2*d.y-r)*sqabxs1 - r*abx )) / (2*abxs1**2); // Partial derivative.
+      r_grad += -0.5*(abx/sqabxs1 + 1)*(2*d.y - r*(abx/sqabxs1 + 1)); // Partial derivative.
     });
+    a = a - alpha*a_grad;
+    b = b - alpha*b_grad;
+    r = r - alpha*r_grad;
   }
-}
-function sigmoid(x, l, k, m) {
-  return l / (1 + Math.exp(-k * (m - x)));
+  return {'a':a, 'b':b, 'r':r};
 }
