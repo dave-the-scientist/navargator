@@ -523,14 +523,26 @@ button.control-element:active {
 }
 #thresholdPaneLeftColumn {
   padding-left: 10px;
+  align-items: flex-start;
 }
 #thresholdPaneRightColumn {
   padding-right: 10px;
 }
+#thresholdPaneLeftColumn > button, #thresholdPaneRightColumn > button {
+  margin: 2px 10px 5px 0px;
+}
 #thresholdDataText {
-  width: 320px;
+  min-width: 320px;
+  min-height: 150px;
+}
+#thresholdErrorLabel {
+  margin-left: 10px;
+}
+#thresholdSvg {
+  width: 200px;
   height: 150px;
 }
+
 /* The always-visible stuff: */
 #thresholdInput:hover, #thresholdInput:focus {
   border-color: black;

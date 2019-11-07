@@ -21,11 +21,20 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null,
+  'thresh':{
+    'g':null, 'x_fxn':null, 'y_fxn':null, 'sigmoid_fxn':null, 'x_axis':null, 'y_axis':null
+  }
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
   'graph' : {
     'histo_bins':15, 'total_width':null, 'total_height':null
+  },
+  'thresh':{
+    'width':null, 'height':null,
+    'margin':{
+      'top': 5, 'right':5, 'bottom':5, 'left':5
+    }
   }
 };
 var nvrgtr_default_display_opts = { // User-modifiable settings that persist between pages and sessions. Anything with a value of null cannot be set by the user.
@@ -67,7 +76,9 @@ function processError(error, message) {
     showErrorPopup(message+"; "+error.responseText);
   } else if (error.status == 5513) {
     showErrorPopup(message+"; "+error.responseText);
-  } else {
+  } else if (error.status == 5514) {
+    showErrorPopup(message+"; "+error.responseText);
+  }else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }
 }
@@ -264,20 +275,102 @@ function setupDisplayOptionsPane() {
 function setupThresholdPane() {
   // Have to ajax to get all of the distances. Sucks, because fitSigmoidCurve() is now useless. Move that to snippets somewhere; it's useful and cool I got it working.
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
-  var compute_pane = $("#thresholdComputePane");
+  var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel");
+  threshold_text.data('data', []); // The data to be graphed
+  function validateThresholdData() {
+    var cur_ind = 0, data = [], line, line_data, name1, name2, value;
+    var lines = threshold_text.val().trim().split('\n');
+    if (lines.length < 2) {
+      error_label.html('<b>Invalid: insufficient data</b>');
+      return false;
+    }
+    for (var i=0; i<lines.length; ++i) {
+      line = lines[i];
+      line_data = line.split('\t');
+      if (line_data.length != 3 || line_data[0].length == 0 || line_data[1].length == 0 || line_data[2].length == 0) {
+        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + line.length);
+        error_label.html('<b>Invalid: malformed line</b>');
+        return false;
+      }
+      name1 = line_data[0], name2 = line_data[1], value = line_data[2];
+      if (!nvrgtr_data.leaves.includes(name1)) {
+        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name1.length);
+        error_label.html('<b>Invalid: variant not found</b>');
+        return false;
+      } else {
+        cur_ind += name1.length + 1; // +1 for the removed \t
+      }
+      if (!nvrgtr_data.leaves.includes(name2)) {
+        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name2.length);
+        error_label.html('<b>Invalid: variant not found</b>');
+        return false;
+      } else {
+        cur_ind += name2.length + 1; // +1 for the removed \t
+      }
+      if (isNaN(value) || parseFloat(value) < 0) {
+        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + value.length);
+        error_label.html('<b>Invalid: not a number</b>');
+        return false;
+      } else {
+        cur_ind += value.length + 1; // +1 for the removed \n
+      }
+      data.push({'name1':name1, 'name2':name2, 'value':parseFloat(value)});
+    }
+    error_label.html('Data are valid');
+    return data;
+  }
+  // End of function validateThresholdData()
   $("#thresholdComputeButton").click(function() {
     showFloatingPane(compute_pane);
   });
   $("#thresholdLoadDataButton").click(function() {
-    $("#thresholdDataText").val("Hps.Strain5.Unk\tApp.h222.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21");
+    threshold_text.val("Hps.Strain5.Unk\tApp.h222.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21\nHps.Strain5.Unk\tApp.h167.Unk\t0.03\nA.suis.h57.Unk\tA.suis.h58.Unk\t0.99\nA.suis.h57.Unk\tApp.h49.SV7\t0.05\nA.suis.h57.Unk\tHps.h384.Unk\t0.46");
   });
-}
-function treeIsLoading() {
-  clearTree();
-  $("#treeLoadingMessageGroup").show();
-}
-function redrawTree() {
-  // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
+  $("#thresholdValidateButton").click(function() {
+    validateThresholdData();
+  });
+  $("#thresholdFitCurveButton").click(function() {
+    var data = validateThresholdData();
+    if (data == false) {
+      return false;
+    }
+    $.ajax({
+      url: daemonURL('/fit-curve'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'data':data}),
+      success: function(data_obj) {
+        var graph_data = $.parseJSON(data_obj);
+        error_label.html('');
+        console.log('ret', graph_data);
+      },
+      error: function(error) { processError(error, "Error fitting the data to a curve"); }
+    });
+  });
+
+  // Set up the graph:
+
+  var graph_width_str = $("#thresholdSvg").css('width'), graph_height_str = $("#thresholdSvg").css('height'),
+    total_width = parseInt(graph_width_str.slice(0,-2)),
+    total_height = parseInt(graph_height_str.slice(0,-2)),
+    margin = nvrgtr_settings.thresh.margin;
+  nvrgtr_settings.thresh.width = total_width - margin.right - margin.left;
+  nvrgtr_settings.thresh.height = total_height - margin.top - margin.bottom;
+  // Set up svg objects:
+  var svg = d3.select("#thresholdSvg")
+    .attr("width", total_width)
+    .attr("height", total_height);
+  nvrgtr_data.thresh.g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  // Set up scales and data objects:
+  nvrgtr_data.thresh.x_fxn = d3.scaleLinear()
+    .rangeRound([0, nvrgtr_settings.thresh.width])
+    .clamp(true);
+  nvrgtr_data.thresh.y_fxn = d3.scaleLinear()
+    .range([0, nvrgtr_settings.thresh.height])
+    .clamp(true);
+  // set up scatter plot.
+  // I probably want to use .curve(d3.curveMonotoneX) on the line graph, but test out others from D3 curve explorer
 }
 
 // =====  Display option updating:
@@ -486,7 +579,13 @@ function updateDisplayOptionSpinners() {
   $("#displayTreeBarChartSizeSpinner").spinner('value', nvrgtr_display_opts.sizes.bar_chart_height);
   $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
 }
-
+function treeIsLoading() {
+  clearTree();
+  $("#treeLoadingMessageGroup").show();
+}
+function redrawTree() {
+  // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
+}
 // =====  Page maintainance and management:
 function generateBrowserId(length) {
   var b_id = 'b';
@@ -589,63 +688,6 @@ function calculateMinimumTransparency(initial_val, desired_val, background_val) 
   return min_trans;
 }
 
-// =====  Sigmoidal curve-fitting:
-function fitSigmoidCurve(data) {
-  var init_params = predictInitialSigmoidParams(data);
-  var cur_error = sigmoidSquaredError(data, init_params), cur_params = init_params, error, params,
-    alphas = [0.5, 0.3, 0.2, 0.1, 0.2, 0.01], epochs = 5000;
-  for (var i=0; i<alphas.length; ++i) {
-    params = doSigmoidCurveFitting(data, cur_params, alphas[i], epochs);
-    error = sigmoidSquaredError(data, params);
-    if (error < cur_error) {
-      console.log('Curve fitting improved after alpha='+alphas[i]+' to '+error);
-      cur_error = error;
-      cur_params = params;
-    }
-  }
-  return {'a':cur_params.a, 'b':cur_params.b, 'r':cur_params.r};
-}
-function sigmoid(x, a, b, r) {
-  return (r/2)*((a-b*x) / Math.sqrt((a-b*x)**2 + 1) + 1);
-}
-function sigmoidSquaredError(data, params) {
-  var a = params.a, b = params.b, r = params.r, sq_error = 0;
-  data.forEach(function(d) {
-    sq_error += (d.y - sigmoid(d.x, a, b, r))**2;
-  });
-  return sq_error;
-}
-function predictInitialSigmoidParams(data) {
-  // Given some data, calculates reasonable starting parameters for the sigmoid function. Returns an object with values for 'a' (x-value of the curve's midpoint * b), 'b' (slope of the curve), and 'r' (maximum y-value).
-  var x_vals = Array.from(data, d => d.x).sort(), y_vals = Array.from(data, d => d.y);
-  var min_x = Math.min(...x_vals), max_x = Math.max(...x_vals), max_y = Math.max(...y_vals);;
-  var b = 7.0 / max_x;
-  var a = (min_x + max_x) / 2.0 * b;
-  var r = max_y;
-  return {'a':a, 'b':b, 'r':r};
-}
-function doSigmoidCurveFitting(data, init_params, alpha, epochs) {
-  // Adapted from http://rstudio-pubs-static.s3.amazonaws.com/252141_6c6b1b2857a04a80a6bbfbc0481e1469.html with a different sigmoiod function that always has a lower y-bound of 0. Partial derivatives calculated by https://www.derivative-calculator.net/
-  // Quite fast; 14 data points with 15,000 epochs == 7 points with 30,000 epochs takes ~100 ms.
-  var a = init_params.a, b = init_params.b, r = init_params.r;
-  var a_grad, b_grad, r_grad, abx, abxs1, sqabxs1;
-  for (var i=0; i<epochs; ++i) {
-    a_grad = 0, b_grad = 0, r_grad = 0;
-    data.forEach(function(d) {
-      abx = a - b*d.x; // Common quantity.
-      abxs1 = abx**2 + 1; // Common quantity.
-      sqabxs1 = Math.sqrt(abxs1); // Common quantity.
-      a_grad += (r*r*(sqabxs1 + abx)) / (2*abxs1**2) - r*d.y/(abxs1**(3/2)); // Partial derivative.
-      b_grad += (r*d.x*( (2*d.y-r)*sqabxs1 - r*abx )) / (2*abxs1**2); // Partial derivative.
-      r_grad += -0.5*(abx/sqabxs1 + 1)*(2*d.y - r*(abx/sqabxs1 + 1)); // Partial derivative.
-    });
-    a = a - alpha*a_grad;
-    b = b - alpha*b_grad;
-    r = r - alpha*r_grad;
-  }
-  return {'a':a, 'b':b, 'r':r};
-}
-
 // =====  Misc common functions:
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
@@ -680,6 +722,16 @@ function saveDataString(data_str, file_name, file_type) {
   //document.body.appendChild(download_link); // TESTING should be able to remove these 2 lines
   download_link.click();
   //document.body.removeChild(download_link); // TESTING should be able to remove these 2 lines
+}
+function focusScrollSelectInTextarea(textarea, start, end) {
+  // textarea is the jquery object, start and end are integers representing character counts. Will select the given range, and attempt to scroll the textarea so that the selected text is on the bottom of the view.
+  textarea.focus();
+  var full_text = textarea.val();
+  textarea.val(full_text.slice(0, end));
+  textarea.scrollTop(0);
+  textarea.scrollTop(textarea[0].scrollHeight);
+  textarea.val(full_text);
+  textarea[0].setSelectionRange(start, end);
 }
 function calculateHistoTicks(max_var_dist) {
   // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.

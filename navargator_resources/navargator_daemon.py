@@ -3,6 +3,7 @@ from collections import deque
 from random import randint
 from flask import Flask, request, render_template, json
 from navargator_resources.variant_finder import VariantFinder, navargator_from_data
+from navargator_resources.curve_fitting import fit_to_sigmoid
 from navargator_resources.job_queue import JobQueue
 from navargator_resources.phylo import PhyloParseError, PhyloUniqueNameError
 from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError, NavargatorCapacityError
@@ -56,7 +57,8 @@ class NavargatorDaemon(object):
     5510 - Error parsing tree file. From upload_tree_file().
     5511 - Error manipulating tree object. From the rooting and re-ordering methods.
     5512 - Error truncating tree names because names became non-unique. From truncate_tree_names().
-    5513 - Error creating a new session as the server is at capacity. Likelky from upload_tree_file(), rarely from anything that calls update_or_copy_vf().
+    5513 - Error creating a new session as the server is at capacity. Likely from upload_tree_file(), rarely from anything that calls update_or_copy_vf().
+    5514 - Error parsing data from the client.
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         self.sessionID_length = 20 # Length of the unique session ID used
@@ -143,6 +145,28 @@ class NavargatorDaemon(object):
                 cur_var = int(cur_var)
                 self.calc_global_normalization_values([cur_var], dist_scale, max_var_dist, bins, vf)
             ret = {'global_value':vf.normalize['global_value'], 'global_max_count':vf.normalize['global_max_count']}
+            return json.dumps(ret)
+        @self.server.route(self.daemonURL('/fit-curve'), methods=['POST'])
+        def fit_curve():
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
+            try:
+                data = request.json['data']
+            except Exception as err:
+                return ("could not get the data for fit_curve() from the client.", 5514)
+            xvals, yvals = [], []
+            for datum in data:
+                name1 = datum.get('name1')
+                name2 = datum.get('name2')
+                if name1 not in vf.leaves or name2 not in vf.leaves:
+                    return ("malformed data for fit_curve() from the client.", 5514)
+                dist = vf.dist[vf.index[name1], vf.index[name2]]
+                datum['distance'] = dist
+                xvals.append(dist)
+                yvals.append(float(datum['value']))
+            a, b, r = fit_to_sigmoid(xvals, yvals)
+            ret = {'data':data, 'a':a, 'b':b, 'r':r}
             return json.dumps(ret)
         # # #  Input page listening routes:
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])

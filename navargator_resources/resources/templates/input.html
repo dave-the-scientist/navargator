@@ -196,12 +196,14 @@
                   <div id="thresholdPaneLeftColumn">
                     <button id="thresholdLoadDataButton">Load file</button>
                     <textarea id="thresholdDataText" autocomplete="off" spellcheck="false"></textarea>
-                    <button>Validate names</button>
-                    <button><b>Fit curve</b></button>
+                    <div>
+                      <button id="thresholdValidateButton">Validate names</button>
+                      <label id="thresholdErrorLabel"></label>
+                    </div>
+                    <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
                   </div>
                   <div id="thresholdPaneRightColumn">
-                    <button>Graph button</button>
-                    <label>Graph goes here.</label>
+                    <svg id="thresholdSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
                   </div>
                 </div>
               </div>

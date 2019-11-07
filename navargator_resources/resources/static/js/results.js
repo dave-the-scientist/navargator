@@ -9,10 +9,15 @@ $.extend(nvrgtr_page, {
 });
 $.extend(nvrgtr_data, {
   'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[],
-  'graph': {'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'line_fxn':null, 'area_fxn':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[], 'line_graph':null, 'area_graph':null, 'histo_indicator':null, 'histo_ind_text':null, 'histo_ind_x':null}
+  'graph': {
+    'width':null, 'height':null, 'g':null, 'x_fxn':null, 'y_fxn':null, 'y_fxn2':null, 'line_fxn':null, 'area_fxn':null, 'bins':null, 'cumulative_data':[], 'x_axis':null, 'y_axis':null, 'y_axis2':null, 'x_ticks':[], 'line_graph':null, 'area_graph':null, 'histo_indicator':null, 'histo_ind_text':null, 'histo_ind_x':null
+  }
 });
 $.extend(nvrgtr_settings.graph, {
-  'margin':{top:2, right:20, bottom:44, left:18}, 'bar_margin_ratio':0.15, 'histo_left_margin':null, 'label_font':'Helvetica, Arial, sans-serif', 'label_font_size':'14px', 'histo_font_size':'10px', 'line_stroke_width':'1.5px', 'area_stroke_width':'0.5px', 'histo_stroke_width':'0.2px', 'area_opacity':'0.5', 'line_area_stroke':null, 'area_fill':null, 'histo_first_bar':null, 'histo_bar':'#EAFEEC', 'histo_stroke':'#555555'
+  'margin':{
+    top:2, right:20, bottom:44, left:18
+  },
+  'bar_margin_ratio':0.15, 'histo_left_margin':null, 'label_font':'Helvetica, Arial, sans-serif', 'label_font_size':'14px', 'histo_font_size':'10px', 'line_stroke_width':'1.5px', 'area_stroke_width':'0.5px', 'histo_stroke_width':'0.2px', 'area_opacity':'0.5', 'line_area_stroke':null, 'area_fill':null, 'histo_first_bar':null, 'histo_bar':'#EAFEEC', 'histo_stroke':'#555555'
 });
 
 // Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by adding a middle variable
@@ -1035,8 +1040,8 @@ function updateAreaGraphAndIndicator(distance, select_below, do_transition=false
   }
   if (nvrgtr_data.graph.histo_indicator != null) {
     var ind_y = nvrgtr_data.graph.y_fxn2(cur_percent);
-    var max_y = nvrgtr_settings.graph.total_height - nvrgtr_settings.graph.margin.top - nvrgtr_settings.graph.margin.bottom - 20; // 20 is the css height of the rect
-    ind_y = Math.min(ind_y, max_y);
+    var max_y = nvrgtr_data.graph.height - 20; // 20 is the css height of the rect
+    ind_y = Math.min(ind_y, max_y); // Prevents it from going below the x-axis
     nvrgtr_data.graph.histo_indicator
       .attr("transform", "translate("+nvrgtr_data.graph.histo_ind_x+", "+ind_y+")");
   }
