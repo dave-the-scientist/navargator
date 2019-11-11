@@ -23,7 +23,7 @@ if (last_slash > 0) {
 var nvrgtr_data = { // Variables used by each page.
   'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null,
   'thresh':{
-    'g':null, 'x_fxn':null, 'y_fxn':null, 'sigmoid_fxn':null, 'x_axis':null, 'y_axis':null
+    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_data':null, 'line_graph':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
@@ -31,9 +31,9 @@ var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
     'histo_bins':15, 'total_width':null, 'total_height':null
   },
   'thresh':{
-    'width':null, 'height':null,
+    'width':null, 'height':null, 'label_font':'Helvetica, Arial, sans-serif', 'label_font_size':'14px', 'scatter_stroke_width':'1px', 'scatter_stroke':'#555555', 'scatter_fill':'#EAFEEC', 'scatter_radius':2.5, 'line_stroke_width':'2px', 'line_stroke':null,
     'margin':{
-      'top': 5, 'right':5, 'bottom':5, 'left':5
+      'top':10, 'right':15, 'bottom':44, 'left':40
     }
   }
 };
@@ -324,7 +324,7 @@ function setupThresholdPane() {
     showFloatingPane(compute_pane);
   });
   $("#thresholdLoadDataButton").click(function() {
-    threshold_text.val("Hps.Strain5.Unk\tApp.h222.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21\nHps.Strain5.Unk\tApp.h167.Unk\t0.03\nA.suis.h57.Unk\tA.suis.h58.Unk\t0.99\nA.suis.h57.Unk\tApp.h49.SV7\t0.05\nA.suis.h57.Unk\tHps.h384.Unk\t0.46");
+    threshold_text.val("Hps.Strain5.Unk\tHps.540.SV4\t1.0\nHps.Strain5.Unk\tHps.nx63.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21\nHps.Strain5.Unk\tApp.h167.Unk\t0.03\nA.suis.h57.Unk\tA.suis.h58.Unk\t0.99\nA.suis.h57.Unk\tApp.h49.SV7\t0.05\nA.suis.h57.Unk\tHps.h384.Unk\t0.46");
   });
   $("#thresholdValidateButton").click(function() {
     validateThresholdData();
@@ -340,20 +340,23 @@ function setupThresholdPane() {
       contentType: "application/json",
       data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'data':data}),
       success: function(data_obj) {
-        var graph_data = $.parseJSON(data_obj);
+        var thresh_data = $.parseJSON(data_obj);
+        nvrgtr_data.thresh.params = {'a':thresh_data.a, 'b':thresh_data.b, 'r':thresh_data.r};
+        nvrgtr_data.thresh.data = thresh_data.data;
         error_label.html('');
-        console.log('ret', graph_data);
+        updateThresholdGraph();
       },
       error: function(error) { processError(error, "Error fitting the data to a curve"); }
     });
   });
 
   // Set up the graph:
-
   var graph_width_str = $("#thresholdSvg").css('width'), graph_height_str = $("#thresholdSvg").css('height'),
     total_width = parseInt(graph_width_str.slice(0,-2)),
     total_height = parseInt(graph_height_str.slice(0,-2)),
     margin = nvrgtr_settings.thresh.margin;
+  nvrgtr_settings.thresh.line_stroke = getComputedStyle(document.documentElement)
+    .getPropertyValue('--dark-background-colour');
   nvrgtr_settings.thresh.width = total_width - margin.right - margin.left;
   nvrgtr_settings.thresh.height = total_height - margin.top - margin.bottom;
   // Set up svg objects:
@@ -367,10 +370,123 @@ function setupThresholdPane() {
     .rangeRound([0, nvrgtr_settings.thresh.width])
     .clamp(true);
   nvrgtr_data.thresh.y_fxn = d3.scaleLinear()
-    .range([0, nvrgtr_settings.thresh.height])
+    .range([nvrgtr_settings.thresh.height, 0])
     .clamp(true);
-  // set up scatter plot.
-  // I probably want to use .curve(d3.curveMonotoneX) on the line graph, but test out others from D3 curve explorer
+  nvrgtr_data.thresh.line_fxn = d3.line()
+    .x(function(d) { return nvrgtr_data.thresh.x_fxn(d) })
+    .y(function(d) { return nvrgtr_data.thresh.sigmoid_fxn(d) })
+    .curve(d3.curveMonotoneX);
+  // Graph axes:
+  nvrgtr_data.thresh.x_axis = d3.axisBottom(nvrgtr_data.thresh.x_fxn);
+  nvrgtr_data.thresh.y_axis = d3.axisLeft(nvrgtr_data.thresh.y_fxn);
+  nvrgtr_data.thresh.g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(0," + nvrgtr_settings.thresh.height + ")");
+  nvrgtr_data.thresh.g.append("g")
+    .attr("class", "y-axis");
+  var x_axis_vert_offset = 40, y_axis_vert_offset = 0, y_axis_horiz_offset = -30;
+  nvrgtr_data.thresh.g.append("text") // x axis label
+    .attr("font-family", nvrgtr_settings.thresh.label_font)
+    .attr("font-size", nvrgtr_settings.thresh.label_font_size)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "text-after-edge")
+    .attr("x", nvrgtr_settings.thresh.width/2)
+    .attr("y", nvrgtr_settings.thresh.height + x_axis_vert_offset)
+    .text("Phylogenetic distance");
+  nvrgtr_data.thresh.g.append("text") // y axis label
+    .attr("font-family", nvrgtr_settings.thresh.label_font)
+    .attr("font-size", nvrgtr_settings.thresh.label_font_size)
+    .attr("text-anchor", "middle")
+    .attr("x", 0 - nvrgtr_settings.thresh.height/2 - y_axis_vert_offset)
+    .attr("y", 0 + y_axis_horiz_offset)
+    .attr("transform", "rotate(-90)")
+    .text("Value");
+  // Line graph:
+  nvrgtr_data.thresh.line_graph = nvrgtr_data.thresh.g.append("path")
+    .attr("stroke-width", nvrgtr_settings.thresh.line_stroke_width)
+    .attr("stroke", nvrgtr_settings.thresh.line_stroke)
+    .attr("fill", "none");
+  //updateThresholdGraph(); // Should this be called here? Or only when the data return?
+}
+function updateThresholdGraph() {
+  // Called when the graph is first drawn, and when the graph parameters are changed.
+  updateThreshData();
+  updateThreshGraph();
+  updateThreshAxes();
+}
+function generateSigmoidFunction(a, b, r) {
+  // Generates the sigmoid function with the given parameters
+  return function(x) {
+    var y = (r/2)*((a-b*x) / Math.sqrt((a-b*x)**2 + 1) + 1);
+    return nvrgtr_data.thresh.y_fxn(y);
+  }
+}
+function updateThreshData() {
+  // Updates the domains of the x_ and y_fxn, updates sigmoid_fxn and line_fxn, generates sigmoid_data for the line, and binds them to the line
+  // Update the axis domains:
+  var max_dist = 0, max_value = 0;
+  for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
+    if (nvrgtr_data.thresh.data[i].distance > max_dist) {
+      max_dist = nvrgtr_data.thresh.data[i].distance;
+    }
+    if (nvrgtr_data.thresh.data[i].value > max_value) {
+      max_value = nvrgtr_data.thresh.data[i].value;
+    }
+  }
+  var max_x_val = max_dist * 1.3;
+  nvrgtr_data.thresh.x_fxn.domain([0, max_x_val]).nice();
+  nvrgtr_data.thresh.y_fxn.domain([0, max_value]).nice();
+  // Update the sigmoid function:
+  var params = nvrgtr_data.thresh.params;
+  nvrgtr_data.thresh.sigmoid_fxn = generateSigmoidFunction(params.a, params.b, params.r); // Needs to be called after y_fxn is updated. Probably.
+  // Update the data used to draw the sigmoid line:
+  var num_sigmoid_points = 20;
+  nvrgtr_data.thresh.sigmoid_data = [];
+  for (var i=0; i<(num_sigmoid_points-1); ++i) {
+    nvrgtr_data.thresh.sigmoid_data.push(i * max_x_val / (num_sigmoid_points-1));
+  }
+  nvrgtr_data.thresh.sigmoid_data.push(max_x_val);
+}
+function updateThreshGraph() {
+  // The sigmoid line:
+  nvrgtr_data.thresh.line_graph.datum(nvrgtr_data.thresh.sigmoid_data)
+    .transition()
+    .attr("d", nvrgtr_data.thresh.line_fxn);
+  // The scatter plot:
+  var scatter_circles = nvrgtr_data.thresh.g.selectAll(".thresh-circle")
+    .data(nvrgtr_data.thresh.data);
+  scatter_circles.enter().append("circle")
+    .attr("class", "thresh-circle")
+    .attr("stroke-width", nvrgtr_settings.thresh.scatter_stroke_width)
+    .attr("stroke", nvrgtr_settings.thresh.scatter_stroke)
+    .attr("fill", nvrgtr_settings.thresh.scatter_fill)
+    .attr("r", nvrgtr_settings.thresh.scatter_radius)
+    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
+    .attr("cy", nvrgtr_settings.thresh.height)
+    .transition()
+    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
+    .attr("cy", function(d) { return nvrgtr_data.thresh.y_fxn(d.value); });
+  scatter_circles.transition()
+    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
+    .attr("cy", function(d) { return nvrgtr_data.thresh.y_fxn(d.value); });
+  scatter_circles.exit().transition()
+    .attr("cy", nvrgtr_settings.thresh.height)
+    .remove();
+}
+function updateThreshAxes() {
+  nvrgtr_data.thresh.x_axis.tickFormat(d3.format(".3")); // trims trailing zeros
+  nvrgtr_data.thresh.g.select(".x-axis")
+    .transition()
+    .call(nvrgtr_data.thresh.x_axis)
+    .selectAll("text")
+      .style("text-anchor", "start")
+      .attr("x", 7)
+      .attr("y", 5)
+      .attr("dy", ".35em")
+      .attr("transform", "rotate(55)");
+  nvrgtr_data.thresh.g.select(".y-axis")
+    .transition()
+    .call(nvrgtr_data.thresh.y_axis);
 }
 
 // =====  Display option updating:

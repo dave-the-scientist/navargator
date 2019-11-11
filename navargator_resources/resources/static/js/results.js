@@ -64,7 +64,7 @@ function setupPage() {
   setupSelectionPane();
   setupNormalizationPane();
   setupDisplayOptionsPane();
-  setupThresholdPane();
+  //setupThresholdPane();
   setupExportPane();
   setupTreeElements();
   $("#treeLoadingMessageGroup").show();
@@ -633,7 +633,6 @@ function drawDistanceGraphs() {
     .attr("transform", "translate(" + nvrgtr_data.graph.width + ", 0)");
   var x_axis_vert_offset = -3, y_axis_vert_offset = 0, y_axis_horiz_offset = -6, y_axis2_horiz_offset = 16;
   nvrgtr_data.graph.g.append("text") // x axis label
-    .attr("class", "histo-axis-label")
     .attr("font-family", nvrgtr_settings.graph.label_font)
     .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
@@ -642,7 +641,6 @@ function drawDistanceGraphs() {
     .attr("y", total_height + x_axis_vert_offset)
     .text("Phylogenetic distance");
   nvrgtr_data.graph.g.append("text") // y axis label
-    .attr("class", "histo-axis-label")
     .attr("font-family", nvrgtr_settings.graph.label_font)
     .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
@@ -651,7 +649,6 @@ function drawDistanceGraphs() {
     .attr("transform", "rotate(-90)")
     .text("Number of variants"); // "Variants (count)" if I want to add ticks
   nvrgtr_data.graph.g.append("text") // y axis 2 label
-    .attr("class", "histo-axis-label")
     .attr("font-family", nvrgtr_settings.graph.label_font)
     .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
@@ -661,12 +658,10 @@ function drawDistanceGraphs() {
     .text("Cumulative (%)");
   // Create the line and area charts
   nvrgtr_data.graph.line_graph = nvrgtr_data.graph.g.append("path")
-    .attr("class", "histo-line")
     .attr("stroke-width", nvrgtr_settings.graph.line_stroke_width)
     .attr("stroke", nvrgtr_settings.graph.line_area_stroke)
     .attr("fill", "none");
   nvrgtr_data.graph.area_graph = nvrgtr_data.graph.g.append("path")
-    .attr("class", "histo-area")
     .attr("stroke-width", nvrgtr_settings.graph.area_stroke_width)
     .attr("stroke", nvrgtr_settings.graph.line_area_stroke)
     .attr("opacity", nvrgtr_settings.graph.area_opacity)
