@@ -117,18 +117,15 @@ function setupHistoSliderPane() {
     },
     stop: function(event, ui) {
       // Can put selection code here if its too laggy.
+      // Hide the histoIndicator on mouseup, even if the mouse leaves the handle:
+      nvrgtr_data.graph.histo_indicator.attr("display", "none");
     }
   });
-  // Show / hide the histoIndicator:
+  // Show the histoIndicator:
   slider.on("mousedown", function() {
     nvrgtr_data.graph.histo_indicator.attr("display", "");
   });
-  $("#selectionDiv").on("mouseup", function() {
-    nvrgtr_data.graph.histo_indicator.attr("display", "none");
-  });
-  $("#selectionDiv").on("mouseleave", function() {
-    nvrgtr_data.graph.histo_indicator.attr("display", "none");
-  });
+
   // Histogram button functionalities:
   left.click(function() {
     var slider_keys = Object.keys(nvrgtr_data.considered_variants), var_name;

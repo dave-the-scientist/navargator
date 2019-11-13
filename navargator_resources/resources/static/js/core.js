@@ -23,7 +23,7 @@ if (last_slash > 0) {
 var nvrgtr_data = { // Variables used by each page.
   'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null,
   'thresh':{
-    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_data':null, 'line_graph':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
+    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
@@ -341,10 +341,17 @@ function setupThresholdPane() {
       data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'data':data}),
       success: function(data_obj) {
         var thresh_data = $.parseJSON(data_obj);
-        nvrgtr_data.thresh.params = {'a':thresh_data.a, 'b':thresh_data.b, 'r':thresh_data.r};
+        nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
+        $("#thresholdMaxValValue").text(roundFloat(thresh_data.r, 6));
+        $("#thresholdMidlineValue").text(roundFloat(thresh_data.m, 6));
+        $("#thresholdSteepnessValue").text(roundFloat(thresh_data.b, 6));
         nvrgtr_data.thresh.data = thresh_data.data;
         error_label.html('');
         updateThresholdGraph();
+        var cur_crit_val = $("#thresholdSlider").slider('value'),
+          cur_crit_dist = nvrgtr_data.thresh.sigmoid_inv(cur_crit_val);
+        $("#thresholdCritDistSpan").text(roundFloat(cur_crit_dist, 3));
+        updateThresholdIndicator(cur_crit_val, cur_crit_dist);
       },
       error: function(error) { processError(error, "Error fitting the data to a curve"); }
     });
@@ -374,7 +381,7 @@ function setupThresholdPane() {
     .clamp(true);
   nvrgtr_data.thresh.line_fxn = d3.line()
     .x(function(d) { return nvrgtr_data.thresh.x_fxn(d) })
-    .y(function(d) { return nvrgtr_data.thresh.sigmoid_fxn(d) })
+    .y(function(d) { return nvrgtr_data.thresh.y_fxn(nvrgtr_data.thresh.sigmoid_fxn(d)) })
     .curve(d3.curveMonotoneX);
   // Graph axes:
   nvrgtr_data.thresh.x_axis = d3.axisBottom(nvrgtr_data.thresh.x_fxn);
@@ -406,7 +413,58 @@ function setupThresholdPane() {
     .attr("stroke-width", nvrgtr_settings.thresh.line_stroke_width)
     .attr("stroke", nvrgtr_settings.thresh.line_stroke)
     .attr("fill", "none");
-  //updateThresholdGraph(); // Should this be called here? Or only when the data return?
+  nvrgtr_data.thresh.indicator = nvrgtr_data.thresh.g.append("g")
+    .attr("display", "none");
+  nvrgtr_data.thresh.indicator.append("circle")
+    .attr("stroke", "#555555")
+    .attr("stroke-width", "1px")
+    .attr("fill", "none")
+    .attr("r", "7")
+    .attr("cx", "0")
+    .attr("cy", "0");
+  nvrgtr_data.thresh.indicator_line_v = nvrgtr_data.thresh.indicator.append("line")
+    .attr("stroke", "#555555")
+    .attr("stroke-width", "0.5px")
+    .attr("x1", "0")
+    .attr("y1", "6") // Is circle.attr("r") - 1
+    .attr("x2", "0");
+  nvrgtr_data.thresh.indicator_line_h = nvrgtr_data.thresh.indicator.append("line")
+    .attr("stroke", "#555555")
+    .attr("stroke-width", "0.5px")
+    .attr("x1", "-6")  // Is circle.attr("r") - 1
+    .attr("y1", "0")
+    .attr("y2", "0");
+  updateThreshAxes();
+
+  // Set up the slider:
+  var slider = $("#thresholdSlider").slider({
+    orientation:"vertical",
+    min: 0, max: 1.0,
+    value: 0.7, step: 0.001,
+    create: function() {
+    },
+    slide: function(event, ui) {
+      $("#thresholdCritValSpan").text(ui.value);
+      if (nvrgtr_data.thresh.sigmoid_inv != null) {
+        var cur_dist = nvrgtr_data.thresh.sigmoid_inv(ui.value);
+        $("#thresholdCritDistSpan").text(roundFloat(cur_dist, 3));
+        updateThresholdIndicator(ui.value, cur_dist);
+      }
+    },
+    change: function(event, ui) {
+      $("#thresholdCritValSpan").text(ui.value); // Fires after programaticly changing the value
+    },
+    stop: function(event, ui) {
+      nvrgtr_data.thresh.indicator.attr("display", "none");
+    }
+  });
+  slider.css("height", nvrgtr_settings.thresh.height+"px");
+  slider.css("margin-top", nvrgtr_settings.thresh.margin.top+"px");
+  slider.on("mousedown", function() {
+    if (nvrgtr_data.thresh.sigmoid_inv != null) { // Prevents it from showing until a curve has been fit.
+      nvrgtr_data.thresh.indicator.attr("display", "");
+    }
+  });
 }
 function updateThresholdGraph() {
   // Called when the graph is first drawn, and when the graph parameters are changed.
@@ -414,15 +472,14 @@ function updateThresholdGraph() {
   updateThreshGraph();
   updateThreshAxes();
 }
-function generateSigmoidFunction(a, b, r) {
-  // Generates the sigmoid function with the given parameters
-  return function(x) {
-    var y = (r/2)*((a-b*x) / Math.sqrt((a-b*x)**2 + 1) + 1);
-    return nvrgtr_data.thresh.y_fxn(y);
-  }
-}
 function updateThreshData() {
   // Updates the domains of the x_ and y_fxn, updates sigmoid_fxn and line_fxn, generates sigmoid_data for the line, and binds them to the line
+  // Update the sigmoid function:
+  var params = nvrgtr_data.thresh.params;
+  nvrgtr_data.thresh.sigmoid_fxn = generateSigmoidFunction(params.b, params.m, params.r);
+  nvrgtr_data.thresh.sigmoid_inv = generateSigmoidInverse(params.b, params.m, params.r);
+  var graph_y_intcpt = nvrgtr_data.thresh.sigmoid_fxn(0);
+
   // Update the axis domains:
   var max_dist = 0, max_value = 0;
   for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
@@ -433,12 +490,10 @@ function updateThreshData() {
       max_value = nvrgtr_data.thresh.data[i].value;
     }
   }
-  var max_x_val = max_dist * 1.3;
+  var max_x_val = max_dist * 1.3, max_y_val = Math.max(max_value, graph_y_intcpt);
   nvrgtr_data.thresh.x_fxn.domain([0, max_x_val]).nice();
-  nvrgtr_data.thresh.y_fxn.domain([0, max_value]).nice();
-  // Update the sigmoid function:
-  var params = nvrgtr_data.thresh.params;
-  nvrgtr_data.thresh.sigmoid_fxn = generateSigmoidFunction(params.a, params.b, params.r); // Needs to be called after y_fxn is updated. Probably.
+  nvrgtr_data.thresh.y_fxn.domain([0, max_y_val]).nice();
+
   // Update the data used to draw the sigmoid line:
   var num_sigmoid_points = 20;
   nvrgtr_data.thresh.sigmoid_data = [];
@@ -446,6 +501,17 @@ function updateThreshData() {
     nvrgtr_data.thresh.sigmoid_data.push(i * max_x_val / (num_sigmoid_points-1));
   }
   nvrgtr_data.thresh.sigmoid_data.push(max_x_val);
+
+  // Update the slider range:
+  if ($("#thresholdSlider").slider("value") > graph_y_intcpt) {
+    $("#thresholdSlider").slider("value", graph_y_intcpt);
+  }
+  $("#thresholdSlider").slider({max:graph_y_intcpt});
+  var slider_offset = nvrgtr_data.thresh.y_fxn(graph_y_intcpt);
+  $("#thresholdSlider").animate({
+    'marginTop':(nvrgtr_settings.thresh.margin.top+slider_offset)+'px',
+    'height':(nvrgtr_settings.thresh.height-slider_offset)+'px'
+  }, 250);
 }
 function updateThreshGraph() {
   // The sigmoid line:
@@ -475,6 +541,7 @@ function updateThreshGraph() {
 }
 function updateThreshAxes() {
   nvrgtr_data.thresh.x_axis.tickFormat(d3.format(".3")); // trims trailing zeros
+  nvrgtr_data.thresh.y_axis.tickFormat(d3.format(".3")); // trims trailing zeros
   nvrgtr_data.thresh.g.select(".x-axis")
     .transition()
     .call(nvrgtr_data.thresh.x_axis)
@@ -487,6 +554,26 @@ function updateThreshAxes() {
   nvrgtr_data.thresh.g.select(".y-axis")
     .transition()
     .call(nvrgtr_data.thresh.y_axis);
+}
+function updateThresholdIndicator(val, dist) {
+  var x_pos = nvrgtr_data.thresh.x_fxn(dist), y_pos = nvrgtr_data.thresh.y_fxn(val),
+    v_line_length = nvrgtr_settings.thresh.height - y_pos;
+  nvrgtr_data.thresh.indicator.attr("transform", "translate("+x_pos+", "+y_pos+")");
+  nvrgtr_data.thresh.indicator_line_v.attr("y2", v_line_length);
+  nvrgtr_data.thresh.indicator_line_h.attr("x2", -x_pos);
+}
+function generateSigmoidFunction(b, m, r) {
+  // Generates the sigmoid function with the given parameters
+  return function(x) {
+    return (r/2)*(b*(m-x) / Math.sqrt((b*(m-x))**2 + 1) + 1);
+  }
+}
+function generateSigmoidInverse(b, m, r) {
+  // Generates the inverse of the sigmoid function with the given parameters
+  return function(y) {
+    var c = 2*y/r - 1;
+    return m - c / (b*Math.sqrt(1-c*c));
+  }
 }
 
 // =====  Display option updating:

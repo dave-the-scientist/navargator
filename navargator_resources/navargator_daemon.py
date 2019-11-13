@@ -165,8 +165,8 @@ class NavargatorDaemon(object):
                 datum['distance'] = dist
                 xvals.append(dist)
                 yvals.append(float(datum['value']))
-            a, b, r = fit_to_sigmoid(xvals, yvals)
-            ret = {'data':data, 'a':a, 'b':b, 'r':r}
+            b, m, r = fit_to_sigmoid(xvals, yvals)
+            ret = {'data':data, 'b':b, 'm':m, 'r':r}
             return json.dumps(ret)
         # # #  Input page listening routes:
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])
