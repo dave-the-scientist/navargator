@@ -503,11 +503,14 @@ button.control-element:active {
   z-index: 5;
 }
 #thresholdInput {
-  width: 40px;
+  width: 85px;
   padding: 1px 3px;
   outline: none;
   border: 1px solid transparent;
-  transition: border-color 0.2s ease-in-out;
+  transition: border-color 0.1s ease-in-out;
+}
+#thresholdInput:hover, #thresholdInput:focus {
+  border-color: var(--shadow-colour);
 }
 #thresholdComputePane {
   top: -36px;
@@ -516,53 +519,84 @@ button.control-element:active {
 #thresholdPaneMainDiv {
   display: flex;
 }
-#thresholdPaneLeftColumn, #thresholdPaneRightColumn {
+#thresholdPaneDataColumn,
+#thresholdPaneGraphColumn {
   display: flex;
   flex-direction: column;
-  padding: 0px 5px 5px 5px;
+  padding: 10px;
 }
-#thresholdPaneLeftColumn {
-  padding-left: 10px;
+#thresholdPaneDataColumn {
   align-items: flex-start;
 }
-#thresholdPaneRightColumn {
-  padding-right: 10px;
+#thresholdPaneGraphColumn {
+
 }
-#thresholdPaneLeftColumn > button, #thresholdPaneRightColumn > button {
+#thresholdPaneDataColumn > button, #thresholdPaneGraphColumn > button {
   margin: 2px 10px 5px 0px;
 }
 #thresholdDataText {
   min-width: 320px;
-  min-height: 150px;
+  min-height: 120px;
 }
 #thresholdErrorLabel {
-  margin-left: 10px;
+  margin-left: 15px;
+}
+#thresholdFitCurveButton {
+  padding: 1px 16px;
+}
+#thresholdPaneParamsDiv {
+  display: flex;
+  flex-direction: column;
+  margin-top: 15px;
+}
+.thresholdParamLabel {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  font-size: 16px;
+  white-space: nowrap;
+}
+.thresholdParamLabel:last-child {
+  margin-bottom: 0px;
+}
+#thresholdMaxValInput,
+#thresholdCritValInput {
+  padding: 0px;
+  width: 90px;
+  font-size: 16px;
+  outline: none;
+  border: 1px solid transparent;
+  transition: border-color 0.1s ease-in-out;
+}
+#thresholdMaxValInput:hover, #thresholdMaxValInput:focus,
+#thresholdCritValInput:hover, #thresholdCritValInput:focus {
+  border-color: var(--shadow-colour);
 }
 #thresholdGraphRowDiv {
   display: flex;
+}
+#thresholdSlider {
+  margin-right: 5px;
+}
+#thresholdSvgLabel {
+  margin-left: 55px;
 }
 #thresholdSvg {
   flex-shrink: 0;
   width: 300px;
   height: 250px;
 }
-#thresholdGraphParamsDiv {
+#thresholdCritValLabel {
+  margin: 5px 0px 5px 20px;
+}
+#thresholdCritDistDiv {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-left: 20px;
 }
-.thresholdParamLabel {
-  margin: 10px 0px 0px 0px;
-  font-size: 16px;
-  white-space: nowrap;
-}
-.thresholdParamValue {
-  margin: 0px 0px 5px 10px;
-  font-size: 14px;
-}
-
-/* The always-visible stuff: */
-#thresholdInput:hover, #thresholdInput:focus {
-  border-color: black;
+#thresholdOkButton {
+  margin: 0px;
+  padding: 1px 10px;
 }
 
 /* ======  Normalization and scale bar inputs  ====== */

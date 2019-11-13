@@ -193,40 +193,41 @@
                   <button class="floating-pane-close"></button>
                 </div>
                 <div id="thresholdPaneMainDiv">
-                  <div id="thresholdPaneLeftColumn">
-                    <button id="thresholdLoadDataButton">Load file</button>
+                  <div id="thresholdPaneDataColumn">
+                    <label><b>Variant interaction data</b></label>
                     <textarea id="thresholdDataText" autocomplete="off" spellcheck="false"></textarea>
                     <div>
-                      <button id="thresholdValidateButton">Validate names</button>
+                      <button id="thresholdLoadDataButton">Load file</button>
+                      <button id="thresholdValidateButton">Validate data</button>
                       <label id="thresholdErrorLabel"></label>
                     </div>
                     <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
+                    <div id="thresholdPaneParamsDiv" style="display:none;">
+                      <label><b>Graph parameters</b></label>
+                      <label class="thresholdParamLabel">Max value: <input id="thresholdMaxValInput"></input></label>
+                      <label class="thresholdParamLabel">Midline: <span id="thresholdMidlineValue">--</span></label>
+                      <label class="thresholdParamLabel">Steepness: <span id="thresholdSteepnessValue">--</span></label>
+                    </div>
                   </div>
-                  <div id="thresholdPaneRightColumn">
+                  <div id="thresholdPaneGraphColumn" style="display:none;">
+                    <label id="thresholdSvgLabel"><b>Variant interactions</b></label>
                     <div id="thresholdGraphRowDiv">
                       <div id="thresholdSlider">
                         <div id="thresholdSliderHandle" class="ui-slider-handle"></div>
                       </div>
                       <svg id="thresholdSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
-                      <div id="thresholdGraphParamsDiv">
-                        <label style="text-decoration:underline;"><b>Parameters</b></label>
-                        <label class="thresholdParamLabel">Max value:</label>
-                        <label id="thresholdMaxValValue" class="thresholdParamValue">1.0</label>
-                        <label class="thresholdParamLabel">x_midline:</label>
-                        <label id="thresholdMidlineValue" class="thresholdParamValue">0.5</label>
-                        <label class="thresholdParamLabel">Steepness:</label>
-                        <label id="thresholdSteepnessValue" class="thresholdParamValue">12.0</label>
-                      </div>
                     </div>
-                    <label>Critical value: <span id="thresholdCritValSpan">0.7</span></label>
-                    <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
+                    <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput"></input></label>
+                    <div id="thresholdCritDistDiv">
+                      <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
+                      <button id="thresholdOkButton">OK</button>
+                    </div>
                   </div>
                 </div>
               </div>
-
               <label>Critical threshold:</label>
               <input id="thresholdInput" placeholder="None" />
-              <button id="thresholdComputeButton" class="jq-ui-button">Compute from data</button>
+              <button id="thresholdComputeButton" class="jq-ui-button">Threshold from data</button>
             </div>
             <hr>
 

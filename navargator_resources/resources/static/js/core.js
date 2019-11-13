@@ -1,8 +1,10 @@
 // NOTE:
 
 // TODO:
+// - Finish thresholdMaxValInput
+//   - Maybe text goes bold if you change it, to reset to default blank it and hit fit curve.
+//   - Should generate tooltips for that and thresholdCritValInput. Also thresholdDataText, unless I make a "?" help button. Actually, do that. Run options could certainly use it (to explain the different options), as could the Distance threshold h2.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
-//   - Do I need 5000 epochs? It could mean a second of processing time for a large dataset.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
 // - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
@@ -21,7 +23,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -273,7 +275,6 @@ function setupDisplayOptionsPane() {
   $("#showScaleBarCheckbox").prop('disabled', true);
 }
 function setupThresholdPane() {
-  // Have to ajax to get all of the distances. Sucks, because fitSigmoidCurve() is now useless. Move that to snippets somewhere; it's useful and cool I got it working.
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
   var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel");
   threshold_text.data('data', []); // The data to be graphed
@@ -281,7 +282,7 @@ function setupThresholdPane() {
     var cur_ind = 0, data = [], line, line_data, name1, name2, value;
     var lines = threshold_text.val().trim().split('\n');
     if (lines.length < 2) {
-      error_label.html('<b>Invalid: insufficient data</b>');
+      error_label.html('<b>Invalid data</b>');
       return false;
     }
     for (var i=0; i<lines.length; ++i) {
@@ -289,45 +290,56 @@ function setupThresholdPane() {
       line_data = line.split('\t');
       if (line_data.length != 3 || line_data[0].length == 0 || line_data[1].length == 0 || line_data[2].length == 0) {
         focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + line.length);
-        error_label.html('<b>Invalid: malformed line</b>');
+        error_label.html('<b>Invalid line</b>');
         return false;
       }
       name1 = line_data[0], name2 = line_data[1], value = line_data[2];
       if (!nvrgtr_data.leaves.includes(name1)) {
         focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name1.length);
-        error_label.html('<b>Invalid: variant not found</b>');
+        error_label.html('<b>Invalid variant</b>');
         return false;
       } else {
         cur_ind += name1.length + 1; // +1 for the removed \t
       }
       if (!nvrgtr_data.leaves.includes(name2)) {
         focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name2.length);
-        error_label.html('<b>Invalid: variant not found</b>');
+        error_label.html('<b>Invalid variant</b>');
         return false;
       } else {
         cur_ind += name2.length + 1; // +1 for the removed \t
       }
       if (isNaN(value) || parseFloat(value) < 0) {
         focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + value.length);
-        error_label.html('<b>Invalid: not a number</b>');
+        error_label.html('<b>Invalid number</b>');
         return false;
       } else {
         cur_ind += value.length + 1; // +1 for the removed \n
       }
       data.push({'name1':name1, 'name2':name2, 'value':parseFloat(value)});
     }
-    error_label.html('Data are valid');
     return data;
   }
   // End of function validateThresholdData()
   $("#thresholdComputeButton").click(function() {
     showFloatingPane(compute_pane);
   });
+  $("#thresholdDataText").keydown(function(e) {
+    if (e.which == 9) { // Causes tab to insert \t instead of switching focus
+      var sel_start = this.selectionStart, sel_end = this.selectionEnd,
+        cur_val = $(this).val();
+      $(this).val(cur_val.slice(0, sel_start) + "\t" + cur_val.slice(sel_end));
+      this.selectionStart = this.selectionEnd = sel_start + 1;
+      return false;
+    }
+  });
   $("#thresholdLoadDataButton").click(function() {
     threshold_text.val("Hps.Strain5.Unk\tHps.540.SV4\t1.0\nHps.Strain5.Unk\tHps.nx63.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21\nHps.Strain5.Unk\tApp.h167.Unk\t0.03\nA.suis.h57.Unk\tA.suis.h58.Unk\t0.99\nA.suis.h57.Unk\tApp.h49.SV7\t0.05\nA.suis.h57.Unk\tHps.h384.Unk\t0.46");
   });
   $("#thresholdValidateButton").click(function() {
-    validateThresholdData();
+    var data = validateThresholdData();
+    if (data != false) {
+      error_label.html('Data are valid');
+    }
   });
   $("#thresholdFitCurveButton").click(function() {
     var data = validateThresholdData();
@@ -342,22 +354,71 @@ function setupThresholdPane() {
       success: function(data_obj) {
         var thresh_data = $.parseJSON(data_obj);
         nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
-        $("#thresholdMaxValValue").text(roundFloat(thresh_data.r, 6));
+        $("#thresholdMaxValInput").val(roundFloat(thresh_data.r, 6));
         $("#thresholdMidlineValue").text(roundFloat(thresh_data.m, 6));
         $("#thresholdSteepnessValue").text(roundFloat(thresh_data.b, 6));
         nvrgtr_data.thresh.data = thresh_data.data;
         error_label.html('');
+        if (nvrgtr_data.thresh.sigmoid_inv == null) {
+          // Expand the panel to show the graph
+          $("#thresholdPaneGraphColumn").show();
+          $("#thresholdPaneParamsDiv").show();
+          showFloatingPane(compute_pane);
+        }
         updateThresholdGraph();
-        var cur_crit_val = $("#thresholdSlider").slider('value'),
-          cur_crit_dist = nvrgtr_data.thresh.sigmoid_inv(cur_crit_val);
-        $("#thresholdCritDistSpan").text(roundFloat(cur_crit_dist, 3));
-        updateThresholdIndicator(cur_crit_val, cur_crit_dist);
+        updateThresholdSlider($("#thresholdSlider").slider('value'));
       },
       error: function(error) { processError(error, "Error fitting the data to a curve"); }
     });
   });
+  var val_input = $("#thresholdCritValInput");
+  val_input.val(0.7);
+  val_input.blur(function(event) {
+    var new_val = parseFloat(val_input.val());
+    if (isFinite(new_val) && new_val >= 0 && new_val <= $("#thresholdSlider").slider('option', 'max')) {
+      updateThresholdSlider(new_val);
+      $("#thresholdSlider").slider("value", new_val);
+    } else {
+      val_input.val($("#thresholdSlider").slider("value"));
+    }
+  });
 
-  // Set up the graph:
+  $("#thresholdOkButton").click(function() {
+    if (isFinite(nvrgtr_data.threshold)) {
+      $("#thresholdInput").val(nvrgtr_data.threshold);
+      $("#thresholdComputePane .floating-pane-close").click();
+    }
+  });
+
+  setupThresholdGraph();
+  setupThresholdSlider();
+}
+function setupThresholdSlider() {
+  var slider = $("#thresholdSlider").slider({
+    orientation:"vertical",
+    min: 0, max: 1.0,
+    value: 0.7, step: 0.001,
+    create: function() {
+    },
+    slide: function(event, ui) {
+      updateThresholdSlider(ui.value);
+    },
+    change: function(event, ui) { // Fires after programaticly changing the value
+      updateThresholdSlider(ui.value);
+    },
+    stop: function(event, ui) {
+      nvrgtr_data.thresh.indicator.attr("display", "none");
+    }
+  });
+  slider.css("height", nvrgtr_settings.thresh.height+"px");
+  slider.css("margin-top", nvrgtr_settings.thresh.margin.top+"px");
+  slider.on("mousedown", function() {
+    if (nvrgtr_data.thresh.sigmoid_inv != null) { // Prevents it from showing until a curve has been fit.
+      nvrgtr_data.thresh.indicator.attr("display", "");
+    }
+  });
+}
+function setupThresholdGraph() {
   var graph_width_str = $("#thresholdSvg").css('width'), graph_height_str = $("#thresholdSvg").css('height'),
     total_width = parseInt(graph_width_str.slice(0,-2)),
     total_height = parseInt(graph_height_str.slice(0,-2)),
@@ -407,12 +468,13 @@ function setupThresholdPane() {
     .attr("x", 0 - nvrgtr_settings.thresh.height/2 - y_axis_vert_offset)
     .attr("y", 0 + y_axis_horiz_offset)
     .attr("transform", "rotate(-90)")
-    .text("Value");
+    .text("Interaction value");
   // Line graph:
   nvrgtr_data.thresh.line_graph = nvrgtr_data.thresh.g.append("path")
     .attr("stroke-width", nvrgtr_settings.thresh.line_stroke_width)
     .attr("stroke", nvrgtr_settings.thresh.line_stroke)
     .attr("fill", "none");
+  // Indicator shape and lines:
   nvrgtr_data.thresh.indicator = nvrgtr_data.thresh.g.append("g")
     .attr("display", "none");
   nvrgtr_data.thresh.indicator.append("circle")
@@ -435,36 +497,6 @@ function setupThresholdPane() {
     .attr("y1", "0")
     .attr("y2", "0");
   updateThreshAxes();
-
-  // Set up the slider:
-  var slider = $("#thresholdSlider").slider({
-    orientation:"vertical",
-    min: 0, max: 1.0,
-    value: 0.7, step: 0.001,
-    create: function() {
-    },
-    slide: function(event, ui) {
-      $("#thresholdCritValSpan").text(ui.value);
-      if (nvrgtr_data.thresh.sigmoid_inv != null) {
-        var cur_dist = nvrgtr_data.thresh.sigmoid_inv(ui.value);
-        $("#thresholdCritDistSpan").text(roundFloat(cur_dist, 3));
-        updateThresholdIndicator(ui.value, cur_dist);
-      }
-    },
-    change: function(event, ui) {
-      $("#thresholdCritValSpan").text(ui.value); // Fires after programaticly changing the value
-    },
-    stop: function(event, ui) {
-      nvrgtr_data.thresh.indicator.attr("display", "none");
-    }
-  });
-  slider.css("height", nvrgtr_settings.thresh.height+"px");
-  slider.css("margin-top", nvrgtr_settings.thresh.margin.top+"px");
-  slider.on("mousedown", function() {
-    if (nvrgtr_data.thresh.sigmoid_inv != null) { // Prevents it from showing until a curve has been fit.
-      nvrgtr_data.thresh.indicator.attr("display", "");
-    }
-  });
 }
 function updateThresholdGraph() {
   // Called when the graph is first drawn, and when the graph parameters are changed.
@@ -493,6 +525,7 @@ function updateThreshData() {
   var max_x_val = max_dist * 1.3, max_y_val = Math.max(max_value, graph_y_intcpt);
   nvrgtr_data.thresh.x_fxn.domain([0, max_x_val]).nice();
   nvrgtr_data.thresh.y_fxn.domain([0, max_y_val]).nice();
+  max_x_val = nvrgtr_data.thresh.x_fxn.ticks()[nvrgtr_data.thresh.x_fxn.ticks().length-1];
 
   // Update the data used to draw the sigmoid line:
   var num_sigmoid_points = 20;
@@ -554,6 +587,14 @@ function updateThreshAxes() {
   nvrgtr_data.thresh.g.select(".y-axis")
     .transition()
     .call(nvrgtr_data.thresh.y_axis);
+}
+function updateThresholdSlider(value) {
+  $("#thresholdCritValInput").val(value);
+  if (nvrgtr_data.thresh.sigmoid_inv != null) {
+    nvrgtr_data.threshold = Math.max(nvrgtr_data.thresh.sigmoid_inv(value), 0);
+    $("#thresholdCritDistSpan").text(roundFloat(nvrgtr_data.threshold, 3));
+    updateThresholdIndicator(value, nvrgtr_data.threshold);
+  }
 }
 function updateThresholdIndicator(val, dist) {
   var x_pos = nvrgtr_data.thresh.x_fxn(dist), y_pos = nvrgtr_data.thresh.y_fxn(val),
