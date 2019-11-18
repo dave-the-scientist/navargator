@@ -1,9 +1,8 @@
 // NOTE:
 
 // TODO:
-// - Finish thresholdMaxValInput
-//   - Maybe text goes bold if you change it, to reset to default blank it and hit fit curve.
-//   - Should generate tooltips for that and thresholdCritValInput. Also thresholdDataText, unless I make a "?" help button. Actually, do that. Run options could certainly use it (to explain the different options), as could the Distance threshold h2.
+// - Create a "?" button that can go in an h2, 2nd from right. Pops up window with more extensive help message.
+//   - Run options could certainly use it (to explain the different options), as could the Distance threshold h2.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
@@ -276,7 +275,7 @@ function setupDisplayOptionsPane() {
 }
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
-  var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel");
+  var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
   threshold_text.data('data', []); // The data to be graphed
   function validateThresholdData() {
     var cur_ind = 0, data = [], line, line_data, name1, name2, value;
@@ -346,15 +345,19 @@ function setupThresholdPane() {
     if (data == false) {
       return false;
     }
+    var max_val = max_val_input.val();
+    if (!max_val_input.hasClass("threshold-max-modified")) {
+      max_val = null;
+    }
     $.ajax({
       url: daemonURL('/fit-curve'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'data':data}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'data':data, 'max_val':max_val}),
       success: function(data_obj) {
         var thresh_data = $.parseJSON(data_obj);
         nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
-        $("#thresholdMaxValInput").val(roundFloat(thresh_data.r, 6));
+        max_val_input.val(roundFloat(thresh_data.r, 6));
         $("#thresholdMidlineValue").text(roundFloat(thresh_data.m, 6));
         $("#thresholdSteepnessValue").text(roundFloat(thresh_data.b, 6));
         nvrgtr_data.thresh.data = thresh_data.data;
@@ -371,10 +374,22 @@ function setupThresholdPane() {
       error: function(error) { processError(error, "Error fitting the data to a curve"); }
     });
   });
+  max_val_input.change(function() {
+    var new_raw_val = max_val_input.val(), new_val = parseFloat(new_raw_val), old_val = roundFloat(nvrgtr_data.thresh.params.r, 6);
+    if (new_raw_val === '') {
+      max_val_input.removeClass("threshold-max-modified");
+      return false;
+    } else if (isFinite(new_val) && new_val != old_val && new_val > 0) {
+      max_val_input.val(new_val);
+      max_val_input.addClass("threshold-max-modified");
+    } else {
+      max_val_input.val(old_val);
+    }
+  });
   var val_input = $("#thresholdCritValInput");
   val_input.val(0.7);
   val_input.blur(function(event) {
-    var new_val = parseFloat(val_input.val());
+    var new_raw_val = val_input.val(), new_val = parseFloat(new_raw_val);
     if (isFinite(new_val) && new_val >= 0 && new_val <= $("#thresholdSlider").slider('option', 'max')) {
       updateThresholdSlider(new_val);
       $("#thresholdSlider").slider("value", new_val);

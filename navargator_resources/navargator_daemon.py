@@ -165,7 +165,13 @@ class NavargatorDaemon(object):
                 datum['distance'] = dist
                 xvals.append(dist)
                 yvals.append(float(datum['value']))
-            b, m, r = fit_to_sigmoid(xvals, yvals)
+            try:
+                max_val = float(request.json['max_val'])
+                if max_val <= 0:
+                    max_val = None
+            except:
+                max_val = None
+            b, m, r = fit_to_sigmoid(xvals, yvals, r_value=max_val)
             ret = {'data':data, 'b':b, 'm':m, 'r':r}
             return json.dumps(ret)
         # # #  Input page listening routes:

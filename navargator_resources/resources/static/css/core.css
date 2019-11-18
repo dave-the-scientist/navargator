@@ -549,19 +549,22 @@ button.control-element:active {
   flex-direction: column;
   margin-top: 15px;
 }
-.thresholdParamLabel {
+.threshold-max-modified {
+  font-weight: bold;
+}
+.threshold-param-label {
   margin-top: 5px;
   margin-bottom: 5px;
   font-size: 16px;
   white-space: nowrap;
 }
-.thresholdParamLabel:last-child {
+.threshold-param-label:last-child {
   margin-bottom: 0px;
 }
 #thresholdMaxValInput,
 #thresholdCritValInput {
   padding: 0px;
-  width: 90px;
+  width: 100px;
   font-size: 16px;
   outline: none;
   border: 1px solid transparent;

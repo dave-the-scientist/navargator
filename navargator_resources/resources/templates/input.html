@@ -204,9 +204,9 @@
                     <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
                     <div id="thresholdPaneParamsDiv" style="display:none;">
                       <label><b>Graph parameters</b></label>
-                      <label class="thresholdParamLabel">Max value: <input id="thresholdMaxValInput"></input></label>
-                      <label class="thresholdParamLabel">Midline: <span id="thresholdMidlineValue">--</span></label>
-                      <label class="thresholdParamLabel">Steepness: <span id="thresholdSteepnessValue">--</span></label>
+                      <label class="threshold-param-label">Max value: <input id="thresholdMaxValInput" placeholder="Re-calculate" title="Enter a custom value and click 'Fit curve' to constrain the maximum value of the curve."></input></label>
+                      <label class="threshold-param-label">Midline: <span id="thresholdMidlineValue">--</span></label>
+                      <label class="threshold-param-label">Steepness: <span id="thresholdSteepnessValue">--</span></label>
                     </div>
                   </div>
                   <div id="thresholdPaneGraphColumn" style="display:none;">
@@ -217,7 +217,7 @@
                       </div>
                       <svg id="thresholdSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
                     </div>
-                    <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput"></input></label>
+                    <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput" title="Enter a value here to exactly specify the critical interaction value."></input></label>
                     <div id="thresholdCritDistDiv">
                       <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
                       <button id="thresholdOkButton">OK</button>
