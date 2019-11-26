@@ -171,8 +171,8 @@ class NavargatorDaemon(object):
                     max_val = None
             except:
                 max_val = None
-            b, m, r = fit_to_sigmoid(xvals, yvals, r_value=max_val)
-            ret = {'data':data, 'b':b, 'm':m, 'r':r}
+            b, r, m = fit_to_sigmoid(xvals, yvals, r_value=max_val)
+            ret = {'data':data, 'b':b, 'r':r, 'm':m}
             return json.dumps(ret)
         # # #  Input page listening routes:
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])

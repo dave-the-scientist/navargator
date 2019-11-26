@@ -386,18 +386,31 @@ function setupThresholdPane() {
       max_val_input.val(old_val);
     }
   });
+  max_val_input.on("keydown", function(event) {
+    if (event.which == 13) { // 'Enter' key
+      max_val_input.blur();
+      $("#thresholdFitCurveButton").click();
+    }
+  });
   var val_input = $("#thresholdCritValInput");
   val_input.val(0.7);
   val_input.blur(function(event) {
     var new_raw_val = val_input.val(), new_val = parseFloat(new_raw_val);
-    if (isFinite(new_val) && new_val >= 0 && new_val <= $("#thresholdSlider").slider('option', 'max')) {
+    if (isFinite(new_val) && new_val >= 0) {
+      if (new_val > $("#thresholdSlider").slider('option', 'max')) {
+        new_val = $("#thresholdSlider").slider('option', 'max');
+      }
       updateThresholdSlider(new_val);
       $("#thresholdSlider").slider("value", new_val);
     } else {
       val_input.val($("#thresholdSlider").slider("value"));
     }
   });
-
+  val_input.on("keydown", function(event) {
+    if (event.which == 13) { // 'Enter' key
+      val_input.blur();
+    }
+  });
   $("#thresholdOkButton").click(function() {
     if (isFinite(nvrgtr_data.threshold)) {
       $("#thresholdInput").val(nvrgtr_data.threshold);

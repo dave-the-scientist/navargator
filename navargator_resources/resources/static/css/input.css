@@ -159,14 +159,15 @@
 }
 .var-assigned-label { /* The "2 chosen variants" text.*/
   position: relative;
-  margin: 3px 5px 2px 4px;
+  margin: 3px 5px 3px 4px;
   flex-grow: 1;
   min-width: 90px;
 }
 .var-assigned-button-group { /* The add/subtract and clear buttons.*/
-  align-self: flex-end;
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
+  margin-right: 1px;
+  align-self: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
   transition: all .15s linear;
 }
 .var-assigned-add, .var-assigned-sep, .var-assigned-clear {
@@ -224,13 +225,13 @@
   background-color: var(--var-assigned-el-mo-colour);
 }
 .var-assigned-button-group:hover {
-  background-color: var(--dark-background-colour);
-  /*border-color: var(--dark-background-colour);*/
+  background-color: var(--light-background-colour);
+  border-color: var(--dark-background-colour);
 }
 .var-assigned-button-group:hover .var-assigned-add > span,
 .var-assigned-button-group:hover .var-assigned-sep,
 .var-assigned-button-group:hover .var-assigned-clear > span {
-  background-color: white;
+  background-color: var(--dark-background-colour);
 }
 /* Final form when mouseover on buttons directly.*/
 .var-assigned-div .var-assigned-add:hover > span {
