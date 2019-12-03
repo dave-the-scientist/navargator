@@ -28,11 +28,11 @@ def fit_to_sigmoid(x, y, r_value=None):
 
 
 def multi_sigmoid_fxn(*args):
-    """Expects args = xs, b, r, m0, m1, m2...; xs is a list of lists, where each sublist contains the x_values for one data set; b is the steepness; r is the max y_value of the curves; m is the x_value where the curve is at 50% height, and each data set should have its own value. The b and r parameters are shared and so will be applied to all data sets, while each data set has its own m value. The equation has been constrained such that the lower y_bound is always 0."""
+    """Expects args = xs, b, r, m0, m1, m2...; xs is a list of lists, where each sublist contains the x_values for one data set; b is the steepness; r is the max y_value of the curves; m is the x_value where the curve is at 50% height. The b and r parameters are shared and so will be applied to all data sets, while each data set has its own m value. The equation has been constrained such that the lower y_bound is always 0."""
     xs, b, r = args[:3]
     ms = args[3:]
     y_vals = [r/2.0 * (b*(m-x_vals) / np.sqrt((b*(m-x_vals))**2 + 1) + 1) for x_vals, m in zip(xs, ms)]
-    return np.hstack(y_vals)
+    return np.hstack(y_vals) # flattens the values
 
 def fit_multiple_sigmoids(xs, ys, r_value=None):
     y_data = np.hstack(ys)
