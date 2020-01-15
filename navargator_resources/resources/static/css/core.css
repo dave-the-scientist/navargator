@@ -1,3 +1,9 @@
+/* Z indices:
+ - On the input page, .var-assigned-div and related elements use 0, -1, -2.
+ - Many .floating-pane have an index of 5.
+ - The help panes get an index of 10.
+*/
+
 /* ======  CSS variables  ====== */
 :root {
   --dark-background-colour: #1B676B;
@@ -44,6 +50,7 @@ h1 {
   margin: 0px;
 }
 h2 {
+  display: flex;
   font-size: 1.2em;
   color: #212121;
   margin: 0px;
@@ -256,7 +263,7 @@ span {
 /* ======  Collapsible panes  ====== */
 .collapsible-icon-div {
   position: absolute;
-  right: 25px;
+  right: 18px;
   margin-top: -23px;
 }
 .collapsible-span1, .collapsible-span2 {
@@ -286,7 +293,6 @@ span {
 div.collapsible-panel {
   display: flex;
   flex-direction: column;
-
   margin: 0px;
   overflow: hidden;
   transition: .15s all;
@@ -298,6 +304,46 @@ div.collapsible-panel > :not(div) {
 }
 div.collapsible-panel > hr {
   width: 100%;
+}
+
+/* ======  Help buttons and panes  ====== */
+.help-button {
+  position: absolute;
+  display: inline-flex;
+  right: 26px;
+  width: 16px;
+  height: 16px;
+  justify-content: center;
+  align-items: center;
+  align-self: center;
+  font-size: 14px;
+  color: var(--light-background-colour);
+  text-shadow: none;
+  background: none;
+  border: 1px solid var(--light-background-colour);
+  border-radius: 50%;
+  box-shadow: none;
+}
+.help-button:hover {
+  color: var(--dark-background-colour);
+  background: var(--major-accent-colour);
+  border-color: var(--dark-background-colour);
+  box-shadow: 1px 1px 2px var(--shadow-colour);
+}
+.help-button > .floating-pane {
+  z-index: 10;
+  left: -5%;
+  top: -5%;
+}
+.help-text-div {
+  width: 300px;
+  min-height: 50px;
+}
+.help-text-div > p {
+  margin-left: 10px;
+  margin-bottom: 10px;
+  text-indent: 8px; /* First line indent.*/
+  font-weight: normal;
 }
 
 /* ======  Floating slide-out panes  ====== */
@@ -353,6 +399,9 @@ div.collapsible-panel > hr {
 }
 .floating-pane-close:focus {
   outline: none; /* Hides the default outline buttons get on focus.*/
+}
+.floating-pane-close::-moz-focus-inner {
+  border: 0; /* Hides the default outline buttons get on focus in Firefox.*/
 }
 .floating-pane-close:hover {
   background-color: var(--major-accent-colour);

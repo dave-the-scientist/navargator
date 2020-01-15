@@ -220,10 +220,41 @@ function newNodeObject() {
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
-  if (new_colour == false) { new_colour = nvrgtr_display_opts.colours[colour_key]; }
+  if (new_colour == false) { new_colour = nvrgtr_display_opts.colours[colour_key]; } // Don't need this. new_colour will always be false
   nvrgtr_data.nodes[var_name][state_key_name] = colour_key;
   nvrgtr_data.nodes[var_name][state_colour_name] = new_colour;
   raphael_ele.attr({fill:new_colour});
+}
+
+// Finish this.
+// Modify nvrgtr_data.selected; it's set up for selection groups, but will be inadequate. Simplify the data structure, no point in storing colours.
+// Should these functions act on single nodes, or a list?
+function changeSelectionGroupNodeColour(node, new_colour) {
+  // Either pass node or get it from nvrgtr_data.nodes[var_name]
+  if (new_colour == null) { // Reset the node
+    new_colour = nvrgtr_data.colours[node.node_rest_key];
+  }
+  node.node_rest_colour = new_colour;
+  node.circle.attr({fill:new_colour});
+}
+function changeSelectionGroupLabelColour(node, new_colour) {
+  // Either pass node or get it from nvrgtr_data.nodes[var_name]
+  if (new_colour == null) { // Reset the node
+    //Have to figure out what colour to change to (if selected, if mouseover). and whether to hide or not.
+    new_colour = node.label_mouseover_colour;
+    node.label_highlight.hide(); // ?
+  } else {
+    node.label_rest_colour = new_colour;
+    node.label_highlight.attr({fill:new_colour});
+    node.label_highlight.show();
+  }
+}
+function changeSelectionGroupNodeSize(node, radius) {
+  if (radius == null) { // Reset the node
+    // need to find a way to store the original size.
+    // radius = old_size;
+  }
+  node.circle.attr({'r':radius});
 }
 
 // =====  Tree drawing functions:
@@ -248,10 +279,15 @@ function drawTree(marker_tooltips=true) {
   tree_style.text["font-size"] = nvrgtr_display_opts.fonts.tree_font_size;
   tree_style.text["font-family"] = nvrgtr_display_opts.fonts.family;
   tree_style.connectedDash['stroke'] = 'none';
+  treeDrawingParams['initStartAngle'] = nvrgtr_display_opts.angles.init_angle;
+  treeDrawingParams['bufferAngle'] = nvrgtr_display_opts.angles.buffer_angle;
 
   var canvas_size = sizes.tree;
   var maxLabelLength = getMaxLabelLength(nvrgtr_data.leaves);
   var total_label_size = maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.search_buffer - 1;
+
+  // Check if any banners are to be drawn here, modify total_label_size
+
   if (nvrgtr_page.page == 'results') { // If a bar chart is going to be drawn:
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;
   }

@@ -45,6 +45,9 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
   'sizes' : {
     'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
   },
+  'angles' : {
+    'init_angle':180, 'buffer_angle':20
+  },
   'colours' : {
     'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
@@ -121,21 +124,43 @@ function collapsibleElementHandler(header) {
     pane.css('maxHeight', pane[0].scrollHeight+"px");
   }
 }
+function initializeHelpButtons() {
+  // This must be called before initializeFloatingPanes()
+  $(".help-button").text("?");
+  $(".help-button").addClass("prevent-text-selection");
+  $(".help-button").each(function() {
+    $(this).append('<div class="floating-pane"><div><h2 class="floating-pane-header">Help dialog</h2><button class="floating-pane-close"></button></div><div class="help-text-div"></div></div>');
+  });
+  $(".help-button").click(function() {
+    showFloatingPane($(this).children().first());
+    return false;
+  });
+  setupHelpButtonText();
+}
 function initializeFloatingPanes() {
+  // This must be called after initializeHelpButtons()
+  $(".floating-pane-header").addClass("prevent-text-selection");
   $(".floating-pane-close").each(function() {
     $(this).append('<span class="floating-pane-close-span1">');
     $(this).append('<span class="floating-pane-close-span2">');
-    $(".floating-pane-header").addClass("prevent-text-selection");
     var pane = $(this).parent().parent();
     $(this).click(function() {
       pane.css('maxWidth', "0px");
       pane.css('maxHeight', "0px");
+      return false;
     });
   });
 }
 function showFloatingPane(pane) {
-  pane.css('maxWidth', pane[0].scrollWidth+"px");
-  pane.css('maxHeight', pane[0].scrollHeight+"px");
+  var pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
+  pane.css('maxWidth', pane_width+"px");
+  pane.css('maxHeight', pane_height+"px");
+  var pane_left = pane.offset().left, pane_right = pane_left + pane_width, doc_width = $(document).width();
+  if (pane_left < 0) { // Unsure if this aspect is working.
+    pane.offset({'left': 0});
+  } else if (pane_right > doc_width) {
+    pane.offset({'left': doc_width - pane_width});
+  }
 }
 function setupDisplayOptionsPane() {
   $("#displayTreeFontSizeSpinner").spinner({
@@ -198,6 +223,26 @@ function setupDisplayOptionsPane() {
       nvrgtr_display_opts.sizes.labels_outline = parseFloat(this.value);
     }
   }).spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+  $("#displayTreeInitAngleSpinner").spinner({
+    min: 0, max: 359,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.angles.init_angle = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.angles.init_angle = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.angles.init_angle);
+  $("#displayTreeBufferAngleSpinner").spinner({
+    min: 0, max: 359,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.angles.buffer_angle = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.angles.buffer_angle = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.angles.buffer_angle);
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
       $("#treeLegendLeftGroup").show();
@@ -847,9 +892,10 @@ function updateDisplayOptionSpinners() {
   $("#displayTreeWidthSpinner").spinner('value', nvrgtr_display_opts.sizes.tree);
   $("#displayTreeBigNodeSpinner").spinner('value', nvrgtr_display_opts.sizes.big_marker_radius);
   $("#displayTreeSmallNodeSpinner").spinner('value', nvrgtr_display_opts.sizes.small_marker_radius);
-
   $("#displayTreeBarChartSizeSpinner").spinner('value', nvrgtr_display_opts.sizes.bar_chart_height);
   $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
+  $("#displayTreeInitAngleSpinner").spinner('value', nvrgtr_display_opts.angles.init_angle);
+  $("#displayTreeBufferAngleSpinner").spinner('value', nvrgtr_display_opts.angles.buffer_angle);
 }
 function treeIsLoading() {
   clearTree();
@@ -1016,7 +1062,6 @@ function calculateHistoTicks(max_var_dist) {
   x_ticks.unshift(-x_ticks[1]); // Provides the space for the 'chosen' bar.
   return x_ticks;
 }
-
 function validateSpinner(spinner, description) {
   // Currently only used by input.js
   if (spinner.spinner("isValid")) {
@@ -1032,4 +1077,15 @@ function validateSpinner(spinner, description) {
     showErrorPopup(msg, "Parameter error");
     return false;
   }
+}
+function downloadData(filename, data, blob_type) {
+  var blob = new Blob([data], {type:blob_type}),
+    blob_url = URL.createObjectURL(blob),
+    download_link = document.createElement("a");
+  download_link.href = blob_url;
+  download_link.download = filename;
+  document.body.appendChild(download_link);
+  download_link.click();
+  document.body.removeChild(download_link);
+  download_link = null; // Removes the element
 }

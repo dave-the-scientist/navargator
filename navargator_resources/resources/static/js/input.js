@@ -43,6 +43,7 @@ function setupPage() {
   initializeButtons();
   initializeErrorPopupWindow();
   initializeCollapsibleElements();
+  initializeHelpButtons();
   initializeFloatingPanes();
 
   nvrgtr_page.session_id = location.search.slice(1);
@@ -220,7 +221,6 @@ function setupManipulationsPane() {
       }
     });
   });
-
   $("#saveTreeButton").click(function() {
     var tree_type = $("#saveTreeTypeSelect").val();
     $.ajax({
@@ -242,6 +242,10 @@ function setupManipulationsPane() {
       },
       error: function(error) { processError(error, "Error saving tree file"); }
     });
+  });
+  $("#saveTreeImageButton").click(function() {
+    var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
+    downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
 }
 function setupNormalizationPane() {
@@ -988,4 +992,16 @@ function getNormalizationSettings() {
     showErrorPopup("Error: could not retrieve normalization settings from the page.");
   }
   return ret;
+}
+// =====  Misc methods:
+function setupHelpButtonText() {
+  // Tree options help:
+  //$("#treeOptsHelp .help-text-div").css('width', '500px');
+  $("#treeOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
+  // Display options help:
+  $("#displayOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
+  // Distance threshold help:
+  $("#distanceThreshHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
+  // Assigned variants help:
+  $("#assignedVarsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
 }

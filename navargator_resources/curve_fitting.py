@@ -22,8 +22,8 @@ def fit_to_sigmoid(x, y, r_value=None):
             return sigmoid_fxn(x, b, r_value, m)
         init_params = [init_params[0], init_params[2]]
         opt_params, cov = curve_fit(sigmoid_constrained, xdata=x, ydata=y, p0=init_params)
-        opt_params = np.append(opt_params, r_value)
-        opt_params = np.array([opt_params[0], r_value, opt_params[1]])
+        opt_params = np.append(opt_params, r_value)                    # Why do I have both
+        opt_params = np.array([opt_params[0], r_value, opt_params[1]]) # of these calls?
     return opt_params
 
 

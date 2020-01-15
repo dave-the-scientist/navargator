@@ -79,7 +79,7 @@
               </div>
             </div>
 
-            <h2 class="collapsible-header">Tree manipulations</h2>
+            <h2 class="collapsible-header">Tree options<div id="treeOptsHelp" class="help-button"></div></h2>
             <div id="treeManipulationsPanel" class="collapsible-panel">
               <div id="treeManipButtonGroup1">
                 <button id="reorderNodesButton" class="jq-ui-button tree-manipulation-buttons">Re-order nodes</button>
@@ -100,9 +100,12 @@
                   <option value="nexml">NeXML tree</option>
                 </select>
               </div>
+              <div id="treeManipSaveImageDiv">
+                <button id="saveTreeImageButton" class="jq-ui-button tree-manipulation-buttons">Save tree image</button>
+              </div>
             </div>
 
-            <h2 class="collapsible-header">Display options</h2>
+            <h2 class="collapsible-header">Display options<div id="displayOptsHelp" class="help-button"></div></h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
               <table class="display-options-table"><tbody>
                 <tr>
@@ -165,10 +168,19 @@
                   <td><label class="display-options-label">Tree outline</label></td>
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
+                <tr>
+                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree angles</label></td>
+                </tr>
+                <tr>
+                  <td><label class="display-options-label">Initial</label></td>
+                  <td><input id="displayTreeInitAngleSpinner" class="display-opt-spinner" /></td>
+                  <td><label class="display-options-label">Buffer</label></td>
+                  <td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
+                </tr>
               </tbody></table>
               <div id="resetRedrawButtonsDiv">
-                <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
-                <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+                <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
+                <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
               </div>
               <label class="nvrgtr-checkbox-outer">
                 <input id="showLegendCheckbox" type="checkbox" checked />
@@ -185,7 +197,7 @@
               </div>
             </div>
 
-            <h2>Distance threshold</h2>
+            <h2>Distance threshold<div id="distanceThreshHelp" class="help-button"></div></h2>
             <div id="thresholdOutsideDiv">
               <div id="thresholdComputePane" class="floating-pane">
                 <div>
@@ -388,7 +400,7 @@
         </div>
 
         <div id="mainVariantSelectDiv" class="style-box" style="display:none">
-          <h2>Assigned variants</h2>
+          <h2>Assigned variants<div id="assignedVarsHelp" class="help-button"></div></h2>
           <div id="varSelectDiv">
             <div id="varAssignTableDiv">
               <table id="varAssignTable"><tbody>

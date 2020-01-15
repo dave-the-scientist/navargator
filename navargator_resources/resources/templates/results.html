@@ -143,10 +143,19 @@
                   <td><label class="display-options-label">Tree outline</label></td>
                   <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
                 </tr>
+                <tr>
+                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree angles</label></td>
+                </tr>
+                <tr>
+                  <td><label class="display-options-label">Initial</label></td>
+                  <td><input id="displayTreeInitAngleSpinner" class="display-opt-spinner" /></td>
+                  <td><label class="display-options-label">Buffer</label></td>
+                  <td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
+                </tr>
               </tbody></table>
               <div id="resetRedrawButtonsDiv">
-                <button id="resetDisplayOptsButton" class="jq-ui-button"><b>Reset options</b></button>
-                <button id="redrawTreeButton" class="jq-ui-button">Redraw tree</button>
+                <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
+                <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
               </div>
               <label class="nvrgtr-checkbox-outer">
                 <input id="showLegendCheckbox" type="checkbox" checked />
@@ -341,7 +350,7 @@
           </div>
 
           <div id="clustersListDiv" class="style-box">
-            <h2><span id="numClustersH2Span">--</span> clusters</h2>
+            <h2><span id="numClustersH2Span">Clusters</span></h2>
             <table id="clustersListTable" class="sortable results-table">
               <thead>
                 <tr>

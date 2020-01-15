@@ -12,6 +12,7 @@ treeDrawingParams['minBGRadius'] = null;
 treeDrawingParams['barChartRadius'] = null;
 treeDrawingParams['scaleAngle'] = null;
 treeDrawingParams['initStartAngle'] = null;
+treeDrawingParams['bufferAngle'] = null;
 treeDrawingParams['cx'] = null;
 treeDrawingParams['cy'] = null;
 // DAVE CURRAN EDITS END.
@@ -1088,8 +1089,8 @@ Smits.PhyloCanvas.NexmlParse.prototype = {
 		bufferRadius 		: 0.33,		// Margins of Tree Circle
 										// If > 1, it is in pixels
 										// If < 1, it is a percentage of the full canvas size
-		bufferAngle 		: 20,		// controls split size in circle
-		initStartAngle 		: 160,
+		bufferAngle 		: 20,		// controls split size in circle. DAVE CURRAN: Normally set from treeDrawingParams['bufferAngle']
+		initStartAngle 		: 160, // DAVE CURRAN: Normally set from treeDrawingParams['initStartAngle']
 		innerCircleRadius 	: 0,
 		minHeightBetweenLeaves : 5,
 
@@ -2074,10 +2075,17 @@ Smits.PhyloCanvas.Render.Phylogram.prototype = {
 		canvasMinEdge 	= Math.min.apply(null, [canvasX,canvasY]);
 
 		bufferRadius		= (sParams.bufferRadius > 1) ? sParams.bufferRadius : Smits.Common.roundFloat(canvasMinEdge * sParams.bufferRadius, 4);
-		bufferAngle 		= sParams.bufferAngle;							// controls split size in circle
+		bufferAngle 		= treeDrawingParams['bufferAngle'];      // controls split size in circle
+		if (bufferAngle == null || bufferAngle < 0 || bufferAngle >= 360) {
+			bufferAngle = treeDrawingParams['bufferAngle'] = sParams.bufferAngle;        // Should never let this happen
+		}
 		innerCircleRadius	= sParams.innerCircleRadius;
 		minHeightBetweenLeaves	= sParams.minHeightBetweenLeaves;
-		initStartAngle		= sParams.initStartAngle;						// Angle at which the entire tree is rotated
+
+		initStartAngle		= treeDrawingParams['initStartAngle'];			// Angle at which the entire tree is rotated
+		if (initStartAngle == null) {
+			initStartAngle = treeDrawingParams['initStartAngle'] = sParams.initStartAngle;   // Should never let this happen
+		}
 
 		maxBranch			= Math.round( (canvasMinEdge - bufferRadius - innerCircleRadius) / 2);		// maximum branch length
 		scaleRadius			= (maxBranch - innerCircleRadius) / mNewickLen;								// scale multiplier to use
@@ -2116,7 +2124,6 @@ Smits.PhyloCanvas.Render.Phylogram.prototype = {
 		}
 
 		// DAVE CURRAN EDITS BEGIN: storing constants for use in results.js.
-		//treeDrawingParams['maxLabelLength'] = maxLabelLength;
 		treeDrawingParams['minBGRadius'] = maxBranch;
 		treeDrawingParams['barChartRadius'] = outerRadius; // Must be value returned by renderBinaryChart(), before renderBarChart().
 		treeDrawingParams['scaleAngle'] = scaleAngle;

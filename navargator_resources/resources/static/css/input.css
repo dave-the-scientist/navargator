@@ -16,7 +16,7 @@
 #mainVariantSelectDiv {
   min-width: 220px;
   margin-right: 0px;
-  overflow: hidden;
+  /*overflow: hidden;*/
 }
 
 /* Load input settints: */
@@ -35,7 +35,8 @@
 /* Tree manipulation settings: */
 #treeManipButtonGroup1,
 #treeManipTruncDiv,
-#treeManipSaveDiv {
+#treeManipSaveDiv,
+#treeManipSaveImageDiv {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -43,7 +44,8 @@
 }
 #treeManipButtonGroup1 > button,
 #treeManipTruncDiv > button,
-#treeManipSaveDiv > button {
+#treeManipSaveDiv > button,
+#treeManipSaveImageDiv > button {
   margin-left: unset;
   margin-right: unset;
 }

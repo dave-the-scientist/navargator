@@ -47,6 +47,7 @@ function setupPage() {
   initializeButtons();
   initializeErrorPopupWindow();
   initializeCollapsibleElements();
+  initializeHelpButtons();
   initializeFloatingPanes();
 
   // =====  Variable parsing:
@@ -76,7 +77,7 @@ function setupPage() {
     data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id}),
     success: function(data_obj) {
       parseBasicData(data_obj);
-      $("#numClustersH2Span").html(nvrgtr_data.num_variants);
+      $("#numClustersH2Span").html(nvrgtr_data.num_variants + ' clusters');
       $("#numClustersSpan").html(nvrgtr_data.num_variants);
       $("#numNodesSpan").html(nvrgtr_data.leaves.length);
       redrawTree(true);
@@ -1093,14 +1094,6 @@ function formatExportNameGroup(names, delimiter, include_scores) {
   }
   return text_val;
 }
-function downloadData(filename, data, blob_type) {
-  var blob = new Blob([data], {type:blob_type}),
-    blob_url = URL.createObjectURL(blob),
-    download_link = document.createElement("a");
-  download_link.href = blob_url;
-  download_link.download = filename;
-  document.body.appendChild(download_link);
-  download_link.click();
-  document.body.removeChild(download_link);
-  download_link = null; // Removes the element
+function setupHelpButtonText() {
+
 }
