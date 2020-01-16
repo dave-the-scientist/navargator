@@ -80,7 +80,7 @@
               </tr>
             </tbody></table>
 
-            <h2 class="collapsible-header">Display options</h2>
+            <h2 class="collapsible-header">Display options<div id="displayOptsHelp" class="help-button"></div></h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
               <table class="display-options-table"><tbody>
                 <tr>
@@ -171,6 +171,26 @@
                 <button id="scaleBarInputGoButton" style="display:none">Ok</button>
               </div>
             </div>
+
+            <h2 class="collapsible-header">Selection groups<div id="selectionGroupsHelp" class="help-button"></div></h2>
+            <div id="selectionGroupsDiv" class="collapsible-panel">
+              <label>Saved selection groups:</label>
+              <div id="selectGroupListDiv"></div>
+              <label>Current selection:</label>
+              <table class="select-group-format-table"><tbody>
+                <tr>
+                  <td><label class="selection-group-format-label">Node colour</label></td>
+                  <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" onchange="updateSelectionGroupColour('node',this.jscolor)"></td>
+                  <td><label class="selection-group-format-label">Label colour</label></td>
+                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" onchange="updateSelectionGroupColour('label',this.jscolor)"></td>
+                </tr>
+                <tr>
+                  <td><label class="selection-group-format-label">Node size</label></td>
+                  <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" /></td>
+                </tr>
+              </tbody></table>
+            </div>
+
           </div>
 
           <div id="resultsNormalizationDiv" class="style-box">
@@ -197,44 +217,6 @@
                 <button id="normValGoButton" style="display:none">Ok</button>
               </td></tr>
             </tbody></table>
-          </div>
-
-          <div id="exportDataDiv" class="style-box">
-            <h2>Export data</h2>
-            <div id="exportNamesPane" class="floating-pane">
-              <div>
-                <h2 class="floating-pane-header">Export variant names</h2>
-                <button class="floating-pane-close"></button>
-              </div>
-              <div id="exportNamesToggleDiv" class="toggle-button-container">
-                <input type="radio" id="exportNamesCheckbox" name="export-choice" class="toggle-button-input" checked>
-                <label for="exportNamesCheckbox" id="exportNamesLabel" class="toggle-button-label toggle-button-label-left">Names</label>
-                <input type="radio" id="exportNamesAndScoresCheckbox" name="export-choice" class="toggle-button-input">
-                <label for="exportNamesAndScoresCheckbox" id="exportNamesAndScoresRunLabel" class="toggle-button-label toggle-button-label-right">Names and scores</label>
-              </div>
-              <div id="exportNamesMainDiv">
-                <div id="exportNamesLeftColumn">
-                  <textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
-                </div>
-                <div id="exportNamesRightColumn">
-                  <label id="exportDelimiterLabel">Delimiter:</label>
-                  <select id="exportDelimiterSelect">
-                    <option value="tab" selected>Tab</option>
-                    <option value="comma">Comma</option>
-                    <option value="space">Space</option>
-                    <option value="newline">New line</option>
-                  </select>
-                  <button id="exportNamesCopyButton">Copy to clipboard</button>
-                  <button id="exportNamesSaveButton">Save text file</button>
-                </div>
-              </div>
-            </div>
-            <button id="exportChosenButton">Export chosen</button>
-            <button id="exportSelectionButton">Export selection</button>
-            <button id="exportClustersButton">Export clusters</button>
-            <hr>
-            <button id="exportTreeButton">Save tree image</button>
-            <button id="exportHistoButton">Save histogram image</button>
           </div>
 
         </div>
@@ -337,16 +319,42 @@
               <button id="clearSliderButton" class="control-element">Reset</button>
             </div>
 
-            <h2>Selected variants</h2>
-            <div id="colourSelectionDiv">
-              <label for="colourBySelect">Colour selection by:</label>
-              <select id="colourBySelect" onchange="colourSelectionChange(this.value)">
-                <option value="custom" selected >Custom</option>
-                <option value="distance">Distance</option>
-                <option value="threshold">Threshold</option>
-              </select>
+            <h2>Export data</h2>
+            <div id="exportNamesPane" class="floating-pane">
+              <div>
+                <h2 class="floating-pane-header">Export variant names</h2>
+                <button class="floating-pane-close"></button>
+              </div>
+              <div id="exportNamesToggleDiv" class="toggle-button-container">
+                <input type="radio" id="exportNamesCheckbox" name="export-choice" class="toggle-button-input" checked>
+                <label for="exportNamesCheckbox" id="exportNamesLabel" class="toggle-button-label toggle-button-label-left">Names</label>
+                <input type="radio" id="exportNamesAndScoresCheckbox" name="export-choice" class="toggle-button-input">
+                <label for="exportNamesAndScoresCheckbox" id="exportNamesAndScoresRunLabel" class="toggle-button-label toggle-button-label-right">Names and scores</label>
+              </div>
+              <div id="exportNamesMainDiv">
+                <div id="exportNamesLeftColumn">
+                  <textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
+                </div>
+                <div id="exportNamesRightColumn">
+                  <label id="exportDelimiterLabel">Delimiter:</label>
+                  <select id="exportDelimiterSelect">
+                    <option value="tab" selected>Tab</option>
+                    <option value="comma">Comma</option>
+                    <option value="space">Space</option>
+                    <option value="newline">New line</option>
+                  </select>
+                  <button id="exportNamesCopyButton">Copy to clipboard</button>
+                  <button id="exportNamesSaveButton">Save text file</button>
+                </div>
+              </div>
             </div>
-            <button id="clearColoursButton" class="jq-ui-button">Clear all colours</button>
+            <button id="exportChosenButton">Export chosen</button>
+            <button id="exportSelectionButton">Export selection</button>
+            <button id="exportClustersButton">Export clusters</button>
+            <hr>
+            <button id="exportTreeButton">Save tree image</button>
+            <button id="exportHistoButton">Save histogram image</button>
+
           </div>
 
           <div id="clustersListDiv" class="style-box">

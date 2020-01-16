@@ -62,7 +62,6 @@ function setupPage() {
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   updateClusterColours();
   setupHistoSliderPane();
-  setupSelectionPane();
   setupNormalizationPane();
   setupDisplayOptionsPane();
   //setupThresholdPane();
@@ -185,11 +184,6 @@ function setupHistoSliderPane() {
   });
   $("#numSliderSpan").hide();
   setButtonAddToSelection();
-}
-function setupSelectionPane() {
-  $("#clearColoursButton").click(function() {
-
-  });
 }
 function setupNormalizationPane() {
   var go_button_shown = false;
@@ -319,7 +313,7 @@ function setupExportPane() {
   $("#exportSelectionButton").click(function() {
     // Sets 'names' to a list of the selected variants. The order is undefined.
     export_file = 'navargator_selection.txt';
-    export_pane.data('names', Object.keys(nvrgtr_data.selected));
+    export_pane.data('names', [...nvrgtr_data.selected]);
     formatDisplayExportNames();
   });
   $("#exportClustersButton").click(function() {
@@ -1094,6 +1088,7 @@ function formatExportNameGroup(names, delimiter, include_scores) {
   }
   return text_val;
 }
-function setupHelpButtonText() {
+function setupSpecificHelpButtonText() {
+  // Common elements' help messages defined in core.js:setupCoreHelpButtonText()
 
 }

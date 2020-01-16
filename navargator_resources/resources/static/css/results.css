@@ -8,7 +8,7 @@
   display: inline-flex;
   flex-direction: column;
 }
-#summaryStatsDiv, #resultsNormalizationDiv, #exportDataDiv {
+#summaryStatsDiv, #resultsNormalizationDiv {
   width: 250px;
 }
 #selectionDiv, #clustersListDiv {
@@ -16,12 +16,9 @@
 }
 
 /* Export pane settings: */
-#exportDataDiv {
-  z-index: 5;
-}
 #exportNamesPane {
-  top: -1px; /* To line up with the top of stylebox, because this uses outline instead of border.*/
-  left: calc(100% + 5px);
+  margin-top: -36px;
+  z-index: 5;
 }
 #exportNamesToggleDiv {
   margin: 10px 10px 5px 10px;

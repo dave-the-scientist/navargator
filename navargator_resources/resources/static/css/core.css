@@ -545,6 +545,31 @@ button.control-element:active {
   margin-right: unset;
 }
 
+/* ======  Display options  ====== */
+.select-group-format-table {
+  width: 100%;
+  text-align: left;
+}
+.select-group-format-table td:nth-child(1),
+.select-group-format-table td:nth-child(3) {
+  text-align: right;
+}
+.select-group-format-table .selection-group-format-label {
+  font-size: 0.85em;
+}
+.select-group-format-table .jscolor {
+  width: 45px;
+  height: 14px;
+  padding: 0px 1px;
+  font-size: 0.7em;
+}
+input.select-group-node-spinner {
+  width: 22px;
+  height: 15px;
+  font-size: 0.8em;
+  margin: .2em 20px .2em .3em;
+}
+
 /* ======  Distance threshold  ====== */
 /* The floating box: */
 #thresholdOutsideDiv {

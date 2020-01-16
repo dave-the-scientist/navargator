@@ -56,6 +56,7 @@ function setupPage() {
 
   setupTreeElements();
   setupDisplayOptionsPane();
+  setupSelectionGroupsPane();
   setupNormalizationPane();
   setupRunOptions();
   setupResultsPane();
@@ -453,43 +454,40 @@ function setupVariantSelection() {
   addAssignedButtonTitleStrings(add_chosen_button, 'chosen');
   addAssignedButtonTitleStrings(add_ignored_button, 'ignored');
   add_avail_button.click(function(event) {
-    var added_key = (nvrgtr_data.assigned_added == 'available') ? '' : 'available',
-      selected_names = Object.keys(nvrgtr_data.selected);
+    var added_key = (nvrgtr_data.assigned_added == 'available') ? '' : 'available';
     if (added_key != '') { /* Add selected to assigned.*/
-      nvrgtr_data.available.push(...selected_names);
+      nvrgtr_data.available.push(...nvrgtr_data.selected);
       nvrgtr_data.available = [...new Set(nvrgtr_data.available)];
-      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(n in nvrgtr_data.selected) });
-      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
+      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
     } else { /* Remove selected from assigned.*/
-      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
     }
-    addAssignedButtonHandler(event, add_avail_button, added_key, selected_names);
+    addAssignedButtonHandler(event, add_avail_button, added_key);
   });
   add_chosen_button.click(function(event) {
-    var added_key = (nvrgtr_data.assigned_added == 'chosen') ? '' : 'chosen',
-      selected_names = Object.keys(nvrgtr_data.selected);
+    var added_key = (nvrgtr_data.assigned_added == 'chosen') ? '' : 'chosen';
     if (added_key != '') { /* Add selected to assigned.*/
-      nvrgtr_data.chosen.push(...selected_names);
+      nvrgtr_data.chosen.push(...nvrgtr_data.selected);
       nvrgtr_data.chosen = [...new Set(nvrgtr_data.chosen)];
-      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(n in nvrgtr_data.selected) });
-      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
+      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
     } else { /* Remove selected from assigned.*/
-      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
     }
-    addAssignedButtonHandler(event, add_chosen_button, added_key, selected_names);
+    addAssignedButtonHandler(event, add_chosen_button, added_key);
   });
   add_ignored_button.click(function(event) {
-    var added_key = (nvrgtr_data.assigned_added == 'ignored') ? '' : 'ignored',
-      selected_names = Object.keys(nvrgtr_data.selected);
+    var added_key = (nvrgtr_data.assigned_added == 'ignored') ? '' : 'ignored';
     if (added_key != '') { /* Add selected to assigned.*/
-      nvrgtr_data.ignored.push(...selected_names);
+      nvrgtr_data.ignored.push(...nvrgtr_data.selected);
       nvrgtr_data.ignored = [...new Set(nvrgtr_data.ignored)];
-      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(n in nvrgtr_data.selected) });
-      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.chosen = $.grep(nvrgtr_data.chosen, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
+      nvrgtr_data.available = $.grep(nvrgtr_data.available, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
     } else { /* Remove selected from assigned.*/
-      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(n in nvrgtr_data.selected) });
+      nvrgtr_data.ignored = $.grep(nvrgtr_data.ignored, function(n, i) { return !(nvrgtr_data.selected.has(n)) });
     }
-    addAssignedButtonHandler(event, add_ignored_button, added_key, selected_names);
+    addAssignedButtonHandler(event, add_ignored_button, added_key);
   });
   $("#clearAvailButton").click(function(event) {
     clearAssignedButtonHandler(event, 'available', avail_assigned_div);
@@ -787,13 +785,12 @@ function updateVariantColoursFollowup() {
 
 // =====  Callback and event handlers:
 function rerootTree(method) {
-  var selected_names = Object.keys(nvrgtr_data.selected);
   treeIsLoading();
   $.ajax({
     url: daemonURL('/reroot-tree'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'root_method':method, 'selected':selected_names}),
+    data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'root_method':method, 'selected':[...nvrgtr_data.selected]}),
     success: function(data_obj) {
       newTreeLoaded(data_obj);
     },
@@ -835,16 +832,16 @@ function addAssignedButtonTitleStrings(button_element, assigned_key) {
   button_element.data("remove_desc", "Remove selection from '"+assigned_key+" variants'.");
   button_element.attr('title', button_element.data('add_desc'));
 }
-function addAssignedButtonHandler(event, button_element, assigned_key, selected_names) {
+function addAssignedButtonHandler(event, button_element, assigned_key) {
   event.stopPropagation();
-  if (selected_names.length == 0) { return false; }
-  for (var i=0; i<selected_names.length; ++i) {
+  if (nvrgtr_data.selected.size == 0) { return false; }
+  nvrgtr_data.selected.forEach(function(var_name) {
     if (assigned_key != '') {
-      nodeLabelMouseoverHandler(selected_names[i]);
+      nodeLabelMouseoverHandler(var_name);
     } else {
-      nodeLabelMouseoutHandler(selected_names[i]);
+      nodeLabelMouseoutHandler(var_name);
     }
-  }
+  });
   updateRunOptions();
   numSelectedCallback();
   if (assigned_key != '') {
@@ -994,12 +991,11 @@ function getNormalizationSettings() {
   return ret;
 }
 // =====  Misc methods:
-function setupHelpButtonText() {
+function setupSpecificHelpButtonText() {
+  // Common elements' help messages defined in core.js:setupCoreHelpButtonText()
   // Tree options help:
   //$("#treeOptsHelp .help-text-div").css('width', '500px');
   $("#treeOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
-  // Display options help:
-  $("#displayOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Distance threshold help:
   $("#distanceThreshHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Assigned variants help:

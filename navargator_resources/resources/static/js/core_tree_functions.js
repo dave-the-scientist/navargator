@@ -11,7 +11,7 @@ function setupTreeElements() {
     numSelectedCallback();
   });
   $("#clearSelectionButton").click(function() {
-    $.each(nvrgtr_data.selected, function(var_name, colour) {
+    nvrgtr_data.selected.forEach(function(var_name) {
       nodeLabelMouseclickHandler(var_name, false, false);
     });
     numSelectedCallback();
@@ -226,11 +226,7 @@ function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, 
   raphael_ele.attr({fill:new_colour});
 }
 
-// Finish this.
-// Modify nvrgtr_data.selected; it's set up for selection groups, but will be inadequate. Simplify the data structure, no point in storing colours.
-// Should these functions act on single nodes, or a list?
 function changeSelectionGroupNodeColour(node, new_colour) {
-  // Either pass node or get it from nvrgtr_data.nodes[var_name]
   if (new_colour == null) { // Reset the node
     new_colour = nvrgtr_data.colours[node.node_rest_key];
   }
@@ -238,21 +234,28 @@ function changeSelectionGroupNodeColour(node, new_colour) {
   node.circle.attr({fill:new_colour});
 }
 function changeSelectionGroupLabelColour(node, new_colour) {
-  // Either pass node or get it from nvrgtr_data.nodes[var_name]
   if (new_colour == null) { // Reset the node
-    //Have to figure out what colour to change to (if selected, if mouseover). and whether to hide or not.
-    new_colour = node.label_mouseover_colour;
-    node.label_highlight.hide(); // ?
+    if (node.selected == true) {
+      new_colour = nvrgtr_data.colours[node.label_selected_key];
+    } else {
+      new_colour = node.label_mouseover_colour; // Happens whether node.mouseover or not
+      if (node.mouseover == true) {
+        node.label_highlight.hide();
+      }
+    }
   } else {
     node.label_rest_colour = new_colour;
-    node.label_highlight.attr({fill:new_colour});
     node.label_highlight.show();
   }
+  node.label_highlight.attr({fill:new_colour});
 }
 function changeSelectionGroupNodeSize(node, radius) {
   if (radius == null) { // Reset the node
-    // need to find a way to store the original size.
-    // radius = old_size;
+    if (node.node_rest_key == 'default_node') {
+      radius = nvrgtr_display_opts.sizes.small_marker_radius;
+    } else {
+      radius = nvrgtr_display_opts.sizes.big_marker_radius;
+    }
   }
   node.circle.attr({'r':radius});
 }
@@ -606,7 +609,7 @@ function nodeLabelMouseclickHandler(var_name, call_num_selected=true, set_select
     label_colour = node.label_selected_colour;
   if (cur_state) { // Currently true, change to false.
     if (node.selected) { nvrgtr_data.num_selected -= 1; }
-    delete nvrgtr_data.selected[var_name];
+    nvrgtr_data.selected.delete(var_name);
     node.selected = false;
     if (node.mouseover == false) {
       node.circle.attr({fill:node.node_rest_colour});
@@ -625,7 +628,7 @@ function nodeLabelMouseclickHandler(var_name, call_num_selected=true, set_select
     }
   } else { // Currently false, change to true.
     if (!node.selected) { nvrgtr_data.num_selected += 1; }
-    nvrgtr_data.selected[var_name] = label_colour; // Value unused. Implement selection group.
+    nvrgtr_data.selected.add(var_name);
     node.selected = true;
     node.circle.attr({fill:node.node_selected_colour});
     node.label_highlight.attr({fill:label_colour});

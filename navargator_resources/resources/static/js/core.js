@@ -1,8 +1,7 @@
 // NOTE:
 
 // TODO:
-// - Create a "?" button that can go in an h2, 2nd from right. Pops up window with more extensive help message.
-//   - Run options could certainly use it (to explain the different options), as could the Distance threshold h2.
+// - Finish setupSelectionGroupsPane()
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
@@ -22,7 +21,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -135,7 +134,8 @@ function initializeHelpButtons() {
     showFloatingPane($(this).children().first());
     return false;
   });
-  setupHelpButtonText();
+  setupCoreHelpButtonText(); // Defined here for elements common to pages
+  setupSpecificHelpButtonText(); // Defined in each page's JS
 }
 function initializeFloatingPanes() {
   // This must be called after initializeHelpButtons()
@@ -317,6 +317,20 @@ function setupDisplayOptionsPane() {
   $("#redrawTreeButton").button('disable');
   $("#showLegendCheckbox").prop('disabled', true);
   $("#showScaleBarCheckbox").prop('disabled', true);
+}
+function setupSelectionGroupsPane() {
+  $("#selectGroupNodeSizeSpinner").spinner({
+    min: 0, max: 48,
+    numberFormat: 'N1', step: 0.5,
+    spin: function(event, ui) {
+      //nvrgtr_display_opts.fonts.tree_font_size = ui.value;
+      console.log('spin', ui.value);
+    },
+    change: function(event, ui) {
+      //nvrgtr_display_opts.fonts.tree_font_size = parseInt(this.value);
+      console.log('change', this.value);
+    }
+  }).spinner('value', 2);
 }
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
@@ -897,13 +911,11 @@ function updateDisplayOptionSpinners() {
   $("#displayTreeInitAngleSpinner").spinner('value', nvrgtr_display_opts.angles.init_angle);
   $("#displayTreeBufferAngleSpinner").spinner('value', nvrgtr_display_opts.angles.buffer_angle);
 }
-function treeIsLoading() {
-  clearTree();
-  $("#treeLoadingMessageGroup").show();
+// =====  Selection group updating:
+function updateSelectionGroupColour(key, jscolor) {
+  console.log('changed '+key+' colour', jscolor);
 }
-function redrawTree() {
-  // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
-}
+
 // =====  Page maintainance and management:
 function generateBrowserId(length) {
   var b_id = 'b';
@@ -1007,6 +1019,13 @@ function calculateMinimumTransparency(initial_val, desired_val, background_val) 
 }
 
 // =====  Misc common functions:
+function treeIsLoading() {
+  clearTree();
+  $("#treeLoadingMessageGroup").show();
+}
+function redrawTree() {
+  // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
+}
 function roundFloat(num, num_dec) {
   var x = Math.pow(10, num_dec);
   return Math.round(num * x) / x;
@@ -1088,4 +1107,10 @@ function downloadData(filename, data, blob_type) {
   download_link.click();
   document.body.removeChild(download_link);
   download_link = null; // Removes the element
+}
+function setupCoreHelpButtonText() {
+  // Display options help:
+  $("#displayOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
+  // Selection groups help:
+  $("#selectionGroupsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
 }
