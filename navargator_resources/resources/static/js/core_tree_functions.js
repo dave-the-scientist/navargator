@@ -228,15 +228,17 @@ function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, 
 
 function changeSelectionGroupNodeColour(node, new_colour) {
   if (new_colour == null) { // Reset the node
-    new_colour = nvrgtr_data.colours[node.node_rest_key];
+    console.log('reseting', node, new_colour);
+    new_colour = nvrgtr_display_opts.colours[node.node_rest_key];
   }
   node.node_rest_colour = new_colour;
   node.circle.attr({fill:new_colour});
 }
 function changeSelectionGroupLabelColour(node, new_colour) {
   if (new_colour == null) { // Reset the node
+    node.label_rest_colour = '';
     if (node.selected == true) {
-      new_colour = nvrgtr_data.colours[node.label_selected_key];
+      new_colour = nvrgtr_display_opts.colours[node.label_selected_key];
     } else {
       new_colour = node.label_mouseover_colour; // Happens whether node.mouseover or not
       if (node.mouseover == true) {
@@ -572,9 +574,8 @@ function addNodeLabelEventHandlers(var_name, raphael_element) {
 function nodeLabelMouseoverHandler(var_name, change_node_colour=true) {
   var node = nvrgtr_data.nodes[var_name], label_colour = node.label_mouseover_colour;
   node.mouseover = true;
-  if (node.selected) {
-    node.label_highlight.attr({fill:label_colour});
-  } else {
+  node.label_highlight.attr({fill:label_colour});
+  if (node.selected == false) {
     node.label_highlight.show();
   }
   if (change_node_colour == true) {

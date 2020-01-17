@@ -2,6 +2,12 @@
 
 // TODO:
 // - Finish setupSelectionGroupsPane()
+//   - Save button should add an entry into the div, where that entry shows the name, size, and a button to delete the group. Clicking and mouseover on those entries should highlight/click the whole group. When clicked, should fill out the colour/size info associated with it. In the back end, should add an entry to an object inside nvrgtr_data (name: {'node_colour':XX, 'label_colour':YY, 'banners':[], ...}).
+//     - Would be great if I could change the font colour of the node names, and include that as an option as well.
+//   - Need a button to add a 'banner' around the tree. When I do, it's colour option should show up below 'node size', 1 row per banner. Should have it's own button to delete a banner. When a banner is added, should append an entry to every selection group's 'banners' array. If the second banner is deleted, should remove the 2nd entry in each selection group's 'banners' array.
+//   - Might be useful to have a 'clear all' button, probably in the top-right corner. It would not only delete all selection groups and banners, but un-set all colours/sizes.
+//   - The tree drawing functions are going to have to check if there are banners and account for their size.
+//   - The selection groups (with colour/size data) should be saved in session files, and should transfer from input to results.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
@@ -319,18 +325,32 @@ function setupDisplayOptionsPane() {
   $("#showScaleBarCheckbox").prop('disabled', true);
 }
 function setupSelectionGroupsPane() {
-  $("#selectGroupNodeSizeSpinner").spinner({
-    min: 0, max: 48,
-    numberFormat: 'N1', step: 0.5,
-    spin: function(event, ui) {
-      //nvrgtr_display_opts.fonts.tree_font_size = ui.value;
-      console.log('spin', ui.value);
-    },
-    change: function(event, ui) {
-      //nvrgtr_display_opts.fonts.tree_font_size = parseInt(this.value);
-      console.log('change', this.value);
+  $("#node_colourPicker").keydown(function(event) {
+    if (event.which == 13) {
+      updateSelectionGroupColour('node', this.jscolor);
+      this.jscolor.hide();
     }
-  }).spinner('value', 2);
+  });
+  $("#label_colourPicker").keydown(function(event) {
+    if (event.which == 13) {
+      updateSelectionGroupColour('label', this.jscolor);
+      this.jscolor.hide();
+    }
+  });
+  $("#selectGroupNodeSizeSpinner").spinner({
+    min: 0, numberFormat: 'N1', step: 0.5,
+    change: function(event, ui) {
+      updateSelectionGroupNodeSize(parseFloat(this.value));
+    }
+  });
+  $("#selectGroupNodeSizeSpinner").keydown(function(event) {
+    if (event.which == 13) {
+      updateSelectionGroupNodeSize(parseFloat(this.value));
+    }
+  });
+  $("#selectGroupSaveButton").click(function() {
+
+  });
 }
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
@@ -913,7 +933,41 @@ function updateDisplayOptionSpinners() {
 }
 // =====  Selection group updating:
 function updateSelectionGroupColour(key, jscolor) {
-  console.log('changed '+key+' colour', jscolor);
+  if (nvrgtr_data.selected.size == 0) {
+    return false;
+  }
+  var jscolor_id, recolour_fxn;
+  var colour = ('#'+jscolor).toUpperCase();
+  if (key == 'node') {
+    jscolor_id = "#node_colourPicker";
+    recolour_fxn = changeSelectionGroupNodeColour;
+  } else if (key == 'label') {
+    jscolor_id = "#label_colourPicker";
+    recolour_fxn = changeSelectionGroupLabelColour;
+  } else {
+    console.log('In updateSelectionGroupColour(), unknown key "'+key+'"');
+    return false;
+  }
+  var input_val = $(jscolor_id).val().toUpperCase();
+  if (colour != '#'+input_val && colour != input_val) { // Input has been deleted or is bad
+    jscolor.fromString('FFFFFF');
+    $(jscolor_id).val('');
+    colour = null;
+  }
+  nvrgtr_data.selected.forEach(function(var_name) {
+    recolour_fxn(nvrgtr_data.nodes[var_name], colour);
+  });
+}
+function updateSelectionGroupNodeSize(new_radius) {
+  if (nvrgtr_data.selected.size == 0) {
+    return false;
+  }
+  if (isNaN(new_radius)) {
+    new_radius = null;
+  }
+  nvrgtr_data.selected.forEach(function(var_name) {
+    changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], new_radius);
+  });
 }
 
 // =====  Page maintainance and management:

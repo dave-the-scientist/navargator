@@ -545,7 +545,7 @@ button.control-element:active {
   margin-right: unset;
 }
 
-/* ======  Display options  ====== */
+/* ======  Selection groups  ====== */
 .select-group-format-table {
   width: 100%;
   text-align: left;
@@ -568,6 +568,16 @@ input.select-group-node-spinner {
   height: 15px;
   font-size: 0.8em;
   margin: .2em 20px .2em .3em;
+}
+#selectGroupListDiv {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  min-height: 100px;
+  max-height: 100px;
+  overflow-y: scroll;
+  border: 1px solid var(--button-border-colour);
+  box-shadow: 1px 1px 3px #ccc inset;
 }
 
 /* ======  Distance threshold  ====== */

@@ -174,7 +174,7 @@
                 <tr>
                   <td><label class="display-options-label">Initial</label></td>
                   <td><input id="displayTreeInitAngleSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Buffer</label></td>
+                  <td><label class="display-options-label">Split</label></td>
                   <td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
@@ -194,6 +194,29 @@
                 <label style="font-size:0.8em;margin-left:10px">Length:</label>
                 <input id="scaleBarInput" placeholder="size" />
                 <button id="scaleBarInputGoButton" style="display:none">Ok</button>
+              </div>
+            </div>
+
+            <h2 class="collapsible-header">Selection groups<div id="selectionGroupsHelp" class="help-button"></div></h2>
+            <div id="selectionGroupsDiv" class="collapsible-panel">
+              <label>Saved selection groups:</label>
+              <div id="selectGroupListDiv"></div>
+              <label>Current selection:</label>
+              <table class="select-group-format-table"><tbody>
+                <tr>
+                  <td><label class="selection-group-format-label">Node colour</label></td>
+                  <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" onchange="updateSelectionGroupColour('node',this.jscolor)"></td>
+                  <td><label class="selection-group-format-label">Label colour</label></td>
+                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" onchange="updateSelectionGroupColour('label',this.jscolor)"></td>
+                </tr>
+                <tr>
+                  <td><label class="selection-group-format-label">Node size</label></td>
+                  <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" /></td>
+                </tr>
+              </tbody></table>
+              <div>
+                <input id="selectGroupNameInput" placeholder="Selection group name" />
+                <button id="selectGroupSaveButton">Save</button>
               </div>
             </div>
 

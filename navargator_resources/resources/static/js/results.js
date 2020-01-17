@@ -64,6 +64,7 @@ function setupPage() {
   setupHistoSliderPane();
   setupNormalizationPane();
   setupDisplayOptionsPane();
+  setupSelectionGroupsPane();
   //setupThresholdPane();
   setupExportPane();
   setupTreeElements();
