@@ -27,7 +27,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -348,8 +348,36 @@ function setupSelectionGroupsPane() {
       updateSelectionGroupNodeSize(parseFloat(this.value));
     }
   });
+  var select_group_int = 1;
   $("#selectGroupSaveButton").click(function() {
+    if (nvrgtr_data.selected.size == 0) {
+      return false;
+    }
+    var group_name = $("#selectGroupNameInput").val();
+    if (group_name == '') {
+      group_name = 'Group_' + select_group_int;
+      select_group_int += 1;
+    }
+    $("#selectGroupNameInput").val('');
+    var list_element = $('<div class="select-group-list-element"><label class="select-group-list-name">'+group_name+'</label><label class="select-group-list-size">('+nvrgtr_data.selected.size+')</label></div>');
+    var button_element = $('<button class="select-group-list-close prevent-text-selection">X</button>');
+    list_element.append(button_element);
+    if (group_name in nvrgtr_data.selection_groups) {
+      // find the existing element in the list, replace it with list_element
+    } else {
+      $("#selectGroupListDiv").append(list_element);
+    }
 
+    list_element.click(function() {
+      console.log('element from '+group_name);
+    });
+    button_element.click(function() {
+      console.log('button from '+group_name);
+      return false; // Prevents the click from propagating to the list_element
+    });
+
+    var sg_data = {'names':[...nvrgtr_data.selected], 'node_colour':$("#node_colourPicker")[0].value, 'label_colour':$("#label_colourPicker")[0].value, 'node_size':$("#selectGroupNodeSizeSpinner").val()};
+    nvrgtr_data.selection_groups[group_name] = sg_data;
   });
 }
 function setupThresholdPane() {
