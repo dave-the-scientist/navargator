@@ -228,7 +228,6 @@ function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, 
 
 function changeSelectionGroupNodeColour(node, new_colour) {
   if (new_colour == null) { // Reset the node
-    console.log('reseting', node, new_colour);
     new_colour = nvrgtr_display_opts.colours[node.node_rest_key];
   }
   node.node_rest_colour = new_colour;

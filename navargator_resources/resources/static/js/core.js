@@ -348,35 +348,79 @@ function setupSelectionGroupsPane() {
       updateSelectionGroupNodeSize(parseFloat(this.value));
     }
   });
-  var select_group_int = 1;
+  $("#selectGroupNameInput").keydown(function(event) {
+    if (event.which == 13) {
+      $("#selectGroupSaveButton").click();
+    }
+  });
+  var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
     if (nvrgtr_data.selected.size == 0) {
       return false;
     }
-    var group_name = $("#selectGroupNameInput").val();
+    var group_name = $.trim($("#selectGroupNameInput").val());
     if (group_name == '') {
       group_name = 'Group_' + select_group_int;
       select_group_int += 1;
     }
     $("#selectGroupNameInput").val('');
+    // Create the list_element and close button for that group:
     var list_element = $('<div class="select-group-list-element"><label class="select-group-list-name">'+group_name+'</label><label class="select-group-list-size">('+nvrgtr_data.selected.size+')</label></div>');
     var button_element = $('<button class="select-group-list-close prevent-text-selection">X</button>');
     list_element.append(button_element);
+    // Set up the mouse functionality of the elements:
+    list_element.mouseover(function() {
+      nvrgtr_data.selection_groups[group_name].names.forEach(function(var_name) {
+        nodeLabelMouseoverHandler(var_name);
+      });
+    }).mouseout(function() {
+      nvrgtr_data.selection_groups[group_name].names.forEach(function(var_name) {
+        nodeLabelMouseoutHandler(var_name);
+      });
+    }).click(function() {
+      nvrgtr_data.selection_groups[group_name].names.forEach(function(var_name) {
+        nodeLabelMouseclickHandler(var_name);
+      });
+      var node_colour = nvrgtr_data.selection_groups[group_name].node_colour,
+        label_colour = nvrgtr_data.selection_groups[group_name].label_colour,
+        node_size = nvrgtr_data.selection_groups[group_name].node_size;
+      if (node_colour == null) {
+        $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
+        $("#node_colourPicker").val('');
+      } else {
+        $("#node_colourPicker")[0].jscolor.fromString(node_colour);
+      }
+      if (label_colour == null) {
+        $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
+        $("#label_colourPicker").val('');
+      } else {
+        $("#label_colourPicker")[0].jscolor.fromString(label_colour);
+      }
+      $("#selectGroupNodeSizeSpinner").val(node_size); // Works with numbers or null.
+      if (list_element.hasClass('select-group-list-element-active')) {
+        list_element.removeClass('select-group-list-element-active');
+        $("#selectGroupNameInput").val('');
+      } else {
+        $(".select-group-list-element").removeClass('select-group-list-element-active');
+        list_element.addClass('select-group-list-element-active');
+        $("#selectGroupNameInput").val(group_name);
+      }
+
+    });
+    button_element.hover(function() {
+      return false; // Prevents propagation to the list_element
+    }).click(function() {
+      $(this).parent().remove();
+      return false; // Prevents the click from propagating to the list_element
+    });
+    // Place the new elements on the page:
     if (group_name in nvrgtr_data.selection_groups) {
       // find the existing element in the list, replace it with list_element
     } else {
       $("#selectGroupListDiv").append(list_element);
     }
-
-    list_element.click(function() {
-      console.log('element from '+group_name);
-    });
-    button_element.click(function() {
-      console.log('button from '+group_name);
-      return false; // Prevents the click from propagating to the list_element
-    });
-
-    var sg_data = {'names':[...nvrgtr_data.selected], 'node_colour':$("#node_colourPicker")[0].value, 'label_colour':$("#label_colourPicker")[0].value, 'node_size':$("#selectGroupNodeSizeSpinner").val()};
+    // Update the backend data:
+    var sg_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
     nvrgtr_data.selection_groups[group_name] = sg_data;
   });
 }
@@ -965,7 +1009,6 @@ function updateSelectionGroupColour(key, jscolor) {
     return false;
   }
   var jscolor_id, recolour_fxn;
-  var colour = ('#'+jscolor).toUpperCase();
   if (key == 'node') {
     jscolor_id = "#node_colourPicker";
     recolour_fxn = changeSelectionGroupNodeColour;
@@ -976,12 +1019,7 @@ function updateSelectionGroupColour(key, jscolor) {
     console.log('In updateSelectionGroupColour(), unknown key "'+key+'"');
     return false;
   }
-  var input_val = $(jscolor_id).val().toUpperCase();
-  if (colour != '#'+input_val && colour != input_val) { // Input has been deleted or is bad
-    jscolor.fromString('FFFFFF');
-    $(jscolor_id).val('');
-    colour = null;
-  }
+  var colour = getJscolorValue(jscolor_id);
   nvrgtr_data.selected.forEach(function(var_name) {
     recolour_fxn(nvrgtr_data.nodes[var_name], colour);
   });
@@ -1057,6 +1095,17 @@ function closeInstance() {
 }
 
 // =====  Functions to calculate and warn about colour choices:
+function getJscolorValue(jscolor_id) {
+  // Written to allow for jscolor with required=false. For those, '#'+jscolor returns the previous colour if the input has been deleted, and I want to use the deleted state.
+  var jscolor = $(jscolor_id)[0].jscolor, colour = ('#'+jscolor).toUpperCase(),
+    input_val = $(jscolor_id).val().toUpperCase();
+  if (colour != '#'+input_val && colour != input_val) { // Input has been deleted or is bad
+    jscolor.fromString('FFFFFF');
+    $(jscolor_id).val('');
+    colour = null;
+  }
+  return colour;
+}
 function calculateTransparentComplement(desired_col, opacity, background_col) {
   // If returned.closest_colour == '', then returned.trans_comp is what the colour should be set to in order to achieve the desired colour, given the current cluster_opacity and tree_background. Otherwise, it is not possible to recreate that desired colour with the given background and transparency. In that case closest_colour is the best we can do with the given transparency; returned.min_transparency is what the current transparency should be raised to in order to display desired_col.
   var de_r = parseInt('0x'+desired_col.slice(1,3)),
