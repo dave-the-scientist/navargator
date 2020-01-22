@@ -415,7 +415,12 @@ function setupSelectionGroupsPane() {
     });
     // Place the new elements on the page:
     if (group_name in nvrgtr_data.selection_groups) {
-      // find the existing element in the list, replace it with list_element
+      $(".select-group-list-name").each(function() {
+        if ($(this).text() == group_name) {
+          console.log(this, $(this).parent());
+          $(this).parent().replaceWith(list_element);
+        }
+      });
     } else {
       $("#selectGroupListDiv").append(list_element);
     }

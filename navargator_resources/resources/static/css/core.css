@@ -550,6 +550,9 @@ button.control-element:active {
   width: 100%;
   text-align: left;
 }
+.select-group-format-table td {
+  padding: 0px 2px;
+}
 .select-group-format-table td:nth-child(1),
 .select-group-format-table td:nth-child(3) {
   text-align: right;
