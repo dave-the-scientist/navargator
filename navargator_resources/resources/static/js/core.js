@@ -27,7 +27,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':{}, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -327,13 +327,13 @@ function setupDisplayOptionsPane() {
 function setupSelectionGroupsPane() {
   $("#node_colourPicker").keydown(function(event) {
     if (event.which == 13) {
-      updateSelectionGroupColour('node', this.jscolor);
+      updateSelectionGroupColour('node');
       this.jscolor.hide();
     }
   });
   $("#label_colourPicker").keydown(function(event) {
     if (event.which == 13) {
-      updateSelectionGroupColour('label', this.jscolor);
+      updateSelectionGroupColour('label');
       this.jscolor.hide();
     }
   });
@@ -353,6 +353,9 @@ function setupSelectionGroupsPane() {
       $("#selectGroupSaveButton").click();
     }
   });
+  $("#selectGroupApplyButton").click(function() {
+    applySelectionGroupFormat();
+  });
   var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
     if (nvrgtr_data.selected.size == 0) {
@@ -363,27 +366,33 @@ function setupSelectionGroupsPane() {
       group_name = 'Group_' + select_group_int;
       select_group_int += 1;
     }
-    $("#selectGroupNameInput").val('');
+    // Truncate the name for display if it's too long
+    var group_display_name, group_name_max_display_length = 16;
+    if (group_name.length > group_name_max_display_length) {
+      group_display_name = group_name.slice(0, group_name_max_display_length) + '...';
+    } else {
+      group_display_name = group_name;
+    }
     // Create the list_element and close button for that group:
-    var list_element = $('<div class="select-group-list-element"><label class="select-group-list-name">'+group_name+'</label><label class="select-group-list-size">('+nvrgtr_data.selected.size+')</label></div>');
+    var list_element = $('<div class="select-group-list-element"><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+nvrgtr_data.selected.size+')</label></div>');
     var button_element = $('<button class="select-group-list-close prevent-text-selection">X</button>');
     list_element.append(button_element);
     // Set up the mouse functionality of the elements:
     list_element.mouseover(function() {
-      nvrgtr_data.selection_groups[group_name].names.forEach(function(var_name) {
+      nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
         nodeLabelMouseoverHandler(var_name);
       });
     }).mouseout(function() {
-      nvrgtr_data.selection_groups[group_name].names.forEach(function(var_name) {
+      nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
         nodeLabelMouseoutHandler(var_name);
       });
     }).click(function() {
-      nvrgtr_data.selection_groups[group_name].names.forEach(function(var_name) {
+      nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
         nodeLabelMouseclickHandler(var_name);
       });
-      var node_colour = nvrgtr_data.selection_groups[group_name].node_colour,
-        label_colour = nvrgtr_data.selection_groups[group_name].label_colour,
-        node_size = nvrgtr_data.selection_groups[group_name].node_size;
+      var node_colour = nvrgtr_data.selection_groups.get(group_name).node_colour,
+        label_colour = nvrgtr_data.selection_groups.get(group_name).label_colour,
+        node_size = nvrgtr_data.selection_groups.get(group_name).node_size;
       if (node_colour == null) {
         $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
         $("#node_colourPicker").val('');
@@ -405,28 +414,38 @@ function setupSelectionGroupsPane() {
         list_element.addClass('select-group-list-element-active');
         $("#selectGroupNameInput").val(group_name);
       }
-
     });
     button_element.hover(function() {
       return false; // Prevents propagation to the list_element
     }).click(function() {
       $(this).parent().remove();
+      nvrgtr_data.selection_groups.delete(group_name);
       return false; // Prevents the click from propagating to the list_element
     });
     // Place the new elements on the page:
-    if (group_name in nvrgtr_data.selection_groups) {
+    if (nvrgtr_data.selection_groups.has(group_name)) {
       $(".select-group-list-name").each(function() {
-        if ($(this).text() == group_name) {
-          console.log(this, $(this).parent());
+        if ($(this).text() == group_display_name) {
           $(this).parent().replaceWith(list_element);
         }
       });
     } else {
       $("#selectGroupListDiv").append(list_element);
     }
+    $(".select-group-list-element").removeClass('select-group-list-element-active'); // Ensure no other groups are selected
+    list_element.addClass('select-group-list-element-active'); // Select the new group
     // Update the backend data:
     var sg_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
-    nvrgtr_data.selection_groups[group_name] = sg_data;
+    nvrgtr_data.selection_groups.set(group_name, sg_data);
+  });
+  $("#selectGroupClearFormatButton").click(function() {
+    applySelectionGroupFormat(true);
+    $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
+    $("#node_colourPicker").val('');
+    $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
+    $("#label_colourPicker").val('');
+    $("#selectGroupNodeSizeSpinner").val('');
+    $("#selectGroupNameInput").val('');
   });
 }
 function setupThresholdPane() {
@@ -1009,7 +1028,7 @@ function updateDisplayOptionSpinners() {
   $("#displayTreeBufferAngleSpinner").spinner('value', nvrgtr_display_opts.angles.buffer_angle);
 }
 // =====  Selection group updating:
-function updateSelectionGroupColour(key, jscolor) {
+function updateSelectionGroupColour(key) {
   if (nvrgtr_data.selected.size == 0) {
     return false;
   }
@@ -1039,6 +1058,28 @@ function updateSelectionGroupNodeSize(new_radius) {
   nvrgtr_data.selected.forEach(function(var_name) {
     changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], new_radius);
   });
+}
+function applySelectionGroupFormat(clear_formatting=false) {
+  // Applies the on-page formatting values to all currently selected variants
+  var node_colour = getJscolorValue("#node_colourPicker"), label_colour = getJscolorValue("#label_colourPicker"), node_size = $("#selectGroupNodeSizeSpinner").val() || null;
+  if (clear_formatting == true) {
+    node_colour = false, label_colour = false, node_size = false;
+  }
+  nvrgtr_data.selected.forEach(function(var_name) {
+    changeSelectionGroupNodeColour(nvrgtr_data.nodes[var_name], node_colour);
+    changeSelectionGroupLabelColour(nvrgtr_data.nodes[var_name], label_colour);
+    changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], node_size);
+  });
+}
+function applyAllSelectionGroupFormats() {
+  // Iterates over the saved selection groups in order, applying each format in turn
+  for (let format of nvrgtr_data.selection_groups.values()) {
+    format.names.forEach(function(var_name) {
+      changeSelectionGroupNodeColour(nvrgtr_data.nodes[var_name], format.node_colour);
+      changeSelectionGroupLabelColour(nvrgtr_data.nodes[var_name], format.label_colour);
+      changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], format.node_size);
+    });
+  }
 }
 
 // =====  Page maintainance and management:

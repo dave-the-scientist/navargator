@@ -11,6 +11,10 @@ function setupTreeElements() {
     numSelectedCallback();
   });
   $("#clearSelectionButton").click(function() {
+    // De-select selection groups
+    $(".select-group-list-element").removeClass('select-group-list-element-active');
+    $("#selectGroupNameInput").val('');
+    // De-select any selected variatns
     nvrgtr_data.selected.forEach(function(var_name) {
       nodeLabelMouseclickHandler(var_name, false, false);
     });
@@ -227,14 +231,20 @@ function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, 
 }
 
 function changeSelectionGroupNodeColour(node, new_colour) {
-  if (new_colour == null) { // Reset the node
+  // If new_colour is null it isn't changed, if false it is reset
+  if (new_colour == null) {
+    return false;
+  } else if (new_colour == false) { // Reset the node
     new_colour = nvrgtr_display_opts.colours[node.node_rest_key];
   }
   node.node_rest_colour = new_colour;
   node.circle.attr({fill:new_colour});
 }
 function changeSelectionGroupLabelColour(node, new_colour) {
-  if (new_colour == null) { // Reset the node
+  // If new_colour is null it isn't changed, if false it is reset
+  if (new_colour == null) {
+    return false;
+  } else if (new_colour == false) { // Reset the node
     node.label_rest_colour = '';
     if (node.selected == true) {
       new_colour = nvrgtr_display_opts.colours[node.label_selected_key];
@@ -251,7 +261,10 @@ function changeSelectionGroupLabelColour(node, new_colour) {
   node.label_highlight.attr({fill:new_colour});
 }
 function changeSelectionGroupNodeSize(node, radius) {
-  if (radius == null) { // Reset the node
+  // If radius is null it isn't changed, if false it is reset
+  if (radius == null) {
+    return false;
+  } else if (radius == false) { // Reset the node
     if (node.node_rest_key == 'default_node') {
       radius = nvrgtr_display_opts.sizes.small_marker_radius;
     } else {

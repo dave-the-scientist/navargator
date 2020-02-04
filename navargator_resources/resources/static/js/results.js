@@ -411,6 +411,7 @@ function redrawTree(initial_draw=false) {
     drawBarGraphs();
     drawClusters();
     updateClusteredVariantMarkers();
+    applyAllSelectionGroupFormats();
   }
 }
 function extendTreeLegend() {

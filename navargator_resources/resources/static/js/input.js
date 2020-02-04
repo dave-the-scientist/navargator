@@ -583,6 +583,7 @@ function redrawTree() {
   drawTree();
   updateVarSelectList();
   updateRunOptions();
+  applyAllSelectionGroupFormats();
 }
 function updateVarSelectList() {
   // Updates the list of variants in the selection pane. Should be called every time the phylogenetic tree is modified.
