@@ -65,7 +65,7 @@ function setupPage() {
   setupNormalizationPane();
   setupDisplayOptionsPane();
   setupSelectionGroupsPane();
-  //setupThresholdPane();
+  setupThresholdPane();
   setupExportPane();
   setupTreeElements();
   $("#treeLoadingMessageGroup").show();
@@ -390,6 +390,7 @@ function checkForClusteringResults() {
         updateNormalizationPane();
         drawClusters();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
+        applyAllSelectionGroupFormats();
         drawDistanceGraphs();
         updateHistoSlider(); // Must be after drawDistanceGraphs
         $("#treeSelectionDiv").show();
@@ -407,7 +408,7 @@ function checkForClusteringResults() {
 function redrawTree(initial_draw=false) {
   drawTree(false);
   if (initial_draw == false) {
-    $("#clearSliderButton").click();
+    //$("#clearSliderButton").click();
     drawBarGraphs();
     drawClusters();
     updateClusteredVariantMarkers();

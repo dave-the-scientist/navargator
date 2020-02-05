@@ -77,7 +77,7 @@ ul {
   padding: 0px;
 }
 button {
-  margin: 2px auto 5px auto;
+  margin: 2px 0px;
 }
 span {
   text-align: center;
@@ -139,6 +139,45 @@ span {
   color: white;
   text-shadow: 1px 1px 2px var(--shadow-colour);
   text-align: center;
+}
+
+/* ======  Common style classes  ====== */
+.prevent-text-selection {
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+}
+.horizontal-row-div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.param-spinner { /* General purpose spinner*/
+  width: 21px;
+}
+input.display-opt-spinner {
+  width: 22px;
+  height: 15px;
+  font-size: 0.8em;
+  margin: .2em 20px .2em .3em;
+}
+table.sortable th span,
+table.sortable th:after {
+  font-size: 12px;
+}
+/*table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {*/
+table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
+  /*content: " \25B4\25BE";*/
+  content: " \25B4";
+}
+table.sortable th.sorttable_sorted:after {
+  /*content: "\25B4";*/
+}
+table.sortable th.sorttable_sorted_reverse:after {
+  /*content: "\25BE";*/
 }
 
 /* ======  Main styled div  ====== */
@@ -531,19 +570,6 @@ button.control-element:active {
   padding: 0px 1px;
   font-size: 0.7em;
 }
-#resetRedrawButtonsDiv {
-  display: flex;
-  justify-content: space-between;
-}
-#scaleBarDiv {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-}
-#resetDisplayOptsButton, #redrawTreeButton {
-  margin-left: unset;
-  margin-right: unset;
-}
 
 /* ======  Selection groups  ====== */
 .select-group-format-table {
@@ -603,9 +629,8 @@ input.select-group-node-spinner {
 .select-group-list-close {
   margin: 0px 10px 0px auto;
 }
-#selectGroupLabelApplyDiv {
-  display: flex;
-  justify-content: space-between;
+#selectGroupClearFormatButton {
+  text-align: center;
 }
 
 /* ======  Distance threshold  ====== */
@@ -704,9 +729,6 @@ input.select-group-node-spinner {
   margin: 5px 0px 5px 20px;
 }
 #thresholdCritDistDiv {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-left: 20px;
 }
 #thresholdOkButton {
@@ -754,38 +776,4 @@ input.select-group-node-spinner {
 #scaleBarInputGoButton:active {
   background: linear-gradient(#DCDCDC, #FAFAFA);
   box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
-}
-
-/* ======  Other common style classes  ====== */
-.prevent-text-selection {
-  -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-     -khtml-user-select: none; /* Konqueror HTML */
-       -moz-user-select: none; /* Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
-}
-.param-spinner { /* General purpose spinner*/
-  width: 21px;
-}
-input.display-opt-spinner {
-  width: 22px;
-  height: 15px;
-  font-size: 0.8em;
-  margin: .2em 20px .2em .3em;
-}
-table.sortable th span,
-table.sortable th:after {
-  font-size: 12px;
-}
-/*table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {*/
-table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
-  /*content: " \25B4\25BE";*/
-  content: " \25B4";
-}
-table.sortable th.sorttable_sorted:after {
-  /*content: "\25B4";*/
-}
-table.sortable th.sorttable_sorted_reverse:after {
-  /*content: "\25BE";*/
 }

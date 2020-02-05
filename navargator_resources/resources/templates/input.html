@@ -66,9 +66,9 @@
               <form id="uploadFilesForm" method="post" enctype="multipart/form-data">
                 <input id="uploadFileInput" name="upload-file" type="file">
               </form>
-              <div id="loadInputSelectButtonDiv">
+              <div class="horizontal-row-div">
                 <select id="uploadFileTypeSelect">
-                  <option selected value="auto">Auto-detect tree format</option>
+                  <option selected value="auto">Auto-detect format</option>
                   <option value="nvrgtr">NaVARgator file</option>
                   <option value="newick">Newick tree</option>
                   <option value="nexus">NEXUS tree</option>
@@ -81,17 +81,17 @@
 
             <h2 class="collapsible-header">Tree options<div id="treeOptsHelp" class="help-button"></div></h2>
             <div id="treeManipulationsPanel" class="collapsible-panel">
-              <div id="treeManipButtonGroup1">
+              <div id="treeManipRootOrderDiv" class="horizontal-row-div">
                 <button id="reorderNodesButton" class="jq-ui-button tree-manipulation-buttons">Re-order nodes</button>
                 <button id="rootMidpointButton" class="jq-ui-button tree-manipulation-buttons">Midpoint root</button>
                 <button id="rootSelectionButton" class="jq-ui-button tree-manipulation-buttons">Set selection as outgroup</button>
               </div>
               <hr>
-              <div id="treeManipTruncDiv">
+              <div class="horizontal-row-div">
                 <button id="truncateNamesButton" class="jq-ui-button tree-manipulation-buttons">Truncate name length</button>
                 <input id="truncateNamesSpinner" class="param-spinner" />
               </div>
-              <div id="treeManipSaveDiv">
+              <div class="horizontal-row-div">
                 <button id="saveTreeButton" class="jq-ui-button tree-manipulation-buttons">Save tree as</button>
                 <select id="saveTreeTypeSelect">
                   <option selected value="newick">Newick tree</option>
@@ -100,7 +100,7 @@
                   <option value="nexml">NeXML tree</option>
                 </select>
               </div>
-              <div id="treeManipSaveImageDiv">
+              <div class="horizontal-row-div">
                 <button id="saveTreeImageButton" class="jq-ui-button tree-manipulation-buttons">Save tree image</button>
               </div>
             </div>
@@ -178,7 +178,7 @@
                   <td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
-              <div id="resetRedrawButtonsDiv">
+              <div class="horizontal-row-div">
                 <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
                 <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
               </div>
@@ -186,13 +186,15 @@
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <div id="scaleBarDiv">
+              <div class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
                   <input id="showScaleBarCheckbox" type="checkbox" checked />
                   <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
                 </label>
-                <label style="font-size:0.8em;margin-left:10px">Length:</label>
-                <input id="scaleBarInput" placeholder="size" />
+                <div>
+                  <label style="font-size:0.8em;margin-left:10px">Length:</label>
+                  <input id="scaleBarInput" placeholder="size" />
+                </div>
                 <button id="scaleBarInputGoButton" style="display:none">Ok</button>
               </div>
             </div>
@@ -201,7 +203,7 @@
             <div id="selectionGroupsDiv" class="collapsible-panel">
               <label>Saved selection groups</label>
               <div id="selectGroupListDiv"></div>
-              <div id="selectGroupLabelApplyDiv">
+              <div class="horizontal-row-div">
                 <label>Selection format</label>
                 <button id="selectGroupApplyButton">Apply</button>
               </div>
@@ -217,11 +219,12 @@
                   <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
                 </tr>
               </tbody></table>
-              <div>
+              <button id="selectGroupAddBannerButton">Add new banner</button>
+              <div class="horizontal-row-div">
                 <input id="selectGroupNameInput" placeholder="Selection group name" />
                 <button id="selectGroupSaveButton">Save</button>
               </div>
-              <button id="selectGroupClearFormatButton">Clear selection formatting</button>
+              <button id="selectGroupClearFormatButton">Clear selection of formatting</button>
             </div>
 
             <h2>Distance threshold<div id="distanceThreshHelp" class="help-button"></div></h2>
@@ -257,7 +260,7 @@
                       <svg id="thresholdSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
                     </div>
                     <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput" title="Enter a value here to exactly specify the critical interaction value."></input></label>
-                    <div id="thresholdCritDistDiv">
+                    <div id="thresholdCritDistDiv" class="horizontal-row-div">
                       <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
                       <button id="thresholdOkButton">OK</button>
                     </div>
@@ -270,7 +273,7 @@
             </div>
             <hr>
 
-            <div id="saveSessionDiv">
+            <div class="horizontal-row-div">
               <button id="saveSessionButton" class="jq-ui-button">Save session</button>
               <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (~90MB file for a 4,000 variant tree).">
                 <input id="sessionIncludeDistancesCheckbox" type="checkbox" checked />

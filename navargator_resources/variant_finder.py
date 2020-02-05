@@ -12,6 +12,7 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 
 
 # TODO:
+# - Save the selection groups to the nvrgtr file
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 # - Implement threshold clustering.
@@ -155,7 +156,7 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
     return num_str
 
 class VariantFinder(object):
-    def __init__(self, tree_input, tree_format='auto', file_name='unknown file', display_options=None, distance_matrix=None, verbose=True, _blank_init=False):
+    def __init__(self, tree_input, tree_format='auto', file_name='unknown file', display_options=None, selection_groups_order=None, selection_groups_data=None, distance_matrix=None, verbose=True, _blank_init=False):
         self.file_name = file_name
         self.verbose = bool(verbose)
         self.leaves = []
@@ -165,6 +166,12 @@ class VariantFinder(object):
             self.display_options = display_options
         else:
             self.display_options = {}
+        if selection_groups_order and selection_groups_data:
+            self.selection_groups_order = selection_groups_order
+            self.selection_groups_data = selection_groups_data
+        else:
+            self.selection_groups_order = []
+            self.selection_groups_data = {}
         if not _blank_init:
             tree_format = tree_format.lower().strip()
             if tree_format == 'auto':
@@ -392,6 +399,8 @@ class VariantFinder(object):
         vf.cache = deepcopy(self.cache)
         vf.normalize = deepcopy(self.normalize)
         vf.display_options = deepcopy(self.display_options)
+        vf.selection_groups_order = self.selection_groups_order[::]
+        vf.selection_groups_data = deepcopy(self.selection_groups_data)
         vf.file_name = self.file_name
         vf.max_root_distance = self.max_root_distance
         vf._not_ignored_inds = self._not_ignored_inds.copy()

@@ -304,6 +304,7 @@ function drawTree(marker_tooltips=true) {
   var total_label_size = maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.search_buffer - 1;
 
   // Check if any banners are to be drawn here, modify total_label_size
+  
 
   if (nvrgtr_page.page == 'results') { // If a bar chart is going to be drawn:
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;

@@ -23,43 +23,16 @@
 #loadInputPanel > * {
   margin-left: 0px;
 }
-#loadInputSelectButtonDiv {
-  display: inline-flex;
-  justify-content: space-between;
-  align-items: center;
-}
 #uploadFileTypeSelect {
   width: 140px;
 }
 
 /* Tree manipulation settings: */
-#treeManipButtonGroup1,
-#treeManipTruncDiv,
-#treeManipSaveDiv,
-#treeManipSaveImageDiv {
-  display: inline-flex;
+#treeManipRootOrderDiv {
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-}
-#treeManipButtonGroup1 > button,
-#treeManipTruncDiv > button,
-#treeManipSaveDiv > button,
-#treeManipSaveImageDiv > button {
-  margin-left: unset;
-  margin-right: unset;
 }
 
 /* Save session options: */
-#saveSessionDiv {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-#saveSessionButton {
-  margin-left: unset;
-  margin-right: unset;
-}
 #sessionIncludeDistancesLabel {
   font-size: 14px;
 }

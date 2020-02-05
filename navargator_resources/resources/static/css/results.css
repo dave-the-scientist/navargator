@@ -96,12 +96,7 @@
   --button-width: 55px;
   --button-height: 25px;
   position: relative;
-  display: inline-flex;
-  justify-content: space-between;
-  margin: 0px;
-  box-sizing: border-box; /* Needed if I want to add horizontal padding.*/
-  padding: 0px 5px;
-  width: 100%;
+  align-items: center;
 }
 #leftSliderButton, #middleSliderButton, #clearSliderButton {
   position: relative;

@@ -11,7 +11,6 @@
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
-// - drawTree in core_tree_functions.js should use the nvrgtr_page.page value to decide whether or not to draw marker_tooltips; shouldn't need to pass in an argument.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
 // - Ensure error codes in processError() match with error codes in navargator_daemon.py.
@@ -325,6 +324,9 @@ function setupDisplayOptionsPane() {
   $("#showScaleBarCheckbox").prop('disabled', true);
 }
 function setupSelectionGroupsPane() {
+  $("#selectGroupApplyButton").click(function() {
+    applySelectionGroupFormat();
+  });
   $("#node_colourPicker").keydown(function(event) {
     if (event.which == 13) {
       updateSelectionGroupColour('node');
@@ -353,8 +355,10 @@ function setupSelectionGroupsPane() {
       $("#selectGroupSaveButton").click();
     }
   });
-  $("#selectGroupApplyButton").click(function() {
-    applySelectionGroupFormat();
+  $("#selectGroupAddBannerButton").click(function() {
+    // Need a nvrgtr_data.selection_group_banners counter, this would increment it.
+    // Adds a new row to the table containing a label, jscolor, and removal button.
+    // Need to re-size the collapsable div on addition or removal.
   });
   var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
@@ -366,77 +370,7 @@ function setupSelectionGroupsPane() {
       group_name = 'Group_' + select_group_int;
       select_group_int += 1;
     }
-    // Truncate the name for display if it's too long
-    var group_display_name, group_name_max_display_length = 16;
-    if (group_name.length > group_name_max_display_length) {
-      group_display_name = group_name.slice(0, group_name_max_display_length) + '...';
-    } else {
-      group_display_name = group_name;
-    }
-    // Create the list_element and close button for that group:
-    var list_element = $('<div class="select-group-list-element"><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+nvrgtr_data.selected.size+')</label></div>');
-    var button_element = $('<button class="select-group-list-close prevent-text-selection">X</button>');
-    list_element.append(button_element);
-    // Set up the mouse functionality of the elements:
-    list_element.mouseover(function() {
-      nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
-        nodeLabelMouseoverHandler(var_name);
-      });
-    }).mouseout(function() {
-      nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
-        nodeLabelMouseoutHandler(var_name);
-      });
-    }).click(function() {
-      nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
-        nodeLabelMouseclickHandler(var_name);
-      });
-      var node_colour = nvrgtr_data.selection_groups.get(group_name).node_colour,
-        label_colour = nvrgtr_data.selection_groups.get(group_name).label_colour,
-        node_size = nvrgtr_data.selection_groups.get(group_name).node_size;
-      if (node_colour == null) {
-        $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
-        $("#node_colourPicker").val('');
-      } else {
-        $("#node_colourPicker")[0].jscolor.fromString(node_colour);
-      }
-      if (label_colour == null) {
-        $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
-        $("#label_colourPicker").val('');
-      } else {
-        $("#label_colourPicker")[0].jscolor.fromString(label_colour);
-      }
-      $("#selectGroupNodeSizeSpinner").val(node_size); // Works with numbers or null.
-      if (list_element.hasClass('select-group-list-element-active')) {
-        list_element.removeClass('select-group-list-element-active');
-        $("#selectGroupNameInput").val('');
-      } else {
-        $(".select-group-list-element").removeClass('select-group-list-element-active');
-        list_element.addClass('select-group-list-element-active');
-        $("#selectGroupNameInput").val(group_name);
-      }
-    });
-    button_element.hover(function() {
-      return false; // Prevents propagation to the list_element
-    }).click(function() {
-      $(this).parent().remove();
-      nvrgtr_data.selection_groups.delete(group_name);
-      return false; // Prevents the click from propagating to the list_element
-    });
-    // Place the new elements on the page:
-    if (nvrgtr_data.selection_groups.has(group_name)) {
-      $(".select-group-list-name").each(function() {
-        if ($(this).text() == group_display_name) {
-          $(this).parent().replaceWith(list_element);
-        }
-      });
-    } else {
-      $("#selectGroupListDiv").append(list_element);
-    }
-    $(".select-group-list-element").removeClass('select-group-list-element-active'); // Ensure no other groups are selected
-    list_element.addClass('select-group-list-element-active'); // Select the new group
-    // Update the backend data:
-    var sg_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
-    nvrgtr_data.selection_groups.set(group_name, sg_data);
+    addNewSelectionGroup(group_name);
   });
   $("#selectGroupClearFormatButton").click(function() {
     applySelectionGroupFormat(true);
@@ -448,6 +382,7 @@ function setupSelectionGroupsPane() {
     $("#selectGroupNameInput").val('');
   });
 }
+
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
   var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
@@ -528,7 +463,7 @@ function setupThresholdPane() {
       url: daemonURL('/fit-curve'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'data':data, 'max_val':max_val}),
+      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'selection_groups_order':[...nvrgtr_data.selection_groups.keys()],  'selection_groups_data':Object.fromEntries(nvrgtr_data.selection_groups), 'data':data, 'max_val':max_val}),
       success: function(data_obj) {
         var thresh_data = $.parseJSON(data_obj);
         nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
@@ -850,6 +785,10 @@ function parseBasicData(data_obj) {
     nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
   }
   processDisplayOptions(data.display_opts);
+  data.selection_groups_order.forEach(function(group_name) {
+    addNewSelectionGroup(group_name, data.selection_groups_data[group_name]);
+  });
+  $(".select-group-list-element").removeClass('select-group-list-element-active');
 }
 function processDisplayOptions(display_opts) {
   updateDisplayOptions(display_opts);
@@ -1081,6 +1020,85 @@ function applyAllSelectionGroupFormats() {
     });
   }
 }
+function addNewSelectionGroup(group_name, group_data=null) {
+  // Truncate the name for display if it's too long
+  var group_display_name, group_name_max_display_length = 16;
+  if (group_name.length > group_name_max_display_length) {
+    group_display_name = group_name.slice(0, group_name_max_display_length) + '...';
+  } else {
+    group_display_name = group_name;
+  }
+  var group_size = group_data==null ? nvrgtr_data.selected.size : group_data.names.length;
+  // Create the list_element and close button for that group:
+  var list_element = $('<div class="prevent-text-selection select-group-list-element"><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+group_size+')</label></div>');
+  var button_element = $('<button class="select-group-list-close prevent-text-selection">X</button>');
+  list_element.append(button_element);
+  // Set up the mouse functionality of the elements:
+  list_element.mouseover(function() {
+    nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
+      nodeLabelMouseoverHandler(var_name);
+    });
+  }).mouseout(function() {
+    nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
+      nodeLabelMouseoutHandler(var_name);
+    });
+  }).click(function() {
+    nvrgtr_data.selection_groups.get(group_name).names.forEach(function(var_name) {
+      nodeLabelMouseclickHandler(var_name);
+    });
+    var node_colour = nvrgtr_data.selection_groups.get(group_name).node_colour,
+      label_colour = nvrgtr_data.selection_groups.get(group_name).label_colour,
+      node_size = nvrgtr_data.selection_groups.get(group_name).node_size;
+    if (node_colour == null) {
+      $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
+      $("#node_colourPicker").val('');
+    } else {
+      $("#node_colourPicker")[0].jscolor.fromString(node_colour);
+    }
+    if (label_colour == null) {
+      $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
+      $("#label_colourPicker").val('');
+    } else {
+      $("#label_colourPicker")[0].jscolor.fromString(label_colour);
+    }
+    $("#selectGroupNodeSizeSpinner").val(node_size); // Works with numbers or null.
+    if (list_element.hasClass('select-group-list-element-active')) {
+      list_element.removeClass('select-group-list-element-active');
+      $("#selectGroupNameInput").val('');
+    } else {
+      $(".select-group-list-element").removeClass('select-group-list-element-active');
+      list_element.addClass('select-group-list-element-active');
+      $("#selectGroupNameInput").val(group_name);
+    }
+  });
+  button_element.hover(function() {
+    return false; // Prevents propagation to the list_element
+  }).click(function() {
+    $(this).parent().remove();
+    nvrgtr_data.selection_groups.delete(group_name);
+    return false; // Prevents the click from propagating to the list_element
+  });
+  // Place the new elements on the page:
+  if (nvrgtr_data.selection_groups.has(group_name)) {
+    $(".select-group-list-name").each(function() {
+      if ($(this).text() == group_display_name) {
+        $(this).parent().replaceWith(list_element);
+      }
+    });
+  } else {
+    $("#selectGroupListDiv").append(list_element);
+  }
+  $(".select-group-list-element").removeClass('select-group-list-element-active'); // Ensure no other groups are selected
+  list_element.addClass('select-group-list-element-active'); // Select the new group
+  // Scroll the list if needed
+  $("#selectGroupListDiv").animate({scrollTop:$("#selectGroupListDiv")[0].scrollHeight}, 300);
+  // Update the backend data:
+  console.log('data', group_data);
+  if (group_data == null) {
+    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
+  }
+  nvrgtr_data.selection_groups.set(group_name, group_data);
+}
 
 // =====  Page maintainance and management:
 function generateBrowserId(length) {
@@ -1091,7 +1109,7 @@ function generateBrowserId(length) {
   return b_id;
 }
 function daemonURL(url) {
-  // Prefix used for private routes. Doesn't matter what it is, but it must match the daemonURL function in navargator_daemon.py
+  // Prefix used for private routes. It must match the daemonURL function in navargator_daemon.py, and be handled by the web server software (Apache, NGINX, etc).
   return nvrgtr_page.server_url + '/daemon' + url;
 }
 function maintainServer() {

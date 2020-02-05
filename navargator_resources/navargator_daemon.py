@@ -297,13 +297,14 @@ class NavargatorDaemon(object):
                     args = (num, dist_scale, cluster_method)
                     self.job_queue.addJob(vf.find_variants, args)
             return json.dumps({'session_id':s_id})
-        @self.server.route(self.daemonURL('/update-display-options'), methods=['POST'])
-        def update_display_options():
+        @self.server.route(self.daemonURL('/update-visual-options'), methods=['POST'])
+        def update_visual_options():
             vf, s_id, b_id, msg = self.get_instance()
             if s_id == None:
                 return msg
-            display_opts = request.json['display_opts']
-            vf.display_options = display_opts
+            vf.display_options = request.json['display_opts']
+            vf.selection_groups_order = request.json['selection_groups_order']
+            vf.selection_groups_data = request.json['selection_groups_data']
             return "display options updated for {}".format(s_id)
         @self.server.route(self.daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
@@ -453,7 +454,7 @@ class NavargatorDaemon(object):
         else:
             return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
     def update_or_copy_vf(self):
-        """Called from save-nvrgtr-file and find-variants routes. If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. The chosen and ignored attributes must first be cleared of their original values before being set. Updates the display_opts dict of the vf instance. Functions that call this should all check if s_id is None, and if so return msg to the client, which will cause an error popup on the page."""
+        """Called from save-nvrgtr-file and find-variants routes. If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. Updates the display_opts dict, the selection_groups_order and selection_groups_data of the vf instance. Functions that call this should all check if s_id is None, and if so return msg to the client, which will cause an error popup on the page."""
         vf, s_id, b_id, msg = self.get_instance()
         if s_id == None:
             return None, None, msg
@@ -472,6 +473,8 @@ class NavargatorDaemon(object):
                 return None, None, (str(err), 5513)
             msg = "vf replaced; new session ID '%s'" % s_id
         vf.display_options = request.json.get('display_opts', {})
+        vf.selection_groups_order = request.json.get('selection_groups_order', [])
+        vf.selection_groups_data = request.json.get('selection_groups_data', {})
         return vf, s_id, msg
     # # # # #  Private methods  # # # # #
     def daemonURL(self, url):
@@ -488,10 +491,10 @@ class NavargatorDaemon(object):
             s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return s_id
     def get_vf_data_dict(self, s_id):
-        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'file_name':'unknown file', 'max_root_distance':0.0, 'maintain_interval':self.maintain_interval}
+        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'selection_groups_order':[], 'selection_groups_data':{}, 'file_name':'unknown file', 'max_root_distance':0.0, 'maintain_interval':self.maintain_interval}
         vf = self.sessions.get(s_id)
         if vf != None:
-            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'file_name':vf.file_name, 'max_root_distance':vf.max_root_distance})
+            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'selection_groups_order':vf.selection_groups_order, 'selection_groups_data':vf.selection_groups_data, 'file_name':vf.file_name, 'max_root_distance':vf.max_root_distance})
         return data_dict
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:

@@ -153,7 +153,7 @@
                   <td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
                 </tr>
               </tbody></table>
-              <div id="resetRedrawButtonsDiv">
+              <div class="horizontal-row-div">
                 <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
                 <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
               </div>
@@ -161,13 +161,15 @@
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <div id="scaleBarDiv">
+              <div class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
                   <input id="showScaleBarCheckbox" type="checkbox" checked />
                   <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
                 </label>
-                <label style="font-size:0.8em;margin-left:10px">Length:</label>
-                <input id="scaleBarInput" placeholder="size" />
+                <div>
+                  <label style="font-size:0.8em;margin-left:10px">Length:</label>
+                  <input id="scaleBarInput" placeholder="size" />
+                </div>
                 <button id="scaleBarInputGoButton" style="display:none">Ok</button>
               </div>
             </div>
@@ -176,23 +178,72 @@
             <div id="selectionGroupsDiv" class="collapsible-panel">
               <label>Saved selection groups</label>
               <div id="selectGroupListDiv"></div>
-              <label>Current selection:</label>
+              <div class="horizontal-row-div">
+                <label>Selection format</label>
+                <button id="selectGroupApplyButton">Apply</button>
+              </div>
               <table class="select-group-format-table"><tbody>
                 <tr>
                   <td><label class="selection-group-format-label">Node colour</label></td>
-                  <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" onchange="updateSelectionGroupColour('node')"></td>
+                  <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('node')"></td>
                   <td><label class="selection-group-format-label">Label colour</label></td>
-                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" onchange="updateSelectionGroupColour('label')"></td>
+                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
                 </tr>
                 <tr>
                   <td><label class="selection-group-format-label">Node size</label></td>
-                  <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" /></td>
+                  <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
                 </tr>
               </tbody></table>
-              <div>
+              <div class="horizontal-row-div">
                 <input id="selectGroupNameInput" placeholder="Selection group name" />
                 <button id="selectGroupSaveButton">Save</button>
               </div>
+              <button id="selectGroupClearFormatButton">Clear selection of formatting</button>
+            </div>
+
+            <h2>Distance threshold<div id="distanceThreshHelp" class="help-button"></div></h2>
+            <div id="thresholdOutsideDiv">
+              <div id="thresholdComputePane" class="floating-pane">
+                <div>
+                  <h2 class="floating-pane-header">Compute distance threshold</h2>
+                  <button class="floating-pane-close"></button>
+                </div>
+                <div id="thresholdPaneMainDiv">
+                  <div id="thresholdPaneDataColumn">
+                    <label><b>Variant interaction data</b></label>
+                    <textarea id="thresholdDataText" autocomplete="off" spellcheck="false"></textarea>
+                    <div>
+                      <button id="thresholdLoadDataButton">Load file</button>
+                      <button id="thresholdValidateButton">Validate data</button>
+                      <label id="thresholdErrorLabel"></label>
+                    </div>
+                    <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
+                    <div id="thresholdPaneParamsDiv" style="display:none;">
+                      <label><b>Graph parameters</b></label>
+                      <label class="threshold-param-label">Max value: <input id="thresholdMaxValInput" placeholder="Re-calculate" title="Enter a custom value and click 'Fit curve' to constrain the maximum value of the curve."></input></label>
+                      <label class="threshold-param-label">Midline: <span id="thresholdMidlineValue">--</span></label>
+                      <label class="threshold-param-label">Steepness: <span id="thresholdSteepnessValue">--</span></label>
+                    </div>
+                  </div>
+                  <div id="thresholdPaneGraphColumn" style="display:none;">
+                    <label id="thresholdSvgLabel"><b>Variant interactions</b></label>
+                    <div id="thresholdGraphRowDiv">
+                      <div id="thresholdSlider">
+                        <div id="thresholdSliderHandle" class="ui-slider-handle"></div>
+                      </div>
+                      <svg id="thresholdSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
+                    </div>
+                    <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput" title="Enter a value here to exactly specify the critical interaction value."></input></label>
+                    <div id="thresholdCritDistDiv" class="horizontal-row-div">
+                      <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
+                      <button id="thresholdOkButton">OK</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <label>Critical threshold:</label>
+              <input id="thresholdInput" placeholder="None" />
+              <button id="thresholdComputeButton" class="jq-ui-button">Threshold from data</button>
             </div>
 
           </div>
@@ -316,7 +367,7 @@
             <div id="histoSlider">
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
             </div>
-            <div id="histoButtonsDiv">
+            <div id="histoButtonsDiv" class="horizontal-row-div">
               <button id="leftSliderButton" class="control-element">Add to<br>selection</button>
               <span id="numSliderSpan">-- variants</span>
               <button id="middleSliderButton" class="control-element"><span id="midLeftArrow">&lt;&lt;</span><span id="middleSliderButtonSpan">Variants<br>below</span><span id="midRightArrow">&gt;&gt;</span></button>
