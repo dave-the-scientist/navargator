@@ -74,7 +74,7 @@ function setupPage() {
     url: daemonURL('/get-basic-data'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id}),
+    data: JSON.stringify(getPageBasicData()),
     success: function(data_obj) {
       parseBasicData(data_obj);
       $("#numClustersH2Span").html(nvrgtr_data.num_variants + ' clusters');
@@ -215,7 +215,7 @@ function setupNormalizationPane() {
       url: daemonURL('/calculate-global-normalization'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins}),
+      data: JSON.stringify({...getPageBasicData(), 'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         nvrgtr_data.normalized_max_distance = data.global_value;
@@ -374,7 +374,7 @@ function checkForClusteringResults() {
     url: daemonURL('/get-cluster-results'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'num_vars':nvrgtr_data.num_variants}),
+    data: JSON.stringify({...getPageBasicData(), 'num_vars':nvrgtr_data.num_variants}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       if (data.variants == false) {

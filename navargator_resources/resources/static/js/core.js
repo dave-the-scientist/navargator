@@ -1,11 +1,9 @@
 // NOTE:
 
 // TODO:
-// - The python daemon is apparently not getting the close window signal anymore (as of Feb 20) on Chrome; Firefox is still working.
 // - Finish selectGroupAddBannerButton.click
+//   - Ensure applySelectionGroupFormat() handles banner colours as well.
 //   - Would be great if I could change the font colour of the node names, and include that as an option as well.
-//   - Need a button to add a 'banner' around the tree. When I do, it's colour option should show up below 'node size', 1 row per banner. Should have it's own button to delete a banner. When a banner is added, should append an entry to every selection group's 'banners' array. If the second banner is deleted, should remove the 2nd entry in each selection group's 'banners' array.
-//   - Might be useful to have a 'clear all' button, probably in the top-right corner. It would not only delete all selection groups and banners, but un-set all colours/sizes.
 //   - The tree drawing functions are going to have to check if there are banners and account for their size.
 //   - The selection groups (with colour/size data) should be saved in session files, and should transfer from input to results.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
@@ -26,7 +24,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'sg_banner_ind':1, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -359,23 +357,31 @@ function setupSelectionGroupsPane() {
       $("#selectGroupSaveButton").click();
     }
   });
+  var sg_banner_num = 1;
   $("#selectGroupAddBannerButton").click(function() {
-    // nvrgtr_data.sg_banner_ind should just be a local var here, not a nvrgtr attribute.
-    // Store/update the banner info on change.
-    var sg_pane = $("#selectionGroupsDiv");
-    var banner_div = $('<div class="select-group-banner-div horizontal-row-div"><input class="select-group-banner-name" value="Banner '+nvrgtr_data.sg_banner_ind+'"></div>');
-    var banner_color = $('<input class="jscolor" spellcheck="false" value="FFFFFF" onchange="console.log('+nvrgtr_data.sg_banner_ind+')">');
-    new jscolor(banner_color[0]);
+    var default_colour = 'FFFFFF';
+    var sg_pane = $("#selectionGroupsDiv"),
+      banner_div = $('<div class="select-group-banner-div horizontal-row-div"><input class="select-group-banner-name" value="Banner '+sg_banner_num+'"></div>'),
+      banner_color = $('<input class="jscolor" spellcheck="false" value="'+default_colour+'" onchange="updateBannerColour(this)">');
+    //new jscolor(banner_color[0]);  // This line should suffice, but does not work.
+    banner_color[0].jscolor = new jscolor(banner_color[0]); // Needed otherwise banner_color[0].jscolor remains undefined. I believe this is a bug in jscolor, so this line may not be needed in the future.
     banner_div.append(banner_color);
     var banner_close_button = $('<button title="Remove this banner">X</button>');
     banner_close_button.click(function() {
+      var banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
+      for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+        group_data.banner_colours.splice(banner_ind, 1); // Remove from the array
+      }
       banner_div.remove();
       sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
     });
     banner_div.append(banner_close_button);
     $("#selectGroupBannerListDiv").append(banner_div);
     sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
-    nvrgtr_data.sg_banner_ind += 1;
+    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+      group_data.banner_colours.push('#'+default_colour);
+    }
+    sg_banner_num += 1;
   });
   var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
@@ -397,9 +403,11 @@ function setupSelectionGroupsPane() {
     $("#label_colourPicker").val('');
     $("#selectGroupNodeSizeSpinner").val('');
     $("#selectGroupNameInput").val('');
+    $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
+      this.jscolor.fromString('#FFFFFF');
+    });
   });
 }
-
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
   var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
@@ -480,7 +488,7 @@ function setupThresholdPane() {
       url: daemonURL('/fit-curve'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'selection_groups_order':[...nvrgtr_data.selection_groups.keys()],  'selection_groups_data':Object.fromEntries(nvrgtr_data.selection_groups), 'data':data, 'max_val':max_val}),
+      data: JSON.stringify({...getPageAssignedData(), 'data':data, 'max_val':max_val}),
       success: function(data_obj) {
         var thresh_data = $.parseJSON(data_obj);
         nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
@@ -1015,6 +1023,12 @@ function updateSelectionGroupNodeSize(new_radius) {
     changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], new_radius);
   });
 }
+function updateBannerColour(jscolor) {
+  var banner_div = $(jscolor).parent(),
+    banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
+
+  console.log('update colour on banner '+banner_ind);
+}
 function applySelectionGroupFormat(clear_formatting=false) {
   // Applies the on-page formatting values to all currently selected variants
   var node_colour = getJscolorValue("#node_colourPicker"), label_colour = getJscolorValue("#label_colourPicker"), node_size = $("#selectGroupNodeSizeSpinner").val() || null;
@@ -1087,6 +1101,10 @@ function addNewSelectionGroup(group_name, group_data=null) {
       list_element.addClass('select-group-list-element-active');
       $("#selectGroupNameInput").val(group_name);
     }
+    var banner_cols = nvrgtr_data.selection_groups.get(group_name).banner_colours;
+    $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function(banner_ind) {
+      this.jscolor.fromString(banner_cols[banner_ind]);
+    });
   });
   button_element.hover(function() {
     return false; // Prevents propagation to the list_element
@@ -1110,9 +1128,12 @@ function addNewSelectionGroup(group_name, group_data=null) {
   // Scroll the list if needed
   $("#selectGroupListDiv").animate({scrollTop:$("#selectGroupListDiv")[0].scrollHeight}, 300);
   // Update the backend data:
-  console.log('data', group_data);
+
+  var banner_colours = $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").map(function() {
+    return '#'+this.value;
+  }).get(); // An array of colour strings
   if (group_data == null) {
-    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
+    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'banner_colours':banner_colours, 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
   }
   nvrgtr_data.selection_groups.set(group_name, group_data);
 }
@@ -1129,6 +1150,15 @@ function daemonURL(url) {
   // Prefix used for private routes. It must match the daemonURL function in navargator_daemon.py, and be handled by the web server software (Apache, NGINX, etc).
   return nvrgtr_page.server_url + '/daemon' + url;
 }
+function getPageBasicData() {
+  return {'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id};
+}
+function getPageVisualData() {
+  return {...getPageBasicData(), 'display_opts':nvrgtr_display_opts, 'selection_groups_order':[...nvrgtr_data.selection_groups.keys()],  'selection_groups_data':Object.fromEntries(nvrgtr_data.selection_groups)};
+}
+function getPageAssignedData() {
+  return {...getPageVisualData(), 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored};
+}
 function maintainServer() {
   // This is continually called to maintain the background server.
   if (!nvrgtr_page.instance_closed) {
@@ -1136,7 +1166,7 @@ function maintainServer() {
       url: daemonURL('/maintain-server'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id}),
+      data: JSON.stringify(getPageBasicData()),
       error: function(error) {
         console.log('connection to NaVARgator server lost. The error:', error);
         nvrgtr_page.instance_closed = true;
@@ -1151,7 +1181,7 @@ function changeSessionID(new_s_id) {
   closeInstance(old_s_id);
 }
 function closeInstance(s_id=null) {
-  // Chrome disallowed sync AJAX calls from unload/beforeunload, so this is the preferred way.
+  // Chrome disallowed sync AJAX calls from unload/beforeunload, so this is the preferred way. See https://groups.google.com/a/chromium.org/forum/#!topic/chromium-discuss/cZjD9X7825E
   if (s_id == null) {
     s_id = nvrgtr_page.session_id;
   }
