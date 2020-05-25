@@ -1,6 +1,8 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // TODO:
+// CHROME BUG: closing the window is not being passed on to the deamon, so it remains open. I believe it's related to https://groups.google.com/a/chromium.org/forum/#!topic/chromium-discuss/cZjD9X7825E
+
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
@@ -321,13 +323,13 @@ function setupNormalizationPane() {
 }
 function setupRunOptions() {
   $("#numVarSpinner").spinner({
-    min: 2, max: null,
+    min: 1, max: null,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 1);
+  $("#rangeSpinner").spinner({
+    min: 1, max: null,
     numberFormat: 'N0', step: 1
   }).spinner('value', 2);
-  $("#rangeSpinner").spinner({
-    min: 2, max: null,
-    numberFormat: 'N0', step: 1
-  }).spinner('value', 3);
   $("#numVarSpinner").on('spin', function(event, ui) {
     var cur_val = ui.value,
       range_spin = $("#rangeSpinner"), range_val = range_spin.spinner('value');
@@ -608,11 +610,8 @@ function updateVarSelectList() {
   $("#mainVariantSelectDiv").show();
 }
 function updateRunOptions() {
-  // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the available or ignored variants are modified.
-  var maxVars = nvrgtr_data.chosen.length + nvrgtr_data.available.length;
-  if (maxVars < 2) {
-    maxVars = nvrgtr_data.leaves.length - nvrgtr_data.ignored.length;
-  }
+  // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the assigned variants are modified.
+  var maxVars = Math.max(nvrgtr_data.chosen.length + nvrgtr_data.available.length, 1);
   if ($("#numVarSpinner").spinner('value') > maxVars) {
     $("#numVarSpinner").spinner('value', maxVars);
   }
@@ -671,7 +670,6 @@ function updateResultsPane(num_vars, num_vars_range) {
     nvrgtr_data.result_links.var_nums.push(var_num);
     // Update the display options just-in-time before a results page is opened.
     result_link_obj.click(function() {
-      console.log('sel groups', nvrgtr_data.selection_groups);
       $.ajax({
         url: daemonURL('/update-visual-options'),
         type: 'POST',
@@ -946,29 +944,32 @@ function validateFindVariantsCall() {
   if (!nvrgtr_data.tree_data) {
     return false;
   }
-  if (nvrgtr_data.available.length + nvrgtr_data.chosen.length < 2) {
-    showErrorPopup("You must select 2 or more variants from your tree and assign them as 'available' or 'chosen' before NaVARgator can perform clustering.");
+  var num_avail = nvrgtr_data.available.length, num_chosen = nvrgtr_data.chosen.length;
+  if (num_avail + num_chosen < 1) {
+    showErrorPopup("You must select 1 or more variants from your tree and assign them as 'available' or 'chosen' before NaVARgator can perform clustering.");
     return false;
   }
   if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
-    validateSpinner($("#rangeSpinner"), "Range of variants") )) {
+    validateSpinner($("#rangeSpinner"), "The range of variants to find") )) {
     return false;
   }
   var num_vars = parseInt($("#numVarSpinner").spinner('value')), num_vars_range = num_vars;
   if ($("#multipleRunCheckbox").is(':checked')) {
     num_vars_range = parseInt($("#rangeSpinner").spinner('value'));
     if (num_vars_range < num_vars) {
-      showErrorPopup("The 'Variants to find' values be entered from low to high.");
-      return false;
+      let temp = num_vars;
+      num_vars = num_vars_range;
+      num_vars_range = temp;
+      $("#numVarSpinner").spinner('value', num_vars);
+      $("#rangeSpinner").spinner('value', num_vars_range);
     }
   }
-  var num_vars_int = parseInt(num_vars), num_vars_range_int = parseInt(num_vars_range),
-    do_find_vars = false;
-  if (nvrgtr_data.available.length + nvrgtr_data.chosen.length == num_vars_range_int) {
-    showErrorPopup("Cannot perform clustering if all non-Ignored nodes are either Available or Chosen. Please reduce the number of variants to find.");
+  if (num_vars < num_chosen || num_vars_range > num_chosen + num_avail) {
+    showErrorPopup("The variants to find must be greater than or equal to the number of 'chosen', but less than or equal to the number of 'chosen' + 'available'.");
     return false;
   }
-  for (var i=num_vars_int; i<=num_vars_range_int; ++i) {
+  var do_find_vars = false;
+  for (var i=num_vars; i<=num_vars_range; ++i) {
     if (!nvrgtr_data.result_links.hasOwnProperty(i)) {
       do_find_vars = true;
     }

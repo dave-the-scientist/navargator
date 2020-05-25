@@ -1,6 +1,5 @@
 //TODO:
 // - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is negative space for the tree on the canvas. Check for this. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
-// - The button to allow search results to be added to the selection doesn't show up on the 4173 tree (and the 1399). The search itself works fine, and I can click the button using js, but it's just not visible.
 
 // =====  Tree setup functions:
 function setupTreeElements() {
@@ -38,9 +37,8 @@ function setupTreeElements() {
     tree_div_pad_str = $("#mainTreeDiv").css('paddingRight'),
     tree_div_pad = parseInt(tree_div_pad_str.slice(0,-2)),
     search_input_size = $("#treeSearchDiv")[0].scrollWidth,
-    search_right_margin_str = $("#treeSearchDiv").css('right'),
-    search_right_margin = parseInt(search_right_margin_str.slice(0,-2)),
-    total_right_offset = search_input_size + search_right_margin - button_half_width - tree_div_pad;
+    input_right_offset = search_input_size - button_half_width - tree_div_pad;
+
   function setSearchSelectToAdd() {
     search_select_button.removeClass('tree-search-cut-hits');
     search_select_button.attr('title', search_select_add_title);
@@ -64,15 +62,16 @@ function setupTreeElements() {
         nvrgtr_data.search_results.push(name);
       }
     }
-    var button_half_width, tree_div_width, search_select_max_width;
     if (query == '') { // The 'clear search' command.
       search_button.removeClass('tree-search-button-clear');
       search_hits_div.css('maxWidth', '0px');
       search_hits_div.css('width', '0px');
     } else { // A real query was searched.
       $("#varSearchNumHitsText").text(num_hits + ' hits');
-      tree_div_width = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tree-width'));
-      search_select_max_width = (tree_div_width/2-total_right_offset) + 'px';
+      var tree_div_width = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tree-width')),
+        search_right_margin_str = $("#treeSearchDiv").css('right'),
+        search_right_margin = parseInt(search_right_margin_str.slice(0,-2)),
+        search_select_max_width = (tree_div_width/2-input_right_offset-search_right_margin) + 'px';
       search_button.addClass('tree-search-button-clear');
       setSearchSelectToAdd();
       search_hits_div.css('maxWidth', search_select_max_width);

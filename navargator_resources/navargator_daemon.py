@@ -108,7 +108,7 @@ class NavargatorDaemon(object):
             return 'maintain-server successful.'
         @self.server.route(self.daemonURL('/instance-closed'), methods=['POST'])
         def instance_closed():
-            vf, s_id, b_id, msg = self.get_instance()
+            vf, s_id, b_id, msg = self.get_instance(json_data=False)
             if s_id == None:
                 return msg # Will almost certainly never actually be processed by the closing browser.
             elif s_id == '':

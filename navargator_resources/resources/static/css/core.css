@@ -397,7 +397,7 @@ div.collapsible-panel > hr {
   padding: 0px;
   background-color: var(--style-box-background-colour);
   border: none;
-  outline: var(--control-element-border-width) solid var(--dark-background-colour);;
+  outline: 0px solid var(--dark-background-colour);;
   outline-offset: -1px;
   box-shadow: 1px 1px 2px var(--shadow-colour);
   transition: .25s all;
@@ -572,33 +572,6 @@ button.control-element:active {
 }
 
 /* ======  Selection groups  ====== */
-.select-group-format-table {
-  width: 100%;
-  text-align: left;
-}
-.select-group-format-table td {
-  padding: 0px 2px;
-}
-.select-group-format-table td:nth-child(1),
-.select-group-format-table td:nth-child(3) {
-  text-align: right;
-  padding-right: 5px;
-}
-.select-group-format-table .selection-group-format-label {
-  font-size: 0.85em;
-}
-.select-group-format-table .jscolor {
-  width: 45px;
-  height: 14px;
-  padding: 0px 1px;
-  font-size: 0.7em;
-}
-input.select-group-node-spinner {
-  width: 30px;
-  height: 15px;
-  font-size: 0.8em;
-  margin: .2em 20px .2em .2em;
-}
 #selectGroupListDiv {
   display: flex;
   flex-direction: column;
@@ -628,6 +601,58 @@ input.select-group-node-spinner {
 }
 .select-group-list-close {
   margin: 0px 10px 0px auto;
+}
+#selectGroupAddBannerButton {
+  width: max-content;
+}
+.select-group-banner-div {
+  margin-left: 15px;
+}
+.select-group-banner-name {
+  width: 100px;
+  padding: 1px 3px;
+  outline: none;
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease-in-out;
+}
+.select-group-banner-name:hover {
+  border-color: black;
+}
+.select-group-banner-div .jscolor {
+  width: 45px;
+  height: 14px;
+  font-size: 0.7em;
+}
+
+.select-group-format-table {
+  width: 100%;
+  text-align: left;
+}
+.select-group-format-table td {
+  padding: 0px 2px;
+}
+.select-group-format-table td:nth-child(1),
+.select-group-format-table td:nth-child(3) {
+  text-align: right;
+  padding-right: 5px;
+}
+.select-group-format-table .selection-group-format-label {
+  font-size: 0.85em;
+}
+.select-group-format-table .jscolor {
+  width: 45px;
+  height: 14px;
+  padding: 0px 1px;
+  font-size: 0.7em;
+}
+input.select-group-node-spinner {
+  width: 30px;
+  height: 15px;
+  font-size: 0.8em;
+  margin: .2em 20px .2em .2em;
+}
+#selectGroupNameInput {
+  width: 150px;
 }
 #selectGroupClearFormatButton {
   text-align: center;

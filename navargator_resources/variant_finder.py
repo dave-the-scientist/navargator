@@ -218,7 +218,7 @@ class VariantFinder(object):
     def find_variants(self, num_variants, distance_scale=None, method=None, bootstraps=10):
         num_avail, num_chsn = len(self.available), len(self.chosen)
         if not num_chsn <= num_variants <= num_avail + num_chsn:
-            raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than the number of chosen nodes (currently: {}) but less than or equal to the number of available + chosen nodes (currently: {}).'.format(num_chsn, num_avail + num_chsn))
+            raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than or equal to the number of chosen nodes ({}) but less than or equal to the number of available + chosen nodes ({}).'.format(num_chsn, num_avail + num_chsn))
         if distance_scale != None:
             self.distance_scale = distance_scale
         num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
@@ -232,7 +232,8 @@ class VariantFinder(object):
             variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
         elif num_variants == num_avail + num_chsn:
             variants = [self.index[name] for name in list(self.available)+list(self.chosen)]
-            scores = [0.0 for n in range(num_avail + num_chsn)]
+            clusters = self._partition_nearest(variants)
+            scores = self._sum_dist_scores(variants, clusters)
             alt_variants = []
         elif method == 'brute force':
             if self.verbose:

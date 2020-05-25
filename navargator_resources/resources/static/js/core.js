@@ -1,9 +1,9 @@
 // NOTE:
 
 // TODO:
-// - Finish setupSelectionGroupsPane()
-//   - Save button should add an entry into the div, where that entry shows the name, size, and a button to delete the group. Clicking and mouseover on those entries should highlight/click the whole group. When clicked, should fill out the colour/size info associated with it. In the back end, should add an entry to an object inside nvrgtr_data (name: {'node_colour':XX, 'label_colour':YY, 'banners':[], ...}).
-//     - Would be great if I could change the font colour of the node names, and include that as an option as well.
+// - The python daemon is apparently not getting the close window signal anymore (as of Feb 20) on Chrome; Firefox is still working.
+// - Finish selectGroupAddBannerButton.click
+//   - Would be great if I could change the font colour of the node names, and include that as an option as well.
 //   - Need a button to add a 'banner' around the tree. When I do, it's colour option should show up below 'node size', 1 row per banner. Should have it's own button to delete a banner. When a banner is added, should append an entry to every selection group's 'banners' array. If the second banner is deleted, should remove the 2nd entry in each selection group's 'banners' array.
 //   - Might be useful to have a 'clear all' button, probably in the top-right corner. It would not only delete all selection groups and banners, but un-set all colours/sizes.
 //   - The tree drawing functions are going to have to check if there are banners and account for their size.
@@ -26,7 +26,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'sg_banner_ind':1, 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -152,6 +152,7 @@ function initializeFloatingPanes() {
     $(this).click(function() {
       pane.css('maxWidth', "0px");
       pane.css('maxHeight', "0px");
+      pane.css('outline-width', '0px');
       return false;
     });
   });
@@ -160,6 +161,9 @@ function showFloatingPane(pane) {
   var pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
   pane.css('maxWidth', pane_width+"px");
   pane.css('maxHeight', pane_height+"px");
+  var outline_width = getComputedStyle(document.documentElement)
+    .getPropertyValue('--control-element-border-width');
+  pane.css('outline-width', outline_width);
   var pane_left = pane.offset().left, pane_right = pane_left + pane_width, doc_width = $(document).width();
   if (pane_left < 0) { // Unsure if this aspect is working.
     pane.offset({'left': 0});
@@ -356,9 +360,22 @@ function setupSelectionGroupsPane() {
     }
   });
   $("#selectGroupAddBannerButton").click(function() {
-    // Need a nvrgtr_data.selection_group_banners counter, this would increment it.
-    // Adds a new row to the table containing a label, jscolor, and removal button.
-    // Need to re-size the collapsable div on addition or removal.
+    // nvrgtr_data.sg_banner_ind should just be a local var here, not a nvrgtr attribute.
+    // Store/update the banner info on change.
+    var sg_pane = $("#selectionGroupsDiv");
+    var banner_div = $('<div class="select-group-banner-div horizontal-row-div"><input class="select-group-banner-name" value="Banner '+nvrgtr_data.sg_banner_ind+'"></div>');
+    var banner_color = $('<input class="jscolor" spellcheck="false" value="FFFFFF" onchange="console.log('+nvrgtr_data.sg_banner_ind+')">');
+    new jscolor(banner_color[0]);
+    banner_div.append(banner_color);
+    var banner_close_button = $('<button title="Remove this banner">X</button>');
+    banner_close_button.click(function() {
+      banner_div.remove();
+      sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
+    });
+    banner_div.append(banner_close_button);
+    $("#selectGroupBannerListDiv").append(banner_div);
+    sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
+    nvrgtr_data.sg_banner_ind += 1;
   });
   var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
@@ -1131,31 +1148,20 @@ function maintainServer() {
 function changeSessionID(new_s_id) {
   var old_s_id = nvrgtr_page.session_id;
   nvrgtr_page.session_id = new_s_id;
-  $.ajax({
-    url: daemonURL('/instance-closed'),
-    type: 'POST',
-    contentType: "application/json",
-    data: JSON.stringify({'session_id':old_s_id, 'browser_id':nvrgtr_page.browser_id}),
-    error: function(error) {
-      console.log("Error closing your instance:");
-      console.log(error);
-    }
-  });
+  closeInstance(old_s_id);
 }
-function closeInstance() {
+function closeInstance(s_id=null) {
+  // Chrome disallowed sync AJAX calls from unload/beforeunload, so this is the preferred way.
+  if (s_id == null) {
+    s_id = nvrgtr_page.session_id;
+  }
+  var form = new FormData();
+  form.append('session_id', s_id);
+  form.append('browser_id', nvrgtr_page.browser_id);
+  navigator.sendBeacon(daemonURL('/instance-closed'), form);
+  // Set and clear page attributes, almost certainly unecessary but w/e.
   nvrgtr_page.instance_closed = true;
   clearInterval(nvrgtr_page.maintain_interval_obj);
-  $.ajax({
-    url: daemonURL('/instance-closed'),
-    type: 'POST',
-    contentType: "application/json",
-    data: JSON.stringify({'session_id': nvrgtr_page.session_id, 'browser_id': nvrgtr_page.browser_id}),
-    async: false, // Makes a huge difference ensuring that this ajax call actually happens
-    error: function(error) {
-      console.log("Error closing your instance:");
-      console.log(error);
-    }
-  });
 }
 
 // =====  Functions to calculate and warn about colour choices:
