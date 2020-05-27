@@ -2,9 +2,7 @@
 
 // TODO:
 // - Finish selectGroupAddBannerButton.click
-//   - Ensure applySelectionGroupFormat() handles banner colours as well.
 //   - Would be great if I could change the font colour of the node names, and include that as an option as well.
-//   - The tree drawing functions are going to have to check if there are banners and account for their size.
 //   - The selection groups (with colour/size data) should be saved in session files, and should transfer from input to results.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
@@ -24,7 +22,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'tree_banners':[], 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -45,7 +43,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
   },
   'sizes' : {
-    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7
+    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7, 'banner_height':20, 'banner_buffer':5
   },
   'angles' : {
     'init_angle':180, 'buffer_angle':20
@@ -359,35 +357,47 @@ function setupSelectionGroupsPane() {
   });
   var sg_banner_num = 1;
   $("#selectGroupAddBannerButton").click(function() {
-    var default_colour = 'FFFFFF';
+    var default_colour = 'FFFFFF',
+      banner_name = 'Banner '+sg_banner_num;
+    // Update the backend data structures
+    nvrgtr_data.tree_banners.push(banner_name);
+    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+      group_data.banner_colours.push(null); // null means no colour has been set yet
+    }
+    $("#redrawTreeButton").click();
+    // Create the HTML elements
     var sg_pane = $("#selectionGroupsDiv"),
-      banner_div = $('<div class="select-group-banner-div horizontal-row-div"><input class="select-group-banner-name" value="Banner '+sg_banner_num+'"></div>'),
-      banner_color = $('<input class="jscolor" spellcheck="false" value="'+default_colour+'" onchange="updateBannerColour(this)">');
-    //new jscolor(banner_color[0]);  // This line should suffice, but does not work.
+      banner_div = $('<div class="select-group-banner-div horizontal-row-div"></div>'),
+      banner_name_input = $('<input class="select-group-banner-name" value="'+banner_name+'">'),
+      banner_color = $('<input class="jscolor" placeholder="None" spellcheck="false" onchange="updateSelectionGroupBannerColour(this)">');
+    banner_name_input.blur(function() {
+      var banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
+      nvrgtr_data.tree_banners[banner_ind] = $(this).val();
+    });
+    banner_div.append(banner_name_input);
+    //new jscolor(banner_color[0]);  // This line should suffice, but does not currently work.
     banner_color[0].jscolor = new jscolor(banner_color[0]); // Needed otherwise banner_color[0].jscolor remains undefined. I believe this is a bug in jscolor, so this line may not be needed in the future.
+    banner_color[0].jscolor.required = false; // Jscolor isn't respecting any other way to set
+    banner_color.val('');                     // this info. Probably related to the bug above.
     banner_div.append(banner_color);
     var banner_close_button = $('<button title="Remove this banner">X</button>');
     banner_close_button.click(function() {
       var banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
+      nvrgtr_data.tree_banners.splice(banner_ind, 1);
       for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
         group_data.banner_colours.splice(banner_ind, 1); // Remove from the array
       }
+      $("#redrawTreeButton").click();
       banner_div.remove();
       sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
     });
     banner_div.append(banner_close_button);
     $("#selectGroupBannerListDiv").append(banner_div);
     sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
-    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
-      group_data.banner_colours.push('#'+default_colour);
-    }
     sg_banner_num += 1;
   });
   var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
-    if (nvrgtr_data.selected.size == 0) {
-      return false;
-    }
     var group_name = $.trim($("#selectGroupNameInput").val());
     if (group_name == '') {
       group_name = 'Group_' + select_group_int;
@@ -405,6 +415,7 @@ function setupSelectionGroupsPane() {
     $("#selectGroupNameInput").val('');
     $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
       this.jscolor.fromString('#FFFFFF');
+      $(this).val('');
     });
   });
 }
@@ -1007,7 +1018,7 @@ function updateSelectionGroupColour(key) {
     console.log('In updateSelectionGroupColour(), unknown key "'+key+'"');
     return false;
   }
-  var colour = getJscolorValue(jscolor_id);
+  var colour = getJscolorValue($(jscolor_id));
   nvrgtr_data.selected.forEach(function(var_name) {
     recolour_fxn(nvrgtr_data.nodes[var_name], colour);
   });
@@ -1023,22 +1034,39 @@ function updateSelectionGroupNodeSize(new_radius) {
     changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], new_radius);
   });
 }
-function updateBannerColour(jscolor) {
+function getCurrentBannerColours() {
+  var banner_cols = [];
+  $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
+    banner_cols.push(getJscolorValue($(this)));
+  });
+  return banner_cols;
+}
+function updateSelectionGroupBannerColour(jscolor) {
   var banner_div = $(jscolor).parent(),
-    banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
+    banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div),
+    banner_cols = getCurrentBannerColours();
 
-  console.log('update colour on banner '+banner_ind);
+  nvrgtr_data.selected.forEach(function(var_name) {
+    changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], banner_cols);
+  });
 }
 function applySelectionGroupFormat(clear_formatting=false) {
   // Applies the on-page formatting values to all currently selected variants
-  var node_colour = getJscolorValue("#node_colourPicker"), label_colour = getJscolorValue("#label_colourPicker"), node_size = $("#selectGroupNodeSizeSpinner").val() || null;
+  var node_colour = getJscolorValue($("#node_colourPicker")),
+    label_colour = getJscolorValue($("#label_colourPicker")),
+    node_size = $("#selectGroupNodeSizeSpinner").val() || null
+    banner_colours = getCurrentBannerColours();
   if (clear_formatting == true) {
     node_colour = false, label_colour = false, node_size = false;
+    for (let i=0; i<banner_colours.length; ++i) {
+      banner_colours[i] = '#FFFFFF';
+    }
   }
   nvrgtr_data.selected.forEach(function(var_name) {
     changeSelectionGroupNodeColour(nvrgtr_data.nodes[var_name], node_colour);
     changeSelectionGroupLabelColour(nvrgtr_data.nodes[var_name], label_colour);
     changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], node_size);
+    changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], banner_colours);
   });
 }
 function applyAllSelectionGroupFormats() {
@@ -1048,6 +1076,7 @@ function applyAllSelectionGroupFormats() {
       changeSelectionGroupNodeColour(nvrgtr_data.nodes[var_name], format.node_colour);
       changeSelectionGroupLabelColour(nvrgtr_data.nodes[var_name], format.label_colour);
       changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], format.node_size);
+      changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], format.banner_colours);
     });
   }
 }
@@ -1101,9 +1130,15 @@ function addNewSelectionGroup(group_name, group_data=null) {
       list_element.addClass('select-group-list-element-active');
       $("#selectGroupNameInput").val(group_name);
     }
-    var banner_cols = nvrgtr_data.selection_groups.get(group_name).banner_colours;
+    var banner_col, banner_cols = nvrgtr_data.selection_groups.get(group_name).banner_colours;
     $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function(banner_ind) {
-      this.jscolor.fromString(banner_cols[banner_ind]);
+      banner_col = banner_cols[banner_ind];
+      if (banner_col == null) {
+        this.jscolor.fromString('#FFFFFF');
+        $(this).val('');
+      } else {
+        this.jscolor.fromString(banner_col);
+      }
     });
   });
   button_element.hover(function() {
@@ -1128,12 +1163,8 @@ function addNewSelectionGroup(group_name, group_data=null) {
   // Scroll the list if needed
   $("#selectGroupListDiv").animate({scrollTop:$("#selectGroupListDiv")[0].scrollHeight}, 300);
   // Update the backend data:
-
-  var banner_colours = $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").map(function() {
-    return '#'+this.value;
-  }).get(); // An array of colour strings
   if (group_data == null) {
-    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue("#node_colourPicker"), 'label_colour':getJscolorValue("#label_colourPicker"), 'banner_colours':banner_colours, 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
+    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue($("#node_colourPicker")), 'label_colour':getJscolorValue($("#label_colourPicker")), 'banner_colours':getCurrentBannerColours(), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
   }
   nvrgtr_data.selection_groups.set(group_name, group_data);
 }
@@ -1195,17 +1226,18 @@ function closeInstance(s_id=null) {
 }
 
 // =====  Functions to calculate and warn about colour choices:
-function getJscolorValue(jscolor_id) {
+function getJscolorValue($jscolor) {
   // Written to allow for jscolor with required=false. For those, '#'+jscolor returns the previous colour if the input has been deleted, and I want to use the deleted state.
-  var jscolor = $(jscolor_id)[0].jscolor, colour = ('#'+jscolor).toUpperCase(),
-    input_val = $(jscolor_id).val().toUpperCase();
+  var jscolor = $jscolor[0].jscolor, colour = ('#'+jscolor).toUpperCase(),
+    input_val = $jscolor.val().toUpperCase();
   if (colour != '#'+input_val && colour != input_val) { // Input has been deleted or is bad
     jscolor.fromString('FFFFFF');
-    $(jscolor_id).val('');
+    $jscolor.val('');
     colour = null;
   }
   return colour;
 }
+
 function calculateTransparentComplement(desired_col, opacity, background_col) {
   // If returned.closest_colour == '', then returned.trans_comp is what the colour should be set to in order to achieve the desired colour, given the current cluster_opacity and tree_background. Otherwise, it is not possible to recreate that desired colour with the given background and transparency. In that case closest_colour is the best we can do with the given transparency; returned.min_transparency is what the current transparency should be raised to in order to display desired_col.
   var de_r = parseInt('0x'+desired_col.slice(1,3)),

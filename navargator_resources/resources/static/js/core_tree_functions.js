@@ -219,7 +219,7 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection};
+  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection, 'banners':[]};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
@@ -272,6 +272,16 @@ function changeSelectionGroupNodeSize(node, radius) {
   }
   node.circle.attr({'r':radius});
 }
+function changeSelectionGroupBannerColours(node, colours) {
+  // If a colour is null it isn't changed.
+  var col;
+  for (let i=0; i<node.banners.length; ++i) {
+    col = colours[i];
+    if (col != null) {
+      node.banners[i].attr({fill:col});
+    }
+  }
+}
 
 // =====  Tree drawing functions:
 function clearTree() {
@@ -298,16 +308,14 @@ function drawTree(marker_tooltips=true) {
   treeDrawingParams['initStartAngle'] = nvrgtr_display_opts.angles.init_angle;
   treeDrawingParams['bufferAngle'] = nvrgtr_display_opts.angles.buffer_angle;
 
-  var canvas_size = sizes.tree;
-  var maxLabelLength = getMaxLabelLength(nvrgtr_data.leaves);
-  var total_label_size = maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.search_buffer - 1;
-
-  // Check if any banners are to be drawn here, modify total_label_size
-  
-
+  var canvas_size = sizes.tree,
+    maxLabelLength = getMaxLabelLength(nvrgtr_data.leaves),
+    total_label_size = maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.search_buffer - 1;
   if (nvrgtr_page.page == 'results') { // If a bar chart is going to be drawn:
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;
   }
+  // Modify total_label_size if any banners are to be drawn
+  total_label_size += nvrgtr_data.tree_banners.length * (nvrgtr_display_opts.sizes.banner_height + nvrgtr_display_opts.sizes.banner_buffer);
   total_label_size *= 2.0; // Convert from radius to diameter
   nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
 
@@ -325,6 +333,7 @@ function drawTree(marker_tooltips=true) {
   nvrgtr_data.r_paper = phylocanvas.getSvg().svg;
   drawVariantObjects(marker_tooltips);
   drawLabelAndSearchHighlights();
+  drawTreeBanners();
   drawTreeBackgrounds(maxLabelLength);
   // Adjust the div holding the tree:
   var tree_div_width = Math.max(sizes.tree, min_tree_div_width);
@@ -403,6 +412,23 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
   var_highlight_set.attr({'stroke-width':0, fill:nvrgtr_display_opts.colours.search}).toBack().hide();
   var_line_highlight.attr({'stroke-width':2, stroke:nvrgtr_display_opts.colours.search});
   nvrgtr_data.nodes[var_name].search_highlight = var_highlight_set;
+}
+function drawTreeBanners() {
+  var total_banner_size = nvrgtr_display_opts.sizes.banner_height + nvrgtr_display_opts.sizes.banner_buffer,
+    angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05;
+  var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj,
+    init_rad_start = treeDrawingParams.barChartRadius;
+  for (let i=0; i<nvrgtr_data.tree_banners.length; ++i) {
+    rad_start = init_rad_start + i*total_banner_size;
+    rad_end = rad_start + nvrgtr_display_opts.sizes.banner_height;
+    for (let j=0; j<treeDrawingParams.seqs.length; ++j) {
+      var_name = treeDrawingParams.seqs[j][0];
+      var_angle = treeDrawingParams.seqs[j][1];
+      banner_path_str = sectorPathString(rad_start, rad_end, var_angle-angle_offset, var_angle+angle_offset);
+      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':1});
+      nvrgtr_data.nodes[var_name].banners.push(banner_obj);
+    }
+  }
 }
 function drawTreeBackgrounds(maxLabelLength) {
   var labels_path_str = null, angle_offset = treeDrawingParams.scaleAngle / 2.0,

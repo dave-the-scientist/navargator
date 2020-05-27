@@ -178,9 +178,10 @@
             <div id="selectionGroupsDiv" class="collapsible-panel">
               <label>Saved selection groups</label>
               <div id="selectGroupListDiv"></div>
+              <label>Selection formatting</label>
               <div class="horizontal-row-div">
-                <label>Selection format</label>
-                <button id="selectGroupApplyButton">Apply</button>
+                <button id="selectGroupApplyButton" class="jq-ui-button">Apply</button>
+                <button id="selectGroupClearFormatButton" class="jq-ui-button">Clear</button>
               </div>
               <table class="select-group-format-table"><tbody>
                 <tr>
@@ -194,11 +195,12 @@
                   <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
                 </tr>
               </tbody></table>
+              <button id="selectGroupAddBannerButton" class="jq-ui-button">Add new banner</button>
+              <div id="selectGroupBannerListDiv"></div>
               <div class="horizontal-row-div">
                 <input id="selectGroupNameInput" placeholder="Selection group name" />
-                <button id="selectGroupSaveButton">Save</button>
+                <button id="selectGroupSaveButton" class="jq-ui-button">Save</button>
               </div>
-              <button id="selectGroupClearFormatButton">Clear selection of formatting</button>
             </div>
 
             <h2>Distance threshold<div id="distanceThreshHelp" class="help-button"></div></h2>
