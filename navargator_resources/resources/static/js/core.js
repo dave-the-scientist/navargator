@@ -22,7 +22,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'tree_banners':[], 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -44,6 +44,9 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
   },
   'sizes' : {
     'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7, 'banner_height':20, 'banner_buffer':5
+  },
+  'labels' : {
+    'banner_names':[]
   },
   'angles' : {
     'init_angle':180, 'buffer_angle':20
@@ -357,43 +360,16 @@ function setupSelectionGroupsPane() {
   });
   var sg_banner_num = 1;
   $("#selectGroupAddBannerButton").click(function() {
-    var default_colour = 'FFFFFF',
-      banner_name = 'Banner '+sg_banner_num;
+    let banner_name = 'Banner '+sg_banner_num;
     // Update the backend data structures
-    nvrgtr_data.tree_banners.push(banner_name);
+    nvrgtr_display_opts.labels.banner_names.push(banner_name);
     for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
       group_data.banner_colours.push(null); // null means no colour has been set yet
     }
+    // Add and update the HTML
+    addBannerFormatElements(banner_name);
     $("#redrawTreeButton").click();
-    // Create the HTML elements
-    var sg_pane = $("#selectionGroupsDiv"),
-      banner_div = $('<div class="select-group-banner-div horizontal-row-div"></div>'),
-      banner_name_input = $('<input class="select-group-banner-name" value="'+banner_name+'">'),
-      banner_color = $('<input class="jscolor" placeholder="None" spellcheck="false" onchange="updateSelectionGroupBannerColour(this)">');
-    banner_name_input.blur(function() {
-      var banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
-      nvrgtr_data.tree_banners[banner_ind] = $(this).val();
-    });
-    banner_div.append(banner_name_input);
-    //new jscolor(banner_color[0]);  // This line should suffice, but does not currently work.
-    banner_color[0].jscolor = new jscolor(banner_color[0]); // Needed otherwise banner_color[0].jscolor remains undefined. I believe this is a bug in jscolor, so this line may not be needed in the future.
-    banner_color[0].jscolor.required = false; // Jscolor isn't respecting any other way to set
-    banner_color.val('');                     // this info. Probably related to the bug above.
-    banner_div.append(banner_color);
-    var banner_close_button = $('<button title="Remove this banner">X</button>');
-    banner_close_button.click(function() {
-      var banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div);
-      nvrgtr_data.tree_banners.splice(banner_ind, 1);
-      for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
-        group_data.banner_colours.splice(banner_ind, 1); // Remove from the array
-      }
-      $("#redrawTreeButton").click();
-      banner_div.remove();
-      sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
-    });
-    banner_div.append(banner_close_button);
-    $("#selectGroupBannerListDiv").append(banner_div);
-    sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
+    $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
     sg_banner_num += 1;
   });
   var select_group_int = 1; // For unnamed groups
@@ -828,6 +804,10 @@ function parseBasicData(data_obj) {
 }
 function processDisplayOptions(display_opts) {
   updateDisplayOptions(display_opts);
+  $("#selectGroupBannerListDiv > .select-group-banner-div").remove();
+  $.each(nvrgtr_display_opts.labels.banner_names, function(index, banner_name) {
+    addBannerFormatElements(banner_name);
+  });
   setColourPickers();
   updateClusterColours();
   updateDisplayOptionSpinners();
@@ -860,6 +840,8 @@ function validateDisplayOption(category, key, new_val) {
   } else if (val_type == 'null') {
     value = null;
     is_valid = true;
+  } else if (val_type == 'array') {
+    value = [...new_val];
   }
   if (is_valid == false) {
     value = nvrgtr_default_display_opts[category][key];
@@ -1045,7 +1027,6 @@ function updateSelectionGroupBannerColour(jscolor) {
   var banner_div = $(jscolor).parent(),
     banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div),
     banner_cols = getCurrentBannerColours();
-
   nvrgtr_data.selected.forEach(function(var_name) {
     changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], banner_cols);
   });
@@ -1167,6 +1148,35 @@ function addNewSelectionGroup(group_name, group_data=null) {
     group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue($("#node_colourPicker")), 'label_colour':getJscolorValue($("#label_colourPicker")), 'banner_colours':getCurrentBannerColours(), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
   }
   nvrgtr_data.selection_groups.set(group_name, group_data);
+}
+function addBannerFormatElements(banner_name) {
+  var sg_pane = $("#selectionGroupsDiv"), banner_list = $("#selectGroupBannerListDiv"),
+    banner_div = $('<div class="select-group-banner-div horizontal-row-div"></div>'),
+    banner_name_input = $('<input class="select-group-banner-name" value="'+banner_name+'">'),
+    banner_color = $('<input class="jscolor" placeholder="None" spellcheck="false" onchange="updateSelectionGroupBannerColour(this)">');
+  banner_name_input.blur(function() {
+    let banner_ind = banner_list.children().index(banner_div);
+    nvrgtr_display_opts.labels.banner_names[banner_ind] = $(this).val();
+  });
+  banner_div.append(banner_name_input);
+  //new jscolor(banner_color[0]);  // This line should suffice, but does not currently work.
+  banner_color[0].jscolor = new jscolor(banner_color[0]); // Needed otherwise banner_color[0].jscolor remains undefined. I believe this is a bug in jscolor, so this line may not be needed in the future.
+  banner_color[0].jscolor.required = false; // Jscolor isn't respecting any other way to set
+  banner_color.val('');                     // this info. Probably related to the bug above.
+  banner_div.append(banner_color);
+  var banner_close_button = $('<button title="Remove this banner">X</button>');
+  banner_close_button.click(function() {
+    let banner_ind = banner_list.children().index(banner_div);
+    nvrgtr_display_opts.labels.banner_names.splice(banner_ind, 1);
+    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+      group_data.banner_colours.splice(banner_ind, 1); // Remove from the array
+    }
+    $("#redrawTreeButton").click();
+    banner_div.remove();
+    sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
+  });
+  banner_div.append(banner_close_button);
+  banner_list.append(banner_div);
 }
 
 // =====  Page maintainance and management:

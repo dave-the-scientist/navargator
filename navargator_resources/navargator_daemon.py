@@ -370,6 +370,8 @@ class NavargatorDaemon(object):
                 ret = {'variants': False}
             else:
                 norm = {'method':vf.normalize['method'], 'value':results['max_distance'], 'max_count':0}
+                # #  BUG. vf.normalize['method'] can be set to 'global' before the normalization happens.
+                # #  Where does the norm happen? Can I set the method to indicate it hasn't run yet?
                 if vf.normalize['method'] == 'global':
                     norm['value'] = vf.normalize['global_value']
                     norm['max_count'] = vf.normalize['global_max_count']

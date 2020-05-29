@@ -26,6 +26,7 @@ $.extend(nvrgtr_settings.graph, {
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
+// - Viewing a histogram with ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - The summary stats pane text moves around depending on the number of decimals of the avg dists.
@@ -33,8 +34,6 @@ $.extend(nvrgtr_settings.graph, {
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
-// - Add an option to visualize the data as a heatmap. Would be symmetrical, with variants on each side, and coloured by distance. The order of the variants would be chosen such that clusters are all together, and maybe keep the tree ordering inside each cluster?
-//   - Could just be a pop-up window, or, could potentially replace the tree. I think I could visualize everything from the tree on that heatmap. Useful?
 
 //NOTE (for FAQs or something):
 // - If you normalize to a value smaller than the current max, any variants with a distance greater than that will all have the same sized bar graph (it's capped). Further, they will not be visible on the histogram, though they can still be selected with the slider. Same thing if the user selects a max_count smaller than what is to be displayed. The histogram will display and the text will be accurate, but the height will be capped.
@@ -391,7 +390,9 @@ function checkForClusteringResults() {
         drawClusters();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
         applyAllSelectionGroupFormats();
+        console.log('check0');
         drawDistanceGraphs();
+        console.log('check1');
         updateHistoSlider(); // Must be after drawDistanceGraphs
         $("#treeSelectionDiv").show();
         $("#treeControlsDiv").show();
@@ -400,6 +401,7 @@ function checkForClusteringResults() {
         $("#showLegendCheckbox").prop('disabled', false);
         $("#showScaleBarCheckbox").prop('disabled', false);
         $("#redrawTreeButton").button('enable');
+        console.log('check4');
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
@@ -557,13 +559,22 @@ function normalizeResults() {
   updateHistoSlider();
 }
 function updateBarGraphHeights() {
-  var var_name, var_angle, dist, new_path_str;
+  if (nvrgtr_display_opts.sizes.bar_chart_height == 0) {
+    return;
+  }
+  var var_name, var_angle, dist, new_path_str,
+    graph_min_radius = treeDrawingParams.barChartRadius + nvrgtr_display_opts.sizes.bar_chart_buffer;
+  // Modify total_label_size if any banners are to be drawn
+  if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+    graph_min_radius += nvrgtr_display_opts.labels.banner_names.length * nvrgtr_display_opts.sizes.banner_height;
+    graph_min_radius += (nvrgtr_display_opts.labels.banner_names.length-1) * nvrgtr_display_opts.sizes.banner_buffer;
+  }
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
     dist = nvrgtr_data.variant_distance[var_name];
     if (dist) { // Not a chosen or ignored variant:
-      new_path_str = getBarGraphPathStr(var_name, var_angle, dist);
+      new_path_str = getBarGraphPathStr(var_name, var_angle, dist, graph_min_radius);
       nvrgtr_data.nodes[var_name].bar_chart.animate({path:new_path_str}, 200, 'linear');
     }
   }
@@ -708,7 +719,9 @@ function updateDistanceGraphs() {
   // Called when the graph is first drawn, and when the normalization settings are changed.
   updateHistoBins();
   updateHistoGraph();
+  console.log('check0.2');
   updateHistoAxes();
+  console.log('check0.3');
 }
 function updateHistoSlider() {
   // Would be kind of nice to animate this (250 ms), but probably more trouble than it's worth.
@@ -820,10 +833,14 @@ function selectNamesByThreshold(threshold, select_below) {
 // =====  Graph functions:
 function updateHistoBins() {
   // Don't need to adjust the cumulative graph, as it uses the same x-axis (which is getting update) and its y-axis never changes for a given tree.
+  console.log(nvrgtr_data.graph.x_fxn);
+  console.log(nvrgtr_data.graph.x_fxn(0));
   var x_ticks = calculateHistoTicks(nvrgtr_data.normalized_max_distance);
   nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
   nvrgtr_data.graph.x_fxn.domain([x_ticks[0], nvrgtr_data.nice_max_var_dist]); // Needed to include the final tick
 
+  console.log(nvrgtr_data.graph.x_fxn);
+  console.log(nvrgtr_data.graph.x_fxn(0));
   var num_chosen = nvrgtr_data.variants.length,
     non_chosen_dists = nvrgtr_data.sorted_names.slice(num_chosen).map(function(name) {
       return nvrgtr_data.variant_distance[name];
@@ -873,6 +890,7 @@ function updateHistoGraph() {
     .attr("transform", function(d) {
       return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-nvrgtr_data.graph.y_fxn(d.length)) + ")";
     });
+  console.log('check0.1.1');
   nvrgtr_data.graph.g.select(".histo-bar") // Gives the first bar an accent colour
     .attr("fill", nvrgtr_settings.graph.histo_first_bar);
   bar_elements.transition()
@@ -916,6 +934,7 @@ function updateHistoGraph() {
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.exit().remove();
 
+  console.log('check0.1.2');
   // Draw the area that responds to the histoSlider
   nvrgtr_data.graph.area_graph.raise().transition();
   var select_below = $("#histoSlider").slider('option', 'range') == 'min';

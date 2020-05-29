@@ -311,11 +311,14 @@ function drawTree(marker_tooltips=true) {
   var canvas_size = sizes.tree,
     maxLabelLength = getMaxLabelLength(nvrgtr_data.leaves),
     total_label_size = maxLabelLength + tree_params.Circular.bufferOuterLabels + sizes.big_marker_radius + sizes.inner_label_buffer + sizes.search_buffer - 1;
-  if (nvrgtr_page.page == 'results') { // If a bar chart is going to be drawn:
+  if (nvrgtr_page.page == 'results' && sizes.bar_chart_height != 0) { // If a bar chart is going to be drawn:
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;
   }
   // Modify total_label_size if any banners are to be drawn
-  total_label_size += nvrgtr_data.tree_banners.length * (nvrgtr_display_opts.sizes.banner_height + nvrgtr_display_opts.sizes.banner_buffer);
+  if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+    total_label_size += nvrgtr_display_opts.labels.banner_names.length * nvrgtr_display_opts.sizes.banner_height;
+    total_label_size += (nvrgtr_display_opts.labels.banner_names.length-1) * nvrgtr_display_opts.sizes.banner_buffer;
+  }
   total_label_size *= 2.0; // Convert from radius to diameter
   nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
 
@@ -374,8 +377,13 @@ function drawLabelAndSearchHighlights() {
   var angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05,
     label_highlight_start_radius = treeDrawingParams.minBGRadius+sizes.big_marker_radius+1,
     label_highlight_end_radius = treeDrawingParams.barChartRadius;
-  if (nvrgtr_page.page == 'results') { // Make room for the bar chart.
+  if (nvrgtr_page.page == 'results' && sizes.bar_chart_height != 0) { // Make room for the bar chart.
     label_highlight_end_radius += sizes.bar_chart_buffer + sizes.bar_chart_height;
+  }
+  // Modify total_label_size if any banners are to be drawn
+  if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+    label_highlight_end_radius += nvrgtr_display_opts.labels.banner_names.length * nvrgtr_display_opts.sizes.banner_height;
+    label_highlight_end_radius += (nvrgtr_display_opts.labels.banner_names.length-1) * nvrgtr_display_opts.sizes.banner_buffer;
   }
   var search_label_highlight_end_radius = label_highlight_end_radius + sizes.search_buffer,
     marker_highlight_radius = sizes.big_marker_radius * 1.5 + 1;
@@ -418,14 +426,14 @@ function drawTreeBanners() {
     angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05;
   var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj,
     init_rad_start = treeDrawingParams.barChartRadius;
-  for (let i=0; i<nvrgtr_data.tree_banners.length; ++i) {
+  for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; ++i) {
     rad_start = init_rad_start + i*total_banner_size;
     rad_end = rad_start + nvrgtr_display_opts.sizes.banner_height;
     for (let j=0; j<treeDrawingParams.seqs.length; ++j) {
       var_name = treeDrawingParams.seqs[j][0];
       var_angle = treeDrawingParams.seqs[j][1];
       banner_path_str = sectorPathString(rad_start, rad_end, var_angle-angle_offset, var_angle+angle_offset);
-      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':1});
+      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':0.5});
       nvrgtr_data.nodes[var_name].banners.push(banner_obj);
     }
   }
@@ -541,7 +549,13 @@ function calculateTreeCanvasHeight(canvas_size) {
   }
 }
 function drawBarGraphs() {
-  var var_name, var_angle, dist, tooltip, path_str, bar_chart;
+  var var_name, var_angle, dist, tooltip, path_str, bar_chart,
+    graph_min_radius = treeDrawingParams.barChartRadius + nvrgtr_display_opts.sizes.bar_chart_buffer;
+  // Modify total_label_size if any banners are to be drawn
+  if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+    graph_min_radius += nvrgtr_display_opts.labels.banner_names.length * nvrgtr_display_opts.sizes.banner_height;
+    graph_min_radius += (nvrgtr_display_opts.labels.banner_names.length-1) * nvrgtr_display_opts.sizes.banner_buffer;
+  }
   for (var i=0; i<treeDrawingParams.seqs.length; ++i) {
     var_name = treeDrawingParams.seqs[i][0];
     var_angle = treeDrawingParams.seqs[i][1];
@@ -552,7 +566,7 @@ function drawBarGraphs() {
       tooltip = '[Chosen] ' + var_name;
     } else {
       tooltip = '['+roundFloat(dist, 4).toString()+'] ' + var_name;
-      path_str = getBarGraphPathStr(var_name, var_angle, dist);
+      path_str = getBarGraphPathStr(var_name, var_angle, dist, graph_min_radius);
       bar_chart = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_display_opts.colours.bar_chart, stroke:'none'});
       bar_chart.insertAfter(nvrgtr_data.nodes[var_name].label_highlight);
       nvrgtr_data.nodes[var_name]['bar_chart'] = bar_chart;
@@ -560,9 +574,8 @@ function drawBarGraphs() {
     nvrgtr_data.nodes[var_name].tooltip = tooltip;
   }
 }
-function getBarGraphPathStr(var_name, var_angle, dist) {
-  var min_radius = treeDrawingParams.barChartRadius + nvrgtr_display_opts.sizes.bar_chart_buffer,
-    angle_offset = treeDrawingParams.scaleAngle / 2.0;
+function getBarGraphPathStr(var_name, var_angle, dist, min_radius) {
+  var angle_offset = treeDrawingParams.scaleAngle / 2.0;
   var height_scale = Math.min(dist/nvrgtr_data.normalized_max_distance, 1.0);
   var height = roundFloat(height_scale*nvrgtr_display_opts.sizes.bar_chart_height, 4);
   return sectorPathString(min_radius, min_radius+height,

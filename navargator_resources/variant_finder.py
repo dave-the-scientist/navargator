@@ -46,6 +46,7 @@ def load_navargator_file(file_path, verbose=True):
 def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     """Expects data as an iterable of lines. Should be either a file object or a str.splitlines()."""
     data = {}
+    # #  Start of process_tag_data()
     def process_tag_data(tag, data_buff):
         tag = tag.capitalize()
         if tag in data:
@@ -68,7 +69,7 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
             data[tag] = '\n'.join(data_buff) + '\n'
         else:
             data[tag] = data_buff
-    # End of process_tag_data()
+    # #  End of process_tag_data()
     tag, data_buff = '', []
     for line in data_lines:
         line = line.strip()
