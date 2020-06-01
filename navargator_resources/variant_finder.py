@@ -28,6 +28,7 @@ chosen_nodes_tag = 'Chosen variants'
 available_nodes_tag = 'Available variants'
 ignore_nodes_tag = 'Ignored variants'
 display_options_tag = 'Display options - ' # The option category string is appended to this.
+selection_group_tag = 'Selection group - ' # The option category string is appended to this.
 tree_data_tag = 'Newick tree'
 dist_matrix_tag = 'Distance matrix'
 
@@ -62,7 +63,21 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
             cat_dict = data.setdefault(display_options_tag, {}).setdefault(category, {})
             for opt_line in data_buff:
                 opt, _, val = opt_line.partition(':')
-                cat_dict[opt.strip()] = val.strip()
+                if category == 'labels': # To be split into lists
+                    cat_dict[opt.strip()] = val.strip().split(', ')
+                else:
+                    cat_dict[opt.strip()] = val.strip()
+        elif tag.startswith(selection_group_tag):
+            sg_name = tag[len(selection_group_tag) : ].strip()
+            data.setdefault(selection_group_tag + 'order', []).append(sg_name)
+            sg_dict = data.setdefault(selection_group_tag, {}).setdefault(sg_name, {})
+            for opt_line in data_buff:
+                opt, _, val = opt_line.partition(':')
+                val = val.strip()
+                if opt in ('banner_colours', 'names'): # To be split into lists
+                    sg_dict[opt.strip()] = [v if v != 'None' else None for v in val.split(', ')]
+                else:
+                    sg_dict[opt.strip()] = val if val != 'None' else None
         elif tag == tree_data_tag: # These data are stored as a single string
             data[tag] = data_buff[0]
         elif tag == dist_matrix_tag:
@@ -87,6 +102,8 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
         raise NavargatorValidationError('Error: could not identify the tree data in the given NaVARgator session file.')
     # Check if some optional information is present:
     display_options = data.get(display_options_tag, {})
+    selection_groups_order = data.get(selection_group_tag + 'order', [])
+    selection_groups_data = data.get(selection_group_tag, {})
     encoded_distance_matrix = data.get(dist_matrix_tag)
     if encoded_distance_matrix:
         try:
@@ -97,7 +114,7 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     else:
         distance_matrix = None
     # Create the VF object:
-    vfinder = VariantFinder(tree_data, tree_format='newick', file_name=file_name, display_options=display_options, distance_matrix=distance_matrix, verbose=verbose)
+    vfinder = VariantFinder(tree_data, tree_format='newick', file_name=file_name, display_options=display_options, selection_groups_order=selection_groups_order, selection_groups_data=selection_groups_data, distance_matrix=distance_matrix, verbose=verbose)
     # Fill out the assigned variants if present:
     chsn, avail, ignor = data.get(chosen_nodes_tag), data.get(available_nodes_tag), data.get(ignore_nodes_tag)
     if chsn:
@@ -359,18 +376,37 @@ class VariantFinder(object):
             buff.append(tag_format_str.format(available_nodes_tag, avail_names))
         # Write display options
         if self.display_options:
-            for category in ('fonts', 'sizes', 'colours'):
+            for category in ('colours', 'sizes', 'angles', 'labels', 'fonts'):
                 if category not in self.display_options:
                     continue
                 cat_buff = []
                 for key in sorted(self.display_options[category].keys()):
                     if key in self._private_display_opts:
                         continue
-                    cat_buff.append('{:s}: {:s}'.format(key, str(self.display_options[category][key])))
+                    elif category == 'labels':
+                        value = ', '.join(label.replace(',','.') for label in self.display_options[category][key])
+                        if len(value) == 0:
+                            continue
+                    else:
+                        value = str(self.display_options[category][key])
+                    cat_buff.append('{:s}: {:s}'.format(key, value))
                 if cat_buff:
                     cat_tag = display_options_tag + category
                     cat_opts = '\n'.join(cat_buff)
                     buff.append(tag_format_str.format(cat_tag, cat_opts))
+        # Write selection groups in order
+        for sg_name in self.selection_groups_order:
+            sg_buff = []
+            for key in sorted(self.selection_groups_data[sg_name].keys()):
+                if key in ('names', 'banner_colours'):
+                    value = ', '.join(str(val).replace(',','.') for val in self.selection_groups_data[sg_name][key])
+                else:
+                    value = str(self.selection_groups_data[sg_name][key])
+                sg_buff.append('{:s}: {:s}'.format(key, value))
+            if sg_buff:
+                sg_tag = selection_group_tag + sg_name
+                sg_opts = '\n'.join(sg_buff)
+                buff.append(tag_format_str.format(sg_tag, sg_opts))
         # Write tree data
         buff.append(tag_format_str.format(tree_data_tag, self.newick_tree_data))
         # Write distance matrix if requested
