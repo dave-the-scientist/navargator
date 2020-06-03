@@ -133,7 +133,7 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg
             elif vf == None:
-                return ("error, global normalization cannot be calculated because there is no valid variant finder for session ID '%s'" % s_id, 5509)
+                return ("error, global normalization cannot be calculated because there is no valid variant finder for session ID '{}'".format(s_id), 5509)
             dist_scale = 1.0
             cur_var = request.json['cur_var']
             max_var_dist = float(request.json['max_var_dist'])
@@ -312,7 +312,7 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg
             elif vf == None:
-                return ("error in check_results_done(), there is no valid variant finder for session ID '%s'" % s_id, 5509)
+                return ("error in check_results_done(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
             var_nums = request.json['var_nums']
             var_scores, max_var_dists = [], []
             dist_scale = 1.0
@@ -338,7 +338,7 @@ class NavargatorDaemon(object):
             elif s_id == None:
                 return msg
             elif vf == None:
-                return ("error setting normalization method, there is no valid variant finder for session ID '%s'" % s_id, 5509)
+                return ("error setting normalization method, there is no valid variant finder for session ID '{}'".format(s_id), 5509)
             norm_method = request.json['normalization']['method']
             if norm_method == 'self':
                 vf.normalize['method'] = 'self'
@@ -348,9 +348,9 @@ class NavargatorDaemon(object):
             elif norm_method == 'global':
                 vf.normalize['method'] = 'global'
             else:
-                err_msg = "Error: unrecognized normalization method '%s'" % norm_method
+                err_msg = "Error: unrecognized normalization method '{}'".format(norm_method)
                 return (err_msg, 5507)
-            return "normalization method set to %s" % norm_method
+            return "normalization method set to {}".format(norm_method)
         # # #  Results page listening routes:
         @self.server.route(self.daemonURL('/get-cluster-results'), methods=['POST'])
         def get_cluster_results():
@@ -358,7 +358,7 @@ class NavargatorDaemon(object):
             if s_id == None:
                 return msg
             elif vf == None:
-                return ("error in get_cluster_results(), there is no valid variant finder for session ID '%s'" % s_id, 5509)
+                return ("error in get_cluster_results(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
             num_vars = int(request.json['num_vars'])
             dist_scale = 1.0
             params = (num_vars, dist_scale)
@@ -373,6 +373,22 @@ class NavargatorDaemon(object):
                 # #  BUG. vf.normalize['method'] can be set to 'global' before the normalization happens.
                 # #  Where does the norm happen? Can I set the method to indicate it hasn't run yet?
                 if vf.normalize['method'] == 'global':
+
+                    # run global calc. Can i get the values below from vf? Or do i need them from the results page?
+                    """
+                    'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins
+
+                    cur_var = request.json['cur_var']
+                    max_var_dist = float(request.json['max_var_dist'])
+                    bins = list(map(float, request.json['global_bins']))
+                    if not cur_var: # Called from input.js:calculateGlobalNormalization()
+                        var_nums = map(int, request.json['var_nums'])
+                        self.calc_global_normalization_values(var_nums, dist_scale, max_var_dist, bins, vf)
+                    else: # Called from results.js
+                        cur_var = int(cur_var)
+                        self.calc_global_normalization_values([cur_var], dist_scale, max_var_dist, bins, vf)
+                    """
+
                     norm['value'] = vf.normalize['global_value']
                     norm['max_count'] = vf.normalize['global_max_count']
                 elif vf.normalize['method'] == 'custom':
@@ -454,7 +470,7 @@ class NavargatorDaemon(object):
         elif s_id == None:
             return None, None, b_id, ("error, no session ID received from the client page", 5508)
         else:
-            return None, None, b_id, ("error, invalid session ID %s." % s_id, 559)
+            return None, None, b_id, ("error, invalid session ID {}.".format(s_id), 559)
     def update_or_copy_vf(self):
         """Called from save-nvrgtr-file and find-variants routes. If any of the chosen, available, or ignored attributes have been modified, a new VariantFinder is generated with a new session ID. The javascript should switch to start maintaining this new session ID. Updates the display_opts dict, the selection_groups_order and selection_groups_data of the vf instance. Functions that call this should all check if s_id is None, and if so return msg to the client, which will cause an error popup on the page."""
         vf, s_id, b_id, msg = self.get_instance()
@@ -473,7 +489,7 @@ class NavargatorDaemon(object):
                 s_id = self.add_variant_finder(vf, browser_id=b_id)
             except NavargatorCapacityError as err:
                 return None, None, (str(err), 5513)
-            msg = "vf replaced; new session ID '%s'" % s_id
+            msg = "vf replaced; new session ID '{}'".format(s_id)
         vf.display_options = request.json.get('display_opts', {})
         vf.selection_groups_order = request.json.get('selection_groups_order', [])
         vf.selection_groups_data = request.json.get('selection_groups_data', {})
@@ -557,7 +573,7 @@ class NavargatorDaemon(object):
                 retcode = line.rpartition('-')[0].strip().rpartition('"')[2].strip()
                 if retcode not in ('200','304') and '* Running on http://' not in line:
                     self.error_occurred = True
-                    print('\nError encountered:\n%s' % line.strip())
+                    print('\nError encountered:\n{}'.format(line.strip()))
                 self.error_log.append(line)
 
 class ConnectionManager(object):

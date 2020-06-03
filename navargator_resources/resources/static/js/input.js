@@ -2,10 +2,6 @@
 
 // BUGS:
 // If truncate-tree-names is called with a too-short length, the page crashes. Want the error displayed, but not for the page to change
-// If Normalize across runs is set, and you find variants, it crashes the result page. But only the first time; if you click the result link later it works fine.
-// - Tracked it down to get_cluster_results() in navargator_daemon.py.
-// - The normalization method is set before it actually happens, so
-// - Ends up setting (nvrgtr_data.normalized_max_distance & data.normalization.value) to null in results.js:parseClusteredData(data), which causes the graph problems
 
 // TODO:
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.

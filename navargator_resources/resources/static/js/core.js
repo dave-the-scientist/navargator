@@ -1329,9 +1329,9 @@ function saveDataString(data_str, file_name, file_type) {
   var download_link = document.createElement("a");
   download_link.href = data_url;
   download_link.download = file_name;
-  //document.body.appendChild(download_link); // TESTING should be able to remove these 2 lines
+  document.body.appendChild(download_link); // Some browsers require these two lines,
   download_link.click();
-  //document.body.removeChild(download_link); // TESTING should be able to remove these 2 lines
+  document.body.removeChild(download_link); // while others do not. Keep em.
 }
 function focusScrollSelectInTextarea(textarea, start, end) {
   // textarea is the jquery object, start and end are integers representing character counts. Will select the given range, and attempt to scroll the textarea so that the selected text is on the bottom of the view.

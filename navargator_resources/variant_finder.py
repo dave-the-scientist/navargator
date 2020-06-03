@@ -12,7 +12,6 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 
 
 # TODO:
-# - Save the selection groups to the nvrgtr file
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 # - Implement threshold clustering.
@@ -241,7 +240,7 @@ class VariantFinder(object):
             self.distance_scale = distance_scale
         num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
         if self.verbose:
-            print('\nThere are %s possible combinations of variants.' % format_integer(num_possible_combinations))
+            print('\nThere are {} possible combinations of variants.'.format(format_integer(num_possible_combinations)))
             init_time = time.time()
         method = self._validate_clustering_method(method, num_possible_combinations)
         params = (num_variants, self.distance_scale)
@@ -256,7 +255,7 @@ class VariantFinder(object):
         elif method == 'brute force':
             if self.verbose:
                 expected_runtime = int(round(num_possible_combinations * 0.000042, 0))
-                print('Finding optimal variants using brute force. This should take ~%i seconds...' % expected_runtime)
+                print('Finding optimal variants using brute force. This should take ~{} seconds...'.format(expected_runtime))
             variants, scores, alt_variants = self._brute_force_clustering(num_variants)
         elif method == 'k medoids':
             if self.verbose:

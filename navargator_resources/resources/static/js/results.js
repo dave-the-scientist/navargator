@@ -26,9 +26,10 @@ $.extend(nvrgtr_settings.graph, {
 // - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
-// - Viewing a histogram with ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
+// - Viewing a histogram with Ubuntu's ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
+// - If variant names are long, the list of cluster centers looks ridiculous (as the text is pushed way out of the box). Need to shorten names in that list with a '...'
 // - The summary stats pane text moves around depending on the number of decimals of the avg dists.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
@@ -55,7 +56,7 @@ function setupPage() {
   nvrgtr_data.num_variants = url_params[1];
   document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
   nvrgtr_page.browser_id = generateBrowserId(10);
-  console.log('browser ID:', nvrgtr_page.browser_id);
+  console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
 
   maintainServer();
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
@@ -390,9 +391,7 @@ function checkForClusteringResults() {
         drawClusters();
         updateClusteredVariantMarkers(); // Must be after drawBarGraphs and drawClusters
         applyAllSelectionGroupFormats();
-        console.log('check0');
         drawDistanceGraphs();
-        console.log('check1');
         updateHistoSlider(); // Must be after drawDistanceGraphs
         $("#treeSelectionDiv").show();
         $("#treeControlsDiv").show();
@@ -401,7 +400,6 @@ function checkForClusteringResults() {
         $("#showLegendCheckbox").prop('disabled', false);
         $("#showScaleBarCheckbox").prop('disabled', false);
         $("#redrawTreeButton").button('enable');
-        console.log('check4');
       }
     },
     error: function(error) { processError(error, "Error getting clustering data from the server"); }
@@ -719,9 +717,7 @@ function updateDistanceGraphs() {
   // Called when the graph is first drawn, and when the normalization settings are changed.
   updateHistoBins();
   updateHistoGraph();
-  console.log('check0.2');
   updateHistoAxes();
-  console.log('check0.3');
 }
 function updateHistoSlider() {
   // Would be kind of nice to animate this (250 ms), but probably more trouble than it's worth.
@@ -833,14 +829,10 @@ function selectNamesByThreshold(threshold, select_below) {
 // =====  Graph functions:
 function updateHistoBins() {
   // Don't need to adjust the cumulative graph, as it uses the same x-axis (which is getting update) and its y-axis never changes for a given tree.
-  console.log(nvrgtr_data.graph.x_fxn);
-  console.log(nvrgtr_data.graph.x_fxn(0));
   var x_ticks = calculateHistoTicks(nvrgtr_data.normalized_max_distance);
   nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
   nvrgtr_data.graph.x_fxn.domain([x_ticks[0], nvrgtr_data.nice_max_var_dist]); // Needed to include the final tick
 
-  console.log(nvrgtr_data.graph.x_fxn);
-  console.log(nvrgtr_data.graph.x_fxn(0));
   var num_chosen = nvrgtr_data.variants.length,
     non_chosen_dists = nvrgtr_data.sorted_names.slice(num_chosen).map(function(name) {
       return nvrgtr_data.variant_distance[name];
@@ -890,7 +882,6 @@ function updateHistoGraph() {
     .attr("transform", function(d) {
       return "translate(" + (nvrgtr_data.graph.x_fxn(d.x0)+bar_margin-init_bar_x) + "," + (-nvrgtr_data.graph.y_fxn(d.length)) + ")";
     });
-  console.log('check0.1.1');
   nvrgtr_data.graph.g.select(".histo-bar") // Gives the first bar an accent colour
     .attr("fill", nvrgtr_settings.graph.histo_first_bar);
   bar_elements.transition()
@@ -934,7 +925,6 @@ function updateHistoGraph() {
     .text(function(d) { return (d.length == 0) ? '' : formatCount(d.length); });
   bar_texts.exit().remove();
 
-  console.log('check0.1.2');
   // Draw the area that responds to the histoSlider
   nvrgtr_data.graph.area_graph.raise().transition();
   var select_below = $("#histoSlider").slider('option', 'range') == 'min';
@@ -1066,15 +1056,21 @@ function parseClusteredData(data) {
   nvrgtr_data.max_variant_distance = data.max_variant_distance;
   nvrgtr_data.original_bins = calculateHistoTicks(data.max_variant_distance);
 
-  // Check if a normalization is already set (from the server). Else:
-  nvrgtr_data.normalized_max_distance = data.normalization.value;
-  nvrgtr_data.normalized_max_count = data.normalization.max_count;
-  if (data.normalization.method == 'global') {
-    $("#normGlobalRadio").prop('checked', true);
-    $("#normGlobalValSpan").html('['+roundFloat(data.normalization.value, 4)+']');
-  } else if (data.normalization.method == 'custom') {
-    $("#normValRadio").prop('checked', true);
-    $("#normValInput").val(data.normalization.value);
+  if (data.normalization.value == null) {
+    // This can happen if the clustering completes + checkForClusteringResults() is called between calls of input.js:checkIfProcessingDone(). I only saw it when running a single calculation for multiple clusters, if Normalize across runs was set, and auto-open was enabled. It did not happen under any circumstances if a result link was clicked.
+    // I couldn't find a good way to actually do the normalization, so instead I ignore "global" and set it to "self". Everything works fine if the user then switches it to "global" manually.
+    nvrgtr_data.normalized_max_distance = nvrgtr_data.max_variant_distance;
+    nvrgtr_data.normalized_max_count = 0;
+  } else {
+    nvrgtr_data.normalized_max_distance = data.normalization.value;
+    nvrgtr_data.normalized_max_count = data.normalization.max_count;
+    if (data.normalization.method == 'global') {
+      $("#normGlobalRadio").prop('checked', true);
+      $("#normGlobalValSpan").html('['+roundFloat(data.normalization.value, 4)+']');
+    } else if (data.normalization.method == 'custom') {
+      $("#normValRadio").prop('checked', true);
+      $("#normValInput").val(data.normalization.value);
+    }
   }
   nvrgtr_data.variants = data.variants;
   // Ensures nvrgtr_data.sorted_names begins with the chosen variants, and the rest stably sorted by variant distance.
