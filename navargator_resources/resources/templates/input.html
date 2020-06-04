@@ -82,15 +82,15 @@
             <h2 class="collapsible-header">Tree options<div id="treeOptsHelp" class="help-button"></div></h2>
             <div id="treeManipulationsPanel" class="collapsible-panel">
               <div id="treeManipRootOrderDiv" class="horizontal-row-div">
+                <button id="rootMidpointButton" class="jq-ui-button tree-manipulation-buttons">Root: midpoint</button>
+                <button id="rootSelectionButton" class="jq-ui-button tree-manipulation-buttons">Root: selection</button>
                 <button id="reorderNodesButton" class="jq-ui-button tree-manipulation-buttons">Re-order nodes</button>
-                <button id="rootMidpointButton" class="jq-ui-button tree-manipulation-buttons">Midpoint root</button>
-                <button id="rootSelectionButton" class="jq-ui-button tree-manipulation-buttons">Set selection as outgroup</button>
               </div>
-              <hr>
               <div class="horizontal-row-div">
-                <button id="truncateNamesButton" class="jq-ui-button tree-manipulation-buttons">Truncate name length</button>
+                <button id="truncateNamesButton" class="jq-ui-button tree-manipulation-buttons">Truncate names to:</button>
                 <input id="truncateNamesSpinner" class="param-spinner" />
               </div>
+              <hr>
               <div class="horizontal-row-div">
                 <button id="saveTreeButton" class="jq-ui-button tree-manipulation-buttons">Save tree as</button>
                 <select id="saveTreeTypeSelect">
@@ -143,6 +143,12 @@
                   <td><input id="selection_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('selection',this.jscolor)"></td>
                   <td><label class="display-options-label">Search</label></td>
                   <td><input id="search_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('search',this.jscolor)"></td>
+                </tr>
+                <tr>
+                  <td><label class="display-options-label">Label</label></td>
+                  <td><input id="label_bg_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_bg',this.jscolor)"></td>
+                  <td><label class="display-options-label">Text</label></td>
+                  <td><input id="label_text_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_text',this.jscolor)"></td>
                 </tr>
               </tbody></table>
               <hr>
@@ -212,12 +218,14 @@
                 <tr>
                   <td><label class="selection-group-format-label">Node colour</label></td>
                   <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('node')"></td>
-                  <td><label class="selection-group-format-label">Label colour</label></td>
-                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
-                </tr>
-                <tr>
                   <td><label class="selection-group-format-label">Node size</label></td>
                   <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
+                </tr>
+                <tr>
+                  <td><label class="selection-group-format-label">Label colour</label></td>
+                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
+                  <td><label class="selection-group-format-label">Label text</label></td>
+                  <td><input id="text_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('text')"></td>
                 </tr>
               </tbody></table>
               <button id="selectGroupAddBannerButton" class="jq-ui-button">Add new banner</button>

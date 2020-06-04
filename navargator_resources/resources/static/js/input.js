@@ -1,9 +1,15 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // BUGS:
-// If truncate-tree-names is called with a too-short length, the page crashes. Want the error displayed, but not for the page to change
+// When loading a nvrgtr, it isn't applying the default label colour. Or, maybe it is but the label_highlights just aren't being shown.
 
 // TODO:
+// - Add a display option for nvrgtr_display_opts.colours.label_text.
+//   - Might be good to set this default to something lighter than black, maybe around #7B7B7B
+// - For banners:
+//   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner.
+//   - Add banner labels to the tree.
+//   - Add relevant display options: banner height, banner buffer, show banner label checkbox, banner label font size
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
@@ -202,7 +208,7 @@ function setupManipulationsPane() {
     min: trunc_name_min, max: null,
     numberFormat: 'N0', step: 1
   }).spinner('value', 15);
-  $("#truncateNamesSpinner").attr("last_good_value", 0); // Used to store successful values.
+  $("#truncateNamesSpinner").attr("last_good_value", 15); // Used to store successful values.
   $("#truncateNamesButton").click(function() {
     var last_good = null;
     var trunc_length = $("#truncateNamesSpinner").spinner('value');
@@ -210,21 +216,21 @@ function setupManipulationsPane() {
       showErrorPopup("Error: the truncation length for tree names must be a number >= "+trunc_name_min);
       return false;
     }
-    treeIsLoading();
-    //data: JSON.stringify({'session_id':nvrgtr_page.session_id, 'browser_id':nvrgtr_page.browser_id, 'chosen':nvrgtr_data.chosen, 'available':nvrgtr_data.available, 'ignored':nvrgtr_data.ignored, 'display_opts':nvrgtr_display_opts, 'selection_groups_order':[...nvrgtr_data.selection_groups.keys()],  'selection_groups_data':Object.fromEntries(nvrgtr_data.selection_groups), 'truncate_length':trunc_length}),
+    $("#treeLoadingMessageGroup").show();
     $.ajax({
       url: daemonURL('/truncate-tree-names'),
       type: 'POST',
       contentType: "application/json",
       data: JSON.stringify({...getPageAssignedData(), 'truncate_length':trunc_length}),
       success: function(data_obj) {
+        treeIsLoading();
         newTreeLoaded(data_obj);
         $("#truncateNamesSpinner").attr("last_good_value", trunc_length);
       },
       error: function(error) {
         $("#truncateNamesSpinner").spinner('value', $("#truncateNamesSpinner").attr("last_good_value"));
         $("#treeLoadingMessageGroup").hide();
-        processError(error, "Error truncating the tree names");
+        processError(error, "Truncation too short");
       }
     });
   });
@@ -574,6 +580,7 @@ function newTreeLoaded(data_obj) {
     $("#uploadFileButton").button('disable');
     $(".tree-manipulation-buttons").button('enable');
     $("#truncateNamesSpinner").spinner('value', nvrgtr_display_opts.sizes.max_variant_name_length);
+    $("#truncateNamesSpinner").attr("last_good_value", nvrgtr_display_opts.sizes.max_variant_name_length);
     $("#showLegendCheckbox").prop('disabled', false);
     $("#showScaleBarCheckbox").prop('disabled', false);
     $("#sessionIncludeDistancesCheckbox").prop('disabled', false);

@@ -42,6 +42,8 @@ else:
 
 # BUG:
 
+# NOTES:
+# Negative branches are first balanced, or failing that are set to 0. Isn't great for the clustering or several display features to have negative distances.
 
 class NavargatorDaemon(object):
     """Background daemon to serve NaVARgator requests.

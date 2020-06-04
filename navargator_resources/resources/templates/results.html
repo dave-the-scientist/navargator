@@ -119,6 +119,12 @@
                   <td><label class="display-options-label">Search</label></td>
                   <td><input id="search_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('search',this.jscolor)"></td>
                 </tr>
+                <tr>
+                  <td><label class="display-options-label">Label</label></td>
+                  <td><input id="label_bg_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_bg',this.jscolor)"></td>
+                  <td><label class="display-options-label">Text</label></td>
+                  <td><input id="label_text_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_text',this.jscolor)"></td>
+                </tr>
               </tbody></table>
               <hr>
               <table class="display-options-table"><tbody>
@@ -187,12 +193,14 @@
                 <tr>
                   <td><label class="selection-group-format-label">Node colour</label></td>
                   <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('node')"></td>
-                  <td><label class="selection-group-format-label">Label colour</label></td>
-                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
-                </tr>
-                <tr>
                   <td><label class="selection-group-format-label">Node size</label></td>
                   <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
+                </tr>
+                <tr>
+                  <td><label class="selection-group-format-label">Label colour</label></td>
+                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
+                  <td><label class="selection-group-format-label">Label text</label></td>
+                  <td><input id="text_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('text')"></td>
                 </tr>
               </tbody></table>
               <button id="selectGroupAddBannerButton" class="jq-ui-button">Add new banner</button>

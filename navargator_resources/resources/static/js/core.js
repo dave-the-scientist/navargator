@@ -52,7 +52,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'init_angle':180, 'buffer_angle':20
   },
   'colours' : {
-    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
+    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#000000', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
 };
 var nvrgtr_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // Deep copy
@@ -342,6 +342,12 @@ function setupSelectionGroupsPane() {
       this.jscolor.hide();
     }
   });
+  $("#text_colourPicker").keydown(function(event) {
+    if (event.which == 13) {
+      updateSelectionGroupColour('text');
+      this.jscolor.hide();
+    }
+  });
   $("#selectGroupNodeSizeSpinner").spinner({
     min: 0, numberFormat: 'N1', step: 0.5,
     change: function(event, ui) {
@@ -364,7 +370,7 @@ function setupSelectionGroupsPane() {
     // Update the backend data structures
     nvrgtr_display_opts.labels.banner_names.push(banner_name);
     for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
-      group_data.banner_colours.push(null); // null means no colour has been set yet
+      group_data.banner_colours.push(null); // null means no colour will be set
     }
     // Add and update the HTML
     addBannerFormatElements(banner_name);
@@ -387,6 +393,8 @@ function setupSelectionGroupsPane() {
     $("#node_colourPicker").val('');
     $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
     $("#label_colourPicker").val('');
+    $("#text_colourPicker")[0].jscolor.fromString('#FFFFFF');
+    $("#text_colourPicker").val('');
     $("#selectGroupNodeSizeSpinner").val('');
     $("#selectGroupNameInput").val('');
     $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
@@ -872,7 +880,7 @@ function setColourPickers() {
   /*Updates the colour pickers to reflect the current values in nvrgtr_display_opts.colours*/
   //$("#element_ID")[0].jscolor.fromString('#aabbcc'); // Set colour
   //colour_str = '#' + $("#element_ID")[0].value; // Get colour
-  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'bar_chart', 'selection', 'search'];
+  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'label_bg', 'label_text', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'bar_chart', 'selection', 'search'];
   var key, colour, picker_id;
   for (var i=0; i<key_list.length; ++i) {
     key = key_list[i];
@@ -889,7 +897,7 @@ function updateDisplayColour(key, jscolor) {
     nvrgtr_display_opts.colours[key] = colour;
     if (['available', 'chosen', 'ignored', 'default_node', 'singleton_cluster_background'].indexOf(key) > -1) {
       updateVariantColours();
-    } else if (['bar_chart', 'cluster_highlight', 'selection', 'search'].indexOf(key) > -1) {
+    } else if (['bar_chart', 'cluster_highlight', 'selection', 'search', 'label_bg', 'label_text'].indexOf(key) > -1) {
       updateLabelColours(key, colour);
     }
     if (['cluster_background', 'cluster_highlight'].indexOf(key) > -1) {
@@ -928,6 +936,18 @@ function updateLabelColours(key, colour) {
   $.each(nvrgtr_data.nodes, function(name, node) {
     if (key == 'bar_chart' && 'bar_chart' in node) {
       node.bar_chart.attr({fill: colour});
+    } else if (key == 'label_bg') {
+      node.label_rest_colour = colour;
+      node.label_highlight.attr({fill: colour});
+      node.label_highlight.show();
+      if ('variant_select_label' in node) {
+        node.variant_select_label.css('background', colour);
+      }
+    } else if (key == 'label_text') {
+      node.text.attr({fill: colour});
+      if ('variant_select_label' in node) {
+        node.variant_select_label.css('color', colour);
+      }
     } else if (key == 'cluster_highlight') {
       node.node_mouseover_colour = colour;
       if (node.label_mouseover_key == 'cluster_highlight') {
@@ -996,6 +1016,9 @@ function updateSelectionGroupColour(key) {
   } else if (key == 'label') {
     jscolor_id = "#label_colourPicker";
     recolour_fxn = changeSelectionGroupLabelColour;
+  } else if (key == 'text') {
+    jscolor_id = "#text_colourPicker";
+    recolour_fxn = changeSelectionGroupTextColour;
   } else {
     console.log('In updateSelectionGroupColour(), unknown key "'+key+'"');
     return false;
@@ -1035,10 +1058,11 @@ function applySelectionGroupFormat(clear_formatting=false) {
   // Applies the on-page formatting values to all currently selected variants
   var node_colour = getJscolorValue($("#node_colourPicker")),
     label_colour = getJscolorValue($("#label_colourPicker")),
+    text_colour = getJscolorValue($("#text_colourPicker")),
     node_size = $("#selectGroupNodeSizeSpinner").val() || null
     banner_colours = getCurrentBannerColours();
   if (clear_formatting == true) {
-    node_colour = false, label_colour = false, node_size = false;
+    node_colour = false, label_colour = false, text_colour = false, node_size = false;
     for (let i=0; i<banner_colours.length; ++i) {
       banner_colours[i] = '#FFFFFF';
     }
@@ -1046,6 +1070,7 @@ function applySelectionGroupFormat(clear_formatting=false) {
   nvrgtr_data.selected.forEach(function(var_name) {
     changeSelectionGroupNodeColour(nvrgtr_data.nodes[var_name], node_colour);
     changeSelectionGroupLabelColour(nvrgtr_data.nodes[var_name], label_colour);
+    changeSelectionGroupTextColour(nvrgtr_data.nodes[var_name], text_colour);
     changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], node_size);
     changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], banner_colours);
   });
@@ -1056,6 +1081,7 @@ function applyAllSelectionGroupFormats() {
     format.names.forEach(function(var_name) {
       changeSelectionGroupNodeColour(nvrgtr_data.nodes[var_name], format.node_colour);
       changeSelectionGroupLabelColour(nvrgtr_data.nodes[var_name], format.label_colour);
+      changeSelectionGroupTextColour(nvrgtr_data.nodes[var_name], format.text_colour);
       changeSelectionGroupNodeSize(nvrgtr_data.nodes[var_name], format.node_size);
       changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], format.banner_colours);
     });
@@ -1089,6 +1115,7 @@ function addNewSelectionGroup(group_name, group_data=null) {
     });
     var node_colour = nvrgtr_data.selection_groups.get(group_name).node_colour,
       label_colour = nvrgtr_data.selection_groups.get(group_name).label_colour,
+      text_colour = nvrgtr_data.selection_groups.get(group_name).text_colour,
       node_size = nvrgtr_data.selection_groups.get(group_name).node_size;
     if (node_colour == null) {
       $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
@@ -1101,6 +1128,12 @@ function addNewSelectionGroup(group_name, group_data=null) {
       $("#label_colourPicker").val('');
     } else {
       $("#label_colourPicker")[0].jscolor.fromString(label_colour);
+    }
+    if (text_colour == null) {
+      $("#text_colourPicker")[0].jscolor.fromString('#FFFFFF');
+      $("#text_colourPicker").val('');
+    } else {
+      $("#text_colourPicker")[0].jscolor.fromString(text_colour);
     }
     $("#selectGroupNodeSizeSpinner").val(node_size); // Works with numbers or null.
     if (list_element.hasClass('select-group-list-element-active')) {
@@ -1145,7 +1178,7 @@ function addNewSelectionGroup(group_name, group_data=null) {
   $("#selectGroupListDiv").animate({scrollTop:$("#selectGroupListDiv")[0].scrollHeight}, 300);
   // Update the backend data:
   if (group_data == null) {
-    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue($("#node_colourPicker")), 'label_colour':getJscolorValue($("#label_colourPicker")), 'banner_colours':getCurrentBannerColours(), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
+    group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue($("#node_colourPicker")), 'label_colour':getJscolorValue($("#label_colourPicker")), 'text_colour':getJscolorValue($("#text_colourPicker")), 'banner_colours':getCurrentBannerColours(), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
   }
   nvrgtr_data.selection_groups.set(group_name, group_data);
 }
@@ -1163,6 +1196,12 @@ function addBannerFormatElements(banner_name) {
   banner_color[0].jscolor = new jscolor(banner_color[0]); // Needed otherwise banner_color[0].jscolor remains undefined. I believe this is a bug in jscolor, so this line may not be needed in the future.
   banner_color[0].jscolor.required = false; // Jscolor isn't respecting any other way to set
   banner_color.val('');                     // this info. Probably related to the bug above.
+  banner_color.keydown(function(event) {
+    if (event.which == 13) {
+      updateSelectionGroupBannerColour(this);
+      this.jscolor.hide();
+    }
+  });
   banner_div.append(banner_color);
   var banner_close_button = $('<button title="Remove this banner">X</button>');
   banner_close_button.click(function() {

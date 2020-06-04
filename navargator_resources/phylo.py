@@ -2,7 +2,7 @@
 
 Input/Output
 ============
-- Trees can be loaded from files or from strings, and the functions follow the naming conventions load_FORMAT(tree_filename) and load_FORMAT_string(tree_string); both return a Tree instance. For formats that support multiple trees, there are also load_multiple_FORMAT(tree_filename) and load_multiple_FORMAT_string(tree_string); both return a list of Tree instances. Some loading functions have specific arguments, but all respect the tree_args: support_label='bootstrap', remove_name_quotes=True. 'support_label' specifies the default type of branch support values, if any; this will be used unless one is specified in the formats that allow it (PhyloXML and NeXML). 'remove_name_quotes' will remove ' or " quotation marks surrounding the names of tree nodes, if present; some popular tree viewing programs add them.
+- Trees can be loaded from files or from strings, and the functions follow the naming conventions load_FORMAT(tree_filename) and load_FORMAT_string(tree_string); both return a Tree instance. For file formats that support multiple trees, there are also load_multiple_FORMAT(tree_filename) and load_multiple_FORMAT_string(tree_string); both return a list of Tree instances. Some loading functions have specific arguments, but all respect the tree_args: support_label='bootstrap', remove_name_quotes=True. 'support_label' specifies the default type of branch support values, if any; this will be used unless one is specified in the formats that allow it (PhyloXML and NeXML). 'remove_name_quotes' will remove ' or " quotation marks surrounding the names of tree nodes, if present; some popular tree viewing programs add them.
 - Saving methods are called on Tree instances, and follow the naming conventions Tree.save_FORMAT(tree_filename) and Tree.FORMAT_string(); save_FORMAT writes to a file and returns None, while FORMAT_string returns the tree data as a string. There are also functions to save multiple trees to a supporting file format - note that these are module functions and so are not called on Tree instances - that follow the naming conventions save_multiple_FORMAT(trees, tree_filename) and multiple_FORMAT_string(trees); both expect 'trees' to be a list of Tree instances. All saving functions respect the save_args: support_values=True, comments=True, internal_names=True, max_name_length=None. The first two specify whether support values or comments, if present, should be saved; 'internal_names' indicates whether the names of internal nodes should be saved, if present; if 'max_name_length' is an integer it will truncate leaf names to a maximum of 'max_name_length' characters, if it is None no truncations will occur.
 
 Tree loading functions
@@ -189,7 +189,7 @@ def multiple_nexus_string(trees, translate_command=False, support_as_comment=Fal
                     continue
                 old_name = node.name[:max_name_length]
                 if old_name in unique_names:
-                    raise PhyloUniqueNameError("Error: cannot save tree in NEXUS format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(old_name))
+                    raise PhyloUniqueNameError("Error: cannot save tree in NEXUS format. After removing restricted characters and truncating to {} characters, two nodes ended up with the name '{}'".format(max_name_length, old_name))
                 else:
                     unique_names.add(old_name)
                 if old_name in trans_dict:
@@ -955,7 +955,7 @@ class Tree(object):
         name = replacer_fxn(node.name)[:max_name_length] if node.name != node.id else ''
         if name != '':
             if name in all_names:
-                raise PhyloUniqueNameError("Error: cannot save tree in Newick format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(name))
+                raise PhyloUniqueNameError("Error: cannot save tree in Newick format. After removing restricted characters and truncating to {} characters, two nodes ended up with the name '{}'".format(max_name_length, name))
             else:
                 all_names.add(name)
         comment = '[{}]'.format(node.comment) if node.comment else ''
@@ -1058,7 +1058,7 @@ class Tree(object):
             if node.name != node.id and (internal_names or node in self.leaves):
                 clean_name = replacer_fxn(node.name)[:max_name_length]
                 if clean_name in uniq_names:
-                    raise PhyloUniqueNameError("Error: cannot save tree in NEXUS format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(clean_name))
+                    raise PhyloUniqueNameError("Error: cannot save tree in NEXUS format. After removing restricted characters and truncating to {} characters, two nodes ended up with the name '{}'".format(max_name_length, clean_name))
                 uniq_names.add(clean_name)
                 new_name = 'n{}'.format(trans_ind)
                 trans_ind += 1
@@ -1116,7 +1116,7 @@ class Tree(object):
         name = replacer_fxn(node.name)[:max_name_length] if node.name != node.id else ''
         if name != '':
             if name in all_names:
-                raise PhyloUniqueNameError("Error: cannot save tree in PhyloXML format. After removing restricted characters and truncating to max_name_length, two nodes ended up with the name '{}'".format(name))
+                raise PhyloUniqueNameError("Error: cannot save tree in PhyloXML format. After removing restricted characters and truncating to {} characters, two nodes ended up with the name '{}'".format(max_name_length, name))
             else:
                 all_names.add(name)
         if name and (internal_names or node in self.leaves):

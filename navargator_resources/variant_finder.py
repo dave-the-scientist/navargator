@@ -203,6 +203,8 @@ class VariantFinder(object):
                 self.tree = phylo.load_nexml_string(tree_input)
             else:
                 raise NavargatorValueError("Error: the tree format '{}' was not recognized.".format(tree_format))
+            self.tree.balance_negative_branches()
+            self.tree.clear_negative_branches()
             if distance_matrix is not None:
                 self.leaves = self.tree.get_named_leaves()
                 if type(distance_matrix) != type(np.zeros(1)):

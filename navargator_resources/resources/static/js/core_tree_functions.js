@@ -219,7 +219,7 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newNodeObject() {
-  return {'circle':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection, 'banners':[]};
+  return {'circle':null, 'text':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection, 'banners':[]};
 }
 function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
   var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
@@ -238,6 +238,19 @@ function changeSelectionGroupNodeColour(node, new_colour) {
   }
   node.node_rest_colour = new_colour;
   node.circle.attr({fill:new_colour});
+}
+function changeSelectionGroupNodeSize(node, radius) {
+  // If radius is null it isn't changed, if false it is reset
+  if (radius == null) {
+    return false;
+  } else if (radius == false) { // Reset the node
+    if (node.node_rest_key == 'default_node') {
+      radius = nvrgtr_display_opts.sizes.small_marker_radius;
+    } else {
+      radius = nvrgtr_display_opts.sizes.big_marker_radius;
+    }
+  }
+  node.circle.attr({'r':radius});
 }
 function changeSelectionGroupLabelColour(node, new_colour) {
   // If new_colour is null it isn't changed, if false it is reset
@@ -258,19 +271,21 @@ function changeSelectionGroupLabelColour(node, new_colour) {
     node.label_highlight.show();
   }
   node.label_highlight.attr({fill:new_colour});
-}
-function changeSelectionGroupNodeSize(node, radius) {
-  // If radius is null it isn't changed, if false it is reset
-  if (radius == null) {
-    return false;
-  } else if (radius == false) { // Reset the node
-    if (node.node_rest_key == 'default_node') {
-      radius = nvrgtr_display_opts.sizes.small_marker_radius;
-    } else {
-      radius = nvrgtr_display_opts.sizes.big_marker_radius;
-    }
+  if (nvrgtr_page.page == 'input') {
+    node.variant_select_label.css('background', new_colour);
   }
-  node.circle.attr({'r':radius});
+}
+function changeSelectionGroupTextColour(node, new_colour) {
+  // If new_colour is null it isn't changed, if false it is reset
+  if (new_colour == null) {
+    return false;
+  } else if (new_colour == false) { // Reset the node
+    new_colour = nvrgtr_display_opts.colours.label_text;
+  }
+  node.text.attr({fill:new_colour});
+  if (nvrgtr_page.page == 'input') {
+    node.variant_select_label.css('color', new_colour);
+  }
 }
 function changeSelectionGroupBannerColours(node, colours) {
   // If a colour is null it isn't changed.
@@ -358,6 +373,7 @@ function drawVariantObjects(marker_tooltips) {
   var text_obj, var_name, var_coords, var_marker;
   $("#treeSvg").find("text").each(function() {
     text_obj = $(this);
+    text_obj.attr({fill:nvrgtr_display_opts.colours.label_text});
     var_name = text_obj.text();
     var_coords = parseLeafTextCoords(text_obj);
     var_marker = nvrgtr_data.r_paper.circle(var_coords.node_x, var_coords.node_y, nvrgtr_display_opts.sizes.small_marker_radius);
@@ -367,7 +383,7 @@ function drawVariantObjects(marker_tooltips) {
     }
     nvrgtr_data.nodes[var_name] = newNodeObject();
     $.extend(nvrgtr_data.nodes[var_name], {
-      'circle':var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y
+      'circle':var_marker, 'node_x':var_coords.node_x, 'node_y':var_coords.node_y, 'label_x':var_coords.label_x, 'label_y':var_coords.label_y, 'text':text_obj
     });
     addNodeLabelEventHandlers(var_name, var_marker);
   });

@@ -23,7 +23,6 @@ $.extend(nvrgtr_settings.graph, {
 // Look for clusters of nvrgtr_data.x calls (example nvrgtr_data.graph); cut down on length by adding a middle variable
 
 //BUG:
-// - For tree Nm+Ngo+Accessible_Nme_95.nwk, if I set 2 extreme as ignored, and anything not starting with "rf1" as available, and find 8 clusters, the histogram mis-classifies 3 non-chosen vars. The green 'chosen' bar is selecting 11 vars, not 8.
 
 //TODO:
 // - Viewing a histogram with Ubuntu's ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
