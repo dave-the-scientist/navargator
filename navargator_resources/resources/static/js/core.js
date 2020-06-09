@@ -1,9 +1,6 @@
 // NOTE:
 
 // TODO:
-// - Finish selectGroupAddBannerButton.click
-//   - Would be great if I could change the font colour of the node names, and include that as an option as well.
-//   - The selection groups (with colour/size data) should be saved in session files, and should transfer from input to results.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
@@ -40,10 +37,10 @@ var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
 };
 var nvrgtr_default_display_opts = { // User-modifiable settings that persist between pages and sessions. Anything with a value of null cannot be set by the user.
   'fonts' : {
-    'tree_font_size':13, 'family':'Helvetica, Arial, sans-serif'
+    'tree_font_size':13, 'banner_font_size':15, 'family':'Helvetica, Arial, sans-serif'
   },
   'sizes' : {
-    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7, 'banner_height':20, 'banner_buffer':5
+    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
   },
   'labels' : {
     'banner_names':[]
@@ -52,7 +49,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'init_angle':180, 'buffer_angle':20
   },
   'colours' : {
-    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#000000', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
+    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#3B3B3B', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
 };
 var nvrgtr_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // Deep copy
@@ -251,6 +248,38 @@ function setupDisplayOptionsPane() {
       nvrgtr_display_opts.angles.buffer_angle = parseFloat(this.value);
     }
   }).spinner('value', nvrgtr_display_opts.angles.buffer_angle);
+  $("#displayBannerHeightSpinner").spinner({
+    min: 0,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.sizes.banner_height = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.sizes.banner_height = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.sizes.banner_height);
+  $("#displayBannerBufferSpinner").spinner({
+    min: 0,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.sizes.banner_buffer = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.sizes.banner_buffer = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.sizes.banner_buffer);
+  $("#displayBannerFontSpinner").spinner({
+    min: 0,
+    numberFormat: 'N0', step: 1,
+    spin: function(event, ui) {
+      nvrgtr_display_opts.fonts.banner_font_size = ui.value;
+    },
+    change: function(event, ui) {
+      nvrgtr_display_opts.fonts.banner_font_size = parseFloat(this.value);
+    }
+  }).spinner('value', nvrgtr_display_opts.fonts.banner_font_size);
+
+
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
       $("#treeLegendLeftGroup").show();

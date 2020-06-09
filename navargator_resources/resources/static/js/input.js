@@ -1,7 +1,6 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // BUGS:
-// When loading a nvrgtr, it isn't applying the default label colour. Or, maybe it is but the label_highlights just aren't being shown.
 
 // TODO:
 // - Add a display option for nvrgtr_display_opts.colours.label_text.
@@ -614,6 +613,7 @@ function updateVarSelectList() {
     nvrgtr_data.nodes[var_name].variant_select_label = label;
     addVariantLabelCallbacks(label, var_name);
   }
+  $('#varSelectDiv > .var-select-label').css({'color': nvrgtr_display_opts.colours.label_text, 'background': nvrgtr_display_opts.colours.label_bg});
   $("#chosenAssignedDiv").css('border-color', nvrgtr_display_opts.colours.chosen);
   $("#availAssignedDiv").css('border-color', nvrgtr_display_opts.colours.available);
   $("#ignoredAssignedDiv").css('border-color', nvrgtr_display_opts.colours.ignored);

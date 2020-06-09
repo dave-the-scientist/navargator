@@ -524,7 +524,7 @@ function updateClusteredVariantMarkers() {
     if (nvrgtr_data.variants.indexOf(var_name) != -1) {
       circle_colour_key = (nvrgtr_data.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
       circle.attr({'r':nvrgtr_display_opts.sizes.big_marker_radius});
-      changeNodeStateColour(var_name, node.label_highlight, 'label_mouseover', 'chosen');
+      changeNodeStateColour(var_name, node.label_highlight, 'label_mouseover', 'chosen', false);
     } else if (nvrgtr_data.available.indexOf(var_name) != -1) {
       circle_colour_key = 'available';
     } else if (nvrgtr_data.ignored.indexOf(var_name) != -1) {

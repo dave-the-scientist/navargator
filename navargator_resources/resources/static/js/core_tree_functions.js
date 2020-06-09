@@ -1,5 +1,6 @@
 //TODO:
 // - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is negative space for the tree on the canvas. Check for this. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
+// - In drawTreeBanners(), save references to the banner labels. That way they can be updated in real-time for name and size.
 
 // =====  Tree setup functions:
 function setupTreeElements() {
@@ -219,14 +220,16 @@ function preventSelections(newPan) {
 
 // Node attributes creation and updates:
 function newNodeObject() {
-  return {'circle':null, 'text':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':'', 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection, 'banners':[]};
+  return {'circle':null, 'text':null, 'label_highlight':null, 'label_mouseover':null, 'search_highlight':null, 'node_x':null, 'node_y':null, 'label_x':null, 'label_y':null, 'tooltip':'', 'mouseover':false, 'selected':false, 'node_rest_key':'default_node', 'node_rest_colour':nvrgtr_display_opts.colours.default_node, 'node_mouseover_key':'cluster_highlight', 'node_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'node_selected_key':'selection', 'node_selected_colour':nvrgtr_display_opts.colours.selection, 'label_rest_colour':nvrgtr_display_opts.colours.label_bg, 'label_mouseover_key':'cluster_highlight', 'label_mouseover_colour':nvrgtr_display_opts.colours.cluster_highlight, 'label_selected_key':'selection', 'label_selected_colour':nvrgtr_display_opts.colours.selection, 'banners':[]};
 }
-function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, new_colour=false) {
-  var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour';
-  if (new_colour == false) { new_colour = nvrgtr_display_opts.colours[colour_key]; } // Don't need this. new_colour will always be false
+function changeNodeStateColour(var_name, raphael_ele, state_prefix, colour_key, do_fill=true) {
+  var state_key_name = state_prefix+'_key', state_colour_name = state_prefix+'_colour',
+    new_colour = nvrgtr_display_opts.colours[colour_key];
   nvrgtr_data.nodes[var_name][state_key_name] = colour_key;
   nvrgtr_data.nodes[var_name][state_colour_name] = new_colour;
-  raphael_ele.attr({fill:new_colour});
+  if (do_fill == true) {
+    raphael_ele.attr({fill:new_colour});
+  }
 }
 
 function changeSelectionGroupNodeColour(node, new_colour) {
@@ -414,7 +417,7 @@ function drawLabelAndSearchHighlights() {
 }
 function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end_angle) {
   var label_path_str = sectorPathString(start_radius, end_radius, start_angle, end_angle),
-    label_highlight = nvrgtr_data.r_paper.path(label_path_str).attr({fill:nvrgtr_display_opts.colours.cluster_highlight, 'stroke-width':0}).toBack().hide(),
+    label_highlight = nvrgtr_data.r_paper.path(label_path_str).attr({fill:nvrgtr_display_opts.colours.label_bg, 'stroke-width':0}).toBack(),
     label_mouseover = nvrgtr_data.r_paper.path(label_path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   addNodeLabelEventHandlers(var_name, label_mouseover);
   nvrgtr_data.nodes[var_name].label_highlight = label_highlight;
@@ -438,20 +441,28 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
   nvrgtr_data.nodes[var_name].search_highlight = var_highlight_set;
 }
 function drawTreeBanners() {
+  var banner_sep = 0.2, banner_label_buff = 5;
   var total_banner_size = nvrgtr_display_opts.sizes.banner_height + nvrgtr_display_opts.sizes.banner_buffer,
     angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05;
-  var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj,
+  var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj, label_coords,
     init_rad_start = treeDrawingParams.barChartRadius;
   for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; ++i) {
+    // For each banner:
     rad_start = init_rad_start + i*total_banner_size;
     rad_end = rad_start + nvrgtr_display_opts.sizes.banner_height;
+    // Draw banners:
     for (let j=0; j<treeDrawingParams.seqs.length; ++j) {
       var_name = treeDrawingParams.seqs[j][0];
       var_angle = treeDrawingParams.seqs[j][1];
       banner_path_str = sectorPathString(rad_start, rad_end, var_angle-angle_offset, var_angle+angle_offset);
-      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':0.5});
+      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':banner_sep});
       nvrgtr_data.nodes[var_name].banners.push(banner_obj);
     }
+    // Draw banner labels:
+    label_coords = secPosition((rad_start + rad_end) / 2, var_angle + angle_offset);
+    label_coords[0] -= banner_label_buff;
+    nvrgtr_data.r_paper.text(label_coords[0], label_coords[1], nvrgtr_display_opts.labels.banner_names[i]
+    ).attr({'font-size': nvrgtr_display_opts.fonts.banner_font_size, 'text-anchor':'end', 'font-weight':'bold', 'font-family':nvrgtr_display_opts.fonts.family});
   }
 }
 function drawTreeBackgrounds(maxLabelLength) {
@@ -622,8 +633,6 @@ function drawClusterObject(nodes) {
   }
   path_str = bezierSplinePath(hull);
   cluster_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_display_opts.colours.cluster_background_trans, 'fill-opacity':nvrgtr_display_opts.colours.cluster_opacity, stroke:nvrgtr_display_opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
-  // fill:'#D5FDD9', 'fill-opacity':0.5
-  //cluster_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:nvrgtr_display_opts.colours.cluster_background,  stroke:nvrgtr_display_opts.colours.cluster_outline, 'stroke-width':0.75}).toBack();
   mouseover_obj = nvrgtr_data.r_paper.path(path_str).attr({fill:'red', 'fill-opacity':0, stroke:'none', 'stroke-width':0});
   return [cluster_obj, mouseover_obj];
 }
