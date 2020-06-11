@@ -3,8 +3,9 @@
 // BUGS:
 
 // TODO:
+// - The Clustering Results pane has been pushed rather far down the page. I'd rather it be more with other elements. Consider moving it above the Assigned Variants pane; that would provide a bit of symmetry with the results page histogram. Or could go below, as I'm already restricting the height of Assigned Variants.
 // - For banners:
-//   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner.
+//   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner. Possibly. Though this could be a fair bit of work.
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
@@ -61,6 +62,7 @@ function setupPage() {
   setupTreeElements();
   setupDisplayOptionsPane();
   setupSelectionGroupsPane();
+  setupExportPane();
   setupNormalizationPane();
   setupRunOptions();
   setupResultsPane();
@@ -229,8 +231,34 @@ function setupManipulationsPane() {
       }
     });
   });
-  $("#saveTreeButton").click(function() {
-    var tree_type = $("#saveTreeTypeSelect").val();
+}
+function setupExportPane() {
+  var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
+  export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
+
+  function formatDisplayExportNames() {
+    // Function to format the information based on the user's selection.
+    var delimiter, delimiter_type = $("#exportDelimiterSelect").val();
+    if (delimiter_type == 'tab') {
+      delimiter = '\t';
+    } else if (delimiter_type == 'comma') {
+      delimiter = ', ';
+    } else if (delimiter_type == 'space') {
+      delimiter = ' ';
+    } else if (delimiter_type == 'newline') {
+      delimiter = '\n';
+    }
+    var names = export_pane.data('names'),
+      new_text_val = names.join(delimiter);
+    export_text.val(new_text_val);
+    export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
+    export_text.css('height', export_text[0].scrollHeight+'px');
+    showFloatingPane(export_pane);
+  }
+
+  // Button callbacks:
+  $("#exportTreeFileButton").click(function() {
+    var tree_type = $("#exportTreeFileTypeSelect").val();
     $.ajax({
       url: daemonURL('/save-tree-file'),
       type: 'POST',
@@ -251,9 +279,29 @@ function setupManipulationsPane() {
       error: function(error) { processError(error, "Error saving tree file"); }
     });
   });
-  $("#saveTreeImageButton").click(function() {
+  $("#exportTreeImageButton").click(function() {
     var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
+  });
+  $("#exportSelectionButton").click(function() {
+    // Sets 'names' to a list of the selected variants. The order is undefined.
+    export_pane.data('names', [...nvrgtr_data.selected]);
+    formatDisplayExportNames();
+  });
+  // Functionality of the export pane:
+  $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
+    formatDisplayExportNames();
+  });
+  $("#exportDelimiterSelect").change(function() {
+    formatDisplayExportNames();
+  });
+  $("#exportNamesCopyButton").click(function() {
+    export_text.select();
+    document.execCommand("copy");
+  });
+  $("#exportNamesSaveButton").click(function() {
+    var text_data = export_text.val();
+    downloadData('navargator_selection.txt', text_data, "text/plain");
   });
 }
 function setupNormalizationPane() {

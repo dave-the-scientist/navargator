@@ -15,54 +15,6 @@
   width: 400px;
 }
 
-/* Export pane settings: */
-#exportNamesPane {
-  margin-top: -36px;
-  z-index: 5;
-}
-#exportNamesToggleDiv {
-  margin: 10px 10px 5px 10px;
-  width: calc(100% - 20px);
-  flex-shrink: 0;
-}
-#exportNamesMainDiv {
-  display: inline-flex;
-  position: relative;
-  padding: 5px 0px 0px 0px;
-}
-#exportNamesLeftColumn, #exportNamesRightColumn {
-  display: inline-flex;
-  flex-direction: column;
-  padding: 0px 5px;
-}
-#exportNamesLeftColumn {
-  padding-left: 10px;
-}
-#exportNamesRightColumn {
-  padding-right: 10px;
-}
-#exportNamesLeftColumn > *, #exportNamesRightColumn > * {
-  flex-shrink: 0;
-}
-#exportNamesText {
-  width: 370px;
-  min-height: 140px;
-  max-height: 300px;
-  resize: none;
-  overflow: auto;
-  margin-bottom: 10px;
-  transition: all .25s;
-}
-#exportDelimiterLabel {
-  margin: 0px;
-}
-#exportDelimiterSelect {
-  margin: 0px 0px 10px 0px;
-}
-#exportNamesCopyButton, #exportNamesSaveButton {
-  margin: 10px 0px;
-}
-
 /* Histogram settings: */
 #histoSvg {
   height: 170px;
@@ -134,7 +86,10 @@
   opacity: 0;
 }
 
-/* Table settings: */
+/* Summary table settings: */
+
+
+/* Clusters table settings: */
 .results-table {
   text-align: center;
   width: 100%;
@@ -143,9 +98,14 @@
   vertical-align: bottom;
 }
 .results-table td {
-  padding: 2px 23px;
+  padding: 5px 0px;
 }
 .results-table td:nth-child(1) {
   text-align: right;
-  padding: 1px 5px 1px 1px;
+  padding-right: 15px;
+}
+.cluster-list-row > td > label {
+  display: inline-block;
+  overflow-wrap: break-word;
+  max-width: 110px;
 }

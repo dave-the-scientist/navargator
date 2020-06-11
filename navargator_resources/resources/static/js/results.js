@@ -25,11 +25,13 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
+// - The summary stats pane text moves around depending on the number of decimals of the avg dists.
+//   - Move it to just below or above the histrogram. More space will mean it looks better too. It's currently inheriting results-table styles, definitely want to style it on its own. Maybe have it more organic looking, less rigid table.
+// - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
+//   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
 // - Viewing a histogram with Ubuntu's ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
-// - If variant names are long, the list of cluster centers looks ridiculous (as the text is pushed way out of the box). Need to shorten names in that list with a '...'
-// - The summary stats pane text moves around depending on the number of decimals of the avg dists.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
@@ -333,11 +335,11 @@ function setupExportPane() {
     export_pane.data('names', clusters);
     formatDisplayExportNames();
   });
-  $("#exportTreeButton").click(function() {
+  $("#exportTreeImageButton").click(function() {
     var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
-  $("#exportHistoButton").click(function() {
+  $("#exportHistoImageButton").click(function() {
     var svg_data = $("#histoSvg")[0].outerHTML;
     downloadData("navargator_histogram.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
@@ -508,7 +510,7 @@ function createClusterRow(var_name, table_body) {
     short_name = var_name.slice(0, nvrgtr_display_opts.sizes.max_variant_name_length);
     name_td = "<td title='"+var_name+"'>"+short_name+"</td>";
   } else {
-    name_td = "<td>"+var_name+"</td>";
+    name_td = "<td><label>"+var_name+"</label></td>";
   }
   var size_td = "<td>"+clstr_size+"</td>",
     avg_dist_td = "<td>"+clstr_avg_score+"</td>",
