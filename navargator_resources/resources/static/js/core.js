@@ -1,6 +1,7 @@
 // NOTE:
 
 // TODO:
+// I don't really like the 'avilable' colour. Maybe something more like #1B6B87
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
 //   - Why?
@@ -19,7 +20,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'banner_labels':[], 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -40,10 +41,10 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree_font_size':13, 'banner_font_size':15, 'family':'Helvetica, Arial, sans-serif'
   },
   'sizes' : {
-    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':4, 'bar_chart_buffer':3, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
+    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
   },
   'labels' : {
-    'banner_names':[]
+    'banner_names':[], 'show_banners':true
   },
   'angles' : {
     'init_angle':180, 'buffer_angle':20
@@ -273,13 +274,30 @@ function setupDisplayOptionsPane() {
     numberFormat: 'N0', step: 1,
     spin: function(event, ui) {
       nvrgtr_display_opts.fonts.banner_font_size = ui.value;
+      for (const label_ele of nvrgtr_data.banner_labels) {
+        label_ele.attr('font-size', nvrgtr_display_opts.fonts.banner_font_size);
+      }
     },
     change: function(event, ui) {
       nvrgtr_display_opts.fonts.banner_font_size = parseFloat(this.value);
+      for (const label_ele of nvrgtr_data.banner_labels) {
+        label_ele.attr('font-size', nvrgtr_display_opts.fonts.banner_font_size);
+      }
     }
   }).spinner('value', nvrgtr_display_opts.fonts.banner_font_size);
-
-
+  $("#displayBannerLabelCheckbox").change(function() {
+    if ($("#displayBannerLabelCheckbox").is(':checked')) {
+      nvrgtr_display_opts.labels.show_banners = true;
+      for (const label_ele of nvrgtr_data.banner_labels) {
+        label_ele.show();
+      }
+    } else {
+      nvrgtr_display_opts.labels.show_banners = false;
+      for (const label_ele of nvrgtr_data.banner_labels) {
+        label_ele.hide();
+      }
+    }
+  });
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
       $("#treeLegendLeftGroup").show();
@@ -338,7 +356,11 @@ function setupDisplayOptionsPane() {
   });
 
   $("#resetDisplayOptsButton").click(function() {
-    processDisplayOptions(nvrgtr_default_display_opts);
+    // Does not reset the banner names or number of banners.
+    var blank_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // Deep copy
+    blank_display_opts.labels.banner_names = nvrgtr_display_opts.labels.banner_names;
+    processDisplayOptions(blank_display_opts);
+    applyAllSelectionGroupFormats();
   });
   $("#redrawTreeButton").click(function() {
     // Clear any selection
@@ -403,7 +425,7 @@ function setupSelectionGroupsPane() {
     }
     // Add and update the HTML
     addBannerFormatElements(banner_name);
-    $("#redrawTreeButton").click();
+    $("#redrawTreeButton").click(); // Adds the text object to nvrgtr_data.banner_labels
     $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
     sg_banner_num += 1;
   });
@@ -848,9 +870,15 @@ function processDisplayOptions(display_opts) {
   setColourPickers();
   updateClusterColours();
   updateDisplayOptionSpinners();
+  if (nvrgtr_display_opts.labels.show_banners == true) {
+    $("#displayBannerLabelCheckbox").prop('checked', true).change();
+  } else {
+    $("#displayBannerLabelCheckbox").prop('checked', false).change();
+  }
 }
 function validateDisplayOption(category, key, new_val) {
-  var val_type = $.type(nvrgtr_default_display_opts[category][key]), value, is_valid;
+  var value, is_valid,
+    val_type = $.type(nvrgtr_default_display_opts[category][key]);
   if (val_type == 'number') {
     if (key == 'max_variant_name_length') {
       value = parseInt(new_val);
@@ -866,11 +894,18 @@ function validateDisplayOption(category, key, new_val) {
       }
     }
   } else if (val_type == 'boolean') {
+    // new_val will be a string (True/False) when opening a nvrgtr file, and will be boolean for results.js
     is_valid = true;
-    if (new_val.toLowerCase() == 'true') {
-      value = true;
-    } else if (new_val.toLowerCase() == 'false') {
-      value = false;
+    if ($.type(new_val) == 'string') {
+      if (new_val.toLowerCase() == 'true') {
+        value = true;
+      } else if (new_val.toLowerCase() == 'false') {
+        value = false;
+      } else {
+        is_valid = false;
+      }
+    } else if ($.type(new_val) == 'boolean') {
+      value = new_val;
     } else {
       is_valid = false;
     }
@@ -878,7 +913,7 @@ function validateDisplayOption(category, key, new_val) {
     value = null;
     is_valid = true;
   } else if (val_type == 'array') {
-    value = [...new_val];
+    value = [...new_val]; // Copies the array
   }
   if (is_valid == false) {
     value = nvrgtr_default_display_opts[category][key];
@@ -948,9 +983,6 @@ function updateVariantColours() {
     if (node.label_mouseover_key == "chosen") {
       // Because these nodes use a different mouseover colour.
       node.label_mouseover_colour = nvrgtr_display_opts.colours.chosen;
-      if (!node.selected) {
-        node.label_highlight.attr({fill: nvrgtr_display_opts.colours.chosen});
-      }
     }
   });
   updateTreeLegend();
@@ -967,10 +999,12 @@ function updateLabelColours(key, colour) {
       node.bar_chart.attr({fill: colour});
     } else if (key == 'label_bg') {
       node.label_rest_colour = colour;
-      node.label_highlight.attr({fill: colour});
-      node.label_highlight.show();
-      if ('variant_select_label' in node) {
-        node.variant_select_label.css('background', colour);
+      if (!node.selected) {
+        node.label_highlight.attr({fill: colour});
+        node.label_highlight.show();
+        if ('variant_select_label' in node) {
+          node.variant_select_label.css('background', colour);
+        }
       }
     } else if (key == 'label_text') {
       node.text.attr({fill: colour});
@@ -981,9 +1015,6 @@ function updateLabelColours(key, colour) {
       node.node_mouseover_colour = colour;
       if (node.label_mouseover_key == 'cluster_highlight') {
         node.label_mouseover_colour = colour;
-        if (!node.selected) {
-          node.label_highlight.attr({fill: colour});
-        }
       }
     } else if (key == 'selection') {
       if (node.node_selected_key == 'selection') {
@@ -1032,6 +1063,9 @@ function updateDisplayOptionSpinners() {
   $("#displayTreeLabelOutlineSpinner").spinner('value', nvrgtr_display_opts.sizes.labels_outline);
   $("#displayTreeInitAngleSpinner").spinner('value', nvrgtr_display_opts.angles.init_angle);
   $("#displayTreeBufferAngleSpinner").spinner('value', nvrgtr_display_opts.angles.buffer_angle);
+  $("#displayBannerHeightSpinner").spinner('value', nvrgtr_display_opts.sizes.banner_height);
+  $("#displayBannerBufferSpinner").spinner('value', nvrgtr_display_opts.sizes.banner_buffer);
+  $("#displayBannerFontSpinner").spinner('value', nvrgtr_display_opts.fonts.banner_font_size);
 }
 // =====  Selection group updating:
 function updateSelectionGroupColour(key) {
@@ -1071,14 +1105,12 @@ function updateSelectionGroupNodeSize(new_radius) {
 function getCurrentBannerColours() {
   var banner_cols = [];
   $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
-    banner_cols.push(getJscolorValue($(this)));
+    banner_cols.unshift(getJscolorValue($(this))); // Not appended as the HTML order is reversed for style.
   });
   return banner_cols;
 }
 function updateSelectionGroupBannerColour(jscolor) {
-  var banner_div = $(jscolor).parent(),
-    banner_ind = $("#selectGroupBannerListDiv").children().index(banner_div),
-    banner_cols = getCurrentBannerColours();
+  var banner_cols = getCurrentBannerColours();
   nvrgtr_data.selected.forEach(function(var_name) {
     changeSelectionGroupBannerColours(nvrgtr_data.nodes[var_name], banner_cols);
   });
@@ -1173,9 +1205,10 @@ function addNewSelectionGroup(group_name, group_data=null) {
       list_element.addClass('select-group-list-element-active');
       $("#selectGroupNameInput").val(group_name);
     }
-    var banner_col, banner_cols = nvrgtr_data.selection_groups.get(group_name).banner_colours;
+    var banner_col,
+      banner_cols = nvrgtr_data.selection_groups.get(group_name).banner_colours, num_banners = banner_cols.length;
     $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function(banner_ind) {
-      banner_col = banner_cols[banner_ind];
+      banner_col = banner_cols[num_banners - banner_ind - 1];
       if (banner_col == null) {
         this.jscolor.fromString('#FFFFFF');
         $(this).val('');
@@ -1217,8 +1250,16 @@ function addBannerFormatElements(banner_name) {
     banner_name_input = $('<input class="select-group-banner-name" value="'+banner_name+'">'),
     banner_color = $('<input class="jscolor" placeholder="None" spellcheck="false" onchange="updateSelectionGroupBannerColour(this)">');
   banner_name_input.blur(function() {
-    let banner_ind = banner_list.children().index(banner_div);
-    nvrgtr_display_opts.labels.banner_names[banner_ind] = $(this).val();
+    let banner_eles = banner_list.children(),
+      banner_ind = banner_eles.length - banner_eles.index(banner_div) - 1,
+      label_ind =
+      new_name = $(this).val();
+    nvrgtr_display_opts.labels.banner_names[banner_ind] = new_name;
+    nvrgtr_data.banner_labels[banner_ind].attr('text', new_name);
+  }).keydown(function(event) {
+    if (event.which == 13) {
+      banner_name_input.blur();
+    }
   });
   banner_div.append(banner_name_input);
   //new jscolor(banner_color[0]);  // This line should suffice, but does not currently work.
@@ -1234,7 +1275,8 @@ function addBannerFormatElements(banner_name) {
   banner_div.append(banner_color);
   var banner_close_button = $('<button title="Remove this banner">X</button>');
   banner_close_button.click(function() {
-    let banner_ind = banner_list.children().index(banner_div);
+    let banner_eles = banner_list.children(),
+      banner_ind = banner_eles.length - banner_eles.index(banner_div) - 1;
     nvrgtr_display_opts.labels.banner_names.splice(banner_ind, 1);
     for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
       group_data.banner_colours.splice(banner_ind, 1); // Remove from the array
@@ -1244,7 +1286,7 @@ function addBannerFormatElements(banner_name) {
     sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
   });
   banner_div.append(banner_close_button);
-  banner_list.append(banner_div);
+  banner_list.prepend(banner_div);
 }
 
 // =====  Page maintainance and management:

@@ -304,7 +304,7 @@ function changeSelectionGroupBannerColours(node, colours) {
 // =====  Tree drawing functions:
 function clearTree() {
   if (nvrgtr_data.r_paper) {
-    nvrgtr_data.r_paper.remove();
+    nvrgtr_data.r_paper.remove(); // Don't use .clear() here.
   }
   $("#svgCanvas").empty();
   $("#treeGroup").empty();
@@ -353,8 +353,8 @@ function drawTree(marker_tooltips=true) {
 
   nvrgtr_data.r_paper = phylocanvas.getSvg().svg;
   drawVariantObjects(marker_tooltips);
+  drawTreeBanners(); // Should be called before drawLabelAndSearchHighlights() so banners are behind the label mouseover.
   drawLabelAndSearchHighlights();
-  drawTreeBanners();
   drawTreeBackgrounds(maxLabelLength);
   // Adjust the div holding the tree:
   var tree_div_width = Math.max(sizes.tree, min_tree_div_width);
@@ -442,9 +442,13 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
 }
 function drawTreeBanners() {
   var banner_sep = 0.2, banner_label_buff = 5;
+  nvrgtr_data.banner_labels.forEach(function(label_ele) {
+    label_ele.remove();
+  });
+  nvrgtr_data.banner_labels = [];
   var total_banner_size = nvrgtr_display_opts.sizes.banner_height + nvrgtr_display_opts.sizes.banner_buffer,
     angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05;
-  var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj, label_coords,
+  var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj, label_coords, label_obj,
     init_rad_start = treeDrawingParams.barChartRadius;
   for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; ++i) {
     // For each banner:
@@ -461,8 +465,13 @@ function drawTreeBanners() {
     // Draw banner labels:
     label_coords = secPosition((rad_start + rad_end) / 2, var_angle + angle_offset);
     label_coords[0] -= banner_label_buff;
-    nvrgtr_data.r_paper.text(label_coords[0], label_coords[1], nvrgtr_display_opts.labels.banner_names[i]
-    ).attr({'font-size': nvrgtr_display_opts.fonts.banner_font_size, 'text-anchor':'end', 'font-weight':'bold', 'font-family':nvrgtr_display_opts.fonts.family});
+    label_obj = nvrgtr_data.r_paper.text(label_coords[0], label_coords[1], nvrgtr_display_opts.labels.banner_names[i]);
+    label_obj.attr({'font-size': nvrgtr_display_opts.fonts.banner_font_size, 'text-anchor':'end', 'font-weight':'bold', 'font-family':nvrgtr_display_opts.fonts.family});
+    $(label_obj.node).css('user-select', 'none');
+    if (nvrgtr_display_opts.labels.show_banners == false) {
+      label_obj.hide();
+    }
+    nvrgtr_data.banner_labels.push(label_obj);
   }
 }
 function drawTreeBackgrounds(maxLabelLength) {

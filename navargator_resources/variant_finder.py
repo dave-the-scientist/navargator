@@ -62,7 +62,7 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
             cat_dict = data.setdefault(display_options_tag, {}).setdefault(category, {})
             for opt_line in data_buff:
                 opt, _, val = opt_line.partition(':')
-                if category == 'labels': # To be split into lists
+                if opt in ('banner_names',): # To be split into lists
                     cat_dict[opt.strip()] = val.strip().split(', ')
                 else:
                     cat_dict[opt.strip()] = val.strip()
@@ -384,7 +384,7 @@ class VariantFinder(object):
                 for key in sorted(self.display_options[category].keys()):
                     if key in self._private_display_opts:
                         continue
-                    elif category == 'labels':
+                    elif key in ('banner_names',):  # For lists of strings
                         value = ', '.join(label.replace(',','.') for label in self.display_options[category][key])
                         if len(value) == 0:
                             continue

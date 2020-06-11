@@ -3,12 +3,8 @@
 // BUGS:
 
 // TODO:
-// - Add a display option for nvrgtr_display_opts.colours.label_text.
-//   - Might be good to set this default to something lighter than black, maybe around #7B7B7B
 // - For banners:
 //   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner.
-//   - Add banner labels to the tree.
-//   - Add relevant display options: banner height, banner buffer, show banner label checkbox, banner label font size
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
 //   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
