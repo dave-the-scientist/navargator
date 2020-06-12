@@ -29,6 +29,7 @@ $.extend(nvrgtr_settings.graph, {
 //   - Move it to just below or above the histrogram. More space will mean it looks better too. It's currently inheriting results-table styles, definitely want to style it on its own. Maybe have it more organic looking, less rigid table.
 // - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
 //   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
+//   - pm-slp-all.nwk is a good test tree for this.
 // - Viewing a histogram with Ubuntu's ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
@@ -79,7 +80,6 @@ function setupPage() {
     success: function(data_obj) {
       parseBasicData(data_obj);
       $("#numClustersH2Span").html(nvrgtr_data.num_variants + ' clusters');
-      $("#numClustersSpan").html(nvrgtr_data.num_variants);
       $("#numNodesSpan").html(nvrgtr_data.leaves.length);
       redrawTree(true);
       $("#treeGroup").attr("opacity", "0.4"); // Fades the tree and
@@ -1109,5 +1109,6 @@ function formatExportNameGroup(names, delimiter, include_scores) {
 }
 function setupSpecificHelpButtonText() {
   // Common elements' help messages defined in core.js:setupCoreHelpButtonText()
-
+  // Export data help:
+  $("#exportDataHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
 }

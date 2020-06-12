@@ -8,7 +8,7 @@
   display: inline-flex;
   flex-direction: column;
 }
-#summaryStatsDiv, #resultsNormalizationDiv {
+#leftOptionsDiv, #resultsNormalizationDiv {
   width: 250px;
 }
 #selectionDiv, #clustersListDiv {
@@ -87,20 +87,22 @@
 }
 
 /* Summary table settings: */
+#summaryStatsTable {
 
+}
 
 /* Clusters table settings: */
-.results-table {
+#clustersListTable {
   text-align: center;
   width: 100%;
 }
-.results-table > thead {
+#clustersListTable > thead {
   vertical-align: bottom;
 }
-.results-table td {
+#clustersListTable td {
   padding: 5px 0px;
 }
-.results-table td:nth-child(1) {
+#clustersListTable td:nth-child(1) {
   text-align: right;
   padding-right: 15px;
 }

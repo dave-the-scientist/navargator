@@ -10,7 +10,7 @@
     <script>
       var is_IE = /MSIE|Trident|Edge\//.test(window.navigator.userAgent);
       if (is_IE) {
-        alert("You appear to be using Internet Explorer or Edge! Unfortunately NaVARgator doesn't work well with either, so you'll probably have to try with another browser.\n\nIf you're running the command line version, include the XXX flag to prevent the automatic use of your default browser.");
+        alert("You appear to be using Internet Explorer or Edge! Unfortunately NaVARgator doesn't work well with either, so you'll probably have to try with another browser.\n\nIf you're running the command line version of the software, include the XXX flag to prevent the automatic use of your default browser.");
       }
     </script>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
@@ -240,7 +240,7 @@
               </div>
             </div>
 
-            <h2 class="collapsible-header">Export data</h2>
+            <h2 class="collapsible-header">Export data<div id="exportDataHelp" class="help-button"></div></h2>
             <div class="collapsible-panel">
               <div id="exportNamesPane" class="floating-pane">
                 <div>
@@ -466,7 +466,7 @@
             <g id="introMessageGroup">
               <text x="5" y="20" style="font-size:25px;font-family:Helvetica,Arial,sans-serif">Welcome to NaVARgator! To get started:
                 <tspan x="5" y="50" style="font-size:17px">Choose a phylogenetic tree or a previously saved .nvrgtr session file.</tspan>
-                <tspan x="5" y="80" style="font-size:17px">Press "Load file".</tspan>
+                <tspan x="5" y="80" style="font-size:17px">Press the "Load file" button.</tspan>
               </text>
             </g>
             <g id="treeGroup" class="svg-pan-zoom_viewport"></g>
@@ -514,7 +514,7 @@
       </div>
 
       <div id="footerDiv">
-        <p>&copy; 2019 David Curran</p>
+        <p>&copy; 2020 David Curran</p>
       </div>
     </div>
 

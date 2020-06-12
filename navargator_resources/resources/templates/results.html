@@ -55,31 +55,7 @@
 
       <div id="bodyMainDiv">
         <div id="mainLeftDiv">
-          <div id="summaryStatsDiv" class="style-box">
-            <h2>Summary statistics</h2>
-            <table id="summaryStatsTable" class="results-table"><tbody>
-              <thead><tr>
-                <th></th>
-                <th>Count</th>
-                <th>Average<br>distance</th>
-              </tr></thead>
-              <tr>
-                <td>Clusters:</td>
-                <td><span id="numClustersSpan">--</span></td>
-                <td><span id="distClustersSpan">--</span></td>
-              </tr>
-              <tr>
-                <td>Variants:</td>
-                <td><span id="numNodesSpan">--</span></td>
-                <td><span id="distNodesSpan">--</span></td>
-              </tr>
-              <tr>
-                <td><b>Total tree distance:</b></td>
-                <td></td>
-                <td><b><span id="distTotalSpan">--</span></b></td>
-              </tr>
-            </tbody></table>
-
+          <div id="leftOptionsDiv" class="style-box">
             <h2 class="collapsible-header">Display options<div id="displayOptsHelp" class="help-button"></div></h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
               <table class="display-options-table"><tbody>
@@ -228,7 +204,7 @@
               </div>
             </div>
 
-            <h2 class="collapsible-header">Export data</h2>
+            <h2 class="collapsible-header">Export data<div id="exportDataHelp" class="help-button"></div></h2>
             <div class="collapsible-panel">
               <div id="exportNamesPane" class="floating-pane">
                 <div>
@@ -432,7 +408,7 @@
 
         <div id="mainRightDiv">
           <div id="selectionDiv" class="style-box">
-            <h2>Distance to nearest chosen variant</h2>
+            <h2>Distance to nearest cluster center</h2>
             <svg id="histoSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
             <div id="histoSlider">
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
@@ -446,8 +422,13 @@
           </div>
 
           <div id="clustersListDiv" class="style-box">
+            <h2>Summary statistics</h2>
+            <p>Total distance from all <span id="numNodesSpan"></span> variants to their nearest cluster center: <b><span id="distTotalSpan">calculating...</span></b></p>
+            <p>Average total distance per cluster: <b><span id="distClustersSpan">calculating...</span></b></p>
+            <p>Average distance per variant: <b><span id="distNodesSpan">calculating...</span></b></p>
+
             <h2><span id="numClustersH2Span">Clusters</span></h2>
-            <table id="clustersListTable" class="sortable results-table">
+            <table id="clustersListTable" class="sortable">
               <thead>
                 <tr>
                   <th>Cluster center</th>
@@ -464,7 +445,7 @@
       </div>
 
       <div id="footerDiv">
-        <p>&copy; 2019 David Curran</p>
+        <p>&copy; 2020 David Curran</p>
       </div>
     </div>
 
