@@ -87,7 +87,7 @@
                 <button id="reorderNodesButton" class="jq-ui-button">Re-order nodes</button>
               </div>
               <div class="horizontal-row-div">
-                <button id="truncateNamesButton" class="jq-ui-button">Truncate names to:</button>
+                <button id="truncateNamesButton" class="jq-ui-button">Truncate names:</button>
                 <input id="truncateNamesSpinner" class="param-spinner" />
               </div>
             </div>
@@ -401,11 +401,6 @@
             <button id="findVariantsButton" class="jq-ui-button"><b>Find variants</b></button>
           </div>
 
-          <div id="resultsLinksDiv" class="style-box" style="display:none">
-            <h2>Clustering results</h2>
-            <svg id="scoreGraphSvg" style="display:none" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
-            <ul id="resultsLinksList"></ul>
-          </div>
         </div>
 
         <div id="mainTreeDiv" class="style-box">
@@ -492,7 +487,18 @@
         </div>
 
         <div id="mainVariantSelectDiv" class="style-box" style="display:none">
-          <h2>Assigned variants<div id="assignedVarsHelp" class="help-button"></div></h2>
+          <div id="resultsLinksDiv" style="display:none">
+            <h2>Clustering results</h2>
+            <div id="resultsLinksContentDiv">
+              <svg id="scoreGraphSvg" style="display:none" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
+              <div id="resultsLinksListDiv">
+                <label style="margin-left:3px"><b>Results pages:</b></label>
+                <ul id="resultsLinksList"></ul>
+              </div>
+            </div>
+          </div>
+
+          <h2 id="varAssignH2">Assigned variants<div id="assignedVarsHelp" class="help-button"></div></h2>
           <div id="varSelectDiv">
             <div id="varAssignTableDiv">
               <table id="varAssignTable"><tbody>

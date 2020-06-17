@@ -86,11 +86,6 @@
   opacity: 0;
 }
 
-/* Summary table settings: */
-#summaryStatsTable {
-
-}
-
 /* Clusters table settings: */
 #clustersListTable {
   text-align: center;
@@ -104,10 +99,10 @@
 }
 #clustersListTable td:nth-child(1) {
   text-align: right;
-  padding-right: 15px;
+  padding-right: 10px;
 }
 .cluster-list-row > td > label {
   display: inline-block;
   overflow-wrap: break-word;
-  max-width: 110px;
+  max-width: 120px;
 }

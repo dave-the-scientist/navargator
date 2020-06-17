@@ -1,5 +1,6 @@
 :root {
   --left-col-width: 250px;
+  --results-graph-height: 150px;
 }
 #bodyMainDiv {
   display: flex;
@@ -10,13 +11,12 @@
   display: inline-flex;
   flex-direction: column;
 }
-#inputOptionsDiv, #runOptionsDiv, #resultsLinksDiv {
+#inputOptionsDiv, #runOptionsDiv {
   width: var(--left-col-width);
 }
 #mainVariantSelectDiv {
-  min-width: 220px;
+  min-width: 240px;
   margin-right: 0px;
-  /*overflow: hidden;*/
 }
 
 /* Load input settints: */
@@ -49,15 +49,36 @@
 }
 
 /* Result links pane settings: */
+#resultsLinksDiv {
+  margin-bottom: 15px; /*Should equal the top margin on non-first H2 headers.*/
+}
+#resultsLinksContentDiv {
+  display: flex;
+  flex-wrap: wrap;
+}
+#resultsLinksListDiv {
+  margin-top: 3px;
+  min-width: var(--results-graph-height);
+  max-height: calc(var(--results-graph-height) - 3px); /*To account for the top margin*/
+  overflow-y: auto;
+  flex-grow: 1;
+}
 #resultsLinksList {
   list-style-type: disc;
-  padding-left: 20px;
+  padding: 0px 0px 0px 20px;
+  margin: 0px;
+  column-width: 150px;
+  /*column-fill: auto; /* This isn't working because it doesn't have a set height. Would be nice, but more problematic when I do set a height.*/
+}
+.result-link-li {
+  text-indent: -3px; /*Moves it closer to the bullet. Probably looks terrible if multi-line.*/
 }
 
 /* Score graph settings: */
 #scoreGraphSvg {
   width: var(--left-col-width);
-  height: 150px;
+  height: var(--results-graph-height);
+  flex-shrink: 0;
 }
 .score-axis-label {
   font-family: var(--font-family);
@@ -70,6 +91,9 @@
 }
 
 /* Variant assignment and selection settings: */
+#varAssignH2 {
+  margin-top: 0px;
+}
 #varAssignTableDiv {
   float: left;
   margin: 5px 15px 10px 0px;
@@ -217,7 +241,8 @@
   background-color: var(--var-assigned-el-rem-colour);
 }
 #varSelectDiv {
-  max-height: calc(var(--tree-width) + 4px); /*There's 4px worth of space in mainTreeDiv under figureSvg for some reason.*/
+  max-height: calc(var(--tree-width) - var(--results-graph-height) - 52px + 4px);
+  /*4px of space in mainTreeDiv under figureSvg, 52px lines up bottom of the column with the tree.*/
   overflow-y: auto;
 }
 #varSelectHeader {
