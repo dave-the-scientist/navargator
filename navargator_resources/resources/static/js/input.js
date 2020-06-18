@@ -3,8 +3,6 @@
 // BUGS:
 
 // TODO:
-// - The Clustering Results pane has been pushed rather far down the page. I'd rather it be more with other elements. Consider moving it above the Assigned Variants pane; that would provide a bit of symmetry with the results page histogram. Or could go below, as I'm already restricting the height of Assigned Variants.
-//   - I like above. Add it to #mainVariantSelectDiv, and style/constrain it much like #varselectdiv. Probably Graph on left, links in div on right (vertical or "inline" like varSelectDiv. Change the new max height of #varSelectDiv, subtract the max height of the graph pane. Ensure the graph pane can cope with the minimum width of that column (can make it larger if necessary); list of links should drop down below graph when page is very narrow.
 // - For banners:
 //   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner. Possibly. Though this could be a fair bit of work.
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.

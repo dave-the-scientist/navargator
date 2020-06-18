@@ -5,8 +5,6 @@
 //   - Should write a function to copy(? if needed) the tree and remove elements that aren't actually displayed. Like names if the font size is 0, the mouseover objects for the labels, the search highlights (if no search is currently active), etc. Then pass that data to downloadData().
 // I don't really like the 'avilable' colour. Maybe something more like #1B6B87
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
-// - The display options are in 4-column tables. Change to 2 columns, use display-options-label or display-options-table td CSS to style things.
-//   - Why?
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
 // - Ensure error codes in processError() match with error codes in navargator_daemon.py.

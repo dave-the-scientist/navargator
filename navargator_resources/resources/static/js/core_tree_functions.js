@@ -1,6 +1,5 @@
 //TODO:
 // - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is negative space for the tree on the canvas. Check for this. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
-// - In drawTreeBanners(), save references to the banner labels. That way they can be updated in real-time for name and size.
 
 // =====  Tree setup functions:
 function setupTreeElements() {

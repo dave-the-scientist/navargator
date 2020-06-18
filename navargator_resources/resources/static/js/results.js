@@ -25,8 +25,6 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - The summary stats pane text moves around depending on the number of decimals of the avg dists.
-//   - Move it to just below or above the histrogram. More space will mean it looks better too. It's currently inheriting results-table styles, definitely want to style it on its own. Maybe have it more organic looking, less rigid table.
 // - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
 //   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
 //   - pm-slp-all.nwk is a good test tree for this.

@@ -372,25 +372,7 @@ class NavargatorDaemon(object):
                 ret = {'variants': False}
             else:
                 norm = {'method':vf.normalize['method'], 'value':results['max_distance'], 'max_count':0}
-                # #  BUG. vf.normalize['method'] can be set to 'global' before the normalization happens.
-                # #  Where does the norm happen? Can I set the method to indicate it hasn't run yet?
                 if vf.normalize['method'] == 'global':
-
-                    # run global calc. Can i get the values below from vf? Or do i need them from the results page?
-                    """
-                    'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins
-
-                    cur_var = request.json['cur_var']
-                    max_var_dist = float(request.json['max_var_dist'])
-                    bins = list(map(float, request.json['global_bins']))
-                    if not cur_var: # Called from input.js:calculateGlobalNormalization()
-                        var_nums = map(int, request.json['var_nums'])
-                        self.calc_global_normalization_values(var_nums, dist_scale, max_var_dist, bins, vf)
-                    else: # Called from results.js
-                        cur_var = int(cur_var)
-                        self.calc_global_normalization_values([cur_var], dist_scale, max_var_dist, bins, vf)
-                    """
-
                     norm['value'] = vf.normalize['global_value']
                     norm['max_count'] = vf.normalize['global_max_count']
                 elif vf.normalize['method'] == 'custom':
@@ -405,6 +387,12 @@ class NavargatorDaemon(object):
         @self.server.route('/results')
         def render_results_page():
             return render_template('results.html')
+        # # #  Diagnostics function
+        @self.server.route(self.daemonURL('/get-diagnostics'), methods=['GET'])
+        def get_diagnostics():
+            print self.sessions
+            return "Got diagnostic info"
+
     # # # # #  Public methods  # # # # #
     def new_variant_finder(self, tree_data, tree_format, file_name='unknown file', browser_id='unknown', available=[], ignored=[], distance_scale=1.0):
         if type(tree_data) == bytes:
