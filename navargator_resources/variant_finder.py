@@ -172,6 +172,7 @@ def format_integer(num, max_num_chars=15, sci_notation=False):
         num_str = '-' + num_str
     return num_str
 
+
 class VariantFinder(object):
     def __init__(self, tree_input, tree_format='auto', file_name='unknown file', display_options=None, selection_groups_order=None, selection_groups_data=None, distance_matrix=None, verbose=True, _blank_init=False):
         self.file_name = file_name

@@ -38,6 +38,7 @@ else:
 # - Be really nice if you could click on an internal node, and it would select all children for avail/chosen/ignored.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
+# - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
 
 
 # BUG:
@@ -388,10 +389,20 @@ class NavargatorDaemon(object):
         def render_results_page():
             return render_template('results.html')
         # # #  Diagnostics function
-        @self.server.route(self.daemonURL('/get-diagnostics'), methods=['GET'])
+        @self.server.route(self.daemonURL('/get-diagnostics'), methods=['POST'])
         def get_diagnostics():
-            print self.sessions
-            return "Got diagnostic info"
+            s_id = request.json.get('session_id')
+            b_id = request.json.get('browser_id') # Log these?
+            t0 = time.time()
+            active = []
+            for s, bs in self.connections.session_connections.items():
+                num_leaves = len(self.sessions[s].leaves)
+                num_params = len(self.sessions[s].cache)
+                ages = []
+                for t in bs.values():
+                    ages.append(t0 - t)
+                active.append({'ages':ages, 'num_leaves':num_leaves, 'num_params':num_params})
+            return json.dumps(active)
 
     # # # # #  Public methods  # # # # #
     def new_variant_finder(self, tree_data, tree_format, file_name='unknown file', browser_id='unknown', available=[], ignored=[], distance_scale=1.0):

@@ -1344,6 +1344,41 @@ function closeInstance(s_id=null) {
   nvrgtr_page.instance_closed = true;
   clearInterval(nvrgtr_page.maintain_interval_obj);
 }
+function getDiagnostics() {
+  $.ajax({
+    url: daemonURL('/get-diagnostics'),
+    type: 'POST',
+    contentType: "application/json",
+    data: JSON.stringify(getPageBasicData()),
+    success: function(data_obj) {
+      let active = $.parseJSON(data_obj);
+      console.log('DIAGNOSTIC REPORT\n=================');
+      console.log('Currently '+active.length+' active sessions');
+      active.forEach(function(session, index) {
+        console.log('Session '+index+':');
+        console.log('  Tree size: '+session.num_leaves+'; Clustering runs: '+session.num_params);
+        if (session.ages.length == 0) {
+          console.log('  Open browsers: 0');
+        } else {
+          let ages = session.ages.map(function(age) {
+            if (age >= 86400) {
+              return parseInt(age / 86400) + 'd';
+            } else if (age >= 3600) {
+              return parseInt(age / 3600) + 'h';
+            } else {
+              return parseInt(age) + 's';
+            }
+          });
+          console.log('  Open connections: '+session.ages.length+'; Last active: '+ages.join(', '));
+        }
+      });
+    },
+    error: function(error) {
+      console.log('Could not retrieve the diagnostic report.');
+      console.log('The error code: '+error.status+'; The text: '+error.responseText);
+    }
+  });
+}
 
 // =====  Functions to calculate and warn about colour choices:
 function getJscolorValue($jscolor) {
