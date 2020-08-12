@@ -75,7 +75,11 @@ Tree.root_nodes(node1, node2, distance)
 Tree modification methods
 -------------------------
 Tree.reorder_children(increasing=True)
-  - This method reorders each node's children for asthetic purposes and ease of viewing. If increasing=True, children are ordered so that short leaves come before leaves with long branches, which come before children that are internal nodes. Setting increasing=False reverses this. Note that most phylogenetic tree viewing software respects the given order of children, but it is not guaranteed.
+  - This method reorders each node's children for asthetic purposes and ease of viewing. If increasing=True, children are ordered so that short leaves come before leaves with long branches, which come before children that are internal nodes. Setting increasing=False reverses this. Note that most phylogenetic tree viewing software respects the given order of children, but not all.
+Tree.prune_to(names, merge_monotomies=True)
+Tree.prune_to_nodes(nodes, merge_monotomies=True)
+  - These methods modify the tree in place, keeping the designated nodes and their relevant predecessors but pruning off all others. Nodes of interest can be passed directly to Tree.prune_to_nodes(nodes), or they can be designated with a list of their names to Tree.prune_to(names). If the tree is expected to be bifurcating 'merge_monotomies' should remain True. When a node is pruned, that node's sibling will be the only remaining child of the parental node. When 'merge_monotomies' is True the parental node is also removed (unless it is designated to be kept by being a part of 'names' or 'nodes'), and the sibling is connected directly to its grandparental node while retaining the original overall branch lengths. Set it to False if those monotomies should be retained.
+  - Note that the Tree.get_nodes_starting_with(prefixes) method may be useful here to generate a list of nodes that all begin with one or more prefixes. This can be helpful when pruning trees that contain nodes with the same or similar names, or to capture various levels of taxonomy in a tree of life.
 Tree.replace_in_names(replacements, ignore_case=False)
   - This method modifies the names of all nodes in the tree. 'replacements' must be a dictionary={'pattern1':'new_text1', 'pattern2':'new_text2', ...}, that will replace the given 'pattern' substrings with their respective replacements in a single pass. For example, to remove all '&' characters, replace all spaces with underscores, and simplify a species designation, 'replacements' would be {'&':'', ' ':'_', 'C.elegans':'cel'}. If 'ignore_case' is True, patterns will match to substrings regardless of their case (upper, lower, or mixed). If 'ignore_case' is False, only substrings that exactly match the pattern will be replaced. In either case, the case of the new_text will not be altered.
 Tree.set_support_type(support_type)
@@ -97,6 +101,8 @@ Tree.get_node(name, prevent_error=False)
   - This method returns the TreeNode object named 'name'. An error will be raised if no node matches the given string, unless 'prevent_error'=True, which will cause the function to return None instead. Mappings from node names to their TreeNode objects may also be accessed through the Tree.node_names dictionary object. If the Tree instance was created with the default argument remove_name_quotes=True, the given name will also have its containing quotes removed, if present.
 Tree.get_nodes(names)
   - This method takes a sequence of node names as strings, and returns the corresponding list of TreeNode objects. A warning will be printed for any names that do not match a TreeNode object, but nothing will be added to the returned list; a consequence is that an empty list will be returned if no names match.
+Tree.get_nodes_starting_with(prefixes)
+  - This method takes a sequence of node name prefixes as strings, and returns a list of all TreeNode objects whose name begins with at least one of those prefixes.
 Tree.get_ordered_nodes()
   - This method returns all nodes as an ordered list of TreeNode objects. It starts with the root, then its first child, then that child's first child, and so on in a depth-first pre-order (NLR) traversal.
 Tree.get_node_leaves(node)
@@ -122,15 +128,27 @@ Tree.get_distance_matrix()
   - This method returns 'names', 'distance_matrix'; where 'names' contains all tree leaf names as a list of strings (the same as returned by Tree.get_named_leaves()), and 'distance_matrix' is a symmetrical 2D Numpy array. The phylogenetic distance between tree leaves at indices i and j from 'names' is found by 'dist_mat[i,j]'.
 Tree.get_leaf_coordinate_points(max_dimensions=None)
   - This method returns 'names', 'coordinate_points'; where 'names' contains all tree leaf names as a list of strings (the same as returned by Tree.get_named_leaves()), and 'coordinate_points' is a 2D numpy array. 'coordinate_points[i]' is a numpy array representing a point in Euclidean space for the tree leaf 'names[i]', such that all points respect the pairwise distances in the tree. The coordinates will use the minimum number of dimensions required to satisfy those distances, though 'max_dimensions' can be used to specify a maxinum number of dimensions. Though the least important dimensions will be discarded first, the agreement between pairwise coordinate distances and tree distances will degrade with every lost dimension.
+
+General notes
+-------------
+This module expects node names to be unique. If two nodes have the same name, the node that is processed second will have '_2' appended to its name. This may affect the methods that look for nodes by name.
+
+Some functions will print warnings or other information during execution that are designed to be useful for a user working with this module in simple scripts or in the interpreter. To suppress these messages, import this module and then set 'phylo.verbose' to False.
 """
 
-# All parsing functions must call self.reset_nodes(), use self.new_tree_node() to create nodes, and set one as self.root. All nodes must have their .parent and .children attributes set. All nodes should have their .name, .branch, .support, .support_type, and .comment attributes filled if possible, though all are optional. Finally, self.process_tree_nodes() must be called to finish everything.
+# Developer notes:
+# All parsing functions must call self.reset_nodes(), then use self.new_tree_node() to create nodes, and finally set one as self.root.
+# All nodes must have their .parent and .children attributes set. All nodes should have their .name, .branch, .support, .support_type, and .comment attributes filled if possible, though all are optional.
+# Use remove_tree_node() to remove nodes from the tree.
+# self.process_tree_nodes() must be called after adding or removing a batch of nodes.
+
 
 import re, operator, itertools
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 import numpy as np
 
+verbose = True
 
 def load_tree(tree_filename, internal_as_names=False, **kwargs):
     with open(tree_filename) as f:
@@ -436,6 +454,31 @@ class Tree(object):
         """Reorders each node's children for asthetic purposes.
         If increasing=True, children are ordered so that short leaves come before leaves with long branches, which come before children that are internal nodes. Setting increasing=False reverses this."""
         self.traverse_order_children(self.root, increasing)
+    def prune_to(self, names, merge_monotomies=True):
+        """Modifies the tree in place, keeping 'names' and relevant predecessors but pruning off all others."""
+        self.prune_to_nodes(self.get_nodes(names), merge_monotomies)
+    def prune_to_nodes(self, nodes, merge_monotomies=True):
+        """Modifies the tree in place, keeping 'nodes' and relevant predecessors but pruning off all others."""
+        to_remove = self.leaves - set(nodes)  # This is sufficient to erode all unwanted internal nodes.
+        for node in to_remove:
+            self.remove_tree_node(node)
+            parent = node.parent
+            if parent in nodes:
+                continue  # Only happens if the user wants to keep an internal node.
+            elif merge_monotomies and len(parent.children) == 1:
+                sib = parent.children[0]
+                if parent != self.root:
+                    # node.parent only has 1 child, so it's removed and node's sib is connected to node's grandparent.
+                    sib.branch += parent.branch
+                    par_index = parent.parent.children.index(parent)
+                    parent.parent.children[par_index] = sib
+                    sib.parent = parent.parent
+                else:
+                    # self.root now has only 1 child, so it's replaced by that child.
+                    self.root = sib
+                    self.root.branch = 0
+                self.remove_tree_node(parent, remove_from_parent=False)
+        self.process_tree_nodes()
     def replace_in_names(self, replacements, ignore_case=False):
         """Expects 'replacements' to be a dictionary={'pattern':'new_text', ...}, that will replace the string 'pattern' with 'new_text' in a single pass in all node names. 'ignore_case' allows patterns to match regardless of their case."""
         replacer = self.create_string_replacer_function(replacements, ignore_case)
@@ -479,11 +522,13 @@ class Tree(object):
                         if sib.branch < min_pos:
                             min_pos = sib.branch
                 if len(pos_sibs) == 0:
-                    print("Warning: could not balance the negative branch of node '{}' as it has no siblings with positive branches.".format(node.name))
+                    if verbose:
+                        print("Warning: could not balance the negative branch of node '{}' as it has no siblings with positive branches.".format(node.name))
                     continue
                 neg_delta /= float(len(pos_sibs))
                 if abs(neg_delta) > min_pos:
-                    print("Warning: could not balance the negative branch of node '{}' as its siblings' branches were not long enough to accommodate it.".format(node.name))
+                    if verbose:
+                        print("Warning: could not balance the negative branch of node '{}' as its siblings' branches were not long enough to accommodate it.".format(node.name))
                     continue
                 for neg in neg_sibs:
                     neg.branch = new_value
@@ -514,15 +559,21 @@ class Tree(object):
             raise PhyloValueError("Error: could not find a TreeNode object named {}".format(name))
         return node
     def get_nodes(self, names):
-        """Given a list of strings, returns a list of TreeNode objects representing those nodes."""
+        """Given a list of strings, returns a list of TreeNode objects with those names."""
         nodes = []
         for name in names:
             node = self.get_node(name, prevent_error=True)
             if node == None:
-                print('Warning: could not find a TreeNode named {}.'.format(name))
+                if verbose:
+                    print('Warning: could not find a TreeNode named {}.'.format(name))
             else:
                 nodes.append(node)
         return nodes
+    def get_nodes_starting_with(self, prefixes):
+        """Given a list of strings, returns a list of TreeNode objects whose names begin with those strings."""
+        if self._remove_name_quotes:
+            prefixes = [pref[1:-1] if pref[0] == pref[-1] == "'" or pref[0] == pref[-1] == '"' else pref for pref in prefixes]
+        return [node for name, node in self.node_names.items() if name.startswith(tuple(prefixes))]
     def get_ordered_nodes(self):
         """Returns self.nodes as an ordered list. It starts with self.root, then its first child, then that child's first child, and so on in a depth-first pre-order (NLR) traversal."""
         nodes = []
@@ -579,6 +630,7 @@ class Tree(object):
         new_tree._is_cladogram = self._is_cladogram
         new_tree._cladogram_branch = self._cladogram_branch
         new_tree._node_id_template = self._node_id_template
+        new_tree._node_ids = self._node_ids.copy()
         new_tree._node_id_index = self._node_id_index
         new_tree.root = self.root.copy(new_tree)
         self.copy_nodes(self.root, new_tree.root, new_tree)
@@ -1151,7 +1203,8 @@ class Tree(object):
         if otus == None:
             otus = ET_root.find(ns + 'otus')
         if otus == None:
-            print("Warning: malformed NeXML file. No 'otus' block was found, but parsing can continue.")
+            if verbose:
+                print("Warning: malformed NeXML file. No 'otus' block was found, but parsing can continue.")
         trees_e = ET_root.find('trees')
         if trees_e == None:
             trees_e = ET_root.find(ns + 'trees')
@@ -1297,28 +1350,14 @@ class Tree(object):
         node = TreeNode(self, node_id, parent)
         self.nodes.add(node)
         return node
-    def separate_square_comments(self, data_str):
-        """Given a string, separates it into data and comments.
-        Ex: 'some_data[a comment] data [now [a nested] comment]end' becomes ['some_data', '[a comment]', ' data ', '[now [a nested] comment]', 'end']."""
-        data_buff = []
-        lsq, rsq = data_str.find('['), -1
-        while lsq > -1:
-            if lsq != 0:
-                data_buff.append(data_str[rsq+1:lsq])
-            rsq = data_str.find(']', lsq+1)
-            sub_lsq = data_str.find('[', lsq+1)
-            while -1 < sub_lsq < rsq:
-                sub_lsq = data_str.find('[', sub_lsq+1)
-                rsq = data_str.find(']', rsq+1)
-            if rsq == -1:
-                raise PhyloValueError("Error: mismatched square brackets: '{}'. Cannot extract comments.".format(data_str))
-            data_buff.append(data_str[lsq:rsq+1])
-            lsq = data_str.find('[', rsq+1)
-        if rsq < len(data_str) - 1:
-            data_buff.append(data_str[rsq+1 :])
-        return data_buff
+    def remove_tree_node(self, node, remove_from_parent=True):
+        """Expects process_tree_nodes() to be called afterwards, as does not modify self.leaves, self.internal or other such attributes."""
+        if remove_from_parent and node != self.root:
+            node.parent.children.remove(node)
+        self._node_ids.remove(node.id)
+        self.nodes.remove(node)
     def process_tree_nodes(self):
-        """Cleans up the node names, differentiating between internal names and support values. Ensures all nodes have a numerical node.branch value. Sets self._is_cladogram. Fills out the self.leaves and self.internal sets."""
+        """Cleans up the node names, differentiating between internal names and support values. Ensures all nodes have a numerical node.branch value. Sets self._is_cladogram. Fills out the self.leaves and self.internal sets and the self.node_names dict."""
         self.leaves, self.internal = set(), set()
         _is_cladogram = True
         for node in self.nodes:
@@ -1358,6 +1397,8 @@ class Tree(object):
                 while name in self.node_names:
                     i += 1
                     name = '{}_{}'.format(node.name, i)
+                if verbose:
+                    print('Warning: non-unique node "{}" was renamed to "{}"'.format(node.name, name))
                 node.name = name
             self.node_names[node.name] = node
             node._been_processed = True
@@ -1379,6 +1420,26 @@ class Tree(object):
             return
         else:
             self.traverse_parents_to_root(node.parent, path)
+    def separate_square_comments(self, data_str):
+        """Given a string, separates it into data and comments.
+        Ex: 'some_data[a comment] data [now [a nested] comment]end' becomes ['some_data', '[a comment]', ' data ', '[now [a nested] comment]', 'end']."""
+        data_buff = []
+        lsq, rsq = data_str.find('['), -1
+        while lsq > -1:
+            if lsq != 0:
+                data_buff.append(data_str[rsq+1:lsq])
+            rsq = data_str.find(']', lsq+1)
+            sub_lsq = data_str.find('[', lsq+1)
+            while -1 < sub_lsq < rsq:
+                sub_lsq = data_str.find('[', sub_lsq+1)
+                rsq = data_str.find(']', rsq+1)
+            if rsq == -1:
+                raise PhyloValueError("Error: mismatched square brackets: '{}'. Cannot extract comments.".format(data_str))
+            data_buff.append(data_str[lsq:rsq+1])
+            lsq = data_str.find('[', rsq+1)
+        if rsq < len(data_str) - 1:
+            data_buff.append(data_str[rsq+1 :])
+        return data_buff
 
     # # #  Misc functions
     def create_string_replacer_function(self, replacements, ignore_case=False):
@@ -1430,6 +1491,8 @@ class Tree(object):
         return _str
     def __repr__(self):
         return '<phylo.Tree at {}>'.format(hex(id(self)))
+    def __len__(self):
+        return len(self.leaves)
 
 
 class TreeNode(object):

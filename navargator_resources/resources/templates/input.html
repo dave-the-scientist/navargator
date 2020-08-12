@@ -196,16 +196,16 @@
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <div class="horizontal-row-div">
+              <div id="scaleBarRowDiv" class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
                   <input id="showScaleBarCheckbox" type="checkbox" checked />
                   <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
                 </label>
                 <div>
                   <label style="font-size:0.8em;margin-left:10px">Length:</label>
-                  <input id="scaleBarInput" placeholder="size" />
+                  <input id="scaleBarInput" autocomplete="off" placeholder="size" />
                 </div>
-                <button id="scaleBarInputGoButton" style="display:none">Ok</button>
+                <button id="scaleBarInputGoButton" style="display:none;">Ok</button>
               </div>
             </div>
 
@@ -247,12 +247,6 @@
                   <h2 class="floating-pane-header">Export variant names</h2>
                   <button class="floating-pane-close"></button>
                 </div>
-                <div id="exportNamesToggleDiv" class="toggle-button-container">
-                  <input type="radio" id="exportNamesCheckbox" name="export-choice" class="toggle-button-input" checked>
-                  <label for="exportNamesCheckbox" class="toggle-button-label toggle-button-label-left">Names</label>
-                  <input type="radio" id="exportNamesAndScoresCheckbox" name="export-choice" class="toggle-button-input">
-                  <label for="exportNamesAndScoresCheckbox" class="toggle-button-label toggle-button-label-right">Names and scores</label>
-                </div>
                 <div id="exportNamesMainDiv">
                   <div id="exportNamesLeftColumn">
                     <textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
@@ -260,8 +254,8 @@
                   <div id="exportNamesRightColumn">
                     <label id="exportDelimiterLabel">Delimiter:</label>
                     <select id="exportDelimiterSelect">
-                      <option value="tab" selected>Tab</option>
-                      <option value="comma">Comma</option>
+                      <option value="comma" selected>Comma</option>
+                      <option value="tab">Tab</option>
                       <option value="space">Space</option>
                       <option value="newline">New line</option>
                     </select>
@@ -271,6 +265,7 @@
                 </div>
               </div>
 
+              <label>Save to file:</label>
               <div class="horizontal-row-div">
                 <button id="exportTreeFileButton" class="jq-ui-button">Save tree as</button>
                 <select id="exportTreeFileTypeSelect">
@@ -284,6 +279,7 @@
                 <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
               </div>
               <hr>
+              <label>Get variant data:</label>
               <div class="horizontal-row-div">
                 <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
               </div>
@@ -337,7 +333,7 @@
 
             <div class="horizontal-row-div">
               <button id="saveSessionButton" class="jq-ui-button">Save session</button>
-              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (~90MB file for a 4,000 variant tree).">
+              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (90MB file for a tree with 4,000 leaves).">
                 <input id="sessionIncludeDistancesCheckbox" type="checkbox" />
                 <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">Include distances</label>
               </label>

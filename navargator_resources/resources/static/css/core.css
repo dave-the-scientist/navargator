@@ -234,6 +234,7 @@ table.sortable th.sorttable_sorted_reverse:after {
 }
 .nvrgtr-checkbox-label {
   line-height: 19px;
+  font-size: 0.9em;
 }
 /* The check boxes: */
 .nvrgtr-checkbox, .nvrgtr-radio-checkbox {
@@ -811,6 +812,9 @@ input.select-group-node-spinner {
 }
 
 /* ======  Normalization and scale bar inputs  ====== */
+#scaleBarRowDiv {
+  padding-bottom: 3px;
+}
 #normValInput,
 #scaleBarInput {
   padding: 1px 3px;

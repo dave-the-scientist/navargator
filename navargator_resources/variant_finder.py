@@ -10,6 +10,7 @@ import numpy as np
 from navargator_resources import phylo
 from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
 
+phylo.verbose = False
 
 # TODO:
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.

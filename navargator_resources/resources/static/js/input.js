@@ -3,11 +3,11 @@
 // BUGS:
 
 // TODO:
+// - Just like with the results histo, the score graph y-axis values can push on to the "Tree score" label. I'd like to dynamically set those margins to prevent that.
 // - For banners:
 //   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner. Possibly. Though this could be a fair bit of work.
+//     - Instead of redrawing, just hide enough outer banners, and recolour the remaining ones. Maybe instead of each node knowing its banner segment, it access it through a function that is aware of which banners are hidden/shown.
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
-// - Would be nice to have a "hidden" js function that returns the connection_manager dict, so I can see on the web version how it's handling things (does "close" get sent on a reload?), and check into it from time to time.
-//   - Wouldn't really be able to provide any functionality, as it would be potentially usable by anyone that cared to check the source code.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.

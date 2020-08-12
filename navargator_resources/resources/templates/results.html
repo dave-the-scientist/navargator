@@ -160,14 +160,14 @@
                 <input id="showLegendCheckbox" type="checkbox" checked />
                 <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
               </label>
-              <div class="horizontal-row-div">
+              <div id="scaleBarRowDiv" class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
                   <input id="showScaleBarCheckbox" type="checkbox" checked />
                   <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
                 </label>
                 <div>
                   <label style="font-size:0.8em;margin-left:10px">Length:</label>
-                  <input id="scaleBarInput" placeholder="size" />
+                  <input id="scaleBarInput" autocomplete="off" placeholder="size" />
                 </div>
                 <button id="scaleBarInputGoButton" style="display:none">Ok</button>
               </div>
@@ -224,8 +224,8 @@
                   <div id="exportNamesRightColumn">
                     <label id="exportDelimiterLabel">Delimiter:</label>
                     <select id="exportDelimiterSelect">
-                      <option value="tab" selected>Tab</option>
-                      <option value="comma">Comma</option>
+                      <option value="comma" selected>Comma</option>
+                      <option value="tab">Tab</option>
                       <option value="space">Space</option>
                       <option value="newline">New line</option>
                     </select>
@@ -235,11 +235,13 @@
                 </div>
               </div>
 
+              <label>Save to file:</label>
               <div class="horizontal-row-div">
                 <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
                 <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
               </div>
               <hr>
+              <label>Get variant data:</label>
               <div class="horizontal-row-div">
                 <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
                 <button id="exportChosenButton" class="jq-ui-button">Export chosen</button>
