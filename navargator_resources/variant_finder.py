@@ -13,6 +13,9 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
+# - When parsing a nvrgtr file, if no available are set, it is interpreted that all should be avail. Stop that. If all are avail, all should be listed in the file (also needs to be changed). Be more literal.
+# - When loading an nvrgtr file, the names of selection groups are converted to lower case. Don't.
+# - Include Display Legend in nvrgtr file (if it isn't).
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 # - Implement threshold clustering.
@@ -23,6 +26,7 @@ phylo.verbose = False
 
 
 # # # # #  Session file strings  # # # # #
+# Note: tags are expected to be capitalized
 tag_affixes = ('[(', ')]')
 chosen_nodes_tag = 'Chosen variants'
 available_nodes_tag = 'Available variants'
@@ -49,7 +53,6 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
     data = {}
     # #  Start of process_tag_data()
     def process_tag_data(tag, data_buff):
-        tag = tag.capitalize()
         if tag in data:
             raise NavargatorValidationError('Error: the given NaVARgator session file has multiple sections labeled "{}{}{}".'.format(tag_affixes[0], tag, tag_affixes[1]))
         if not data_buff:

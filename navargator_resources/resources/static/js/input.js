@@ -7,6 +7,7 @@
 // - For banners:
 //   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner. Possibly. Though this could be a fair bit of work.
 //     - Instead of redrawing, just hide enough outer banners, and recolour the remaining ones. Maybe instead of each node knowing its banner segment, it access it through a function that is aware of which banners are hidden/shown.
+//   - Add ability to drag and reorder the banner list. https://www.w3schools.com/html/html5_draganddrop.asp  https://medium.com/better-programming/create-a-sortable-list-with-draggable-items-using-javascript-9ef38f96b258
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
@@ -15,8 +16,9 @@
 //   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree.
 // - It would be great if users could click/hover on a tree internal node and have all descendent nodes respond.
 //   - The Tree.get_ordered_nodes() method from phylo.py can help. If leaves are in that order, then all internal nodes only need to know the indices of their descendents in that list.
-//   - Not too sure how to get those node names here into js, and parse the tree to find the coordinates to draw a node object.
-//   - If I do manage this, I'd like to add an option in Tree manipulations to save a subtree. Select all
+//    - Not too sure how to get those node names here into js, and parse the tree to find the coordinates to draw a node object.
+//   - **OR** use a shift-click to select a range from the most recent selected. Seems a hell of a lot easier.
+//   - If I do manage this, I'd like to add an option in Tree manipulations to save a subtree. Will identify most recent common ancestor of all selected nods, save that subtree.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.

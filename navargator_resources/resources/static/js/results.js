@@ -25,6 +25,7 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
+// - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
 // - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
 //   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
 //   - pm-slp-all.nwk is a good test tree for this.

@@ -10,7 +10,7 @@ def new_random_port():
     result = sock.connect_ex(('127.0.0.1', 0))
     ip, prt = sock.getsockname()
     if result == 0:
-        print('\nError trying to open a random port. Returned code: %i, ip: %s, port: %i' % (result, ip, prt))
+        print('\nError trying to open a random port. Returned code: {}, ip: {}, port: {}'.format(result, ip, prt))
         return False
     else:
         return prt
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     daemon = navargator_daemon.NavargatorDaemon(server_port, threads=num_threads, verbose=verbose)
 
     if len(sys.argv) == 1:
-        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, daemon.local_input_session_id)
+        input_url = 'http://127.0.0.1:{}/input?{}'.format(server_port, daemon.local_input_session_id)
     else:
         input_file = sys.argv[1].strip()
         file_name = os.path.basename(input_file)
@@ -49,10 +49,10 @@ if __name__ == '__main__':
         else:
             tree_data = open(input_file).read().strip()
             session_id = daemon.new_variant_finder(tree_data, tree_format, file_name=file_name)
-        input_url = 'http://127.0.0.1:%i/input?%s' % (server_port, session_id)
+        input_url = 'http://127.0.0.1:{}/input?{}'.format(server_port, session_id)
 
     if manually_open_browser:
-        print('Open a browser to the following URL:\n%s' % input_url)
+        print('Open a browser to the following URL:\n{}'.format(input_url))
     else:
         #print('Opening browser...')
         if mute_opening_browser_warnings:

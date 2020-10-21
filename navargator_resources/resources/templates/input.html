@@ -211,29 +211,36 @@
 
             <h2 class="collapsible-header">Selection groups<div id="selectionGroupsHelp" class="help-button"></div></h2>
             <div id="selectionGroupsDiv" class="collapsible-panel">
-              <label>Saved selection groups</label>
-              <div id="selectGroupListDiv"></div>
-              <label>Selection formatting</label>
-              <div class="horizontal-row-div">
-                <button id="selectGroupApplyButton" class="jq-ui-button">Apply</button>
-                <button id="selectGroupClearFormatButton" class="jq-ui-button">Clear</button>
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Tree banners</label>
+                <button id="selectGroupAddBannerButton" class="jq-ui-button">New</button>
+                <div id="selectGroupBannerListDiv"></div>
               </div>
-              <table class="select-group-format-table"><tbody>
-                <tr>
-                  <td><label class="selection-group-format-label">Node colour</label></td>
-                  <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('node')"></td>
-                  <td><label class="selection-group-format-label">Node size</label></td>
-                  <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
-                </tr>
-                <tr>
-                  <td><label class="selection-group-format-label">Label colour</label></td>
-                  <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
-                  <td><label class="selection-group-format-label">Label text</label></td>
-                  <td><input id="text_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('text')"></td>
-                </tr>
-              </tbody></table>
-              <button id="selectGroupAddBannerButton" class="jq-ui-button">Add new banner</button>
-              <div id="selectGroupBannerListDiv"></div>
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Selection formatting</label>
+                <table class="select-group-format-table"><tbody>
+                  <tr>
+                    <td><label class="selection-group-format-label">Node colour</label></td>
+                    <td><input id="node_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('node')"></td>
+                    <td><label class="selection-group-format-label">Node size</label></td>
+                    <td><input id="selectGroupNodeSizeSpinner" class="select-group-node-spinner" placeholder="None" /></td>
+                  </tr>
+                  <tr>
+                    <td><label class="selection-group-format-label">Label colour</label></td>
+                    <td><input id="label_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('label')"></td>
+                    <td><label class="selection-group-format-label">Label text</label></td>
+                    <td><input id="text_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('text')"></td>
+                  </tr>
+                </tbody></table>
+                <div class="horizontal-row-div" style="margin-left:5px;margin-right:5px">
+                  <button id="selectGroupApplyButton" class="jq-ui-button">Apply</button>
+                  <button id="selectGroupClearFormatButton" class="jq-ui-button">Clear</button>
+                </div>
+              </div>
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Saved selection groups</label>
+                <div id="selectGroupListDiv"></div>
+              </div>
               <div class="horizontal-row-div">
                 <input id="selectGroupNameInput" placeholder="Selection group name" />
                 <button id="selectGroupSaveButton" class="jq-ui-button">Save</button>
@@ -418,8 +425,8 @@
 
           <div id="treeControlsDiv" class="tree-control-div" style="display:none">
             <div class="tree-control-row">
-              <button id="treeZoomOutButton" class="control-element control-pair-left" type="button">&#10134;</button>
-              <button id="treeZoomInButton" class="control-element" type="button">&#10133;</button>
+              <button id="treeZoomOutButton" class="control-element control-pair-left" type="button">&#8722;</button>
+              <button id="treeZoomInButton" class="control-element" type="button">&#43;</button>
               <button id="treeZoomResetButton" class="control-element control-pair-right" type="button">Reset</button>
               <button id="scrollZoomButton" class="control-element" type="button"><span id="scrollZoomText">Scroll<br>Zoom</span><span id="scrollZoomStatus">Off</span></button>
             </div>

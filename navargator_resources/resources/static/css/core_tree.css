@@ -185,7 +185,9 @@
   left: 10px;
 }
 #treeZoomOutButton, #treeZoomInButton {
-  font-size: 12px;
+  font-size: 18px;
+  line-height: 20px;
+  font-weight: bold;
 }
 #treeZoomInButton, #treeZoomResetButton {
   margin-right: 4px;

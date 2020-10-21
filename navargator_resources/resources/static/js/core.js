@@ -1,6 +1,7 @@
 // NOTE:
 
 // TODO:
+// Find more places to use labeled-group-div to group elements in both pages; probably Display Options.
 // If you save a large tree as an svg, the text objects are generally hidden by default. But if you open one with photoshop, they're still present (and weirdly spaced out in a circle 2x larger than the tree). Removing them will keep file sizes down, and make subsequent image manipulation easier.
 //   - Should write a function to copy(? if needed) the tree and remove elements that aren't actually displayed. Like names if the font size is 0, the mouseover objects for the labels, the search highlights (if no search is currently active), etc. Then pass that data to downloadData().
 // I don't really like the 'avilable' colour. Maybe something more like #1B6B87
@@ -433,10 +434,13 @@ function setupSelectionGroupsPane() {
   $("#selectGroupSaveButton").click(function() {
     var group_name = $.trim($("#selectGroupNameInput").val());
     if (group_name == '') {
+      while (nvrgtr_data.selection_groups.has('Group_' + select_group_int)) {
+        select_group_int += 1;
+      }
       group_name = 'Group_' + select_group_int;
-      select_group_int += 1;
     }
-    addNewSelectionGroup(group_name);
+    addNewSelectionGroup(group_name, null, true);
+    $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
   });
   $("#selectGroupClearFormatButton").click(function() {
     applySelectionGroupFormat(true);
@@ -857,7 +861,7 @@ function parseBasicData(data_obj) {
   }
   processDisplayOptions(data.display_opts);
   data.selection_groups_order.forEach(function(group_name) {
-    addNewSelectionGroup(group_name, data.selection_groups_data[group_name]);
+    addNewSelectionGroup(group_name, data.selection_groups_data[group_name], false);
   });
   $(".select-group-list-element").removeClass('select-group-list-element-active');
 }
@@ -1148,7 +1152,7 @@ function applyAllSelectionGroupFormats() {
     });
   }
 }
-function addNewSelectionGroup(group_name, group_data=null) {
+function addNewSelectionGroup(group_name, group_data=null, scroll_pane=true) {
   // Truncate the name for display if it's too long
   var group_display_name, group_name_max_display_length = 16;
   if (group_name.length > group_name_max_display_length) {
@@ -1158,8 +1162,8 @@ function addNewSelectionGroup(group_name, group_data=null) {
   }
   var group_size = group_data==null ? nvrgtr_data.selected.size : group_data.names.length;
   // Create the list_element and close button for that group:
-  var list_element = $('<div class="prevent-text-selection select-group-list-element"><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+group_size+')</label></div>');
-  var button_element = $('<button class="select-group-list-close prevent-text-selection">X</button>');
+  var list_element = $('<div class="select-group-list-element prevent-text-selection"><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+group_size+')</label></div>');
+  var button_element = $('<button class="list-close-button prevent-text-selection" title="Delete this selection group">&#10799</button>');
   list_element.append(button_element);
   // Set up the mouse functionality of the elements:
   list_element.mouseover(function() {
@@ -1237,7 +1241,14 @@ function addNewSelectionGroup(group_name, group_data=null) {
   $(".select-group-list-element").removeClass('select-group-list-element-active'); // Ensure no other groups are selected
   list_element.addClass('select-group-list-element-active'); // Select the new group
   // Scroll the list if needed
-  $("#selectGroupListDiv").animate({scrollTop:$("#selectGroupListDiv")[0].scrollHeight}, 300);
+  if (scroll_pane == true) {
+    let scroll_height_to = $("#selectGroupListDiv")[0].scrollHeight;
+    if (nvrgtr_data.selection_groups.has(group_name)) {
+      let group_ind = [...nvrgtr_data.selection_groups.keys()].indexOf(group_name);
+      scroll_height_to *= group_ind / nvrgtr_data.selection_groups.size;
+    }
+    $("#selectGroupListDiv").animate({scrollTop: scroll_height_to}, 250);
+  }
   // Update the backend data:
   if (group_data == null) {
     group_data = {'names':[...nvrgtr_data.selected], 'node_colour':getJscolorValue($("#node_colourPicker")), 'label_colour':getJscolorValue($("#label_colourPicker")), 'text_colour':getJscolorValue($("#text_colourPicker")), 'banner_colours':getCurrentBannerColours(), 'node_size':$("#selectGroupNodeSizeSpinner").val() || null};
@@ -1273,7 +1284,7 @@ function addBannerFormatElements(banner_name) {
     }
   });
   banner_div.append(banner_color);
-  var banner_close_button = $('<button title="Remove this banner">X</button>');
+  var banner_close_button = $('<button class="list-close-button prevent-text-selection" title="Remove this banner">&#10799</button>');
   banner_close_button.click(function() {
     let banner_eles = banner_list.children(),
       banner_ind = banner_eles.length - banner_eles.index(banner_div) - 1;

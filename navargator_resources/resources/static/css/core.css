@@ -452,6 +452,20 @@ div.collapsible-panel > hr {
   background-color: var(--dark-background-colour);
 }
 
+/* ======  Labeled divs for groups of elements  ====== */
+.labeled-group-div {
+  position: relative;
+  margin: 10px 0px;
+  padding: 10px 0px 5px 0px;
+  border: 1px solid var(--button-border-colour);
+}
+.labeled-group-label {
+  position: absolute;
+  top: -10px;
+  left: -2px;
+  background: var(--style-box-background-colour);
+}
+
 /* ======  Horizontal toggle-able button bar  ====== */
 .toggle-button-container {
   /* To use, the input elements of a group must all share the same name property.*/
@@ -520,6 +534,7 @@ div.collapsible-panel > hr {
   outline: none;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
+  font-weight: normal;
   text-align: center;
 }
 label.control-element, span.control-element {
@@ -574,15 +589,24 @@ button.control-element:active {
 }
 
 /* ======  Selection groups  ====== */
+.list-close-button {
+  margin: 0px;
+  padding: 1px 6px;
+  color: #818181;
+  background-color: transparent;
+  border: 1px solid transparent;
+}
+.list-close-button:hover {
+  color: #490000;
+  background-color: #F6F6F6;
+  border-color: var(--button-border-hover-colour);
+}
 #selectGroupListDiv {
   display: flex;
   flex-direction: column;
-  margin-bottom: 15px;
-  min-height: 100px;
+  min-height: 10px;
   max-height: 100px;
-  overflow-y: scroll;
-  border: 1px solid var(--button-border-colour);
-  box-shadow: 1px 1px 3px #ccc inset;
+  overflow-y: auto;
 }
 .select-group-list-element {
   display: flex;
@@ -601,11 +625,12 @@ button.control-element:active {
 .select-group-list-size {
   margin: 0px 5px 0px 5px;
 }
-.select-group-list-close {
+.select-group-list-element > .list-close-button {
   margin: 0px 10px 0px auto;
 }
 #selectGroupAddBannerButton {
   width: max-content;
+  margin-left: 5px;
 }
 .select-group-banner-div {
   margin-left: 15px;
