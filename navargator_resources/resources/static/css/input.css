@@ -28,9 +28,7 @@
 }
 
 /* Tree manipulation settings: */
-#treeManipRootOrderDiv {
-  flex-wrap: wrap;
-}
+
 
 /* Save session options: */
 #sessionIncludeDistancesLabel {

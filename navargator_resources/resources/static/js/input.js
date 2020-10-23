@@ -1,13 +1,10 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // BUGS:
+// Truncating names seems to work fine. Unless you have a selection group defined, which causes an error (tbpb82 trunc to 11).
 
 // TODO:
 // - Just like with the results histo, the score graph y-axis values can push on to the "Tree score" label. I'd like to dynamically set those margins to prevent that.
-// - For banners:
-//   - Add button to show/hide a banner. Doesn't delete it from the SG pane, doesn't remove selection group colourings, just redraws the tree without that banner. Possibly. Though this could be a fair bit of work.
-//     - Instead of redrawing, just hide enough outer banners, and recolour the remaining ones. Maybe instead of each node knowing its banner segment, it access it through a function that is aware of which banners are hidden/shown.
-//   - Add ability to drag and reorder the banner list. https://www.w3schools.com/html/html5_draganddrop.asp  https://medium.com/better-programming/create-a-sortable-list-with-draggable-items-using-javascript-9ef38f96b258
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:

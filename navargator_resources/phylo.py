@@ -96,7 +96,9 @@ Tree.set_cladogram(cladogram_branch=1.0)
 Methods to extract tree information
 -----------------------------------
 Tree.get_named_leaves()
-  - This method returns the name of every tree leaf as a sorted list of strings.
+  - This method returns the names of the leaves as a list of strings, sorted alphabetically.
+Tree.get_ordered_names()
+  - This method returns the names of the leaves as a list of strings, in the order present in the tree file.
 Tree.get_node(name, prevent_error=False)
   - This method returns the TreeNode object named 'name'. An error will be raised if no node matches the given string, unless 'prevent_error'=True, which will cause the function to return None instead. Mappings from node names to their TreeNode objects may also be accessed through the Tree.node_names dictionary object. If the Tree instance was created with the default argument remove_name_quotes=True, the given name will also have its containing quotes removed, if present.
 Tree.get_nodes(names)
@@ -547,9 +549,13 @@ class Tree(object):
 
     # # #  Public functions for working with my data structures
     def get_named_leaves(self):
-        """Returns a sorted list of strings."""
+        """Returns the names of the leaves as a list of strings, sorted alphabetically."""
         names = [node.name for node in self.leaves]
         return sorted(names)
+    def get_ordered_names(self):
+        """Returns the names of the leaves as a list of strings, in the order present in the tree file."""
+        nodes = self.get_ordered_nodes()
+        return [node.name for node in nodes if node in self.leaves]
     def get_node(self, name, prevent_error=False):
         """Given a node name as a string, returns the corresponding TreeNode object."""
         if self._remove_name_quotes and (name[0] == name[-1] == "'" or name[0] == name[-1] == '"'):

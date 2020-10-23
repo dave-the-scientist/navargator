@@ -16,6 +16,7 @@
   --button-border-colour: #8A8A8A;
   --button-border-hover-colour: #4F4F4F;
   --style-box-background-colour: #FFFFFF;
+  --light-gray-highlight: #F0F0F0;
   --shadow-colour: #555555;
   --font-family: Helvetica, Arial, sans-serif;
   --min-page-width: 700px;
@@ -456,13 +457,14 @@ div.collapsible-panel > hr {
 .labeled-group-div {
   position: relative;
   margin: 10px 0px;
-  padding: 10px 0px 5px 0px;
+  padding: 10px 5px 5px 5px;
   border: 1px solid var(--button-border-colour);
 }
 .labeled-group-label {
   position: absolute;
   top: -10px;
-  left: -2px;
+  left: 0px;
+  padding: 0px 10px 0px 5px;
   background: var(--style-box-background-colour);
 }
 
@@ -601,11 +603,16 @@ button.control-element:active {
   background-color: #F6F6F6;
   border-color: var(--button-border-hover-colour);
 }
+#savedSelectGroupOuter {
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-bottom: 0px;
+}
 #selectGroupListDiv {
   display: flex;
   flex-direction: column;
   min-height: 10px;
-  max-height: 100px;
+  max-height: 95px;
   overflow-y: auto;
 }
 .select-group-list-element {
@@ -619,6 +626,13 @@ button.control-element:active {
 .select-group-list-element-active {
   background-color: var(--selection-colour);
 }
+.select-group-drag {
+  margin-right: 5px;
+  color: var(--button-border-colour);
+}
+.select-group-list-element:hover > .select-group-drag {
+  color: black;
+}
 .select-group-list-name {
   margin: 0px 5px 0px 5px;
 }
@@ -628,22 +642,25 @@ button.control-element:active {
 .select-group-list-element > .list-close-button {
   margin: 0px 10px 0px auto;
 }
-#selectGroupAddBannerButton {
-  width: max-content;
-  margin-left: 5px;
+.select-group-banner-div:hover {
+  background-color: var(--light-gray-highlight);
 }
-.select-group-banner-div {
-  margin-left: 15px;
+.select-group-banner-drag {
+  color: var(--button-border-colour);
+}
+.select-group-banner-div:hover > .select-group-banner-drag {
+  color: black;
 }
 .select-group-banner-name {
-  width: 100px;
   padding: 1px 3px;
+  width: 80px;
+  background: transparent;
   outline: none;
   border: 1px solid transparent;
   transition: border-color 0.2s ease-in-out;
 }
 .select-group-banner-name:hover {
-  border-color: black;
+  border-color: var(--button-border-colour);
 }
 .select-group-banner-div .jscolor {
   width: 45px;
@@ -879,4 +896,9 @@ input.select-group-node-spinner {
 #scaleBarInputGoButton:active {
   background: linear-gradient(#DCDCDC, #FAFAFA);
   box-shadow: inset -4px -4px 4px rgba(255,255,255,.3), inset 4px 4px 4px rgba(201,201,201,.5);
+}
+
+/* ======  Common help button and messages  ====== */
+#treeHelp {
+  right: 10px;
 }

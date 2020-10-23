@@ -510,10 +510,10 @@ class NavargatorDaemon(object):
             s_id = ''.join([str(randint(0,9)) for i in range(self.sessionID_length)])
         return s_id
     def get_vf_data_dict(self, s_id):
-        data_dict = {'session_id':s_id, 'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'selection_groups_order':[], 'selection_groups_data':{}, 'file_name':'unknown file', 'max_root_distance':0.0, 'maintain_interval':self.maintain_interval}
+        data_dict = {'session_id':s_id, 'leaves':[], 'ordered_names':[], 'chosen':[], 'available':[], 'ignored':[], 'phyloxml_data':'', 'display_opts':{}, 'selection_groups_order':[], 'selection_groups_data':{}, 'file_name':'unknown file', 'max_root_distance':0.0, 'maintain_interval':self.maintain_interval}
         vf = self.sessions.get(s_id)
         if vf != None:
-            data_dict.update({'leaves':vf.leaves, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'selection_groups_order':vf.selection_groups_order, 'selection_groups_data':vf.selection_groups_data, 'file_name':vf.file_name, 'max_root_distance':vf.max_root_distance})
+            data_dict.update({'leaves':vf.leaves, 'ordered_names':vf.ordered_names, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'selection_groups_order':vf.selection_groups_order, 'selection_groups_data':vf.selection_groups_data, 'file_name':vf.file_name, 'max_root_distance':vf.max_root_distance})
         return data_dict
     def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:

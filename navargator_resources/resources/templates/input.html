@@ -81,14 +81,20 @@
 
             <h2 class="collapsible-header">Tree manipulations<div id="treeOptsHelp" class="help-button"></div></h2>
             <div id="treeManipulationsPanel" class="collapsible-panel">
-              <div id="treeManipRootOrderDiv" class="horizontal-row-div">
-                <button id="rootMidpointButton" class="jq-ui-button">Root: midpoint</button>
-                <button id="rootSelectionButton" class="jq-ui-button">Root: selection</button>
-                <button id="reorderNodesButton" class="jq-ui-button">Re-order nodes</button>
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Root tree by</label>
+                <div class="horizontal-row-div">
+                  <button id="rootMidpointButton" class="jq-ui-button">Midpoint</button>
+                  <button id="rootSelectionButton" class="jq-ui-button">Selection</button>
+                </div>
               </div>
-              <div class="horizontal-row-div">
-                <button id="truncateNamesButton" class="jq-ui-button">Truncate names:</button>
-                <input id="truncateNamesSpinner" class="param-spinner" />
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Modify tree</label>
+                <button id="reorderNodesButton" class="jq-ui-button">Re-order nodes</button>
+                <div class="horizontal-row-div">
+                  <button id="truncateNamesButton" class="jq-ui-button">Truncate names:</button>
+                  <input id="truncateNamesSpinner" class="param-spinner" />
+                </div>
               </div>
             </div>
 
@@ -232,12 +238,12 @@
                     <td><input id="text_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('text')"></td>
                   </tr>
                 </tbody></table>
-                <div class="horizontal-row-div" style="margin-left:5px;margin-right:5px">
+                <div class="horizontal-row-div">
                   <button id="selectGroupApplyButton" class="jq-ui-button">Apply</button>
                   <button id="selectGroupClearFormatButton" class="jq-ui-button">Clear</button>
                 </div>
               </div>
-              <div class="labeled-group-div">
+              <div id="savedSelectGroupOuter" class="labeled-group-div">
                 <label class="labeled-group-label">Saved selection groups</label>
                 <div id="selectGroupListDiv"></div>
               </div>
@@ -271,23 +277,21 @@
                   </div>
                 </div>
               </div>
-
-              <label>Save to file:</label>
-              <div class="horizontal-row-div">
-                <button id="exportTreeFileButton" class="jq-ui-button">Save tree as</button>
-                <select id="exportTreeFileTypeSelect">
-                  <option selected value="newick">Newick tree</option>
-                  <option value="nexus">NEXUS tree</option>
-                  <option value="phyloxml">PhyloXML tree</option>
-                  <option value="nexml">NeXML tree</option>
-                </select>
-              </div>
-              <div class="horizontal-row-div">
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Save to file</label>
+                <div class="horizontal-row-div">
+                  <button id="exportTreeFileButton" class="jq-ui-button">Save tree as</button>
+                  <select id="exportTreeFileTypeSelect">
+                    <option selected value="newick">Newick tree</option>
+                    <option value="nexus">NEXUS tree</option>
+                    <option value="phyloxml">PhyloXML tree</option>
+                    <option value="nexml">NeXML tree</option>
+                  </select>
+                </div>
                 <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
               </div>
-              <hr>
-              <label>Get variant data:</label>
-              <div class="horizontal-row-div">
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Get variant data</label>
                 <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
               </div>
             </div>
@@ -421,6 +425,7 @@
               <input id="varSearchInput" class="control-element control-pair-left" size="18" placeholder="Search variants" autocomplete="off" spellcheck="false" />
               <button id="varSearchButton" class="control-element control-pair-right"><span id="treeSearchSpanLine"></span><span id="treeSearchSpanCircle"></span></button>
             </div>
+            <div id="treeHelp" class="help-button"></div>
           </h2>
 
           <div id="treeControlsDiv" class="tree-control-div" style="display:none">

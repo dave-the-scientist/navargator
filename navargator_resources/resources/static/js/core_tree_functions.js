@@ -647,12 +647,30 @@ function drawClusterObject(nodes) {
 
 //   === Event handlers:
 function addNodeLabelEventHandlers(var_name, raphael_element) {
+  // Also handles shift-clicking to (de)select a range of variants.
   raphael_element.mouseover(function() {
     nodeLabelMouseoverHandler(var_name);
   }).mouseout(function() {
     nodeLabelMouseoutHandler(var_name);
-  }).click(function() {
-    nodeLabelMouseclickHandler(var_name);
+  }).click(function(event) {
+    if (event.shiftKey) {
+      if (nvrgtr_data.last_selected == null || nvrgtr_data.selected.size == 0) {
+        return;
+      }
+      let last_ind = nvrgtr_data.ordered_names.indexOf(nvrgtr_data.last_selected), cur_ind = nvrgtr_data.ordered_names.indexOf(var_name);
+      for (let i=Math.min(last_ind, cur_ind); i<=Math.max(last_ind, cur_ind); i++) {
+        nodeLabelMouseclickHandler(nvrgtr_data.ordered_names[i], false, nvrgtr_data.last_was_select);
+      }
+      numSelectedCallback();
+    } else {
+      nodeLabelMouseclickHandler(var_name);
+      nvrgtr_data.last_selected = var_name;
+      if (nvrgtr_data.nodes[var_name].selected == true) {
+        nvrgtr_data.last_was_select = true;
+      } else {
+        nvrgtr_data.last_was_select = false;
+      }
+    }
   });
 }
 function nodeLabelMouseoverHandler(var_name, change_node_colour=true) {

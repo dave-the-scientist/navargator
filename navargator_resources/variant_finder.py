@@ -14,7 +14,6 @@ phylo.verbose = False
 
 # TODO:
 # - When parsing a nvrgtr file, if no available are set, it is interpreted that all should be avail. Stop that. If all are avail, all should be listed in the file (also needs to be changed). Be more literal.
-# - When loading an nvrgtr file, the names of selection groups are converted to lower case. Don't.
 # - Include Display Legend in nvrgtr file (if it isn't).
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
@@ -182,6 +181,7 @@ class VariantFinder(object):
         self.file_name = file_name
         self.verbose = bool(verbose)
         self.leaves = []
+        self.ordered_names = []
         self.cache = {}
         self.normalize = self._empty_normalize()
         if display_options:
@@ -219,6 +219,7 @@ class VariantFinder(object):
                 self.orig_dist = distance_matrix
             else:
                 self.leaves, self.orig_dist = self.tree.get_distance_matrix()
+            self.ordered_names = self.tree.get_ordered_names()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             self.dist = self.orig_dist.copy()
             max_name_length = self.display_options.setdefault('sizes', {}).get('max_variant_name_length', None)

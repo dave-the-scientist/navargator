@@ -1,7 +1,8 @@
 // NOTE:
+// - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// Find more places to use labeled-group-div to group elements in both pages; probably Display Options.
+// Fix the spacing around the search results button. If width is set to 500, it's hidden by the input itself. Should probably extend on top of the tree name instead. I moved it to the left by 25px, which may be causing the issues.
 // If you save a large tree as an svg, the text objects are generally hidden by default. But if you open one with photoshop, they're still present (and weirdly spaced out in a circle 2x larger than the tree). Removing them will keep file sizes down, and make subsequent image manipulation easier.
 //   - Should write a function to copy(? if needed) the tree and remove elements that aren't actually displayed. Like names if the font size is 0, the mouseover objects for the labels, the search highlights (if no search is currently active), etc. Then pass that data to downloadData().
 // I don't really like the 'avilable' colour. Maybe something more like #1B6B87
@@ -21,7 +22,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'selection_groups':new Map(), 'banner_labels':[], 'num_selected':0, 'allow_select':true, 'considered_variants':{}, 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'ordered_names':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'last_selected':null, 'last_was_select':true, 'considered_variants':{}, 'selection_groups':new Map(), 'banner_labels':[], 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -379,6 +380,52 @@ function setupDisplayOptionsPane() {
   $("#showScaleBarCheckbox").prop('disabled', true);
 }
 function setupSelectionGroupsPane() {
+  var sg_banner_num = 1;
+  $("#selectGroupAddBannerButton").click(function() {
+    let banner_name = 'Banner '+sg_banner_num;
+    // Update the backend data structures
+    nvrgtr_display_opts.labels.banner_names.push(banner_name);
+    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+      group_data.banner_colours.push(null); // null means no colour will be set
+    }
+    // Add and update the HTML
+    addBannerFormatElements(banner_name);
+    $("#redrawTreeButton").click(); // Adds the text object to nvrgtr_data.banner_labels
+    $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
+    sg_banner_num += 1;
+  });
+  var banner_old_index;
+  $("#selectGroupBannerListDiv").sortable({
+    start: function(event, ui) {
+      banner_old_index = nvrgtr_data.banner_labels.length - ui.item.index() - 1;
+    },
+    update: function(event, ui) { // Updates the backend
+      let banner_new_index = nvrgtr_data.banner_labels.length - ui.item.index() - 1;
+      // Names of the banners
+      let temp_name = nvrgtr_display_opts.labels.banner_names.splice(banner_old_index, 1)[0];
+      nvrgtr_display_opts.labels.banner_names.splice(banner_new_index, 0, temp_name);
+      // Update the banner labels
+      for (let i=0; i<nvrgtr_data.banner_labels.length; i++) {
+        nvrgtr_data.banner_labels[i].attr('text', nvrgtr_display_opts.labels.banner_names[i]);
+      }
+      // Selection group banner colours
+      for (let format of nvrgtr_data.selection_groups.values()) {
+        let temp_colour = format.banner_colours.splice(banner_old_index, 1)[0];
+        format.banner_colours.splice(banner_new_index, 0, temp_colour);
+      }
+      // Updates the colour of the banner segment for each variant
+      $.each(nvrgtr_data.nodes, function(name, node) {
+        let ban_cols = node.banners.map(function(obj) {
+          return obj.attr('fill')
+        });
+        let temp_col = ban_cols.splice(banner_old_index, 1)[0];
+        ban_cols.splice(banner_new_index, 0, temp_col);
+        for (let i=0; i<ban_cols.length; i++) {
+          node.banners[i].attr({fill: ban_cols[i]});
+        }
+      });
+    }
+  });
   $("#selectGroupApplyButton").click(function() {
     applySelectionGroupFormat();
   });
@@ -411,24 +458,30 @@ function setupSelectionGroupsPane() {
       updateSelectionGroupNodeSize(parseFloat(this.value));
     }
   });
+
+  var sg_old_index;
+  $("#selectGroupListDiv").sortable({
+    start: function(event, ui) {
+      sg_old_index = ui.item.index();
+    },
+    update: function(event, ui) {
+      let sg_new_index = ui.item.index();
+      // Re-order the nvrgtr_data.selection_groups with a new Map object
+      let sg_order = [...nvrgtr_data.selection_groups.keys()];
+      let temp_sg_name = sg_order.splice(sg_old_index, 1)[0];
+      sg_order.splice(sg_new_index, 0, temp_sg_name);
+      let new_sg_map = new Map();
+      for (let i=0; i<sg_order.length; i++) {
+        new_sg_map.set(sg_order[i], nvrgtr_data.selection_groups.get(sg_order[i]));
+      }
+      nvrgtr_data.selection_groups = new_sg_map;
+    }
+  });
+
   $("#selectGroupNameInput").keydown(function(event) {
     if (event.which == 13) {
       $("#selectGroupSaveButton").click();
     }
-  });
-  var sg_banner_num = 1;
-  $("#selectGroupAddBannerButton").click(function() {
-    let banner_name = 'Banner '+sg_banner_num;
-    // Update the backend data structures
-    nvrgtr_display_opts.labels.banner_names.push(banner_name);
-    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
-      group_data.banner_colours.push(null); // null means no colour will be set
-    }
-    // Add and update the HTML
-    addBannerFormatElements(banner_name);
-    $("#redrawTreeButton").click(); // Adds the text object to nvrgtr_data.banner_labels
-    $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
-    sg_banner_num += 1;
   });
   var select_group_int = 1; // For unnamed groups
   $("#selectGroupSaveButton").click(function() {
@@ -825,7 +878,7 @@ function generateSigmoidFunction(b, m, r) {
 function generateSigmoidInverse(b, m, r) {
   // Generates the inverse of the sigmoid function with the given parameters
   return function(y) {
-    var c = 2*y/r - 1;
+    let c = 2*y/r - 1;
     return m - c / (b*Math.sqrt(1-c*c));
   }
 }
@@ -840,6 +893,7 @@ function parseBasicData(data_obj) {
   nvrgtr_page.session_id = data.session_id;
   nvrgtr_data.tree_data = data.phyloxml_data;
   nvrgtr_data.leaves = data.leaves;
+  nvrgtr_data.ordered_names = data.ordered_names;
   nvrgtr_data.lc_leaves = {}; // Lowercase names as keys, actual names as values. Used to search.
   var name;
   for (var i=0; i<data.leaves.length; ++i) {
@@ -1162,7 +1216,7 @@ function addNewSelectionGroup(group_name, group_data=null, scroll_pane=true) {
   }
   var group_size = group_data==null ? nvrgtr_data.selected.size : group_data.names.length;
   // Create the list_element and close button for that group:
-  var list_element = $('<div class="select-group-list-element prevent-text-selection"><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+group_size+')</label></div>');
+  var list_element = $('<div class="select-group-list-element prevent-text-selection"><label class="select-group-drag" title="Drag to re-order selection groups">&#10606;</label><label class="select-group-list-name">'+group_display_name+'</label><label class="select-group-list-size">('+group_size+')</label></div>');
   var button_element = $('<button class="list-close-button prevent-text-selection" title="Delete this selection group">&#10799</button>');
   list_element.append(button_element);
   // Set up the mouse functionality of the elements:
@@ -1257,13 +1311,12 @@ function addNewSelectionGroup(group_name, group_data=null, scroll_pane=true) {
 }
 function addBannerFormatElements(banner_name) {
   var sg_pane = $("#selectionGroupsDiv"), banner_list = $("#selectGroupBannerListDiv"),
-    banner_div = $('<div class="select-group-banner-div horizontal-row-div"></div>'),
+    banner_div = $('<div class="select-group-banner-div horizontal-row-div"><label class="select-group-banner-drag prevent-text-selection" title="Drag to re-order banners">&#10606;</label></div>'),
     banner_name_input = $('<input class="select-group-banner-name" value="'+banner_name+'">'),
     banner_color = $('<input class="jscolor" placeholder="None" spellcheck="false" onchange="updateSelectionGroupBannerColour(this)">');
   banner_name_input.blur(function() {
     let banner_eles = banner_list.children(),
       banner_ind = banner_eles.length - banner_eles.index(banner_div) - 1,
-      label_ind =
       new_name = $(this).val();
     nvrgtr_display_opts.labels.banner_names[banner_ind] = new_name;
     nvrgtr_data.banner_labels[banner_ind].attr('text', new_name);
@@ -1542,4 +1595,6 @@ function setupCoreHelpButtonText() {
   $("#displayOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Selection groups help:
   $("#selectionGroupsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
+  // Tree help:
+  $("#treeHelp .help-text-div").append("<p>Click on a node or label and then shift-click another to (de)select all variants between them.</p>");
 }

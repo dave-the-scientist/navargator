@@ -33,7 +33,7 @@
   display: inline-flex;
   align-items: center;
   top: 2px;
-  right: 15px;
+  right: 40px; /*Was 15px*/
 }
 #treeSearchDiv > * {
   margin-top: 0px;
