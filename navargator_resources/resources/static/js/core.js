@@ -2,7 +2,8 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// Fix the spacing around the search results button. If width is set to 500, it's hidden by the input itself. Should probably extend on top of the tree name instead. I moved it to the left by 25px, which may be causing the issues.
+// I'd like to be able to get distances between certain variants.
+// - If you select 2 and press button, get that distance. If you select many, will return the distances from each to the first selected (and average)?
 // If you save a large tree as an svg, the text objects are generally hidden by default. But if you open one with photoshop, they're still present (and weirdly spaced out in a circle 2x larger than the tree). Removing them will keep file sizes down, and make subsequent image manipulation easier.
 //   - Should write a function to copy(? if needed) the tree and remove elements that aren't actually displayed. Like names if the font size is 0, the mouseover objects for the labels, the search highlights (if no search is currently active), etc. Then pass that data to downloadData().
 // I don't really like the 'avilable' colour. Maybe something more like #1B6B87

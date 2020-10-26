@@ -1,5 +1,4 @@
 //TODO:
-// - If the tree width is set crazy small, drawing gets weird once the label size becomes big enough there is negative space for the tree on the canvas. Check for this. Also, with a crazy small tree the legend is drawn right on top. I've got a function to ensure that doesn't happen, doesn't appear to be working in those cases.
 
 // =====  Tree setup functions:
 function setupTreeElements() {
@@ -33,11 +32,9 @@ function setupTreeElements() {
   var search_select_add_title = "Add these hits to the current selection",
     search_select_cut_title = "Remove these hits from the current selection";
   // To calculate approx center point for the search_select button:
-  var button_half_width = 41.7, // For 2 digits selected. Close enough for others.
-    tree_div_pad_str = $("#mainTreeDiv").css('paddingRight'),
+  var tree_div_pad_str = $("#mainTreeDiv").css('paddingRight'),
     tree_div_pad = parseInt(tree_div_pad_str.slice(0,-2)),
-    search_input_size = $("#treeSearchDiv")[0].scrollWidth,
-    input_right_offset = search_input_size - button_half_width - tree_div_pad;
+    search_input_size = $("#treeSearchDiv")[0].scrollWidth;
 
   function setSearchSelectToAdd() {
     search_select_button.removeClass('tree-search-cut-hits');
@@ -71,7 +68,9 @@ function setupTreeElements() {
       var tree_div_width = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tree-width')),
         search_right_margin_str = $("#treeSearchDiv").css('right'),
         search_right_margin = parseInt(search_right_margin_str.slice(0,-2)),
-        search_select_max_width = (tree_div_width/2-input_right_offset-search_right_margin) + 'px';
+        search_button_width = $("#searchToSelectButton")[0].scrollWidth + 2,
+        input_right_offset = search_input_size - search_button_width/2 - tree_div_pad,
+        search_select_max_width = Math.max(tree_div_width/2-input_right_offset-search_right_margin, search_button_width) + 'px';
       search_button.addClass('tree-search-button-clear');
       setSearchSelectToAdd();
       search_hits_div.css('maxWidth', search_select_max_width);
@@ -312,7 +311,7 @@ function drawTree(marker_tooltips=true) {
   // Assumes that clearTree() has already been called.
   // Assumes the "Loading..." message has already been shown: $("#treeLoadingMessageGroup").show()
 
-  var min_tree_div_width = 500;
+  var min_tree_div_width = 500; // MUST be the same as in updateScaleBar()
   loadPhyloSVG(); // Reloads jsPhyloSVG.
   var tree_params = Smits.PhyloCanvas.Render.Parameters,
     tree_style = Smits.PhyloCanvas.Render.Style,
@@ -337,8 +336,16 @@ function drawTree(marker_tooltips=true) {
     total_label_size += (nvrgtr_display_opts.labels.banner_names.length-1) * nvrgtr_display_opts.sizes.banner_buffer;
   }
   total_label_size *= 2.0; // Convert from radius to diameter
-  nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
 
+  if (total_label_size >= canvas_size) {
+    let new_size = Math.ceil(total_label_size) + 1;
+    showErrorPopup("Error: tree width too small to accomodate the desired features. It has been set to "+new_size);
+    sizes.tree = new_size;
+    canvas_size = new_size;
+    $("#displayTreeWidthSpinner").spinner('value', new_size);
+  }
+
+  nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
   tree_params.Circular.bufferRadius = total_label_size/canvas_size;
   tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.big_marker_radius + 1;
   var data_object = {phyloxml: nvrgtr_data.tree_data};
@@ -356,12 +363,14 @@ function drawTree(marker_tooltips=true) {
   drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
   // Adjust the div holding the tree:
-  var tree_div_width = Math.max(sizes.tree, min_tree_div_width);
+  let tree_div_width = Math.max(canvas_size, min_tree_div_width);
   document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
   // Finalize the SVGs:
-  var canvas_height = calculateTreeCanvasHeight(canvas_size);
+  let [canvas_height, y_offset] = calculateTreeCanvasHeight(canvas_size, min_tree_div_width);
+  let x_offset = Math.max((min_tree_div_width-canvas_size)/2, 0); // Ensures it's centered
+
+  $("#treeSvg").attr({'x':x_offset, 'y':y_offset});
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_height});
-  $("#treeSvg").attr({'x':0, 'y':0});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
   updateTreeLegend(); // Must be called after setting figureSvg height.
@@ -511,18 +520,21 @@ function updateTreeLegend() {
   }
 }
 function updateScaleBar(bar_dist) {
-  var max_root_px = nvrgtr_data.max_root_pixels,
+  let min_tree_div_width = 500; // MUST be the same as in drawTree()
+  let max_root_px = nvrgtr_data.max_root_pixels,
     px_scale_factor = nvrgtr_data.max_root_distance / max_root_px, bar_px;
   if (isNaN(bar_dist) || bar_dist <= 0) {
     // Find an appropriate scale bar size if a valid size was not given:
-    var min_pix = 100, max_pix = 200; // Default scale bar size range
+    let min_pix = 100, max_pix = 200; // Default scale bar size range
     bar_dist = findNiceNumber(min_pix*px_scale_factor, max_pix*px_scale_factor);
   }
   bar_px = bar_dist / px_scale_factor;
   nvrgtr_display_opts.sizes.scale_bar_distance = bar_dist;
   // Reconfigure the scale bar to that size:
-  var bar_text_dist = 7, bar_buffer = 3;
-  var bar_xoffset = parseFloat($("#figureSvg").attr('width')) - bar_px - bar_buffer,
+  let bar_text_dist = 7, bar_buffer = 3;
+  // bar_xoffset accounts for when the tree is smaller than the div holding it
+  let tree_width = parseFloat($("#figureSvg").attr('width')),
+    bar_xoffset = Math.max(tree_width, min_tree_div_width)/2 + tree_width/2 - bar_px - bar_buffer,
     bar_yoffset = parseFloat($("#figureSvg").attr('height')) - bar_text_dist - bar_buffer;
   // Check to ensure bar_px isn't too wide for the current tree (figuresvg width - legend width). If it is, throw error popup, return '', set $("#scaleBarInput") to ''.
   if (!isNaN(bar_xoffset) && !isNaN(bar_yoffset)) {
@@ -570,18 +582,29 @@ function findNiceNumber(min_num, max_num) {
   return nice_num;
 }
 
-function calculateTreeCanvasHeight(canvas_size) {
-  var radius = canvas_size / 2.0,
-    legend_width = parseFloat($("#legendBorderRect").attr('width')),
-    legend_height = parseFloat($("#legendBorderRect").attr('height'));
-  // Calculates if there is an overlap between the legend and the tree
-  var allowed_height = radius - Math.sqrt(legend_width * (2*radius - legend_width));
-  var overlap = legend_height - allowed_height;
-  if (overlap > 0) {
-    return canvas_size + overlap;
+function calculateTreeCanvasHeight(canvas_size, min_tree_div_width) {
+  let radius = canvas_size / 2.0;
+  // Calculates if there is an overlap between the control buttons and the tree
+  let top_overlap, control_width = $("#treeControlsDiv")[0].scrollWidth,
+    control_height = $("#treeControlsDiv")[0].scrollHeight - 15,
+    split_width = Math.max(canvas_size, min_tree_div_width)/2 - control_width;
+  if (split_width >= radius) {
+    top_overlap = 0;
   } else {
-    return canvas_size;
+    let cleared_height = radius - Math.sqrt(radius*radius - split_width*split_width);
+    top_overlap = Math.max(control_height - cleared_height, 0);
   }
+  // Calculates if there is an overlap between the legend and the tree
+  let legend_overlap, legend_width = parseFloat($("#legendBorderRect").attr('width')),
+    legend_height = parseFloat($("#legendBorderRect").attr('height')),
+    legend_split = Math.max(canvas_size, min_tree_div_width)/2 - legend_width;
+  if (legend_split >= radius) {
+    legend_overlap = 0;
+  } else {
+    let allowed_height = radius - Math.sqrt(radius*radius - legend_split*legend_split);
+    legend_overlap = Math.max(legend_height - allowed_height, 0);
+  }
+  return [canvas_size + top_overlap + legend_overlap, top_overlap];
 }
 function drawBarGraphs() {
   var var_name, var_angle, dist, tooltip, path_str, bar_chart,
@@ -962,7 +985,6 @@ function distSquared(p, q) {
   var dy = q.y - p.y;
   return dx * dx + dy * dy;
 }
-
 
 // Unused functions:
 function arcsPath(hull) {

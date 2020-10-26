@@ -1,7 +1,7 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // BUGS:
-// Truncating names seems to work fine. Unless you have a selection group defined, which causes an error (tbpb82 trunc to 11).
+
 
 // TODO:
 // - Just like with the results histo, the score graph y-axis values can push on to the "Tree score" label. I'd like to dynamically set those margins to prevent that.

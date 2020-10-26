@@ -318,6 +318,8 @@ class VariantFinder(object):
         self._chosen = set(trans[name] for name in self.chosen)
         self._ignored = set(trans[name] for name in self.ignored)
         self.leaves = new_leaves
+        for sg_data in self.selection_groups_data.values():
+            sg_data['names'] = [trans[name] for name in sg_data['names']]
         # Don't have to modify self._not_ignored_inds as the order of self.leaves hasn't changed.
         # Re-generate the cache; names have changed, but cluster patterns and scores haven't:
         old_cache = self.cache
