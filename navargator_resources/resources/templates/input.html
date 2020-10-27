@@ -255,6 +255,19 @@
 
             <h2 class="collapsible-header">Export data<div id="exportDataHelp" class="help-button"></div></h2>
             <div class="collapsible-panel">
+              <div id="variantDistancesPane" class="floating-pane">
+                <div>
+                  <h2 class="floating-pane-header">Variant distances</h2>
+                  <button class="floating-pane-close"></button>
+                </div>
+                <div id="variantDistancesMainDiv">
+                  <p class="var-dist-p"><b>From:</b> <span id="variantDistanceFromSpan"></span></p>
+                  <p class="var-dist-p"><b>To:</b> <span id="variantDistanceToSpan"></span></p>
+                  <textarea id="variantDistancesText" autocomplete="off" spellcheck="false"></textarea>
+                  <p id="variantDistanceAvgP"><b>Average:</b> <span id="variantDistanceAvgSpan"></span></p>
+                </div>
+              </div>
+
               <div id="exportNamesPane" class="floating-pane">
                 <div>
                   <h2 class="floating-pane-header">Export variant names</h2>
@@ -277,6 +290,7 @@
                   </div>
                 </div>
               </div>
+
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Save to file</label>
                 <div class="horizontal-row-div">
@@ -288,10 +302,20 @@
                     <option value="nexml">NeXML tree</option>
                   </select>
                 </div>
+                <div class="horizontal-row-div">
+                  <button id="exportSubtreeFileButton" class="jq-ui-button">Save subtree as</button>
+                  <select id="exportSubtreeFileTypeSelect">
+                    <option selected value="newick">Newick tree</option>
+                    <option value="nexus">NEXUS tree</option>
+                    <option value="phyloxml">PhyloXML tree</option>
+                    <option value="nexml">NeXML tree</option>
+                  </select>
+                </div>
                 <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
               </div>
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Get variant data</label>
+                <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distance from the first variant selected to every other">Get distances</button>
                 <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
               </div>
             </div>

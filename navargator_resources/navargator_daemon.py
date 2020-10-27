@@ -177,6 +177,17 @@ class NavargatorDaemon(object):
             b, r, m = fit_to_sigmoid(xvals, yvals, r_value=max_val)
             ret = {'data':data, 'b':b, 'r':r, 'm':m}
             return json.dumps(ret)
+        @self.server.route(self.daemonURL('/get-distances'), methods=['POST'])
+        def get_distances():
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            selected_vars = request.json['selected_vars']
+            if len(selected_vars) < 2:
+                return ('must select at least 2 variants to get distances.', 5514)
+            name1 = selected_vars[0]
+            distances = [vf.get_distance(name1, name2) for name2 in selected_vars[1:]]
+            return json.dumps({'distances':distances})
         # # #  Input page listening routes:
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])
         def upload_tree_file():
@@ -253,18 +264,45 @@ class NavargatorDaemon(object):
             elif tree_type == 'phyloxml' or tree_type == 'nexml':
                 suffix = 'xml'
             default_filename = 'navargator_tree.{}'.format(suffix)
+            tree_string = vf.get_tree_string(vf.tree, tree_type)
             if saveAs and self.web_server == False:
                 root = tk_root()
                 root.withdraw()
                 filename = saveAs(initialdir=os.getcwd(), initialfile=default_filename)
                 root.destroy()
                 if filename:
-                    vf.save_tree_file(filename, tree_type)
+                    vf.save_tree_file(filename, tree_string)
                 saved_locally, tree_string = True, ''
             else:
                 saved_locally = False
-                tree_string = vf.get_tree_string(tree_type)
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':tree_string, 'filename':default_filename})
+        @self.server.route(self.daemonURL('/save-subtree-file'), methods=['POST'])
+        def save_subtree_file():
+            vf, s_id, msg = self.update_or_copy_vf()
+            if s_id == None:
+                return msg
+            tree_type = request.json['tree_type']
+            if tree_type == 'newick':
+                suffix = 'nwk'
+            elif tree_type == 'nexus':
+                suffix = 'nxs'
+            elif tree_type == 'phyloxml' or tree_type == 'nexml':
+                suffix = 'xml'
+            default_filename = 'navargator_subtree.{}'.format(suffix)
+            selected_vars = request.json['selected_vars']
+            subtree = vf.tree.get_subtree(selected_vars, keep_root_branch=False)
+            subtree_string = vf.get_tree_string(subtree, tree_type)
+            if saveAs and self.web_server == False:
+                root = tk_root()
+                root.withdraw()
+                filename = saveAs(initialdir=os.getcwd(), initialfile=default_filename)
+                root.destroy()
+                if filename:
+                    vf.save_tree_file(filename, subtree_string)
+                saved_locally, subtree_string = True, ''
+            else:
+                saved_locally = False
+            return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'tree_string':subtree_string, 'filename':default_filename})
         @self.server.route(self.daemonURL('/save-nvrgtr-file'), methods=['POST'])
         def save_nvrgtr_file():
             vf, s_id, msg = self.update_or_copy_vf()

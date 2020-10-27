@@ -11,11 +11,6 @@
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
 //   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree.
-// - It would be great if users could click/hover on a tree internal node and have all descendent nodes respond.
-//   - The Tree.get_ordered_nodes() method from phylo.py can help. If leaves are in that order, then all internal nodes only need to know the indices of their descendents in that list.
-//    - Not too sure how to get those node names here into js, and parse the tree to find the coordinates to draw a node object.
-//   - **OR** use a shift-click to select a range from the most recent selected. Seems a hell of a lot easier.
-//   - If I do manage this, I'd like to add an option in Tree manipulations to save a subtree. Will identify most recent common ancestor of all selected nods, save that subtree.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
@@ -233,7 +228,6 @@ function setupManipulationsPane() {
 function setupExportPane() {
   var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
   export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
-
   function formatDisplayExportNames() {
     // Function to format the information based on the user's selection.
     var delimiter, delimiter_type = $("#exportDelimiterSelect").val();
@@ -253,10 +247,9 @@ function setupExportPane() {
     export_text.css('height', export_text[0].scrollHeight+'px');
     showFloatingPane(export_pane);
   }
-
   // Button callbacks:
   $("#exportTreeFileButton").click(function() {
-    var tree_type = $("#exportTreeFileTypeSelect").val();
+    let tree_type = $("#exportTreeFileTypeSelect").val();
     $.ajax({
       url: daemonURL('/save-tree-file'),
       type: 'POST',
@@ -270,8 +263,33 @@ function setupExportPane() {
         if (data.saved_locally == true) {
           console.log('Tree file saved locally');
         } else {
-          var filename = data.filename;
-          saveDataString(data.tree_string, filename, 'text/plain');
+          saveDataString(data.tree_string, data.filename, 'text/plain');
+        }
+      },
+      error: function(error) { processError(error, "Error saving tree file"); }
+    });
+  });
+  $("#exportSubtreeFileButton").click(function() {
+    let tree_type = $("#exportSubtreeFileTypeSelect").val(),
+      selected_vars = [...nvrgtr_data.selected];
+    if (selected_vars.length < 2){
+      showErrorPopup("Error: you must select 2 or more variants to define the subtree to save.");
+      return;
+    }
+    $.ajax({
+      url: daemonURL('/save-subtree-file'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({...getPageAssignedData(), 'tree_type':tree_type, 'selected_vars':selected_vars}),
+      success: function(data_obj) {
+        var data = $.parseJSON(data_obj);
+        if (nvrgtr_page.session_id != data.session_id) {
+          changeSessionID(data.session_id);
+        }
+        if (data.saved_locally == true) {
+          console.log('Tree file saved locally');
+        } else {
+          saveDataString(data.tree_string, data.filename, 'text/plain');
         }
       },
       error: function(error) { processError(error, "Error saving tree file"); }
@@ -282,10 +300,41 @@ function setupExportPane() {
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   $("#exportSelectionButton").click(function() {
-    // Sets 'names' to a list of the selected variants. The order is undefined.
+    // Sets 'names' to a list of the selected variants in selection order.
     export_pane.data('names', [...nvrgtr_data.selected]);
     formatDisplayExportNames();
   });
+  $("#getSelectedDistancesButton").click(function() {
+    if (nvrgtr_data.selected.size <= 1) {
+      showErrorPopup("Error: you must select 2 or more variants. Returns the distance from the first variant selected to every other.");
+      return;
+    }
+    let selected_vars = [...nvrgtr_data.selected];
+    $.ajax({
+      url: daemonURL('/get-distances'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({...getPageBasicData(), 'selected_vars':selected_vars}),
+      success: function(data_obj) {
+        let data = $.parseJSON(data_obj);
+        $("#variantDistanceFromSpan").text(selected_vars[0]);
+        $("#variantDistanceToSpan").text(selected_vars.slice(1).join(', '));
+        $("#variantDistancesText").text(data.distances.join(', '));
+        $("#variantDistancesText").css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
+        $("#variantDistancesText").css('height', $("#variantDistancesText")[0].scrollHeight+'px');
+        if (data.distances.length > 1) {
+          let dist_avg = data.distances.reduce((a,b) => a + b, 0) / data.distances.length;
+          $("#variantDistanceAvgP").show();
+          $("#variantDistanceAvgSpan").text(dist_avg.toPrecision(4));
+        } else {
+          $("#variantDistanceAvgP").hide();
+        }
+        showFloatingPane($("#variantDistancesPane"));
+      },
+      error: function(error) { processError(error, "Error retrieving variant distances"); }
+    });
+  });
+
   // Functionality of the export pane:
   $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
     formatDisplayExportNames();

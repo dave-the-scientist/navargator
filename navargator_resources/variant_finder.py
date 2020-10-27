@@ -342,21 +342,21 @@ class VariantFinder(object):
         self.newick_tree_data = newick_tree_data
         self.phyloxml_tree_data = phyloxml_tree_data
 
-    def get_tree_string(self, tree_type):
+    def get_tree_string(self, tree, tree_type):
         truncation = int(self.display_options['sizes']['max_variant_name_length'])
         if tree_type == 'newick':
-            return self.tree.newick_string(support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=truncation)
+            return tree.newick_string(support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         elif tree_type == 'nexus':
-            return self.tree.nexus_string(translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=truncation)
+            return tree.nexus_string(translate_command=False, support_as_comment=False, support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         elif tree_type == 'phyloxml':
-            return self.tree.phyloxml_string(support_values=True, comments=True, internal_names=True, max_name_length=truncation)
+            return tree.phyloxml_string(support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         elif tree_type == 'nexml':
-            return self.tree.nexml_string(support_values=True, comments=True, internal_names=True, max_name_length=truncation)
+            return tree.nexml_string(support_values=True, comments=True, internal_names=True, max_name_length=truncation)
         else:
             raise NavargatorValueError('Error: tree format "{}" is not recognized'.format(tree_type))
+            return ''
 
-    def save_tree_file(self, file_path, tree_type):
-        tree_str = self.get_tree_string(tree_type)
+    def save_tree_file(self, file_path, tree_str):
         with open(file_path, 'w') as f:
             f.write(tree_str)
         if self.verbose:
@@ -422,6 +422,12 @@ class VariantFinder(object):
         if include_distances:
             buff.append(tag_format_str.format(dist_matrix_tag, self.encode_distance_matrix()))
         return '\n\n'.join(buff)
+
+    def get_distance(self, name1, name2):
+        """Returns the phylogenetic distance between the two given sequence names. Uses the unscaled distance from the tree, and accounts for name truncations."""
+        ind1 = self.leaves.index(name1)
+        ind2 = self.leaves.index(name2)
+        return self.orig_dist[ind1, ind2]
 
     def encode_distance_matrix(self):
         """Takes the current distance matrix, discards the unnecessary values, saves it in a binary format, then decodes that into an ascii representation that can be handled by JSON."""

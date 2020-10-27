@@ -703,6 +703,28 @@ input.select-group-node-spinner {
 }
 
 /* ======  Export pane  ====== */
+#variantDistancesPane {
+  margin-top: -36px;
+  z-index: 9;
+}
+#variantDistancesMainDiv {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+.var-dist-p {
+  margin: 0px 0px 15px 0px !important;
+  min-width: 350px;
+}
+#variantDistanceAvgP {
+  margin: 15px 0px 10px 0px;
+}
+#variantDistancesText {
+  min-height: 35px;
+  max-height: 120px;
+  resize: none;
+  overflow: auto;
+}
 #exportNamesPane {
   margin-top: -36px;
   z-index: 10;
