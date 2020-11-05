@@ -1,108 +1,108 @@
 /* ======  Result page CSS variables  ====== */
 #bodyMainDiv {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
+  display:flex;
+  flex-direction:row;
+  align-items:flex-start;
 }
 #mainLeftDiv {
-  display: inline-flex;
-  flex-direction: column;
+  display:inline-flex;
+  flex-direction:column;
 }
 #leftOptionsDiv, #resultsNormalizationDiv {
-  width: 250px;
+  width:250px;
 }
 #selectionDiv, #clustersListDiv {
-  width: 400px;
+  width:400px;
 }
 
-/* Histogram settings: */
+/* Histogram settings:*/
 #histoSvg {
-  height: 170px;
-  margin: 5px 0px 0px 0px;
+  height:170px;
+  margin:5px 0px 0px 0px;
 }
 #histo-ind-rect {
-  stroke: var(--highlight-colour);
-  stroke-width: 1px;
-  fill: var(--dark-background-colour);
-  width: 33px;
-  height: 20px;
+  stroke:var(--highlight-colour);
+  stroke-width:1px;
+  fill:var(--dark-background-colour);
+  width:33px;
+  height:20px;
 }
 #histo-ind-text {
-  font: 12px sans-serif;
-  fill: white;
+  font:12px sans-serif;
+  fill:white;
 }
 #histoSlider {
-  margin: 0px 20px 5px 18px;
+  margin:0px 20px 5px 18px;
 }
 #histoSliderHandle {
-  width: 3em;
-  height: 1.5em;
-  top: 50%;
-  margin-top: -0.75em;
-  margin-left: -1.5em;
-  text-align: center;
-  line-height: 1.6em;
-  font-size: 12px;
+  width:3em;
+  height:1.5em;
+  top:50%;
+  margin-top:-0.75em;
+  margin-left:-1.5em;
+  text-align:center;
+  line-height:1.6em;
+  font-size:12px;
 }
 #histoButtonsDiv {
-  --button-width: 55px;
-  --button-height: 25px;
-  position: relative;
-  align-items: center;
+  --button-width:55px;
+  --button-height:25px;
+  position:relative;
+  align-items:center;
 }
 #leftSliderButton, #middleSliderButton, #clearSliderButton {
-  position: relative;
-  width: var(--button-width);
-  height: var(--button-height);
-  line-height: 9px;
-  font-size: 10px;
+  position:relative;
+  width:var(--button-width);
+  height:var(--button-height);
+  line-height:9px;
+  font-size:10px;
 }
 #numSliderSpan {
-  position: absolute;
-  top: calc(var(--button-height) / 2 - 0.375em);
-  left: calc(var(--button-width) + 10px);
-  font-size: 14px;
+  position:absolute;
+  top:calc(var(--button-height) / 2 - 0.375em);
+  left:calc(var(--button-width) + 10px);
+  font-size:14px;
 }
 #middleSliderButton {
-  width: 65px;
+  width:65px;
 }
 #clearSliderButton {
-  font-size: 12px;
+  font-size:12px;
 }
 #middleSliderButtonSpan {
-  position: relative;
-  left: 5px;
+  position:relative;
+  left:5px;
 }
 #midLeftArrow {
-  position: absolute;
-  top: calc(var(--button-height) / 2 - 0.55em);
-  left: 3px;
-  opacity: 1;
+  position:absolute;
+  top:calc(var(--button-height) / 2 - 0.55em);
+  left:3px;
+  opacity:1;
 }
 #midRightArrow {
-  position: absolute;
-  top: calc(var(--button-height) / 2 - 0.55em);
-  right: 3px;
-  opacity: 0;
+  position:absolute;
+  top:calc(var(--button-height) / 2 - 0.55em);
+  right:3px;
+  opacity:0;
 }
 
-/* Clusters table settings: */
+/* Clusters table settings:*/
 #clustersListTable {
-  text-align: center;
-  width: 100%;
+  text-align:center;
+  width:100%;
 }
 #clustersListTable > thead {
-  vertical-align: bottom;
+  vertical-align:bottom;
 }
 #clustersListTable td {
-  padding: 5px 0px;
+  padding:5px 0px;
 }
 #clustersListTable td:nth-child(1) {
-  text-align: right;
-  padding-right: 10px;
+  text-align:right;
+  padding-right:10px;
 }
 .cluster-list-row > td > label {
-  display: inline-block;
-  overflow-wrap: break-word;
-  max-width: 120px;
+  display:inline-block;
+  overflow-wrap:break-word;
+  max-width:120px;
 }

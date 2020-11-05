@@ -4,7 +4,6 @@
 
 
 // TODO:
-// - Just like with the results histo, the score graph y-axis values can push on to the "Tree score" label. I'd like to dynamically set those margins to prevent that.
 // - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
@@ -296,7 +295,10 @@ function setupExportPane() {
     });
   });
   $("#exportTreeImageButton").click(function() {
-    var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
+    //var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
+    //downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
+
+    let svg_data = cleanSvg("#figureSvg");
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   $("#exportSelectionButton").click(function() {
@@ -501,7 +503,11 @@ function setupResultsPane() {
   setupScoresGraph();
 }
 function setupScoresGraph() {
-  var total_width = nvrgtr_settings.graph.total_width, total_height = nvrgtr_settings.graph.total_height, margin = nvrgtr_settings.graph.margin, width = total_width - margin.left - margin.right, height = total_height - margin.top - margin.bottom;
+  var total_width = nvrgtr_settings.graph.total_width,
+    total_height = nvrgtr_settings.graph.total_height,
+    margin = nvrgtr_settings.graph.margin,
+    width = total_width - margin.left - margin.right,
+    height = total_height - margin.top - margin.bottom;
   // Set up svg and g objects:
   var svg = d3.select("#scoreGraphSvg")
     .attr("width", total_width)
@@ -530,16 +536,16 @@ function setupScoresGraph() {
     .call(nvrgtr_data.graph.y_axis);
   // Set up axis labels:
   nvrgtr_data.graph.g.append("text") // x axis
-    .attr("class", "score-axis-label")
+    .attr("class", "score-axis-label x-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
     .attr("y", height + 30)
     .text("Number of clusters");
   nvrgtr_data.graph.g.append("text") // y axis
-    .attr("class", "score-axis-label")
+    .attr("class", "score-axis-label y-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", 0 - height/2)
-    .attr("y", 0 - 23)
+    .attr("y", 12 - margin.left)
     .attr("transform", "rotate(-90)")
     .text("Tree score");
   // Set up the graph line:
@@ -806,7 +812,7 @@ function checkIfProcessingDone() {
       var data = $.parseJSON(data_obj);
       var ret_var_nums = data.var_nums.map(function(n) { return parseInt(n,10); });
       if (JSON.stringify(ret_var_nums) != JSON.stringify(nvrgtr_data.result_links.var_nums)) {
-        console.log('Aborting checkIfProcessingDone(), as the returned list does not match.');
+        console.log('Aborting checkIfProcessingDone(), as the returned list does not match. Likely due to a race condition.');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
       var draw_graph = true, max_var_dist = 0, score, var_num, max_dist;
@@ -852,9 +858,7 @@ function updateScoreGraph() {
     // Update x and y domains:
     var min_var = nvrgtr_data.result_links.var_nums[0],
       max_var = nvrgtr_data.result_links.var_nums[nvrgtr_data.result_links.var_nums.length-1];
-    nvrgtr_data.graph.x_fxn.domain(
-      [min_var, max_var]
-    );
+    nvrgtr_data.graph.x_fxn.domain([min_var, max_var]);
     nvrgtr_data.graph.y_fxn.domain(
       [ Math.floor(d3.min(nvrgtr_data.result_links.scores)),
         Math.ceil(d3.max(nvrgtr_data.result_links.scores)) ]
@@ -863,16 +867,22 @@ function updateScoreGraph() {
     nvrgtr_data.graph.x_axis.tickValues(nvrgtr_data.result_links.var_nums);
     nvrgtr_data.graph.y_axis.tickValues(nvrgtr_data.graph.y_fxn.ticks(3));
     nvrgtr_data.graph.g.select(".x-axis")
-      .transition()
       .call(nvrgtr_data.graph.x_axis);
     nvrgtr_data.graph.g.select(".y-axis")
-      .transition()
       .call(nvrgtr_data.graph.y_axis);
+    // Calculate new margin values, apply to all relevant elements.
+    $("#scoreGraphSvg").show();
+    let margin = nvrgtr_settings.graph.margin;
+    margin.left = 16 + nvrgtr_data.graph.g.select(".y-axis").node().getBBox().width;
+    let width = nvrgtr_settings.graph.total_width - margin.left - margin.right;
+    nvrgtr_data.graph.g.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    nvrgtr_data.graph.x_fxn.range([0, width]);
+    nvrgtr_data.graph.g.select(".x-axis-label").attr("x", width / 2);
+    nvrgtr_data.graph.g.select(".y-axis-label").attr("y", 12 - margin.left);
     // Update the graph line:
     nvrgtr_data.graph.g.select(".score-line")
       .transition()
       .attr("d", function() { return nvrgtr_data.graph.line_fxn(nvrgtr_data.result_links.scores); });
-    $("#scoreGraphSvg").show();
   }
 }
 function updateVariantColoursFollowup() {

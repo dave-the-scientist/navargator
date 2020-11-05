@@ -17,6 +17,9 @@ $.extend(nvrgtr_settings.graph, {
   'margin':{
     top:2, right:20, bottom:44, left:18
   },
+  'axis_offset':{
+    'x_vert':-3, 'y_horiz':-6, 'y2_horiz':16, 'y_vert':0
+  },
   'bar_margin_ratio':0.15, 'histo_left_margin':null, 'label_font':'Helvetica, Arial, sans-serif', 'label_font_size':'14px', 'histo_font_size':'10px', 'line_stroke_width':'1.5px', 'area_stroke_width':'0.5px', 'histo_stroke_width':'0.2px', 'area_opacity':'0.5', 'line_area_stroke':null, 'area_fill':null, 'histo_first_bar':null, 'histo_bar':'#EAFEEC', 'histo_stroke':'#555555'
 });
 
@@ -29,8 +32,6 @@ $.extend(nvrgtr_settings.graph, {
 // - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
 //   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
 //   - pm-slp-all.nwk is a good test tree for this.
-// - Viewing a histogram with Ubuntu's ImageViewer looks terrible, but everything looks right when viewing it with a browser. Probably due to how options are saved to an svg; I've run into this once before, apply the same solution.
-//   - I should probably include a function that strips non-useful (mainly invisible) elements from an svg before saving. Can also "clean" the styles to prevent the weird formatting.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
@@ -366,11 +367,11 @@ function setupExportPane() {
     formatDisplayExportNames();
   });
   $("#exportTreeImageButton").click(function() {
-    var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
+    let svg_data = cleanSvg("#figureSvg");
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   $("#exportHistoImageButton").click(function() {
-    var svg_data = $("#histoSvg")[0].outerHTML;
+    let svg_data = cleanSvg("#histoSvg");
     downloadData("navargator_histogram.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
   // Functionality of the export pane:
@@ -447,8 +448,8 @@ function redrawTree(initial_draw=false) {
   }
 }
 function extendTreeLegend() {
-  var contains_singletons = false, clstr;
-  for (var i=0; i<nvrgtr_data.num_variants; ++i) {
+  let contains_singletons = false, clstr;
+  for (let i=0; i<nvrgtr_data.num_variants; ++i) {
     clstr = nvrgtr_data.clusters[nvrgtr_data.variants[i]];
     if (clstr.nodes.length == 1) {
       contains_singletons = true;
@@ -456,22 +457,24 @@ function extendTreeLegend() {
     }
   }
   if (contains_singletons) {
+    let marker_x=10, marker_y=88, marker_radius=4,
+      text_x=18, text_y=92, text_size='12px', text_font='Helvetica,Arial,sans-serif';
     d3.select("#treeLegendLeftGroup").append("circle")
       .attr('id', 'legendSingletonMarker')
-      .attr('cx', 10)
-      .attr('cy', 88)
-      .attr('r', 4)
+      .attr('cx', marker_x)
+      .attr('cy', marker_y)
+      .attr('r', marker_radius)
       .attr('fill', '#9624F0');
     d3.select("#treeLegendLeftGroup").append("text")
-      .attr('x', 18)
-      .attr('y', 92)
-      .attr('font-family', 'Helvetica,Arial,sans-serif')
-      .attr('font-size', '12px')
+      .attr('x', text_x)
+      .attr('y', text_y)
+      .attr('font-size', text_size)
+      .attr('font-family', text_font)
       .text('Singleton cluster');
-    var new_height = parseFloat($("#legendBorderRect").attr('height')) + 18;
+    let new_height = parseFloat($("#legendBorderRect").attr('height')) + 18;
     $("#legendBorderRect").attr('height', new_height);
     // Update the size of the figure if necessary:
-    var canvas_height = calculateTreeCanvasHeight(nvrgtr_display_opts.sizes.tree);
+    let [canvas_height, y_offset] = calculateTreeCanvasHeight(nvrgtr_display_opts.sizes.tree);
     $("#figureSvg").attr({'height':canvas_height});
   }
   updateTreeLegend();
@@ -643,7 +646,7 @@ function drawDistanceGraphs() {
     .clamp(true);
   nvrgtr_data.graph.y_fxn2 = d3.scaleLinear() // Used by the cumulative line and area graphs.
     .range([0, nvrgtr_data.graph.height])
-    .domain([100, 0]) // The other domains are dynomic, this one isn't
+    .domain([100, 0]) // The other domains are dynamic, this one isn't
     .clamp(true);
   nvrgtr_data.graph.line_fxn = d3.line()
     .x(function(d) { return nvrgtr_data.graph.x_fxn(d.dist) })
@@ -666,29 +669,31 @@ function drawDistanceGraphs() {
   nvrgtr_data.graph.g.append("g")
     .attr("class", "y-axis2")
     .attr("transform", "translate(" + nvrgtr_data.graph.width + ", 0)");
-  var x_axis_vert_offset = -3, y_axis_vert_offset = 0, y_axis_horiz_offset = -6, y_axis2_horiz_offset = 16;
   nvrgtr_data.graph.g.append("text") // x axis label
+    .attr("class", "x-axis-label")
     .attr("font-family", nvrgtr_settings.graph.label_font)
     .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "text-after-edge")
     .attr("x", nvrgtr_data.graph.width/2)
-    .attr("y", total_height + x_axis_vert_offset)
+    .attr("y", total_height + nvrgtr_settings.graph.axis_offset.x_vert)
     .text("Phylogenetic distance");
   nvrgtr_data.graph.g.append("text") // y axis label
+    .attr("class", "y-axis-label")
     .attr("font-family", nvrgtr_settings.graph.label_font)
     .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
-    .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
-    .attr("y", 0 + y_axis_horiz_offset)
+    .attr("x", 0 - nvrgtr_data.graph.height/2 - nvrgtr_settings.graph.axis_offset.y_vert)
+    .attr("y", 0 + nvrgtr_settings.graph.axis_offset.y_horiz)
     .attr("transform", "rotate(-90)")
     .text("Number of variants"); // "Variants (count)" if I want to add ticks
   nvrgtr_data.graph.g.append("text") // y axis 2 label
+    .attr("class", "y2-axis-label")
     .attr("font-family", nvrgtr_settings.graph.label_font)
     .attr("font-size", nvrgtr_settings.graph.label_font_size)
     .attr("text-anchor", "middle")
-    .attr("x", 0 - nvrgtr_data.graph.height/2 - y_axis_vert_offset)
-    .attr("y", nvrgtr_data.graph.width + y_axis2_horiz_offset)
+    .attr("x", 0 - nvrgtr_data.graph.height/2 - nvrgtr_settings.graph.axis_offset.y_vert)
+    .attr("y", nvrgtr_data.graph.width + nvrgtr_settings.graph.axis_offset.y2_horiz)
     .attr("transform", "rotate(-90)")
     .text("Cumulative (%)");
   // Create the line and area charts
@@ -747,8 +752,9 @@ function drawDistanceGraphs() {
 function updateDistanceGraphs() {
   // Called when the graph is first drawn, and when the normalization settings are changed.
   updateHistoBins();
-  updateHistoGraph();
   updateHistoAxes();
+  updateHistoHeight();
+  updateHistoGraph();
 }
 function updateHistoSlider() {
   // Would be kind of nice to animate this (250 ms), but probably more trouble than it's worth.
@@ -861,7 +867,8 @@ function selectNamesByThreshold(threshold, select_below) {
 function updateHistoBins() {
   // Don't need to adjust the cumulative graph, as it uses the same x-axis (which is getting update) and its y-axis never changes for a given tree.
   var x_ticks = calculateHistoTicks(nvrgtr_data.normalized_max_distance);
-  nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
+  nvrgtr_data.nice_max_var_dist = x_ticks[x_ticks.length-1];
+  //nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);
   nvrgtr_data.graph.x_fxn.domain([x_ticks[0], nvrgtr_data.nice_max_var_dist]); // Needed to include the final tick
 
   var num_chosen = nvrgtr_data.variants.length,
@@ -880,14 +887,51 @@ function updateHistoBins() {
     nvrgtr_data.graph.bins[i]['names'] = nvrgtr_data.sorted_names.slice(prev_ind, prev_ind+cur_len);
     prev_ind += cur_len;
   }
-  var max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
-  nvrgtr_data.graph.y_fxn.domain([0, max_y]);
+
   nvrgtr_data.graph.cumulative_data[0].dist = x_ticks[0]; // Updates the one negative x value.
   if (nvrgtr_data.nice_max_var_dist > nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-2].dist) {
     // if the graph x-axis is larger than the largest distance in the tree:
     nvrgtr_data.graph.cumulative_data[nvrgtr_data.graph.cumulative_data.length-1].dist = nvrgtr_data.nice_max_var_dist; // Updates the final spoofed value
   }
   nvrgtr_data.graph.x_ticks = x_ticks;
+}
+function updateHistoAxes() {
+  var ticks = nvrgtr_data.graph.x_ticks.slice(1); // Removes the first value (placeholder for 'chosen' bar).
+  nvrgtr_data.graph.x_axis.tickValues(ticks)
+    .tickFormat(d3.format(".3")); // trims trailing zeros
+  nvrgtr_data.graph.g.select(".x-axis")
+    .call(nvrgtr_data.graph.x_axis)
+    .selectAll("text")
+      .style("text-anchor", "start")
+      .attr("x", 7)
+      .attr("y", 5)
+      .attr("dy", ".35em")
+      .attr("transform", "rotate(55)");
+}
+function updateHistoHeight() {
+  // Update main variables
+  let margin = nvrgtr_settings.graph.margin;
+  margin.bottom = 16 + nvrgtr_data.graph.g.select(".x-axis").node().getBBox().height;
+  nvrgtr_data.graph.height = nvrgtr_settings.graph.total_height - margin.top - margin.bottom;
+
+  // Update graph functions
+  let max_y = (nvrgtr_data.normalized_max_count > 0) ? nvrgtr_data.normalized_max_count : d3.max(nvrgtr_data.graph.bins, function(d) { return d.length; });
+  nvrgtr_data.graph.y_fxn.domain([0, max_y]);
+  nvrgtr_data.graph.y_fxn.range([0, nvrgtr_data.graph.height]);
+  nvrgtr_data.graph.y_fxn2.range([0, nvrgtr_data.graph.height]);
+  nvrgtr_data.graph.area_fxn.y0(nvrgtr_data.graph.height);
+
+  // Update x-axis and y-axis labels
+  nvrgtr_data.graph.g.select(".x-axis")
+    .attr("transform", "translate(0," + nvrgtr_data.graph.height + ")");
+  nvrgtr_data.graph.g.select(".y-axis")
+    .call(nvrgtr_data.graph.y_axis);
+  nvrgtr_data.graph.g.select(".y-axis2")
+    .call(nvrgtr_data.graph.y_axis2);
+  nvrgtr_data.graph.g.select(".y-axis-label")
+    .attr("x", 0 - nvrgtr_data.graph.height/2 - nvrgtr_settings.graph.axis_offset.y_vert);
+  nvrgtr_data.graph.g.select(".y2-axis-label")
+    .attr("x", 0 - nvrgtr_data.graph.height/2 - nvrgtr_settings.graph.axis_offset.y_vert);
 }
 function updateHistoGraph() {
   var formatCount = d3.format(",.0f"),
@@ -899,6 +943,7 @@ function updateHistoGraph() {
   // The bars of the graph:
   var bar_elements = nvrgtr_data.graph.g.selectAll(".histo-bar")
     .data(nvrgtr_data.graph.bins);
+  console.log('height', nvrgtr_data.graph.height);
   bar_elements.enter().append("rect")
     .attr("class", "histo-bar")
     .attr("stroke-width", nvrgtr_settings.graph.histo_stroke_width)
@@ -915,7 +960,8 @@ function updateHistoGraph() {
     });
   nvrgtr_data.graph.g.select(".histo-bar") // Gives the first bar an accent colour
     .attr("fill", nvrgtr_settings.graph.histo_first_bar);
-  bar_elements.transition()
+  bar_elements.attr("y", nvrgtr_data.graph.height) // Updates y immediately, others after transition
+    .transition()
     .attr("x", init_bar_x)
     .attr("width", bar_width)
     .attr("height", function(d) { return nvrgtr_data.graph.y_fxn(d.length); })
@@ -998,26 +1044,6 @@ function updateHistoGraph() {
   // Update the histo slider, so its zero lines up with the graph's zero.
   var new_l_margin = nvrgtr_settings.graph.histo_left_margin + col_width;
   $("#histoSlider").animate({'marginLeft':new_l_margin+'px'}, 250);
-}
-function updateHistoAxes() {
-  var ticks = nvrgtr_data.graph.x_ticks.slice(1); // Removes the first value (placeholder for 'chosen' bar).
-  nvrgtr_data.graph.x_axis.tickValues(ticks)
-    .tickFormat(d3.format(".3")); // trims trailing zeros
-  nvrgtr_data.graph.g.select(".x-axis")
-    .transition()
-    .call(nvrgtr_data.graph.x_axis)
-    .selectAll("text")
-      .style("text-anchor", "start")
-      .attr("x", 7)
-      .attr("y", 5)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(55)");
-  nvrgtr_data.graph.g.select(".y-axis")
-    .transition()
-    .call(nvrgtr_data.graph.y_axis);
-  nvrgtr_data.graph.g.select(".y-axis2")
-    .transition()
-    .call(nvrgtr_data.graph.y_axis2);
 }
 function updateAreaGraphAndIndicator(distance, select_below, do_transition=false) {
   var filtered_data = [], cur_percent;

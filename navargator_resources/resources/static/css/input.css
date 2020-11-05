@@ -1,260 +1,260 @@
 :root {
-  --left-col-width: 250px;
-  --results-graph-height: 150px;
+  --left-col-width:250px;
+  --results-graph-height:150px;
 }
 #bodyMainDiv {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
+  display:flex;
+  flex-direction:row;
+  align-items:flex-start;
 }
 #mainLeftDiv {
-  display: inline-flex;
-  flex-direction: column;
+  display:inline-flex;
+  flex-direction:column;
 }
 #inputOptionsDiv, #runOptionsDiv {
-  width: var(--left-col-width);
+  width:var(--left-col-width);
 }
 #mainVariantSelectDiv {
-  min-width: 240px;
-  margin-right: 0px;
+  min-width:240px;
+  margin-right:0px;
 }
 
-/* Load input settints: */
+/* Load input settints:*/
 #loadInputPanel > * {
-  margin-left: 0px;
+  margin-left:0px;
 }
 #uploadFileTypeSelect {
-  width: 140px;
+  width:140px;
 }
 
-/* Tree manipulation settings: */
+/* Tree manipulation settings:*/
 
 
-/* Save session options: */
+/* Save session options:*/
 #sessionIncludeDistancesLabel {
-  font-size: 15px;
+  font-size:15px;
 }
 
-/* Run options: */
+/* Run options:*/
 #clustMethodSelect {
-  width: 110px;
+  width:110px;
 }
 #findVariantsButton {
-  width: 100%;
+  width:100%;
 }
 #findVariantsButton > span {
-  font-size: 1.0em;
+  font-size:1.0em;
 }
 
-/* Result links pane settings: */
+/* Result links pane settings:*/
 #resultsLinksDiv {
-  margin-bottom: 15px; /*Should equal the top margin on non-first H2 headers.*/
+  margin-bottom:15px; /*Should equal the top margin on non-first H2 headers.*/
 }
 #resultsLinksContentDiv {
-  display: flex;
-  flex-wrap: wrap;
+  display:flex;
+  flex-wrap:wrap;
 }
 #resultsLinksListDiv {
-  margin-top: 3px;
-  min-width: var(--results-graph-height);
-  max-height: calc(var(--results-graph-height) - 3px); /*To account for the top margin*/
-  overflow-y: auto;
-  flex-grow: 1;
+  margin-top:3px;
+  min-width:var(--results-graph-height);
+  max-height:calc(var(--results-graph-height) - 3px); /*To account for the top margin*/
+  overflow-y:auto;
+  flex-grow:1;
 }
 #resultsLinksList {
-  list-style-type: disc;
-  padding: 0px 0px 0px 20px;
-  margin: 0px;
-  column-width: 150px;
-  /*column-fill: auto; /* This isn't working because it doesn't have a set height. Would be nice, but more problematic when I do set a height.*/
+  list-style-type:disc;
+  padding:0px 0px 0px 20px;
+  margin:0px;
+  column-width:150px;
+  /*column-fill:auto; /* This isn't working because it doesn't have a set height. Would be nice, but more problematic when I do set a height.*/
 }
 .result-link-li {
-  text-indent: -3px; /*Moves it closer to the bullet. Probably looks terrible if multi-line.*/
+  text-indent:-3px; /*Moves it closer to the bullet. Probably looks terrible if multi-line.*/
 }
 
-/* Score graph settings: */
+/* Score graph settings:*/
 #scoreGraphSvg {
-  width: var(--left-col-width);
-  height: var(--results-graph-height);
-  flex-shrink: 0;
+  width:var(--left-col-width);
+  height:var(--results-graph-height);
+  flex-shrink:0;
 }
 .score-axis-label {
-  font-family: var(--font-family);
-  font-size: 14px;
+  font-family:var(--font-family);
+  font-size:14px;
 }
 .score-line {
-  fill: none;
-  stroke: var(--dark-background-colour);
-  stroke-width: 2px;
+  fill:none;
+  stroke:var(--dark-background-colour);
+  stroke-width:2px;
 }
 
-/* Variant assignment and selection settings: */
+/* Variant assignment and selection settings:*/
 #varAssignH2 {
-  margin-top: 0px;
+  margin-top:0px;
 }
 #varAssignTableDiv {
-  float: left;
-  margin: 5px 15px 10px 0px;
-  padding: 0px 15px 10px 0px;
-  border: 1px solid var(--button-border-colour);
-  border-top-style: none;
-  border-left-style: none;
+  float:left;
+  margin:5px 15px 10px 0px;
+  padding:0px 15px 10px 0px;
+  border:1px solid var(--button-border-colour);
+  border-top-style:none;
+  border-left-style:none;
 }
 .var-assigned-div { /* Box containing holding "2 chosen variants" and clear button.*/
-  --var-assigned-border-width: 2px;
-  --var-assigned-button-size: 21px;
-  --var-assigned-el-colour: #DFDFDF; /* Default colour of button elements.*/
-  --var-assigned-el-mo-colour: #757575; /* Colour of button elements on mouseover of parent div.*/
-  --var-assigned-el-rem-colour: red; /* Colour of button elements when removing variants.*/
-  position: relative;
-  display: inline-flex;
-  width: 100%;
-  box-sizing: border-box;
-  flex-wrap: nowrap;
-  align-items: center;
-  margin: 3px 0px;
-  padding: 0px;
-  background-color: transparent;
-  border: var(--var-assigned-border-width) solid red;
-  border-style: hidden hidden solid solid;
-  z-index: 0;
+  --var-assigned-border-width:2px;
+  --var-assigned-button-size:21px;
+  --var-assigned-el-colour:#DFDFDF; /* Default colour of button elements.*/
+  --var-assigned-el-mo-colour:#757575; /* Colour of button elements on mouseover of parent div.*/
+  --var-assigned-el-rem-colour:red; /* Colour of button elements when removing variants.*/
+  position:relative;
+  display:inline-flex;
+  width:100%;
+  box-sizing:border-box;
+  flex-wrap:nowrap;
+  align-items:center;
+  margin:3px 0px;
+  padding:0px;
+  background-color:transparent;
+  border:var(--var-assigned-border-width) solid red;
+  border-style:hidden hidden solid solid;
+  z-index:0;
 }
 .var-assigned-div:before { /* The mouseover animation element.*/
-  content: '';
-  position: absolute;
-  display: block;
-  top: 0px;
-  left: 0px;
-  width: 0px;
-  height: 100%;
-  background-color: var(--highlight-colour);
-  z-index: -2;
-  transition: all var(--cubic-transition);
+  content:'';
+  position:absolute;
+  display:block;
+  top:0px;
+  left:0px;
+  width:0px;
+  height:100%;
+  background-color:var(--highlight-colour);
+  z-index:-2;
+  transition:all var(--cubic-transition);
 }
 .var-assigned-div:after { /* The selected animation element.*/
-  content: '';
-  position: absolute;
-  display: block;
-  bottom: 0px;
-  left: 0px;
-  width: calc(100% - var(--var-assigned-border-width));
-  height: 0px;
-  background-color: var(--selection-colour);
-  z-index: -1;
-  transition: all var(--cubic-transition);
+  content:'';
+  position:absolute;
+  display:block;
+  bottom:0px;
+  left:0px;
+  width:calc(100% - var(--var-assigned-border-width));
+  height:0px;
+  background-color:var(--selection-colour);
+  z-index:-1;
+  transition:all var(--cubic-transition);
 }
 .var-assigned-div:hover:before {
-  right: auto;
-  width: 100%;
+  right:auto;
+  width:100%;
 }
 .var-assigned-div.var-assigned-selected:after {
-  top: auto;
-  height: calc(100% - var(--var-assigned-border-width));
+  top:auto;
+  height:calc(100% - var(--var-assigned-border-width));
 }
 .var-assigned-div.var-assigned-selected { /* Part of the mouseover+selected effect. */
-  background-color: var(--selection-colour);
+  background-color:var(--selection-colour);
 }
 .var-assigned-label { /* The "2 chosen variants" text.*/
-  position: relative;
-  margin: 3px 5px 3px 4px;
-  flex-grow: 1;
-  min-width: 90px;
+  position:relative;
+  margin:3px 5px 3px 4px;
+  flex-grow:1;
+  min-width:90px;
 }
 .var-assigned-button-group { /* The add/subtract and clear buttons.*/
-  margin-right: 1px;
-  align-self: center;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  transition: all .15s linear;
+  margin-right:1px;
+  align-self:center;
+  border:1px solid transparent;
+  border-radius:4px;
+  transition:all .15s linear;
 }
 .var-assigned-add, .var-assigned-sep, .var-assigned-clear {
-  position: relative;
-  display: inline-block;
-  vertical-align: middle;
-  margin: 0px;
-  padding: 0px;
+  position:relative;
+  display:inline-block;
+  vertical-align:middle;
+  margin:0px;
+  padding:0px;
 }
 .var-assigned-add, .var-assigned-clear {
-  width: calc(var(--var-assigned-button-size) + 4px);
-  height: var(--var-assigned-button-size);
+  width:calc(var(--var-assigned-button-size) + 4px);
+  height:var(--var-assigned-button-size);
 }
 .var-assigned-add { /* The add / subtract button.*/
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
-  border-right-style: none;
+  border-top-left-radius:4px;
+  border-bottom-left-radius:4px;
+  border-right-style:none;
 }
 .var-assigned-sep { /* The vertical separator line.*/
-  width: 1px;
-  height: calc(var(--var-assigned-button-size) - 4px);
-  background-color: var(--var-assigned-el-colour);
+  width:1px;
+  height:calc(var(--var-assigned-button-size) - 4px);
+  background-color:var(--var-assigned-el-colour);
 }
 .var-assigned-clear { /* The clear button.*/
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  border-left-style: none;
+  border-top-right-radius:4px;
+  border-bottom-right-radius:4px;
+  border-left-style:none;
 }
 .var-assigned-add-span1, .var-assigned-add-span2,
 .var-assigned-clear-span1, .var-assigned-clear-span2 {
-  position: absolute;
-  top: 9px;
-  left: 6px;
-  width: 13px;
-  height: 3px;
-  background-color: var(--var-assigned-el-colour);
-  transition: background-color .15s linear, transform .25s linear;
+  position:absolute;
+  top:9px;
+  left:6px;
+  width:13px;
+  height:3px;
+  background-color:var(--var-assigned-el-colour);
+  transition:background-color .15s linear, transform .25s linear;
 }
 .var-assigned-add-span2 {
-  transform: rotate(90deg);
+  transform:rotate(90deg);
 }
 .var-assigned-add.var-assigned-added > .var-assigned-add-span2 { /* Alternate between '+' and '-' form.*/
-  transform: rotate(0deg);
+  transform:rotate(0deg);
 }
 .var-assigned-clear-span1 {
-  transform: rotate(-45deg);
+  transform:rotate(-45deg);
 }
 .var-assigned-clear-span2 {
-  transform: rotate(45deg);
+  transform:rotate(45deg);
 }
 /* Button elements on mouseover:*/
 .var-assigned-div:hover .var-assigned-add > span,
 .var-assigned-div:hover .var-assigned-sep,
 .var-assigned-div:hover .var-assigned-clear > span {
-  background-color: var(--var-assigned-el-mo-colour);
+  background-color:var(--var-assigned-el-mo-colour);
 }
 .var-assigned-button-group:hover {
-  background-color: var(--light-background-colour);
-  border-color: var(--dark-background-colour);
+  background-color:var(--light-background-colour);
+  border-color:var(--dark-background-colour);
 }
 .var-assigned-button-group:hover .var-assigned-add > span,
 .var-assigned-button-group:hover .var-assigned-sep,
 .var-assigned-button-group:hover .var-assigned-clear > span {
-  background-color: var(--dark-background-colour);
+  background-color:var(--dark-background-colour);
 }
 /* Final form when mouseover on buttons directly.*/
 .var-assigned-div .var-assigned-add:hover > span {
-  background-color: var(--major-accent-colour);
+  background-color:var(--major-accent-colour);
 }
 .var-assigned-div .var-assigned-add.var-assigned-added:hover > span,
 .var-assigned-div .var-assigned-clear:hover > span {
-  background-color: var(--var-assigned-el-rem-colour);
+  background-color:var(--var-assigned-el-rem-colour);
 }
 #varSelectDiv {
-  max-height: calc(var(--tree-width) - var(--results-graph-height) - 52px + 4px);
+  max-height:calc(var(--tree-width) - var(--results-graph-height) - 52px + 4px);
   /*4px of space in mainTreeDiv under figureSvg, 52px lines up bottom of the column with the tree.*/
-  overflow-y: auto;
+  overflow-y:auto;
 }
 #varSelectHeader {
-  display: inline-block;
-  margin: 0px 0px 5px 0px;
-  font-size: 1.2em;
+  display:inline-block;
+  margin:0px 0px 5px 0px;
+  font-size:1.2em;
 }
 .var-select-label { /* Element for each variant in the tree.*/
-  display: inline-block;
-  margin: 2px 4px 2px 0px;
-  padding: 3px;
-  border: 2px solid red;
-  border-style: hidden hidden solid solid;
-  font-size: 12px;
+  display:inline-block;
+  margin:2px 4px 2px 0px;
+  padding:3px;
+  border:2px solid red;
+  border-style:hidden hidden solid solid;
+  font-size:12px;
 }
 
 /* Various element settings */

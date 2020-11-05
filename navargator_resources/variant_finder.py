@@ -334,13 +334,14 @@ class VariantFinder(object):
             print('\nTruncated the tree names')
 
     def update_tree_data(self, truncation=None):
-        """Ensures both trees can be formatted before updating the attributes."""
+        """Ensures both trees can be formatted before updating the attributes. Also resets self.ordered_names."""
         if truncation == None:
             truncation = int(self.display_options['sizes']['max_variant_name_length'])
         newick_tree_data = self.tree.newick_string(support_as_comment=False, support_values=False, comments=False, internal_names=False, max_name_length=truncation)
         phyloxml_tree_data = self.tree.phyloxml_string(support_values=False, comments=False, internal_names=False, max_name_length=truncation)
         self.newick_tree_data = newick_tree_data
         self.phyloxml_tree_data = phyloxml_tree_data
+        self.ordered_names = self.tree.get_ordered_names()
 
     def get_tree_string(self, tree, tree_type):
         truncation = int(self.display_options['sizes']['max_variant_name_length'])

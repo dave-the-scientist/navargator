@@ -311,7 +311,6 @@ function drawTree(marker_tooltips=true) {
   // Assumes that clearTree() has already been called.
   // Assumes the "Loading..." message has already been shown: $("#treeLoadingMessageGroup").show()
 
-  var min_tree_div_width = 500; // MUST be the same as in updateScaleBar()
   loadPhyloSVG(); // Reloads jsPhyloSVG.
   var tree_params = Smits.PhyloCanvas.Render.Parameters,
     tree_style = Smits.PhyloCanvas.Render.Style,
@@ -363,11 +362,11 @@ function drawTree(marker_tooltips=true) {
   drawLabelAndSearchHighlights();
   drawTreeBackgrounds(maxLabelLength);
   // Adjust the div holding the tree:
-  let tree_div_width = Math.max(canvas_size, min_tree_div_width);
+  let tree_div_width = Math.max(canvas_size, nvrgtr_page.min_tree_div_width);
   document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
   // Finalize the SVGs:
-  let [canvas_height, y_offset] = calculateTreeCanvasHeight(canvas_size, min_tree_div_width);
-  let x_offset = Math.max((min_tree_div_width-canvas_size)/2, 0); // Ensures it's centered
+  let [canvas_height, y_offset] = calculateTreeCanvasHeight(canvas_size);
+  let x_offset = Math.max((nvrgtr_page.min_tree_div_width-canvas_size)/2, 0); // Ensures it's centered
 
   $("#treeSvg").attr({'x':x_offset, 'y':y_offset});
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_height});
@@ -520,7 +519,6 @@ function updateTreeLegend() {
   }
 }
 function updateScaleBar(bar_dist) {
-  let min_tree_div_width = 500; // MUST be the same as in drawTree()
   let max_root_px = nvrgtr_data.max_root_pixels,
     px_scale_factor = nvrgtr_data.max_root_distance / max_root_px, bar_px;
   if (isNaN(bar_dist) || bar_dist <= 0) {
@@ -534,7 +532,7 @@ function updateScaleBar(bar_dist) {
   let bar_text_dist = 7, bar_buffer = 3;
   // bar_xoffset accounts for when the tree is smaller than the div holding it
   let tree_width = parseFloat($("#figureSvg").attr('width')),
-    bar_xoffset = Math.max(tree_width, min_tree_div_width)/2 + tree_width/2 - bar_px - bar_buffer,
+    bar_xoffset = Math.max(tree_width, nvrgtr_page.min_tree_div_width)/2 + tree_width/2 - bar_px - bar_buffer,
     bar_yoffset = parseFloat($("#figureSvg").attr('height')) - bar_text_dist - bar_buffer;
   // Check to ensure bar_px isn't too wide for the current tree (figuresvg width - legend width). If it is, throw error popup, return '', set $("#scaleBarInput") to ''.
   if (!isNaN(bar_xoffset) && !isNaN(bar_yoffset)) {
@@ -582,12 +580,12 @@ function findNiceNumber(min_num, max_num) {
   return nice_num;
 }
 
-function calculateTreeCanvasHeight(canvas_size, min_tree_div_width) {
+function calculateTreeCanvasHeight(canvas_size) {
   let radius = canvas_size / 2.0;
   // Calculates if there is an overlap between the control buttons and the tree
   let top_overlap, control_width = $("#treeControlsDiv")[0].scrollWidth,
     control_height = $("#treeControlsDiv")[0].scrollHeight - 15,
-    split_width = Math.max(canvas_size, min_tree_div_width)/2 - control_width;
+    split_width = Math.max(canvas_size, nvrgtr_page.min_tree_div_width)/2 - control_width;
   if (split_width >= radius) {
     top_overlap = 0;
   } else {
@@ -597,7 +595,7 @@ function calculateTreeCanvasHeight(canvas_size, min_tree_div_width) {
   // Calculates if there is an overlap between the legend and the tree
   let legend_overlap, legend_width = parseFloat($("#legendBorderRect").attr('width')),
     legend_height = parseFloat($("#legendBorderRect").attr('height')),
-    legend_split = Math.max(canvas_size, min_tree_div_width)/2 - legend_width;
+    legend_split = Math.max(canvas_size, nvrgtr_page.min_tree_div_width)/2 - legend_width;
   if (legend_split >= radius) {
     legend_overlap = 0;
   } else {

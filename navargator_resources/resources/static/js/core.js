@@ -4,7 +4,6 @@
 // TODO:
 // If you save a large tree as an svg, the text objects are generally hidden by default. But if you open one with photoshop, they're still present (and weirdly spaced out in a circle 2x larger than the tree). Removing them will keep file sizes down, and make subsequent image manipulation easier.
 //   - Should write a function to copy(? if needed) the tree and remove elements that aren't actually displayed. Like names if the font size is 0, the mouseover objects for the labels, the search highlights (if no search is currently active), etc. Then pass that data to downloadData().
-// I don't really like the 'avilable' colour. Maybe something more like #1B6B87
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -12,7 +11,7 @@
 
 // =====  Common options and parameters
 var nvrgtr_page = {
-  'server_url':null, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'max_upload_size':20000000
+  'server_url':null, 'session_id':'', 'browser_id':'', 'instance_closed':false, 'maintain_interval':2000, 'maintain_interval_obj':null, 'min_tree_div_width':500, 'max_upload_size':20000000
 };
 var last_slash = window.location.href.lastIndexOf('/');
 if (last_slash > 0) {
@@ -51,7 +50,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'init_angle':180, 'buffer_angle':20
   },
   'colours' : {
-    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#24B1F0', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#3B3B3B', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
+    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#2491AB', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#3B3B3B', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
 };
 var nvrgtr_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // Deep copy
@@ -1530,6 +1529,16 @@ function calculate90Percentile(orig_var_names) {
   var ind = roundFloat(var_names.length * 0.9, 0) - 1;
   return nvrgtr_data.variant_distance[var_names[ind]];
 }
+function cleanSvg(selector) {
+  // Removes hidden elements. Returns the svg data ready to be passed to downloadData()
+  let new_svg = $(selector).clone();
+  new_svg.find("*").each(function() {
+    if ($(this).css('display') == 'none' || $(this).css('font-size') == '0px' || $(this).attr('opacity') == 0) {
+      $(this).remove();
+    }
+  });
+  return new_svg[0].outerHTML;
+}
 function saveDataString(data_str, file_name, file_type) {
   // Uses javascript to save the string as a file to the client's download directory. This method works for >1MB svg files, for which other methods failed on Chrome.
   var data_blob = new Blob([data_str], {type:file_type});
@@ -1540,6 +1549,17 @@ function saveDataString(data_str, file_name, file_type) {
   document.body.appendChild(download_link); // Some browsers require these two lines,
   download_link.click();
   document.body.removeChild(download_link); // while others do not. Keep em.
+}
+function downloadData(filename, data, blob_type) {
+  var blob = new Blob([data], {type:blob_type}),
+    blob_url = URL.createObjectURL(blob),
+    download_link = document.createElement("a");
+  download_link.href = blob_url;
+  download_link.download = filename;
+  document.body.appendChild(download_link);
+  download_link.click();
+  document.body.removeChild(download_link);
+  download_link = null; // Removes the element
 }
 function focusScrollSelectInTextarea(textarea, start, end) {
   // textarea is the jquery object, start and end are integers representing character counts. Will select the given range, and attempt to scroll the textarea so that the selected text is on the bottom of the view.
@@ -1577,17 +1597,6 @@ function validateSpinner(spinner, description) {
     showErrorPopup(msg, "Parameter error");
     return false;
   }
-}
-function downloadData(filename, data, blob_type) {
-  var blob = new Blob([data], {type:blob_type}),
-    blob_url = URL.createObjectURL(blob),
-    download_link = document.createElement("a");
-  download_link.href = blob_url;
-  download_link.download = filename;
-  document.body.appendChild(download_link);
-  download_link.click();
-  document.body.removeChild(download_link);
-  download_link = null; // Removes the element
 }
 function setupCoreHelpButtonText() {
   // Display options help:
