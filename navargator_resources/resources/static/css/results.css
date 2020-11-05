@@ -87,6 +87,10 @@
 }
 
 /* Clusters table settings:*/
+#clustersListTableDiv {
+  max-height: 400px;
+  overflow: auto;
+}
 #clustersListTable {
   text-align:center;
   width:100%;
@@ -103,6 +107,7 @@
 }
 .cluster-list-row > td > label {
   display:inline-block;
-  overflow-wrap:break-word;
   max-width:120px;
+  font-size: 0.85em;
+  overflow-wrap:break-word;
 }

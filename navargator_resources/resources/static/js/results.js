@@ -28,6 +28,7 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
+// - A bit of weirdness going on when trying to root the large nme_ngo_tbpBs tree by selection. Worked the first time (when I set it to the presumed isotype 1), but errored the 2nd (when I tried to include the group near isotype 1s into the outgroup). I also noticed that shift-clicking behaved wrong once, but was working the rest of the time.
 // - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
 // - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
 //   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
@@ -943,7 +944,6 @@ function updateHistoGraph() {
   // The bars of the graph:
   var bar_elements = nvrgtr_data.graph.g.selectAll(".histo-bar")
     .data(nvrgtr_data.graph.bins);
-  console.log('height', nvrgtr_data.graph.height);
   bar_elements.enter().append("rect")
     .attr("class", "histo-bar")
     .attr("stroke-width", nvrgtr_settings.graph.histo_stroke_width)
