@@ -2,8 +2,7 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// If you save a large tree as an svg, the text objects are generally hidden by default. But if you open one with photoshop, they're still present (and weirdly spaced out in a circle 2x larger than the tree). Removing them will keep file sizes down, and make subsequent image manipulation easier.
-//   - Should write a function to copy(? if needed) the tree and remove elements that aren't actually displayed. Like names if the font size is 0, the mouseover objects for the labels, the search highlights (if no search is currently active), etc. Then pass that data to downloadData().
+// - Add method to create legend for selection groups. Would be very helpful when creating figures, and when analyzing trees interactively (I always forget what colour is what). Finish $("#selectGroupBannerLegendButton").click()
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -391,6 +390,7 @@ function setupSelectionGroupsPane() {
     $("#redrawTreeButton").click(); // Adds the text object to nvrgtr_data.banner_labels
     $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
     sg_banner_num += 1;
+    $("#bannerLegendDiv").show(); // Show if not already visible
   });
   var banner_old_index;
   $("#selectGroupBannerListDiv").sortable({
@@ -424,8 +424,62 @@ function setupSelectionGroupsPane() {
       });
     }
   });
+
+  $("#bannerLegendDiv").hide();
+  $("#selectGroupBannerLegendButton").click(function() {
+    if (nvrgtr_display_opts.labels.banner_names.length == 0) {
+      showErrorPopup("Error: cannot generate the banner legend without any defined banners.");
+      return;
+    }
+    let legend_groups = [];
+    for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; i++) {
+      legend_groups.push({'name':nvrgtr_display_opts.labels.banner_names[i], 'labels':[], 'colours':[]});
+    }
+    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+      let num_cols = 0;
+      for (let i=0; i<group_data.banner_colours.length; i++) {
+        if (group_data.banner_colours[i] != null) {
+          num_cols += 1;
+          legend_groups[i].labels.push(group_name);
+          legend_groups[i].colours.push(group_data.banner_colours[i]);
+        }
+      }
+      if (num_cols > 1) {
+        showErrorPopup("Error: cannot generate the banner legend if any selection group has more than 1 banner colour; '"+group_name+"' has "+num_cols+" saved.");
+        return;
+      }
+    }
+    // filter legend_groups; remove any elements that are empty of colours/labels. User can have as many selection groups as they want, even those that don't contribute to the banner legend. they just can't have banner colours.
+    console.log(legend_groups);
+    // Draw the legend object
+    // I think I want it to go in an svg g horizontal under the tree. probably build each sub-legend in its own g, so i can space them out based on the .getBBox() method of each. Copy format / spacing of existing legend
+  });
+  $("#showBannerLegendCheckbox").change(function() {
+    if ($("#showBannerLegendCheckbox").is(':checked')) {
+      console.log('is checked');
+      // show the svg. may have to resize the treediv itself; we'll see.
+    } else {
+      console.log('is not checked');
+    }
+  });
+
   $("#selectGroupApplyButton").click(function() {
     applySelectionGroupFormat();
+  });
+  $("#selectGroupClearFormatButton").click(function() {
+    applySelectionGroupFormat(true);
+    $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
+    $("#node_colourPicker").val('');
+    $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
+    $("#label_colourPicker").val('');
+    $("#text_colourPicker")[0].jscolor.fromString('#FFFFFF');
+    $("#text_colourPicker").val('');
+    $("#selectGroupNodeSizeSpinner").val('');
+    $("#selectGroupNameInput").val('');
+    $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
+      this.jscolor.fromString('#FFFFFF');
+      $(this).val('');
+    });
   });
   $("#node_colourPicker").keydown(function(event) {
     if (event.which == 13) {
@@ -492,21 +546,6 @@ function setupSelectionGroupsPane() {
     }
     addNewSelectionGroup(group_name, null, true);
     $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
-  });
-  $("#selectGroupClearFormatButton").click(function() {
-    applySelectionGroupFormat(true);
-    $("#node_colourPicker")[0].jscolor.fromString('#FFFFFF');
-    $("#node_colourPicker").val('');
-    $("#label_colourPicker")[0].jscolor.fromString('#FFFFFF');
-    $("#label_colourPicker").val('');
-    $("#text_colourPicker")[0].jscolor.fromString('#FFFFFF');
-    $("#text_colourPicker").val('');
-    $("#selectGroupNodeSizeSpinner").val('');
-    $("#selectGroupNameInput").val('');
-    $("#selectGroupBannerListDiv > .select-group-banner-div > .jscolor").each(function() {
-      this.jscolor.fromString('#FFFFFF');
-      $(this).val('');
-    });
   });
 }
 function setupThresholdPane() {
@@ -923,6 +962,9 @@ function processDisplayOptions(display_opts) {
   $.each(nvrgtr_display_opts.labels.banner_names, function(index, banner_name) {
     addBannerFormatElements(banner_name);
   });
+  if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+    $("#bannerLegendDiv").show(); // Show if not already visible
+  }
   setColourPickers();
   updateClusterColours();
   updateDisplayOptionSpinners();
@@ -1338,12 +1380,15 @@ function addBannerFormatElements(banner_name) {
   var banner_close_button = $('<button class="list-close-button prevent-text-selection" title="Remove this banner">&#10799</button>');
   banner_close_button.click(function() {
     let banner_eles = banner_list.children(),
-      banner_ind = banner_eles.length - banner_eles.index(banner_div) - 1;
+      banner_ind = banner_eles.length - banner_eles.index(banner_div) - 1; // Order is reversed
     nvrgtr_display_opts.labels.banner_names.splice(banner_ind, 1);
     for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
       group_data.banner_colours.splice(banner_ind, 1); // Remove from the array
     }
     $("#redrawTreeButton").click();
+    if (nvrgtr_display_opts.labels.banner_names.length == 0) {
+      $("#bannerLegendDiv").hide();
+    }
     banner_div.remove();
     sg_pane.css('maxHeight', sg_pane[0].scrollHeight+"px");
   });
@@ -1507,8 +1552,9 @@ function redrawTree() {
   // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
 }
 function roundFloat(num, num_dec) {
-  var x = Math.pow(10, num_dec);
-  return Math.round(num * x) / x;
+  // Rounds numbers to num_dec decimal points, without including trailing 0s.
+  let x = Math.pow(10, num_dec);
+  return Math.round((num + Number.EPSILON) * x) / x;
 }
 function parseFileSuffix(filename) {
   // Taken from https://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript

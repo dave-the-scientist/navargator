@@ -28,11 +28,9 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
+// - When saving a histogram (at least of final_nme_ngo_tbpBs.nwk), part of the x-axis label is cut off (the hanging bit of the "g"). Also, do I need a white background for the graph?
 // - A bit of weirdness going on when trying to root the large nme_ngo_tbpBs tree by selection. Worked the first time (when I set it to the presumed isotype 1), but errored the 2nd (when I tried to include the group near isotype 1s into the outgroup). I also noticed that shift-clicking behaved wrong once, but was working the rest of the time.
 // - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
-// - Would be great if the histogram adjusted its own padding depending on the number of significant digits on the x-axis. It's hard coded now, and if the values are small they overlap the graph.
-//   - Actually, can probably even animate a smooth transition by looking at the bbox of the x axis after it's drawn, and then use that to adjust the relevant padding.
-//   - pm-slp-all.nwk is a good test tree for this.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
@@ -112,10 +110,9 @@ function setupHistoSliderPane() {
       slider_handle.text($(this).slider("value"));
     },
     slide: function(event, ui) {
-      slider_handle.text(ui.value);
+      slider_handle.text(roundFloat(ui.value, 4));
       updateAreaGraphAndIndicator(ui.value, select_below);
-      if (selectNamesByThreshold(ui.value, select_below) == true
-          && do_remove == true) {
+      if (selectNamesByThreshold(ui.value, select_below) == true && do_remove == true) {
         setButtonAddToSelection();
       }
     },
@@ -758,9 +755,9 @@ function updateDistanceGraphs() {
   updateHistoGraph();
 }
 function updateHistoSlider() {
-  // Would be kind of nice to animate this (250 ms), but probably more trouble than it's worth.
   $("#histoSlider").slider({
-    max:nvrgtr_data.nice_max_var_dist
+    max:parseFloat(nvrgtr_data.nice_max_var_dist.toPrecision(4)),
+    step:parseFloat((nvrgtr_data.nice_max_var_dist/100).toPrecision(4))
   });
 }
 

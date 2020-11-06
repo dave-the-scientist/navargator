@@ -179,6 +179,13 @@
                 <label class="labeled-group-label">Tree banners</label>
                 <button id="selectGroupAddBannerButton" class="jq-ui-button">New</button>
                 <div id="selectGroupBannerListDiv"></div>
+                <div id="bannerLegendDiv" class="horizontal-row-div">
+                  <button id="selectGroupBannerLegendButton" class="jq-ui-button">Generate legend</button>
+                  <label class="nvrgtr-checkbox-outer">
+                    <input id="showBannerLegendCheckbox" type="checkbox" checked />
+                    <label class="nvrgtr-checkbox-label" for="showBannerLegendCheckbox">Show</label>
+                  </label>
+                </div>
               </div>
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Selection formatting</label>
@@ -196,12 +203,12 @@
                     <td><input id="text_colourPicker" class="jscolor {required:false}" spellcheck="false" placeholder="None" onchange="updateSelectionGroupColour('text')"></td>
                   </tr>
                 </tbody></table>
-                <div class="horizontal-row-div" style="margin-left:5px;margin-right:5px">
+                <div class="horizontal-row-div">
                   <button id="selectGroupApplyButton" class="jq-ui-button">Apply</button>
                   <button id="selectGroupClearFormatButton" class="jq-ui-button">Clear</button>
                 </div>
               </div>
-              <div class="labeled-group-div">
+              <div id="savedSelectGroupOuter" class="labeled-group-div">
                 <label class="labeled-group-label">Saved selection groups</label>
                 <div id="selectGroupListDiv"></div>
               </div>

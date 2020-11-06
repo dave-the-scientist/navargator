@@ -367,7 +367,6 @@ function drawTree(marker_tooltips=true) {
   // Finalize the SVGs:
   let [canvas_height, y_offset] = calculateTreeCanvasHeight(canvas_size);
   let x_offset = Math.max((nvrgtr_page.min_tree_div_width-canvas_size)/2, 0); // Ensures it's centered
-
   $("#treeSvg").attr({'x':x_offset, 'y':y_offset});
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_height});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
