@@ -2,7 +2,8 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// - Add method to create legend for selection groups. Would be very helpful when creating figures, and when analyzing trees interactively (I always forget what colour is what). Finish $("#selectGroupBannerLegendButton").click()
+// - Finish drawBannerLegend().
+//   - Have it be drawn when a tree is loaded / selection group data is drawn on.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -19,7 +20,7 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'ordered_names':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'last_selected':null, 'last_was_select':true, 'considered_variants':{}, 'selection_groups':new Map(), 'banner_labels':[], 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'threshold':null,
+  'leaves':[], 'ordered_names':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'last_selected':null, 'last_was_select':true, 'considered_variants':{}, 'selection_groups':new Map(), 'banner_labels':[], 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'figure_svg_height':null, 'banner_legend_height':0, 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'banner_legend_paper':null, 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   }
@@ -43,7 +44,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
   },
   'labels' : {
-    'banner_names':[], 'show_banners':true
+    'banner_names':[], 'show_banners':true, 'show_banner_legend':false
   },
   'angles' : {
     'init_angle':180, 'buffer_angle':20
@@ -427,41 +428,18 @@ function setupSelectionGroupsPane() {
 
   $("#bannerLegendDiv").hide();
   $("#selectGroupBannerLegendButton").click(function() {
-    if (nvrgtr_display_opts.labels.banner_names.length == 0) {
-      showErrorPopup("Error: cannot generate the banner legend without any defined banners.");
-      return;
-    }
-    let legend_groups = [];
-    for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; i++) {
-      legend_groups.push({'name':nvrgtr_display_opts.labels.banner_names[i], 'labels':[], 'colours':[]});
-    }
-    for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
-      let num_cols = 0;
-      for (let i=0; i<group_data.banner_colours.length; i++) {
-        if (group_data.banner_colours[i] != null) {
-          num_cols += 1;
-          legend_groups[i].labels.push(group_name);
-          legend_groups[i].colours.push(group_data.banner_colours[i]);
-        }
-      }
-      if (num_cols > 1) {
-        showErrorPopup("Error: cannot generate the banner legend if any selection group has more than 1 banner colour; '"+group_name+"' has "+num_cols+" saved.");
-        return;
-      }
-    }
-    // filter legend_groups; remove any elements that are empty of colours/labels. User can have as many selection groups as they want, even those that don't contribute to the banner legend. they just can't have banner colours.
-    console.log(legend_groups);
-    // Draw the legend object
-    // I think I want it to go in an svg g horizontal under the tree. probably build each sub-legend in its own g, so i can space them out based on the .getBBox() method of each. Copy format / spacing of existing legend
+    drawBannerLegend();
+    $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + nvrgtr_data.banner_legend_height});
+    $("#showBannerLegendCheckbox").prop('disabled', false);
   });
   $("#showBannerLegendCheckbox").change(function() {
     if ($("#showBannerLegendCheckbox").is(':checked')) {
-      console.log('is checked');
+      nvrgtr_display_opts.labels.show_banner_legend = true;
       // show the svg. may have to resize the treediv itself; we'll see.
     } else {
-      console.log('is not checked');
+      nvrgtr_display_opts.labels.show_banner_legend = false;
     }
-  });
+  }).prop('disabled', true);
 
   $("#selectGroupApplyButton").click(function() {
     applySelectionGroupFormat();
@@ -548,6 +526,59 @@ function setupSelectionGroupsPane() {
     $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
   });
 }
+
+function drawBannerLegend() {
+  if (nvrgtr_display_opts.labels.banner_names.length == 0) {
+    //showErrorPopup("Error: cannot generate the banner legend without any defined banners.");
+    nvrgtr_data.banner_legend_height = 0;
+    return;
+  }
+  let legend_groups = [];
+  for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; i++) {
+    legend_groups.push({'name':nvrgtr_display_opts.labels.banner_names[i], 'labels':[], 'colours':[]});
+  }
+  for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
+    let num_cols = 0;
+    for (let i=0; i<group_data.banner_colours.length; i++) {
+      if (group_data.banner_colours[i] != null) {
+        num_cols += 1;
+        legend_groups[i].labels.push(group_name);
+        legend_groups[i].colours.push(group_data.banner_colours[i]);
+      }
+    }
+    if (num_cols > 1) {
+      showErrorPopup("Error: cannot generate the banner legend if any selection group has more than 1 banner colour; '"+group_name+"' has "+num_cols+" saved.");
+      nvrgtr_data.banner_legend_height = 0;
+      return;
+    }
+  }
+  let legend_to_draw = legend_groups.filter(group => group.labels.length > 0); // Removes entries for banners that have no saved selection group colours
+  // Draw the legend object
+  $("#treeBannerLegendGroup").show();
+  let header_y_margin=10, label_y_margin=5, group_x_margin=15;
+  let cur_x = 0, cur_y, legend_height = 0;
+  let group_set, group_header, group_label, group_set_bbox;
+  for (const lg_data of legend_to_draw) {
+    cur_y = 0;
+    group_set = nvrgtr_data.banner_legend_paper.set();
+    group_header = nvrgtr_data.banner_legend_paper.text(cur_x, cur_y, lg_data.name).attr({'font-size':15, 'font-weight':'bold', 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'middle'});
+    cur_y += group_header.getBBox().height + header_y_margin;
+    group_set.push(group_header);
+    for (let i=0; i<lg_data.labels.length; i++) {
+      // draw circle to contain colour
+      group_label = nvrgtr_data.banner_legend_paper.text(cur_x, cur_y, lg_data.labels[i]).attr({'font-size':13, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
+      group_set.push(group_label);
+      cur_y += group_label.getBBox().height + label_y_margin;
+    }
+    group_set_bbox = group_set.getBBox();
+    // center group header
+    cur_x += group_set_bbox.width + group_x_margin;
+    legend_height = Math.max(legend_height, group_set_bbox.height);
+  }
+  // draw box around legend
+  nvrgtr_data.banner_legend_height = legend_height;
+}
+
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
   var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");

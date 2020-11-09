@@ -304,6 +304,10 @@ function clearTree() {
   if (nvrgtr_data.r_paper) {
     nvrgtr_data.r_paper.remove(); // Don't use .clear() here.
   }
+  if (nvrgtr_data.banner_legend_paper) {
+    nvrgtr_data.banner_legend_paper.remove();
+    $("#treeBannerLegendGroup").hide();
+  }
   $("#svgCanvas").empty();
   $("#treeGroup").empty();
 }
@@ -357,6 +361,7 @@ function drawTree(marker_tooltips=true) {
   $("#svgCanvas > svg").attr("id", "treeSvg");
 
   nvrgtr_data.r_paper = phylocanvas.getSvg().svg;
+  nvrgtr_data.banner_legend_paper = new Raphael('treeBannerLegendGroup', canvas_size, 200);
   drawVariantObjects(marker_tooltips);
   drawTreeBanners(); // Should be called before drawLabelAndSearchHighlights() so banners are behind the label mouseover.
   drawLabelAndSearchHighlights();
@@ -366,11 +371,15 @@ function drawTree(marker_tooltips=true) {
   document.documentElement.style.setProperty('--tree-width', tree_div_width + 'px');
   // Finalize the SVGs:
   let [canvas_height, y_offset] = calculateTreeCanvasHeight(canvas_size);
+  nvrgtr_data.figure_svg_height = canvas_height;
   let x_offset = Math.max((nvrgtr_page.min_tree_div_width-canvas_size)/2, 0); // Ensures it's centered
   $("#treeSvg").attr({'x':x_offset, 'y':y_offset});
   $("#figureSvg").attr({'width':canvas_size, 'height':canvas_height});
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
+
+  $("#treeBannerLegendGroup").attr('transform', 'translate(0,'+(canvas_height+10)+')');
+
   updateTreeLegend(); // Must be called after setting figureSvg height.
   updateScaleBar(sizes.scale_bar_distance);
 
