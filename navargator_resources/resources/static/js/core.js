@@ -2,12 +2,6 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// - drawBannerLegend() is nearly finished.
-//   - When "draw legend" button is pressed, need to clear any existing legend before drawing the new one.
-//   - Might want to move the error-checking code to the button press section, instead of drawBannerLegend(). Probably need this function to be able to fail silently. Probably remove error about having a selection group with >1 colour; just don't add it to the legend group.
-//   - Need the legend to be drawn when a tree is loaded / selection group data is drawn on, if the attribute is set.
-//   - Need to save that attribute to session file, respect it on read, respect it on loading results.
-//   - Consider a faint black stroke around the coloured circles (and if good, change for other legend too), to better visualize light colours.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -40,7 +34,7 @@ var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
     }
   },
   'banner_legend':{
-    'bl_top_margin':10, 'header_font_size':18, 'header_top_margin':15, 'header_bot_margin':3, 'marker_width':4, 'marker_left_margin':10, 'marker_label_margin':8, 'label_font_size':12, 'label_y_margin':5, 'group_x_margin':15
+    'bl_top_margin':10, 'header_font_size':18, 'header_top_margin':15, 'header_bot_margin':3, 'marker_width':8, 'marker_left_margin':10, 'marker_label_margin':8, 'label_font_size':12, 'label_y_margin':5, 'group_x_margin':15
   }
 };
 var nvrgtr_default_display_opts = { // User-modifiable settings that persist between pages and sessions. Anything with a value of null cannot be set by the user.
@@ -51,7 +45,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
   },
   'labels' : {
-    'banner_names':[], 'show_banners':true, 'show_banner_legend':false
+    'show_legend':true, 'show_scalebar':true, 'banner_names':[], 'show_banners':true, 'show_banners_legend':false
   },
   'angles' : {
     'init_angle':180, 'buffer_angle':20
@@ -307,15 +301,19 @@ function setupDisplayOptionsPane() {
   });
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
+      nvrgtr_display_opts.labels.show_legend = true;
       $("#treeLegendLeftGroup").show();
     } else {
+      nvrgtr_display_opts.labels.show_legend = false;
       $("#treeLegendLeftGroup").hide();
     }
   });
   $("#showScaleBarCheckbox").change(function() {
     if ($("#showScaleBarCheckbox").is(':checked')) {
+      nvrgtr_display_opts.labels.show_scalebar = true;
       $("#treeScaleBarGroup").show();
     } else {
+      nvrgtr_display_opts.labels.show_scalebar = false;
       $("#treeScaleBarGroup").hide();
     }
   });
@@ -395,10 +393,10 @@ function setupSelectionGroupsPane() {
     }
     // Add and update the HTML
     addBannerFormatElements(banner_name);
+    $("#bannerLegendDiv").show(); // Show if not already visible
     $("#redrawTreeButton").click(); // Adds the text object to nvrgtr_data.banner_labels
     $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
     sg_banner_num += 1;
-    $("#bannerLegendDiv").show(); // Show if not already visible
   });
   var banner_old_index;
   $("#selectGroupBannerListDiv").sortable({
@@ -435,16 +433,24 @@ function setupSelectionGroupsPane() {
 
   $("#bannerLegendDiv").hide();
   $("#selectGroupBannerLegendButton").click(function() {
+    if (nvrgtr_display_opts.labels.banner_names.length == 0) {
+      showErrorPopup("Error: cannot generate the banner legend without any defined banners.");
+      return;
+    }
+    if (nvrgtr_data.selection_groups.size == 0) {
+      showErrorPopup("Error: cannot generate the banner legend without any defined selection groups.");
+      return;
+    }
     drawBannerLegend();
   });
   $("#showBannerLegendCheckbox").change(function() {
     if ($("#showBannerLegendCheckbox").is(':checked')) {
-      nvrgtr_display_opts.labels.show_banner_legend = true;
+      nvrgtr_display_opts.labels.show_banners_legend = true;
       $("#treeBannerLegendGroup").show();
       $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + nvrgtr_data.banner_legend_height + nvrgtr_settings.banner_legend.bl_top_margin + 2}); // The 2 accounts for the borders
       // show the svg. may have to resize the treediv itself; we'll see.
     } else {
-      nvrgtr_display_opts.labels.show_banner_legend = false;
+      nvrgtr_display_opts.labels.show_banners_legend = false;
       $("#treeBannerLegendGroup").hide();
       $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height});
     }
@@ -537,32 +543,39 @@ function setupSelectionGroupsPane() {
 }
 
 function drawBannerLegend() {
+  // Get info and ensure it is valid
   let legend = nvrgtr_settings.banner_legend;
-  if (nvrgtr_display_opts.labels.banner_names.length == 0) {
-    //showErrorPopup("Error: cannot generate the banner legend without any defined banners.");
-    nvrgtr_data.banner_legend_height = 0;
-    return;
-  }
   let legend_groups = [];
   for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; i++) {
     legend_groups.push({'name':nvrgtr_display_opts.labels.banner_names[i], 'labels':[], 'colours':[]});
   }
   for (const [group_name, group_data] of nvrgtr_data.selection_groups.entries()) {
-    let num_cols = 0;
+    let num_colours = group_data.banner_colours.filter(function(item){
+        if (item != null) { return true; }
+      }).length;
+    if (num_colours != 1) {
+      continue;
+    }
     for (let i=0; i<group_data.banner_colours.length; i++) {
       if (group_data.banner_colours[i] != null) {
-        num_cols += 1;
         legend_groups[i].labels.push(group_name);
         legend_groups[i].colours.push(group_data.banner_colours[i]);
       }
     }
-    if (num_cols > 1) {
-      showErrorPopup("Error: cannot generate the banner legend if any selection group has more than 1 banner colour; '"+group_name+"' has "+num_cols+" saved.");
-      nvrgtr_data.banner_legend_height = 0;
-      return;
-    }
   }
-  let legend_to_draw = legend_groups.filter(group => group.labels.length > 0); // Removes entries for banners that have no saved selection group colours
+  // Removes entries for banners that have no saved selection group colours
+  let legend_to_draw = legend_groups.filter(group => group.labels.length > 0);
+  if (legend_to_draw.length == 0) {
+    return;
+  }
+
+  // Get the paper object set up
+  if (nvrgtr_data.banner_legend_paper == null) {
+    nvrgtr_data.banner_legend_paper = new Raphael('treeBannerLegendGroup', 100, 100);
+  } else {
+    nvrgtr_data.banner_legend_paper.clear();
+  }
+
   // Draw the legend object
   $("#treeBannerLegendGroup").show();
   let cur_x = 0, cur_y, legend_height = 0;
@@ -571,13 +584,16 @@ function drawBannerLegend() {
     cur_y = legend.header_top_margin;
     text_x = cur_x+legend.marker_left_margin+legend.marker_label_margin;
     group_set = nvrgtr_data.banner_legend_paper.set();
-    group_header = nvrgtr_data.banner_legend_paper.text(text_x, cur_y, lg_data.name).attr({'font-size':legend.header_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
+    group_header = nvrgtr_data.banner_legend_paper.text(text_x, cur_y, lg_data.name)
+      .attr({'font-size':legend.header_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
     cur_y += group_header.getBBox().height + legend.header_bot_margin;
     group_set.push(group_header);
     for (let i=0; i<lg_data.labels.length; i++) {
-      marker = nvrgtr_data.banner_legend_paper.circle(cur_x+legend.marker_left_margin, cur_y, legend.marker_width).attr({'fill':lg_data.colours[i], 'stroke-width':0});
+      marker = nvrgtr_data.banner_legend_paper.rect(cur_x+legend.marker_left_margin-legend.marker_width/2, cur_y-legend.marker_width/2, legend.marker_width, legend.marker_width)
+        .attr({'fill':lg_data.colours[i], 'stroke':'black', 'stroke-width':0.5});
       group_set.push(marker);
-      group_label = nvrgtr_data.banner_legend_paper.text(text_x, cur_y, lg_data.labels[i]).attr({'font-size':legend.label_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
+      group_label = nvrgtr_data.banner_legend_paper.text(text_x, cur_y, lg_data.labels[i])
+        .attr({'font-size':legend.label_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
       group_set.push(group_label);
       cur_y += group_label.getBBox().height + legend.label_y_margin;
     }
@@ -587,13 +603,14 @@ function drawBannerLegend() {
   }
   // draw box around legend
   legend_height += legend.header_top_margin - legend.label_y_margin;
-  nvrgtr_data.banner_legend_paper.rect(0, 1, cur_x, legend_height)
+  nvrgtr_data.banner_legend_paper.rect(1, 1, cur_x, legend_height)
     .attr({'fill':nvrgtr_display_opts.colours.tree_background, 'stroke':'black', 'stroke-width':1})
     .toBack();
-  nvrgtr_data.banner_legend_height = legend_height;
-  //nvrgtr_data.banner_legend_paper.setSize(cur_x, legend_height); // This messes things up
+  nvrgtr_data.banner_legend_paper.setSize(cur_x + 2, legend_height + 2);
   $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + legend_height + legend.bl_top_margin + 2}); // The 2 accounts for the borders
-  $("#showBannerLegendCheckbox").prop('disabled', false);
+  $("#showBannerLegendCheckbox").prop('disabled', false).prop('checked', true);
+  nvrgtr_display_opts.labels.show_banners_legend = true;
+  nvrgtr_data.banner_legend_height = legend_height;
 }
 
 function setupThresholdPane() {

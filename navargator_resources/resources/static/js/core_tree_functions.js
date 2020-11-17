@@ -303,15 +303,16 @@ function changeSelectionGroupBannerColours(node, colours) {
 function clearTree() {
   if (nvrgtr_data.r_paper) {
     nvrgtr_data.r_paper.remove(); // Don't use .clear() here.
+    nvrgtr_data.r_paper = null;
   }
   if (nvrgtr_data.banner_legend_paper) {
     nvrgtr_data.banner_legend_paper.remove();
+    nvrgtr_data.banner_legend_paper = null;
     $("#treeBannerLegendGroup").hide();
   }
   $("#svgCanvas").empty();
   $("#treeGroup").empty();
-  $("#treeScaleBarGroup").empty();
-  $("#treeBannerLegendGroup").empty();
+  //$("#treeBannerLegendGroup").empty();
 }
 function drawTree(marker_tooltips=true) {
   // Assumes that clearTree() has already been called.
@@ -344,10 +345,10 @@ function drawTree(marker_tooltips=true) {
 
   if (total_label_size >= canvas_size) {
     let new_size = Math.ceil(total_label_size) + 1;
-    showErrorPopup("Error: tree width too small to accomodate the desired features. It has been set to "+new_size);
     sizes.tree = new_size;
     canvas_size = new_size;
     $("#displayTreeWidthSpinner").spinner('value', new_size);
+    showErrorPopup("Error: tree width too small to accomodate the desired features. It has been set to "+new_size);
   }
 
   nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
@@ -361,9 +362,8 @@ function drawTree(marker_tooltips=true) {
     'circular'
   );
   $("#svgCanvas > svg").attr("id", "treeSvg");
-
   nvrgtr_data.r_paper = phylocanvas.getSvg().svg;
-  nvrgtr_data.banner_legend_paper = new Raphael('treeBannerLegendGroup', canvas_size, 200);
+
   drawVariantObjects(marker_tooltips);
   drawTreeBanners(); // Should be called before drawLabelAndSearchHighlights() so banners are behind the label mouseover.
   drawLabelAndSearchHighlights();
@@ -380,11 +380,31 @@ function drawTree(marker_tooltips=true) {
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
 
+  // Update & show legends and scale bar
   let banner_legend_y_trans = canvas_height + nvrgtr_settings.banner_legend.bl_top_margin;
   $("#treeBannerLegendGroup").attr('transform', 'translate(0,'+banner_legend_y_trans+')');
+  if (nvrgtr_display_opts.labels.show_banners_legend == true) {
+    drawBannerLegend();
+  } else {
+    $("#showBannerLegendCheckbox").prop('disabled', true).prop('checked', true);
+  }
 
   updateTreeLegend(); // Must be called after setting figureSvg height.
+  if (nvrgtr_display_opts.labels.show_legend == true) {
+    $("#treeLegendLeftGroup").show();
+    $("#showLegendCheckbox").prop('checked', true);
+  } else {
+    $("#treeLegendLeftGroup").hide();
+    $("#showLegendCheckbox").prop('checked', false);
+  }
   updateScaleBar(sizes.scale_bar_distance);
+  if (nvrgtr_display_opts.labels.show_scalebar == true) {
+    $("#treeScaleBarGroup").show();
+    $("#showScaleBarCheckbox").prop('checked', true);
+  } else {
+    $("#treeScaleBarGroup").hide();
+    $("#showScaleBarCheckbox").prop('checked', false);
+  }
 
   $("#treeLoadingMessageGroup").hide(); // Hides the "Loading..." message
 }
@@ -523,8 +543,8 @@ function updateTreeLegend() {
   if ($("#legendSingletonMarker").length) {
     $("#legendSingletonMarker").attr({fill: nvrgtr_display_opts.colours.singleton_cluster_background});
   }
-  var border_height = parseFloat($("#legendBorderRect").attr('height')),
-    legend_offset = parseFloat($("#figureSvg").attr('height')) - border_height - 1;
+  let border_height = parseFloat($("#legendBorderRect").attr('height')),
+    legend_offset = nvrgtr_data.figure_svg_height - border_height - 1;
   if (!isNaN(legend_offset)) {
     $("#treeLegendLeftGroup").attr('transform', 'translate(0,'+legend_offset+')');
   }
@@ -544,7 +564,7 @@ function updateScaleBar(bar_dist) {
   // bar_xoffset accounts for when the tree is smaller than the div holding it
   let tree_width = parseFloat($("#figureSvg").attr('width')),
     bar_xoffset = Math.max(tree_width, nvrgtr_page.min_tree_div_width)/2 + tree_width/2 - bar_px - bar_buffer,
-    bar_yoffset = parseFloat($("#figureSvg").attr('height')) - bar_text_dist - bar_buffer;
+    bar_yoffset = nvrgtr_data.figure_svg_height - bar_text_dist - bar_buffer;
   // Check to ensure bar_px isn't too wide for the current tree (figuresvg width - legend width). If it is, throw error popup, return '', set $("#scaleBarInput") to ''.
   if (!isNaN(bar_xoffset) && !isNaN(bar_yoffset)) {
     $("#treeScaleBarText").text(bar_dist);

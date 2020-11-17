@@ -3,7 +3,7 @@ from navargator_resources.variant_finder import load_navargator_file
 from navargator_resources import navargator_daemon
 
 __author__ = 'David Curran'
-__version__ = '0.5.0'
+__version__ = '0.6.0'
 
 def new_random_port():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

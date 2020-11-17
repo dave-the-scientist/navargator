@@ -446,6 +446,7 @@ class NavargatorDaemon(object):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         vf = VariantFinder(tree_data, tree_format=tree_format, file_name=file_name, verbose=self.verbose)
+        vf.available = vf.leaves # By default
         return self.add_variant_finder(vf, browser_id)
     def add_variant_finder(self, vf, browser_id='unknown'):
         s_id = self.generate_session_id()

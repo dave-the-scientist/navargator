@@ -28,6 +28,7 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
+// - Would be very useful to have some sort of additional visual indicator on the tree of the chosen variants. On a large tree they're pretty much impossible to see. Maybe a permanent search highlight type thing? A label might be ok, but could be good to have a line into the tree branches themselves.
 // - When saving a histogram (at least of final_nme_ngo_tbpBs.nwk), part of the x-axis label is cut off (the hanging bit of the "g"). Also, do I need a white background for the graph?
 // - A bit of weirdness going on when trying to root the large nme_ngo_tbpBs tree by selection. Worked the first time (when I set it to the presumed isotype 1), but errored the 2nd (when I tried to include the group near isotype 1s into the outgroup). I also noticed that shift-clicking behaved wrong once, but was working the rest of the time.
 // - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
@@ -425,8 +426,6 @@ function checkForClusteringResults() {
         updateHistoSlider(); // Must be after drawDistanceGraphs
         $("#treeSelectionDiv").show();
         $("#treeControlsDiv").show();
-        $("#treeLegendLeftGroup").show();
-        $("#treeScaleBarGroup").show();
         $("#showLegendCheckbox").prop('disabled', false);
         $("#showScaleBarCheckbox").prop('disabled', false);
         $("#redrawTreeButton").button('enable');
@@ -455,14 +454,17 @@ function extendTreeLegend() {
     }
   }
   if (contains_singletons) {
-    let marker_x=10, marker_y=88, marker_radius=4,
-      text_x=18, text_y=92, text_size='12px', text_font='Helvetica,Arial,sans-serif';
+    let marker_x=11, marker_y=88, marker_radius=4, // These values should
+      text_x=19, text_y=92, text_size='12px',      // match those in the HTML
+      text_font='Helvetica,Arial,sans-serif';      // under treeLegendLeftGroup
     d3.select("#treeLegendLeftGroup").append("circle")
       .attr('id', 'legendSingletonMarker')
       .attr('cx', marker_x)
       .attr('cy', marker_y)
       .attr('r', marker_radius)
-      .attr('fill', '#9624F0');
+      .attr('fill', '#9624F0')
+      .attr('stroke', '#000000')
+      .attr('stroke-width', 0.5);
     d3.select("#treeLegendLeftGroup").append("text")
       .attr('x', text_x)
       .attr('y', text_y)

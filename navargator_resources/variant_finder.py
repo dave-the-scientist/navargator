@@ -13,8 +13,6 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
-# - When parsing a nvrgtr file, if no available are set, it is interpreted that all should be avail. Stop that. If all are avail, all should be listed in the file (also needs to be changed). Be more literal.
-# - Include Display Legend in nvrgtr file (if it isn't).
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 # - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
 # - Implement threshold clustering.
@@ -31,13 +29,14 @@ chosen_nodes_tag = 'Chosen variants'
 available_nodes_tag = 'Available variants'
 ignore_nodes_tag = 'Ignored variants'
 display_options_tag = 'Display options - ' # The option category string is appended to this.
-selection_group_tag = 'Selection group - ' # The option category string is appended to this.
+selection_group_tag = 'Selection group - ' # The selection group name is appended to this.
 tree_data_tag = 'Newick tree'
 dist_matrix_tag = 'Distance matrix'
+sg_order_key = '__sg_order__'  # The order of the selection groups; key is for internal representation.
 
 # # # # #  Misc functions  # # # # #
 def load_navargator_file(file_path, verbose=True):
-    if not file_path.lower().endswith('.nvrgtr'):
+    if not os.path.isfile(file_path) and not file_path.lower().endswith('.nvrgtr'):
         file_path += '.nvrgtr'
     if not os.path.isfile(file_path):
         raise NavargatorValueError('Error: could not find the given navargator file "{}"'.format(file_path))
@@ -71,7 +70,7 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
                     cat_dict[opt.strip()] = val.strip()
         elif tag.startswith(selection_group_tag):
             sg_name = tag[len(selection_group_tag) : ].strip()
-            data.setdefault(selection_group_tag + 'order', []).append(sg_name)
+            data.setdefault(sg_order_key, []).append(sg_name)
             sg_dict = data.setdefault(selection_group_tag, {}).setdefault(sg_name, {})
             for opt_line in data_buff:
                 opt, _, val = opt_line.partition(':')
@@ -104,7 +103,7 @@ def navargator_from_data(data_lines, file_name='unknown file', verbose=False):
         raise NavargatorValidationError('Error: could not identify the tree data in the given NaVARgator session file.')
     # Check if some optional information is present:
     display_options = data.get(display_options_tag, {})
-    selection_groups_order = data.get(selection_group_tag + 'order', [])
+    selection_groups_order = data.get(sg_order_key, [])
     selection_groups_data = data.get(selection_group_tag, {})
     encoded_distance_matrix = data.get(dist_matrix_tag)
     if encoded_distance_matrix:
@@ -229,7 +228,7 @@ class VariantFinder(object):
             self.update_tree_data()
             self.max_root_distance = self._calc_max_root_dist()
         self._ignored = set() # Accessible as self.ignored
-        self._available = set(self.leaves) # Accessible as self.available
+        self._available = set() # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
         self._distance_scale = 1.0 # Accessible as self.distance_scale
         # # #  Private attributes # # #
@@ -381,7 +380,7 @@ class VariantFinder(object):
         if self.chosen:
             chsn_names = ', '.join(sorted(self.chosen))
             buff.append(tag_format_str.format(chosen_nodes_tag, chsn_names))
-        if len(self.available) != len(self._not_ignored_inds):
+        if self.available:
             avail_names = ', '.join(sorted(self.available))
             buff.append(tag_format_str.format(available_nodes_tag, avail_names))
         # Write display options
