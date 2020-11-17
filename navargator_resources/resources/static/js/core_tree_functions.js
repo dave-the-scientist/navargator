@@ -310,6 +310,8 @@ function clearTree() {
   }
   $("#svgCanvas").empty();
   $("#treeGroup").empty();
+  $("#treeScaleBarGroup").empty();
+  $("#treeBannerLegendGroup").empty();
 }
 function drawTree(marker_tooltips=true) {
   // Assumes that clearTree() has already been called.
@@ -378,7 +380,8 @@ function drawTree(marker_tooltips=true) {
   $("#treeGroup").append($("#treeSvg")); // Move the elements from the original div to the displayed svg.
   $("#treeGroup").parent().prepend($("#treeGroup")); // Ensure this is below other elements in display stack.
 
-  $("#treeBannerLegendGroup").attr('transform', 'translate(0,'+(canvas_height+10)+')');
+  let banner_legend_y_trans = canvas_height + nvrgtr_settings.banner_legend.bl_top_margin;
+  $("#treeBannerLegendGroup").attr('transform', 'translate(0,'+banner_legend_y_trans+')');
 
   updateTreeLegend(); // Must be called after setting figureSvg height.
   updateScaleBar(sizes.scale_bar_distance);

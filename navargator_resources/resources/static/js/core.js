@@ -2,8 +2,12 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// - Finish drawBannerLegend().
-//   - Have it be drawn when a tree is loaded / selection group data is drawn on.
+// - drawBannerLegend() is nearly finished.
+//   - When "draw legend" button is pressed, need to clear any existing legend before drawing the new one.
+//   - Might want to move the error-checking code to the button press section, instead of drawBannerLegend(). Probably need this function to be able to fail silently. Probably remove error about having a selection group with >1 colour; just don't add it to the legend group.
+//   - Need the legend to be drawn when a tree is loaded / selection group data is drawn on, if the attribute is set.
+//   - Need to save that attribute to session file, respect it on read, respect it on loading results.
+//   - Consider a faint black stroke around the coloured circles (and if good, change for other legend too), to better visualize light colours.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -34,6 +38,9 @@ var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
     'margin':{
       'top':10, 'right':15, 'bottom':44, 'left':40
     }
+  },
+  'banner_legend':{
+    'bl_top_margin':10, 'header_font_size':18, 'header_top_margin':15, 'header_bot_margin':3, 'marker_width':4, 'marker_left_margin':10, 'marker_label_margin':8, 'label_font_size':12, 'label_y_margin':5, 'group_x_margin':15
   }
 };
 var nvrgtr_default_display_opts = { // User-modifiable settings that persist between pages and sessions. Anything with a value of null cannot be set by the user.
@@ -429,15 +436,17 @@ function setupSelectionGroupsPane() {
   $("#bannerLegendDiv").hide();
   $("#selectGroupBannerLegendButton").click(function() {
     drawBannerLegend();
-    $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + nvrgtr_data.banner_legend_height});
-    $("#showBannerLegendCheckbox").prop('disabled', false);
   });
   $("#showBannerLegendCheckbox").change(function() {
     if ($("#showBannerLegendCheckbox").is(':checked')) {
       nvrgtr_display_opts.labels.show_banner_legend = true;
+      $("#treeBannerLegendGroup").show();
+      $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + nvrgtr_data.banner_legend_height + nvrgtr_settings.banner_legend.bl_top_margin + 2}); // The 2 accounts for the borders
       // show the svg. may have to resize the treediv itself; we'll see.
     } else {
       nvrgtr_display_opts.labels.show_banner_legend = false;
+      $("#treeBannerLegendGroup").hide();
+      $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height});
     }
   }).prop('disabled', true);
 
@@ -528,6 +537,7 @@ function setupSelectionGroupsPane() {
 }
 
 function drawBannerLegend() {
+  let legend = nvrgtr_settings.banner_legend;
   if (nvrgtr_display_opts.labels.banner_names.length == 0) {
     //showErrorPopup("Error: cannot generate the banner legend without any defined banners.");
     nvrgtr_data.banner_legend_height = 0;
@@ -555,28 +565,35 @@ function drawBannerLegend() {
   let legend_to_draw = legend_groups.filter(group => group.labels.length > 0); // Removes entries for banners that have no saved selection group colours
   // Draw the legend object
   $("#treeBannerLegendGroup").show();
-  let header_y_margin=10, label_y_margin=5, group_x_margin=15;
   let cur_x = 0, cur_y, legend_height = 0;
-  let group_set, group_header, group_label, group_set_bbox;
+  let group_set, group_header, marker, text_x, group_label, group_set_bbox;
   for (const lg_data of legend_to_draw) {
-    cur_y = 0;
+    cur_y = legend.header_top_margin;
+    text_x = cur_x+legend.marker_left_margin+legend.marker_label_margin;
     group_set = nvrgtr_data.banner_legend_paper.set();
-    group_header = nvrgtr_data.banner_legend_paper.text(cur_x, cur_y, lg_data.name).attr({'font-size':15, 'font-weight':'bold', 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'middle'});
-    cur_y += group_header.getBBox().height + header_y_margin;
+    group_header = nvrgtr_data.banner_legend_paper.text(text_x, cur_y, lg_data.name).attr({'font-size':legend.header_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
+    cur_y += group_header.getBBox().height + legend.header_bot_margin;
     group_set.push(group_header);
     for (let i=0; i<lg_data.labels.length; i++) {
-      // draw circle to contain colour
-      group_label = nvrgtr_data.banner_legend_paper.text(cur_x, cur_y, lg_data.labels[i]).attr({'font-size':13, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
+      marker = nvrgtr_data.banner_legend_paper.circle(cur_x+legend.marker_left_margin, cur_y, legend.marker_width).attr({'fill':lg_data.colours[i], 'stroke-width':0});
+      group_set.push(marker);
+      group_label = nvrgtr_data.banner_legend_paper.text(text_x, cur_y, lg_data.labels[i]).attr({'font-size':legend.label_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
       group_set.push(group_label);
-      cur_y += group_label.getBBox().height + label_y_margin;
+      cur_y += group_label.getBBox().height + legend.label_y_margin;
     }
     group_set_bbox = group_set.getBBox();
-    // center group header
-    cur_x += group_set_bbox.width + group_x_margin;
+    cur_x += group_set_bbox.width + legend.group_x_margin;
     legend_height = Math.max(legend_height, group_set_bbox.height);
   }
   // draw box around legend
+  legend_height += legend.header_top_margin - legend.label_y_margin;
+  nvrgtr_data.banner_legend_paper.rect(0, 1, cur_x, legend_height)
+    .attr({'fill':nvrgtr_display_opts.colours.tree_background, 'stroke':'black', 'stroke-width':1})
+    .toBack();
   nvrgtr_data.banner_legend_height = legend_height;
+  //nvrgtr_data.banner_legend_paper.setSize(cur_x, legend_height); // This messes things up
+  $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + legend_height + legend.bl_top_margin + 2}); // The 2 accounts for the borders
+  $("#showBannerLegendCheckbox").prop('disabled', false);
 }
 
 function setupThresholdPane() {
