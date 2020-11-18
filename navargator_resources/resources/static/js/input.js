@@ -4,8 +4,6 @@
 
 
 // TODO:
-// - For test_tree_4173 (and still noticable on 1399), clearing or adding to 'available' takes a surprisingly long time. Check if it can be optimized.
-//   - Even happens when adding 5 variants to an empty set. No reason to be that slow.
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
@@ -752,7 +750,7 @@ function updateCAIVariantMarkers() {
     }
     changeNodeStateColour(var_name, circle, 'node_rest', colour_key);
     circle.attr({'r':circle_radius});
-    $(".var-select-label[name='"+var_name+"'").css('border-color', nvrgtr_display_opts.colours[colour_key]);
+    nvrgtr_data.nodes[var_name].variant_select_label.css('border-color', nvrgtr_display_opts.colours[colour_key]);
   }
 }
 function clearHideResultsPane() {
@@ -912,12 +910,12 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
   label_ele.mouseenter(function() {
     var assigned_len = nvrgtr_data[assigned_key].length;
     if (assigned_len == 0) { return false; }
-    for (var i=0; i<assigned_len; ++i) {
+    for (let i=0; i<assigned_len; ++i) {
       nodeLabelMouseoverHandler(nvrgtr_data[assigned_key][i]);
     }
   }).mouseleave(function() {
     var assigned_len = nvrgtr_data[assigned_key].length;
-    for (var i=0; i<assigned_len; ++i) {
+    for (let i=0; i<assigned_len; ++i) {
       nodeLabelMouseoutHandler(nvrgtr_data[assigned_key][i]);
     }
   }).click(function() {
@@ -929,7 +927,7 @@ function addAssignedLabelHandlers(label_ele, assigned_key) {
     } else {
       label_ele.removeClass('var-assigned-selected');
     }
-    for (var i=0; i<assigned_len; ++i) {
+    for (let i=0; i<assigned_len; ++i) {
       nodeLabelMouseclickHandler(nvrgtr_data[assigned_key][i], false, full_select);
     }
     numSelectedCallback();
@@ -977,13 +975,16 @@ function clearAssignedButtonHandler(event, assigned_key, assigned_div_element) {
   updateRunOptions();
 }
 function nodeLabelMouseoverHandlerCallback(var_name, label_colour) {
-  nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
+  //nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
+  nvrgtr_data.nodes[var_name].variant_select_label[0].style.background = label_colour;
 }
 function nodeLabelMouseoutHandlerCallback(var_name, label_colour) {
-  nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
+  //nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
+  nvrgtr_data.nodes[var_name].variant_select_label[0].style.background = label_colour;
 }
 function nodeLabelMouseclickHandlerCallback(var_name, label_colour) {
-  nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
+  //nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
+  nvrgtr_data.nodes[var_name].variant_select_label[0].style.background = label_colour;
 }
 function numSelectedCallback() {
   // Update span indicating number of selected variants:

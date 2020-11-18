@@ -635,6 +635,10 @@ function drawDistanceGraphs() {
   var svg = d3.select("#histoSvg")
     .attr("width", total_width)
     .attr("height", total_height);
+  svg.append("rect")  // A solid background for the graph
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("fill", "#FFFFFF");
   nvrgtr_data.graph.g = svg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
   // Set up scales and data objects:
