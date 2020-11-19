@@ -51,12 +51,19 @@ function setupTreeElements() {
     nvrgtr_data.search_results.add_to_selection = true; // Resets so names will be added instead of removed.
     for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
       name = nvrgtr_data.leaves[i];
-      if (query == '' || name.toLowerCase().indexOf(query) == -1) {
-        nvrgtr_data.nodes[name]['search_highlight'].hide();
-      } else {
+      if (query == '' || name.toLowerCase().indexOf(query) == -1) { // No match to query
+        if (nvrgtr_page.page == 'results' && nvrgtr_data.variants.indexOf(name) != -1) {
+          nvrgtr_data.nodes[name].search_highlight.attr({'fill':nvrgtr_display_opts.colours.chosen, 'stroke':nvrgtr_display_opts.colours.chosen});
+        } else {
+          nvrgtr_data.nodes[name].search_highlight.hide();
+        }
+      } else { // Match to query
         num_hits += 1;
-        nvrgtr_data.nodes[name]['search_highlight'].show();
         nvrgtr_data.search_results.push(name);
+        if (nvrgtr_page.page == 'results' && nvrgtr_data.variants.indexOf(name) != -1) {
+          nvrgtr_data.nodes[name].search_highlight.attr({'fill':nvrgtr_display_opts.colours.search, 'stroke':nvrgtr_display_opts.colours.search});
+        }
+        nvrgtr_data.nodes[name].search_highlight.show();
       }
     }
     if (query == '') { // The 'clear search' command.
@@ -65,10 +72,10 @@ function setupTreeElements() {
       search_hits_div.css('width', '0px');
     } else { // A real query was searched.
       $("#varSearchNumHitsText").text(num_hits + ' hits');
-      var tree_div_width = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tree-width')),
+      let tree_div_width = nvrgtr_display_opts.sizes.tree,
         search_right_margin_str = $("#treeSearchDiv").css('right'),
         search_right_margin = parseInt(search_right_margin_str.slice(0,-2)),
-        search_button_width = $("#searchToSelectButton")[0].scrollWidth + 2,
+        search_button_width = search_select_button[0].scrollWidth + 2,
         input_right_offset = search_input_size - search_button_width/2 - tree_div_pad,
         search_select_max_width = Math.max(tree_div_width/2-input_right_offset-search_right_margin, search_button_width) + 'px';
       search_button.addClass('tree-search-button-clear');
@@ -258,18 +265,16 @@ function changeSelectionGroupLabelColour(node, new_colour) {
   if (new_colour == null) {
     return false;
   } else if (new_colour == false) { // Reset the node
-    node.label_rest_colour = '';
+    node.label_rest_colour = nvrgtr_display_opts.colours.label_bg;
     if (node.selected == true) {
       new_colour = nvrgtr_display_opts.colours[node.label_selected_key];
+    } else if (node.mouseover == true) {
+      new_colour = node.label_mouseover_colour;
     } else {
-      new_colour = node.label_mouseover_colour; // Happens whether node.mouseover or not
-      if (node.mouseover == true) {
-        node.label_highlight.hide();
-      }
+      new_colour = node.label_rest_colour;
     }
   } else {
     node.label_rest_colour = new_colour;
-    node.label_highlight.show();
   }
   node.label_highlight.attr({fill:new_colour});
   if (nvrgtr_page.page == 'input') {
@@ -450,7 +455,7 @@ function drawLabelAndSearchHighlights() {
     // Sets up highlight and mouseover around sequence name:
     drawLabelHighlight(var_name, label_highlight_start_radius, label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset);
     // Sets up highlight around node, sequence name, and a line between them:
-    drawSearchHighlight(var_name, label_highlight_start_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset, marker_highlight_radius);
+    drawSearchHighlight(var_name, label_highlight_end_radius, search_label_highlight_end_radius, var_angle-angle_offset, var_angle+angle_offset, marker_highlight_radius);
   }
 }
 function drawLabelHighlight(var_name, start_radius, end_radius, start_angle, end_angle) {
@@ -729,9 +734,6 @@ function nodeLabelMouseoverHandler(var_name, change_node_colour=true) {
   var node = nvrgtr_data.nodes[var_name], label_colour = node.label_mouseover_colour;
   node.mouseover = true;
   node.label_highlight.attr({fill:label_colour});
-  if (node.selected == false) {
-    node.label_highlight.show();
-  }
   if (change_node_colour == true) {
     node.circle.attr({fill:node.node_mouseover_colour});
   }
@@ -744,13 +746,10 @@ function nodeLabelMouseoutHandler(var_name, change_node_colour=true) {
   if (node.selected) {
     circle_colour = node.node_selected_colour;
     label_colour = node.label_selected_colour;
-    node.label_highlight.attr({fill:label_colour});
-  } else if (node.label_rest_colour != '') {
-    label_colour = node.label_rest_colour;
-    node.label_highlight.attr({fill:label_colour});
   } else {
-    node.label_highlight.hide();
+    label_colour = node.label_rest_colour;
   }
+  node.label_highlight.attr({fill:label_colour});
   if (change_node_colour == true) {
     node.circle.attr({fill:circle_colour});
   }
@@ -768,14 +767,8 @@ function nodeLabelMouseclickHandler(var_name, call_num_selected=true, set_select
     node.selected = false;
     if (node.mouseover == false) {
       node.circle.attr({fill:node.node_rest_colour});
-      if (node.label_rest_colour != '') {
-        label_colour = node.label_rest_colour;
-        node.label_highlight.attr({fill:label_colour});
-      } else {
-        label_colour = '';
-        node.label_highlight.hide();
-        node.label_highlight.attr({fill:node.label_mouseover_colour});
-      }
+      label_colour = node.label_rest_colour;
+      node.label_highlight.attr({fill:label_colour});
     } else {
       label_colour = node.label_mouseover_colour;
       node.label_highlight.attr({fill:label_colour});
@@ -787,7 +780,6 @@ function nodeLabelMouseclickHandler(var_name, call_num_selected=true, set_select
     node.selected = true;
     node.circle.attr({fill:node.node_selected_colour});
     node.label_highlight.attr({fill:label_colour});
-    node.label_highlight.show();
   }
   if (call_num_selected == true) {
     numSelectedCallback();

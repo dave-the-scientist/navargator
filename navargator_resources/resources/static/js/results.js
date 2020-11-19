@@ -29,7 +29,6 @@ $.extend(nvrgtr_settings.graph, {
 
 //TODO:
 // - Would be very useful to have some sort of additional visual indicator on the tree of the chosen variants. On a large tree they're pretty much impossible to see. Maybe a permanent search highlight type thing? A label might be ok, but could be good to have a line into the tree branches themselves.
-// - When saving a histogram (at least of final_nme_ngo_tbpBs.nwk), part of the x-axis label is cut off (the hanging bit of the "g"). Also, do I need a white background for the graph?
 // - A bit of weirdness going on when trying to root the large nme_ngo_tbpBs tree by selection. Worked the first time (when I set it to the presumed isotype 1), but errored the 2nd (when I tried to include the group near isotype 1s into the outgroup). I also noticed that shift-clicking behaved wrong once, but was working the rest of the time.
 // - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
@@ -619,6 +618,7 @@ function drawDistanceGraphs() {
     histo_l_margin_str = $("#histoSlider").css('marginLeft');
   nvrgtr_settings.graph.total_width = parseInt(graph_width_str.slice(0,-2));
   nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
+  //$("#histoSvg")[0].setAttribute('viewBox', '0 0 '+(nvrgtr_settings.graph.total_width*1.01)+' '+(nvrgtr_settings.graph.total_height*1.01)); // Needed to prevent clipping from IE and image viewers
   nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
   nvrgtr_settings.graph.line_area_stroke = getComputedStyle(document.documentElement)
     .getPropertyValue('--dark-background-colour');

@@ -2,6 +2,9 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
+// - Finish updateClusteredVariantMarkers() in results.js; it should colour the nodes in nvrgtr_data.variants with the chosen colour and not hide them.
+// - Change the search colour to something easily distinct from the chosen colour. The selection colour is up for grabs as well.
+// - Add a display option + checkbox to "Mark chosen" or something. If true, shows the chosen search highlights only on the results page. If false, doesn't. In treeSearchFunction(), ensure it respects that variable.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
