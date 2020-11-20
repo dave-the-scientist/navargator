@@ -589,6 +589,9 @@ button.control-element:active {
   padding:0px 1px;
   font-size:0.7em;
 }
+#legendBeamsRowDiv {
+  margin: 5px 0px;
+}
 
 /* ======  Selection groups  ====== */
 .list-close-button {

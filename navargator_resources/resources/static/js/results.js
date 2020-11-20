@@ -28,7 +28,6 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - Would be very useful to have some sort of additional visual indicator on the tree of the chosen variants. On a large tree they're pretty much impossible to see. Maybe a permanent search highlight type thing? A label might be ok, but could be good to have a line into the tree branches themselves.
 // - A bit of weirdness going on when trying to root the large nme_ngo_tbpBs tree by selection. Worked the first time (when I set it to the presumed isotype 1), but errored the 2nd (when I tried to include the group near isotype 1s into the outgroup). I also noticed that shift-clicking behaved wrong once, but was working the rest of the time.
 // - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
@@ -474,7 +473,12 @@ function extendTreeLegend() {
     $("#legendBorderRect").attr('height', new_height);
     // Update the size of the figure if necessary:
     let [canvas_height, y_offset] = calculateTreeCanvasHeight(nvrgtr_display_opts.sizes.tree);
-    $("#figureSvg").attr({'height':canvas_height});
+    nvrgtr_data.figure_svg_height = canvas_height;
+    if (nvrgtr_display_opts.show.banner_legend == true) {
+      $("#figureSvg").attr({'height':canvas_height + nvrgtr_data.banner_legend_height + nvrgtr_settings.banner_legend.bl_top_margin + 2});
+    } else {
+      $("#figureSvg").attr({'height':canvas_height});
+    }
   }
   updateTreeLegend();
 }
@@ -553,12 +557,15 @@ function updateClusteredVariantMarkers() {
   // Colours the chosen, available, and ignored nodes. Also adds tooltips to the mouseover object.
   var var_name, circle, circle_colour_key;
   for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
-    var_name = nvrgtr_data.leaves[i], node = nvrgtr_data.nodes[var_name];
-    circle = node.circle;
+    var_name = nvrgtr_data.leaves[i], node = nvrgtr_data.nodes[var_name], circle = node.circle;
     if (nvrgtr_data.variants.indexOf(var_name) != -1) {
       circle_colour_key = (nvrgtr_data.clusters[var_name].nodes.length > 1) ? 'chosen' : 'singleton_cluster_background';
       circle.attr({'r':nvrgtr_display_opts.sizes.big_marker_radius});
       changeNodeStateColour(var_name, node.label_highlight, 'label_mouseover', 'chosen', false);
+      if (nvrgtr_display_opts.show.chosen_beams == true) {
+        node.search_highlight.attr({'fill':nvrgtr_display_opts.colours.chosen, 'stroke':nvrgtr_display_opts.colours.chosen});
+        node.search_highlight.show();
+      }
     } else if (nvrgtr_data.available.indexOf(var_name) != -1) {
       circle_colour_key = 'available';
     } else if (nvrgtr_data.ignored.indexOf(var_name) != -1) {

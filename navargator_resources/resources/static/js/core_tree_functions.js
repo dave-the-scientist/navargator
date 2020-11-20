@@ -52,7 +52,7 @@ function setupTreeElements() {
     for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
       name = nvrgtr_data.leaves[i];
       if (query == '' || name.toLowerCase().indexOf(query) == -1) { // No match to query
-        if (nvrgtr_page.page == 'results' && nvrgtr_data.variants.indexOf(name) != -1) {
+        if (nvrgtr_display_opts.show.chosen_beams == true && nvrgtr_page.page == 'results' && nvrgtr_data.variants.indexOf(name) != -1) { // Set it back to highlighting the chosen
           nvrgtr_data.nodes[name].search_highlight.attr({'fill':nvrgtr_display_opts.colours.chosen, 'stroke':nvrgtr_display_opts.colours.chosen});
         } else {
           nvrgtr_data.nodes[name].search_highlight.hide();
@@ -61,6 +61,7 @@ function setupTreeElements() {
         num_hits += 1;
         nvrgtr_data.search_results.push(name);
         if (nvrgtr_page.page == 'results' && nvrgtr_data.variants.indexOf(name) != -1) {
+          // Don't really have to change the colour if nvrgtr_display_opts.show.chosen_beams == true, but safer to do it anyways (users can modify settings between searches).
           nvrgtr_data.nodes[name].search_highlight.attr({'fill':nvrgtr_display_opts.colours.search, 'stroke':nvrgtr_display_opts.colours.search});
         }
         nvrgtr_data.nodes[name].search_highlight.show();
@@ -388,14 +389,13 @@ function drawTree(marker_tooltips=true) {
   // Update & show legends and scale bar
   let banner_legend_y_trans = canvas_height + nvrgtr_settings.banner_legend.bl_top_margin;
   $("#treeBannerLegendGroup").attr('transform', 'translate(0,'+banner_legend_y_trans+')');
-  if (nvrgtr_display_opts.labels.show_banners_legend == true) {
+  if (nvrgtr_display_opts.show.banner_legend == true) {
     drawBannerLegend();
   } else {
     $("#showBannerLegendCheckbox").prop('disabled', true).prop('checked', true);
   }
-
   updateTreeLegend(); // Must be called after setting figureSvg height.
-  if (nvrgtr_display_opts.labels.show_legend == true) {
+  if (nvrgtr_display_opts.show.assigned_legend == true) {
     $("#treeLegendLeftGroup").show();
     $("#showLegendCheckbox").prop('checked', true);
   } else {
@@ -403,14 +403,13 @@ function drawTree(marker_tooltips=true) {
     $("#showLegendCheckbox").prop('checked', false);
   }
   updateScaleBar(sizes.scale_bar_distance);
-  if (nvrgtr_display_opts.labels.show_scalebar == true) {
+  if (nvrgtr_display_opts.show.scalebar == true) {
     $("#treeScaleBarGroup").show();
     $("#showScaleBarCheckbox").prop('checked', true);
   } else {
     $("#treeScaleBarGroup").hide();
     $("#showScaleBarCheckbox").prop('checked', false);
   }
-
   $("#treeLoadingMessageGroup").hide(); // Hides the "Loading..." message
 }
 function drawVariantObjects(marker_tooltips) {
@@ -436,7 +435,7 @@ function drawVariantObjects(marker_tooltips) {
 }
 function drawLabelAndSearchHighlights() {
   var var_name, var_angle, sizes = nvrgtr_display_opts.sizes;
-  var angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05,
+  var angle_offset = treeDrawingParams.scaleAngle / 2 * 1.02,
     label_highlight_start_radius = treeDrawingParams.minBGRadius+sizes.big_marker_radius+1,
     label_highlight_end_radius = treeDrawingParams.barChartRadius;
   if (nvrgtr_page.page == 'results' && sizes.bar_chart_height != 0) { // Make room for the bar chart.
@@ -480,7 +479,7 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
   // Grouping the highlights, and storing the object:
   var_highlight_set.push(search_label_highlight, marker_highlight, var_line_highlight);
   var_highlight_set.attr({'stroke-width':0, fill:nvrgtr_display_opts.colours.search}).toBack().hide();
-  var_line_highlight.attr({'stroke-width':2, stroke:nvrgtr_display_opts.colours.search});
+  var_line_highlight.attr({'stroke-width':1, stroke:nvrgtr_display_opts.colours.search});
   nvrgtr_data.nodes[var_name].search_highlight = var_highlight_set;
 }
 function drawTreeBanners() {
@@ -511,7 +510,7 @@ function drawTreeBanners() {
     label_obj = nvrgtr_data.r_paper.text(label_coords[0], label_coords[1], nvrgtr_display_opts.labels.banner_names[i]);
     label_obj.attr({'font-size': nvrgtr_display_opts.fonts.banner_font_size, 'text-anchor':'end', 'font-weight':'bold', 'font-family':nvrgtr_display_opts.fonts.family});
     $(label_obj.node).css('user-select', 'none');
-    if (nvrgtr_display_opts.labels.show_banners == false) {
+    if (nvrgtr_display_opts.show.banner_labels == false) {
       label_obj.hide();
     }
     nvrgtr_data.banner_labels.push(label_obj);

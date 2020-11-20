@@ -156,10 +156,16 @@
                 <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
                 <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
               </div>
-              <label class="nvrgtr-checkbox-outer">
-                <input id="showLegendCheckbox" type="checkbox" checked />
-                <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
-              </label>
+              <div id="legendBeamsRowDiv" class="horizontal-row-div">
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="showLegendCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
+                </label>
+                <label class="nvrgtr-checkbox-outer" title="Make cluster centers more obvious on the results page">
+                  <input id="showChosenBeamsCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="showChosenBeamsCheckbox">Chosen beams</label>
+                </label>
+              </div>
               <div id="scaleBarRowDiv" class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
                   <input id="showScaleBarCheckbox" type="checkbox" checked />

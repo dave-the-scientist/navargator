@@ -385,7 +385,7 @@ class VariantFinder(object):
             buff.append(tag_format_str.format(available_nodes_tag, avail_names))
         # Write display options
         if self.display_options:
-            for category in ('colours', 'sizes', 'angles', 'labels', 'fonts'):
+            for category in ('colours', 'sizes', 'angles', 'show', 'labels', 'fonts'):
                 if category not in self.display_options:
                     continue
                 cat_buff = []

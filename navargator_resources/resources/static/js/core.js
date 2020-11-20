@@ -2,9 +2,6 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// - Finish updateClusteredVariantMarkers() in results.js; it should colour the nodes in nvrgtr_data.variants with the chosen colour and not hide them.
-// - Change the search colour to something easily distinct from the chosen colour. The selection colour is up for grabs as well.
-// - Add a display option + checkbox to "Mark chosen" or something. If true, shows the chosen search highlights only on the results page. If false, doesn't. In treeSearchFunction(), ensure it respects that variable.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -47,14 +44,17 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
   'sizes' : {
     'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
   },
+  'show' : {
+    'assigned_legend': true, 'chosen_beams':true, 'scalebar':true, 'banner_labels':true, 'banner_legend':false
+  },
   'labels' : {
-    'show_legend':true, 'show_scalebar':true, 'banner_names':[], 'show_banners':true, 'show_banners_legend':false
+    'banner_names':[]
   },
   'angles' : {
     'init_angle':180, 'buffer_angle':20
   },
   'colours' : {
-    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#2491AB', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#3B3B3B', 'search':'#C6FF6F', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
+    'default_node':'#E8E8E8', 'chosen':'#24F030', 'available':'#2491AB', 'ignored':'#5D5D5D', 'label_bg':'#FFFFFF', 'label_text':'#3B3B3B', 'search':'#B19BEA', 'cluster_outline':'#000000', 'cluster_background':'#EAFEEC', 'cluster_highlight':'#92F7E4', 'singleton_cluster_background':'#9624F0', 'selection':'#FAB728', 'bar_chart':'#1B676B', 'tree_background':'#FFFFFF', 'cluster_opacity':0.43, 'cluster_background_trans':null, 'cluster_highlight_trans':null
   }
 };
 var nvrgtr_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // Deep copy
@@ -291,12 +291,12 @@ function setupDisplayOptionsPane() {
   }).spinner('value', nvrgtr_display_opts.fonts.banner_font_size);
   $("#displayBannerLabelCheckbox").change(function() {
     if ($("#displayBannerLabelCheckbox").is(':checked')) {
-      nvrgtr_display_opts.labels.show_banners = true;
+      nvrgtr_display_opts.show.banner_labels = true;
       for (const label_ele of nvrgtr_data.banner_labels) {
         label_ele.show();
       }
     } else {
-      nvrgtr_display_opts.labels.show_banners = false;
+      nvrgtr_display_opts.show.banner_labels = false;
       for (const label_ele of nvrgtr_data.banner_labels) {
         label_ele.hide();
       }
@@ -304,19 +304,40 @@ function setupDisplayOptionsPane() {
   });
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
-      nvrgtr_display_opts.labels.show_legend = true;
+      nvrgtr_display_opts.show.assigned_legend = true;
       $("#treeLegendLeftGroup").show();
     } else {
-      nvrgtr_display_opts.labels.show_legend = false;
+      nvrgtr_display_opts.show.assigned_legend = false;
       $("#treeLegendLeftGroup").hide();
     }
   });
+
+  $("#showChosenBeamsCheckbox").change(function() {
+    if ($("#showChosenBeamsCheckbox").is(':checked')) {
+      nvrgtr_display_opts.show.chosen_beams = true;
+      if (nvrgtr_page.page == 'results') {
+        for (let i=0; i<nvrgtr_data.variants.length; ++i) {
+          nvrgtr_data.nodes[nvrgtr_data.variants[i]].search_highlight.attr({'fill':nvrgtr_display_opts.colours.chosen, 'stroke':nvrgtr_display_opts.colours.chosen});
+          nvrgtr_data.nodes[nvrgtr_data.variants[i]].search_highlight.show();
+        }
+      }
+    } else {
+      nvrgtr_display_opts.show.chosen_beams = false;
+      if (nvrgtr_page.page == 'results') {
+        for (let i=0; i<nvrgtr_data.variants.length; ++i) {
+          nvrgtr_data.nodes[nvrgtr_data.variants[i]].search_highlight.attr({'fill':nvrgtr_display_opts.colours.search, 'stroke':nvrgtr_display_opts.colours.search});
+          nvrgtr_data.nodes[nvrgtr_data.variants[i]].search_highlight.hide();
+        }
+      }
+    }
+  });
+
   $("#showScaleBarCheckbox").change(function() {
     if ($("#showScaleBarCheckbox").is(':checked')) {
-      nvrgtr_display_opts.labels.show_scalebar = true;
+      nvrgtr_display_opts.show.scalebar = true;
       $("#treeScaleBarGroup").show();
     } else {
-      nvrgtr_display_opts.labels.show_scalebar = false;
+      nvrgtr_display_opts.show.scalebar = false;
       $("#treeScaleBarGroup").hide();
     }
   });
@@ -448,12 +469,12 @@ function setupSelectionGroupsPane() {
   });
   $("#showBannerLegendCheckbox").change(function() {
     if ($("#showBannerLegendCheckbox").is(':checked')) {
-      nvrgtr_display_opts.labels.show_banners_legend = true;
+      nvrgtr_display_opts.show.banner_legend = true;
       $("#treeBannerLegendGroup").show();
       $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + nvrgtr_data.banner_legend_height + nvrgtr_settings.banner_legend.bl_top_margin + 2}); // The 2 accounts for the borders
       // show the svg. may have to resize the treediv itself; we'll see.
     } else {
-      nvrgtr_display_opts.labels.show_banners_legend = false;
+      nvrgtr_display_opts.show.banner_legend = false;
       $("#treeBannerLegendGroup").hide();
       $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height});
     }
@@ -571,14 +592,12 @@ function drawBannerLegend() {
   if (legend_to_draw.length == 0) {
     return;
   }
-
   // Get the paper object set up
   if (nvrgtr_data.banner_legend_paper == null) {
     nvrgtr_data.banner_legend_paper = new Raphael('treeBannerLegendGroup', 100, 100);
   } else {
     nvrgtr_data.banner_legend_paper.clear();
   }
-
   // Draw the legend object
   $("#treeBannerLegendGroup").show();
   let cur_x = 0, cur_y, legend_height = 0;
@@ -604,7 +623,7 @@ function drawBannerLegend() {
     cur_x += group_set_bbox.width + legend.group_x_margin;
     legend_height = Math.max(legend_height, group_set_bbox.height);
   }
-  // draw box around legend
+  // Draw box around legend
   legend_height += legend.header_top_margin - legend.label_y_margin;
   nvrgtr_data.banner_legend_paper.rect(1, 1, cur_x, legend_height)
     .attr({'fill':nvrgtr_display_opts.colours.tree_background, 'stroke':'black', 'stroke-width':1})
@@ -612,7 +631,7 @@ function drawBannerLegend() {
   nvrgtr_data.banner_legend_paper.setSize(cur_x + 2, legend_height + 2);
   $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + legend_height + legend.bl_top_margin + 2}); // The 2 accounts for the borders
   $("#showBannerLegendCheckbox").prop('disabled', false).prop('checked', true);
-  nvrgtr_display_opts.labels.show_banners_legend = true;
+  nvrgtr_display_opts.show.banner_legend = true;
   nvrgtr_data.banner_legend_height = legend_height;
 }
 
@@ -1036,10 +1055,25 @@ function processDisplayOptions(display_opts) {
   setColourPickers();
   updateClusterColours();
   updateDisplayOptionSpinners();
-  if (nvrgtr_display_opts.labels.show_banners == true) {
+  if (nvrgtr_display_opts.show.banner_labels == true) {
     $("#displayBannerLabelCheckbox").prop('checked', true).change();
   } else {
     $("#displayBannerLabelCheckbox").prop('checked', false).change();
+  }
+  if (nvrgtr_display_opts.show.assigned_legend == true) {
+    $("#showLegendCheckbox").prop('checked', true);
+  } else {
+    $("#showLegendCheckbox").prop('checked', false);
+  }
+  if (nvrgtr_display_opts.show.chosen_beams == true) {
+    $("#showChosenBeamsCheckbox").prop('checked', true);
+  } else {
+    $("#showChosenBeamsCheckbox").prop('checked', false);
+  }
+  if (nvrgtr_display_opts.show.scalebar == true) {
+    $("#showScaleBarCheckbox").prop('checked', true);
+  } else {
+    $("#showScaleBarCheckbox").prop('checked', false);
   }
 }
 function validateDisplayOption(category, key, new_val) {
@@ -1192,7 +1226,7 @@ function updateLabelColours(key, colour) {
       if (node.selected) {
         nodeLabelMouseclickHandler(name, false, true);
       }
-    } else if (key == 'search') {
+    } else if (key == 'search' && !(nvrgtr_page.page == 'results' && nvrgtr_data.variants.indexOf(name) != -1)) {
       node.search_highlight.attr({fill: colour, stroke: colour});
     }
   });
