@@ -80,7 +80,6 @@ function setupPage() {
         calcSpecificDefaultDisplayOpts(num_vars);
         if (!newTreeLoaded(data_obj)) {  // If no session file loaded:
           $("#loadInputHeader").click(); //   open collapsible pane
-          // Display options are set to default by parseBasicData()
         }
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
@@ -138,6 +137,7 @@ function setupUploadSaveButtons() {
         newTreeLoaded(data_obj);
       },
       error: function(error) {
+        treeHasLoaded();
         processError(error, "Error uploading the input file");
       }
     });
@@ -185,7 +185,10 @@ function setupManipulationsPane() {
       success: function(data_obj) {
         newTreeLoaded(data_obj);
       },
-      error: function(error) { processError(error, "Error re-ordering the tree nodes"); }
+      error: function(error) {
+        treeHasLoaded();
+        processError(error, "Error re-ordering the tree nodes");
+      }
     });
     $("#reorderNodesButton").attr("increasing", function(index, attr) {
       return attr == "true" ? "false" : "true";
@@ -204,20 +207,19 @@ function setupManipulationsPane() {
       showErrorPopup("Error: the truncation length for tree names must be a number >= "+trunc_name_min);
       return false;
     }
-    $("#treeLoadingMessageGroup").show();
+    treeIsLoading();
     $.ajax({
       url: daemonURL('/truncate-tree-names'),
       type: 'POST',
       contentType: "application/json",
       data: JSON.stringify({...getPageAssignedData(), 'truncate_length':trunc_length}),
       success: function(data_obj) {
-        treeIsLoading();
         newTreeLoaded(data_obj);
         $("#truncateNamesSpinner").attr("last_good_value", trunc_length);
       },
       error: function(error) {
         $("#truncateNamesSpinner").spinner('value', $("#truncateNamesSpinner").attr("last_good_value"));
-        $("#treeLoadingMessageGroup").hide();
+        treeHasLoaded();
         processError(error, "Truncation too short");
       }
     });
@@ -659,6 +661,7 @@ function calcSpecificDefaultDisplayOpts(num_vars) {
 function newTreeLoaded(data_obj) {
   // Returns true if a tree was loaded, false otherwise.
   $("#clearSelectionButton").click();
+  treeHasLoaded();
   parseBasicData(data_obj);
   clearInterval(nvrgtr_page.maintain_interval_obj);
   nvrgtr_page.maintain_interval_obj = setInterval(maintainServer, nvrgtr_page.maintain_interval);
@@ -686,6 +689,7 @@ function newTreeLoaded(data_obj) {
   }
 }
 function redrawTree() {
+  clearTree();
   drawTree();
   updateVarSelectList();
   updateRunOptions();
@@ -903,7 +907,10 @@ function rerootTree(method) {
     success: function(data_obj) {
       newTreeLoaded(data_obj);
     },
-    error: function(error) { processError(error, "Error rooting the tree"); }
+    error: function(error) {
+      treeHasLoaded();
+      processError(error, "Error rooting the tree");
+    }
   });
 }
 function addAssignedLabelHandlers(label_ele, assigned_key) {

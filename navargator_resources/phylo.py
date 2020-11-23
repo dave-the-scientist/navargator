@@ -376,7 +376,7 @@ class Tree(object):
             not_outgroup = [node for node in self.leaves if node not in outgroup_nodes]
             ancestor = self.get_recent_common_ancestor(not_outgroup)
             if ancestor == self.root:
-                raise PhyloValueError('Error: could not root the tree with the given outgroup. If the outgroup spans the root in the current tree representation, ensure that you include every leaf that should be part of the outgroup.')
+                raise PhyloValueError('Error: could not root the tree with the given outgroup. If the outgroup spans the root in the current tree representation, ensure that you include every leaf that should be part of the outgroup. Equivalently, you can try rooting by the ingroup.')
             node2 = ancestor
             node1 = ancestor.parent
         node_dist = self.node_distance(node1, node2)
@@ -610,7 +610,7 @@ class Tree(object):
             else:
                 break
         if ancestor == None:
-            raise PhyloValueError("Error: could not determing the recent common ancestor. This might indicate the tree structure is malformed.")
+            raise PhyloValueError("Error: could not determing the recent common ancestor. This might indicate nodes have no single common ancestor or that the tree structure is malformed.")
         return ancestor
     def get_subtree(self, names, keep_root_branch=False):
         """Returns a new Tree object of the subtree containing all nodes specified by 'names'."""

@@ -28,7 +28,6 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - A bit of weirdness going on when trying to root the large nme_ngo_tbpBs tree by selection. Worked the first time (when I set it to the presumed isotype 1), but errored the 2nd (when I tried to include the group near isotype 1s into the outgroup). I also noticed that shift-clicking behaved wrong once, but was working the rest of the time.
 // - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
@@ -69,7 +68,7 @@ function setupPage() {
   setupThresholdPane();
   setupExportPane();
   setupTreeElements();
-  $("#treeLoadingMessageGroup").show();
+  treeIsLoading();
 
   $.ajax({
     url: daemonURL('/get-basic-data'),
@@ -80,6 +79,7 @@ function setupPage() {
       parseBasicData(data_obj);
       $("#numClustersH2Span").html(nvrgtr_data.num_variants + ' clusters');
       $("#numNodesSpan").html(nvrgtr_data.leaves.length);
+      treeHasLoaded();
       redrawTree(true);
       $("#treeGroup").attr("opacity", "0.4"); // Fades the tree and
       $("#calculatingMessageGroup").show();   // displays the loading message
@@ -433,6 +433,7 @@ function checkForClusteringResults() {
   });
 }
 function redrawTree(initial_draw=false) {
+  clearTree();
   drawTree(false);
   if (initial_draw == false) {
     //$("#clearSliderButton").click();

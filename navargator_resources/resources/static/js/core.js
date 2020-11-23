@@ -1647,8 +1647,14 @@ function calculateMinimumTransparency(initial_val, desired_val, background_val) 
 
 // =====  Misc common functions:
 function treeIsLoading() {
-  clearTree();
+  // To be called when a tree may be modified, but still waiting to hear if successful. Adds "loading" effects.
   $("#treeLoadingMessageGroup").show();
+  $("#treeGroup").attr("opacity", "0.4");
+}
+function treeHasLoaded() {
+  // To remove any "loading" effects, whether the tree was modified successfully or not.
+  $("#treeLoadingMessageGroup").hide();
+  $("#treeGroup").attr("opacity", "1.0");
 }
 function redrawTree() {
   // Overwritten in input.js and results.js to redraw the tree and reset visible elements.
