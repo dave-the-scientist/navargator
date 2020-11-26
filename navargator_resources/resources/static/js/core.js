@@ -2,6 +2,8 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
+// - Try different distance scaling measures on the dist matrix, see what the effects on clustering are. Decide if this feature is worth keeping, if not, remove it completely from the program.
+//   - Also, kiiiinda seems like k-medoids should be minimizing the squared distances, not the distances. Look into it.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.

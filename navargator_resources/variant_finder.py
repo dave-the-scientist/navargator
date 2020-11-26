@@ -13,9 +13,15 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
-# - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
-# - Implement spectral clustering. Would be the quickest method, and especially useful for large data sets.
+# - Finish _cluster_k_medoids_minibatch
 # - Implement threshold clustering.
+#   - Holy shit I think it's deterministic. So single run is enough
+#   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
+#   - Thesis describing optimizations on it: https://nsuworks.nova.edu/cgi/viewcontent.cgi?referer=https://www.google.ca/&httpsredir=1&article=1042&context=gscis_etd
+#   - Considering allowing user to specify ex 90% of variants within threshold. What happens to the remaining? Added to nearest cluster center (probably) or specified as unclustered? Should user be allowed to choose? If so, probably works to push unclustered into "ignored" for results page.
+#   - How do the chosen factor in? They can't be added to any candidate cluster, as they must be cluster centers
+# - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
+#   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
 # NOTE:
 # - I originally had allowed comments in nvrgtr files, but large encoded distance matrices spawned too many random characters that duplicated it.
@@ -239,7 +245,7 @@ class VariantFinder(object):
         self._private_display_opts = set(['cluster_background_trans', 'cluster_highlight_trans'])
 
     # # # # #  Public methods  # # # # #
-    def find_variants(self, num_variants, distance_scale=None, method=None, bootstraps=10):
+    def find_variants(self, num_variants, distance_scale=None, method=None, num_replicates=10):
         num_avail, num_chsn = len(self.available), len(self.chosen)
         if not num_chsn <= num_variants <= num_avail + num_chsn:
             raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than or equal to the number of chosen nodes ({}) but less than or equal to the number of available + chosen nodes ({}).'.format(num_chsn, num_avail + num_chsn))
@@ -268,7 +274,13 @@ class VariantFinder(object):
             if self.verbose:
                 print('Choosing variants using k medoids...')
             fxn, args = self._cluster_k_medoids, (num_variants,)
-            variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, bootstraps)
+            variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
+        elif method == 'k minibatch':
+            batch_size = 500
+            if self.verbose:
+                print('Choosing variants using k minibatch...')
+            fxn, args = self._cluster_k_medoids_minibatch, (num_variants, batch_size)
+            variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         if self.verbose:
@@ -464,9 +476,9 @@ class VariantFinder(object):
         return vf
 
     # # # # #  Clustering methods  # # # # #
-    def _heuristic_rand_starts(self, fxn, args, bootstraps):
+    def _heuristic_rand_starts(self, fxn, args, num_replicates):
         optima = {}
-        for i in range(bootstraps):
+        for i in range(num_replicates):
             variants, scores = fxn(*args)
             var_tup = tuple(sorted(variants))
             if var_tup in optima:
@@ -476,7 +488,7 @@ class VariantFinder(object):
         ranked_vars = sorted(optima.keys(), key=lambda opt: optima[opt]['score'])
         best_variants, best_scores = optima[ranked_vars[0]]['variants'], optima[ranked_vars[0]]['scores']
         alt_optima, alt_variants, opt_count = 0, [], optima[ranked_vars[0]]['count']
-        if bootstraps > 1:
+        if num_replicates > 1:
             for rv in ranked_vars[1:]:
                 if optima[rv]['score'] == sum(best_scores):
                     alt_optima += 1
@@ -485,7 +497,7 @@ class VariantFinder(object):
                 else:
                     break
             if self.verbose:
-                self._print_alt_variant_results(bootstraps, optima, ranked_vars, alt_optima, opt_count)
+                self._print_alt_variant_results(num_replicates, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, best_scores, alt_variants
     def _brute_force_clustering(self, num_variants):
         avail_medoid_indices = sorted(self.index[n] for n in self.available)
@@ -528,6 +540,38 @@ class VariantFinder(object):
                     if score < best_score:
                         best_med_inds, best_scores, best_score = med_inds.copy(), scores, score
                         # just alter the 1 number in best_inds, instead of copy
+                        improvement = True
+                    else:
+                        med_inds[i] = best_med_inds[i]
+        return best_med_inds, best_scores
+    def _cluster_k_medoids_minibatch(self, num_variants, batch_size):
+        avail_medoid_indices = sorted(self.index[n] for n in self.available)
+        chsn_indices = list(self.index[n] for n in self.chosen)
+        num_chsn = len(chsn_indices)
+
+        best_med_inds = np.array(chsn_indices + random.sample(avail_medoid_indices, num_variants-num_chsn))
+        # use self.tree.get_ordered_names() to divide the tree into k sections, randomly choose one initial centroid from each section. speed/accuracy test this idea
+
+        best_clusters = self._partition_nearest(best_med_inds)
+        best_scores = self._sum_dist_scores(best_med_inds, best_clusters)
+        best_score = sum(best_scores)
+        # Using a simple greedy algorithm:
+        improvement = True
+        while improvement == True:
+            # speed test on the big trees (k mediods to 3 is possible on 1483 tree, 4 might be; see how this does on the 4k tree in non-GUI mode). check the score improvement with each round, see if i should implement a heuristic cutoff. or maybe cap #iterations? Maybe I want a minimum # iterations as well (even if it's just 2 or 3) to allow for even-ish cover over the available variants.
+            improvement = False
+            med_inds = best_med_inds.copy()
+            avail_minibatch_inds = random.sample(avail_medoid_indices, batch_size)
+            for i in range(num_chsn, num_variants):
+                for ind in avail_minibatch_inds:
+                    if ind in med_inds: continue
+                    med_inds[i] = ind
+                    clusters = self._partition_nearest(med_inds)
+                    scores = self._sum_dist_scores(med_inds, clusters)
+                    score = sum(scores)
+                    if score < best_score:
+                        best_med_inds, best_scores, best_score = med_inds.copy(), scores, score
+                        # just alter the 1 number in best_inds, instead of copy. TEST IF THIS IS TRUE
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]
@@ -586,15 +630,15 @@ class VariantFinder(object):
             print('Found %i representative variants in %.1f seconds.' % (num_variants, run_time))
         variant_names = ', '.join(sorted(self.leaves[v] for v in variants))
         print('\nBest score: %f\nBest variants: %s' % (sum(scores), variant_names))
-    def _print_alt_variant_results(self, bootstraps, optima, ranked_vars, alt_optima, opt_count):
-        optima_percent = round(opt_count * 100.0 / bootstraps, 0)
+    def _print_alt_variant_results(self, num_replicates, optima, ranked_vars, alt_optima, opt_count):
+        optima_percent = round(opt_count * 100.0 / num_replicates, 0)
         if len(ranked_vars) == 1:
-            print('One unique solution found after %i bootstraps.' % (bootstraps))
+            print('One unique solution found after {} replicates.'.format(num_replicates))
         elif alt_optima == 0:
             imprv_percent = round((optima[ranked_vars[1]]['score'] - optima[ranked_vars[0]]['score']) * 100.0 / optima[ranked_vars[0]]['score'], 1)
-            print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (%.1f%% improvement over solution #2).' % (len(ranked_vars), bootstraps, optima_percent, imprv_percent))
+            print('{} solutions found after {} replicates; {}% consensus for the optimum ({:.1f}% improvement over solution #2).'.format(len(ranked_vars), num_replicates, optima_percent, imprv_percent))
         else:
-            print('%i solutions found after %i bootstraps; %i%% consensus for the optimum (from %i equivalent solutions).' % (len(ranked_vars), bootstraps, optima_percent, alt_optima+1))
+            print('{} solutions found after {} replicates; {}% consensus for the optimum (from {} equivalent solutions).'.format(len(ranked_vars), num_replicates, optima_percent, alt_optima+1))
 
     # # # # #  Variable validation methods  # # # # #
     def _validate_clustering_method(self, method, num_possible_combinations):

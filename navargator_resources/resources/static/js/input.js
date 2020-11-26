@@ -4,6 +4,9 @@
 
 
 // TODO:
+// - In Run Options pane, get rid of the "auto open" checkbox. Singles will always auto-open, a range never will.
+//   - Set it up so that other options are shown/hidden based on the choice of clustering method.
+//   - K medoids should allow the user to set num_replicates; k minibatch to set num_replicates (lower default) and batch size (maybe); threshold to set the threshold and % required above it (but doesn't use "variants to fine" inputs).
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
