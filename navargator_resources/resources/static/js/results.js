@@ -28,7 +28,6 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - I want to re-design the buttons under the histo slider. Possibly get rid of the Reset. Move the <|> button to the left, have the "Add/remove" button only appear when some sequences are actually "considered". Probably style them like the pop-out search button.
 // - Once thresholds are implemented, might be useful to include a visual indicator on the x-axis of the histo. Good visual way to see how many variants are under the threshold, above it, far above it, etc. Or maybe not needed.
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc).
@@ -89,17 +88,25 @@ function setupPage() {
   });
 }
 function setupHistoSliderPane() {
-  var left = $("#leftSliderButton"), middle = $("#middleSliderButton"), reset_button = $("#clearSliderButton"), middle_span = $("#middleSliderButtonSpan"), slider_handle = $("#histoSliderHandle"),
+  // Note: I removed the button to reset the histogram slider $("#clearSliderButton")
+  var add_sub = $("#histoAddSubButton"), toggle_dir = $("#histoToggleDirectionButton"), toggle_span = $("#histoToggleButtonSpan"), slider_handle = $("#histoSliderHandle"),
   do_remove = false, select_below = true;
-  var mid_offset = middle_span.css('left'), animation_speed = 150, animation_style = 'linear',
-    mid_left_arrow = $("#midLeftArrow"), mid_right_arrow = $("#midRightArrow");
+  var histo_add_title = "Add these variants to the current selection",
+    histo_sub_title = "Remove these variants from the current selection";
   function setButtonAddToSelection() {
-    if (do_remove == true) { left.html('Add to<br>selection'); }
+
+    // IS do_remove NEEDED?? WHATS THE INTERACTION WITH select_below?
+
+    if (do_remove == true) {
+      add_sub.removeClass('histo-subtract-variants');
+      add_sub.attr('title', histo_add_title);
+    }
     do_remove = false;
   }
   function setButtonRemoveFromSelection() {
+    add_sub.addClass('histo-subtract-variants');
+    add_sub.attr('title', histo_sub_title);
     do_remove = true;
-    left.html('Cut from<br>selection');
   }
   var slider = $("#histoSlider").slider({
     range: "min",
@@ -127,9 +134,9 @@ function setupHistoSliderPane() {
   });
 
   // Histogram button functionalities:
-  left.click(function() {
+  add_sub.click(function() {
     var slider_keys = Object.keys(nvrgtr_data.considered_variants), var_name;
-    for (var i=0; i<slider_keys.length; ++i) {
+    for (let i=0; i<slider_keys.length; ++i) {
       var_name = slider_keys[i];
       nodeLabelMouseclickHandler(var_name, false, !do_remove);
     }
@@ -140,28 +147,26 @@ function setupHistoSliderPane() {
       setButtonAddToSelection();
     }
   });
-  middle.click(function() {
-    var slider_val = slider.slider('value');
-    if (slider_val == 0) { slider_val = nvrgtr_data.nice_max_var_dist; }
-    else if (slider_val == nvrgtr_data.nice_max_var_dist) { slider_val = 0; }
+  add_sub.attr('title', histo_add_title).hide();
+  var toggle_label = $("#histoToggleLabel"),
+    highlight_below_title = 'Highlight variants closer to their center than this distance',
+    highlight_above_title = 'Highlight variants further from their center than this distance';
+  toggle_dir.click(function() {
+    let slider_val = slider.slider('value');
     if (select_below) { // Switch to above
       slider.slider('option', 'range', 'max');
-      middle_span.html('Variants<br>above');
-      middle_span.animate({left: '-'+mid_offset}, animation_speed, animation_style);
-      mid_left_arrow.animate({opacity:0}, animation_speed, animation_style);
-      mid_right_arrow.animate({opacity:1}, animation_speed, animation_style);
+      let new_right = Math.floor(toggle_dir.width()) - toggle_label.outerWidth(); // Chrome needs a -1 if not using floor()
+      toggle_label.animate({right:new_right}, 200);
+      toggle_dir.attr('title', highlight_above_title);
       // Invert the CDF
       nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(d.inv) });
       nvrgtr_data.graph.line_graph.transition().attr("d", function() {
         return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.cumulative_data);
       });
-
     } else { // Switch to below
       slider.slider('option', 'range', 'min');
-      middle_span.html('Variants<br>below');
-      middle_span.animate({left: mid_offset}, animation_speed, animation_style);
-      mid_left_arrow.animate({opacity:1}, animation_speed, animation_style);
-      mid_right_arrow.animate({opacity:0}, animation_speed, animation_style);
+      toggle_label.animate({right:0}, 200);
+      toggle_dir.attr('title', highlight_below_title);
       // Reset the CDF
       nvrgtr_data.graph.line_fxn.y(function(d) { return nvrgtr_data.graph.y_fxn2(d.cumul) });
       nvrgtr_data.graph.line_graph.transition().attr("d", function() {
@@ -175,14 +180,14 @@ function setupHistoSliderPane() {
     selectNamesByThreshold(slider_val, !select_below);
     select_below = !select_below;
   });
-  reset_button.click(function() {
+  toggle_dir.attr('title', highlight_below_title);
+  $("#clearSliderButton").click(function() {
     var slider_val = (select_below) ? 0 : nvrgtr_data.nice_max_var_dist;
     slider.slider('value', slider_val);
     slider_handle.text(slider_val);
     updateAreaGraphAndIndicator(slider_val, select_below);
     selectNamesByThreshold(slider_val, select_below);
   });
-  $("#numSliderSpan").hide();
   setButtonAddToSelection();
 }
 function setupNormalizationPane() {
@@ -866,11 +871,14 @@ function selectNamesByThreshold(threshold, select_below) {
       has_changed = true;
     }
   }
+  let add_sub = $("#histoAddSubButton"), timing = 150;
   if (num_picked == 0) {
-    $("#numSliderSpan").hide();
+    add_sub.hide(timing);
   } else {
-    $("#numSliderSpan").html(num_picked+' variants');
-    $("#numSliderSpan").show();
+    $("#histoAddSubNumText").text(num_picked+' variants');
+    if (add_sub.is(":hidden")) {
+      add_sub.show(timing);
+    }
   }
   return has_changed;
 }

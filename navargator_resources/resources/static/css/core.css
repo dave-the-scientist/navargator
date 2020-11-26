@@ -26,6 +26,7 @@
   --control-element-border-width:1px;
   --control-element-vert-margin:3px;
   --cubic-transition:0.2s cubic-bezier(0.2, 0.6, 0.3, 1.0);
+  --button-inset-box-shadow:inset 2px 4px 6px rgba(255,255,255,.3), inset -4px -4px 6px rgba(201,201,201,.25);
 }
 
 /* ======  General formatting options  ====== */
@@ -532,7 +533,7 @@ div.collapsible-panel > hr {
   vertical-align:-webkit-baseline-middle; /*Needed for chrome*/
   background-color:var(--light-background-colour);
   border:var(--control-element-border-width) solid var(--button-border-colour);
-  box-shadow:inset 2px 4px 6px rgba(255,255,255,.3), inset -4px -4px 6px rgba(201,201,201,.25);
+  box-shadow:var(--button-inset-box-shadow);
   outline:none;
   font-family:Arial, Helvetica, sans-serif;
   font-size:14px;

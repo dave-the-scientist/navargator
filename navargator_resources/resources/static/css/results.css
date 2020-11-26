@@ -44,46 +44,137 @@
   line-height:1.6em;
   font-size:12px;
 }
+
 #histoButtonsDiv {
-  --button-width:55px;
-  --button-height:25px;
-  position:relative;
+  padding:3px 0px 0px 18px;
   align-items:center;
+  flex-direction:row-reverse;
+  width:362px; /*232px to center*/
+  min-height:30px;
 }
-#leftSliderButton, #middleSliderButton, #clearSliderButton {
+#histoToggleDirectionButton, #histoAddSubButton {
   position:relative;
-  width:var(--button-width);
-  height:var(--button-height);
-  line-height:9px;
-  font-size:10px;
+  display:flex;
+  margin:0px;
+  padding:0px;
+  height:var(--control-element-height);
+  line-height: var(--control-element-height);
+  align-items:stretch;
+  background-color: var(--light-background-colour);
+  border:1px solid var(--button-border-colour);
+  border-radius:4px;
+  outline:none;
+  box-shadow:var(--button-inset-box-shadow);
 }
-#numSliderSpan {
-  position:absolute;
-  top:calc(var(--button-height) / 2 - 0.375em);
-  left:calc(var(--button-width) + 10px);
+#histoToggleLabel:active, #histoAddSubButton:active {
+  background-color:var(--cluster-background-colour);
+}
+#histoToggleDirectionButton:hover, #histoAddSubButton:hover {
+  border-color:var(--button-border-hover-colour);
+}
+#histoToggleLabel, #histoAddSubNumText {
+  font-family:var(--font-family);
   font-size:14px;
+  color:black;
+  text-shadow:unset;
 }
-#middleSliderButton {
-  width:65px;
+
+#histoToggleDirectionButton {
+  width:6em;
+  justify-content:space-between;
+  background-color:var(--dark-background-colour);
+  box-shadow:unset;
+  transition:background-color .15s linear, border-color .15s linear;
 }
-#clearSliderButton {
-  font-size:12px;
+#histoToggleDirectionButton:hover {
+  background-color:var(--highlight-colour);
 }
-#middleSliderButtonSpan {
+#histoToggleDirectionButton:hover > span {
+  background:var(--dark-background-colour);
+}
+#histoToggleLabel {
+  position:absolute;
+  margin:0px;
+  padding:0px 5px;
+  height:100%;
+  right:0px;
+  background-color:var(--light-background-colour);
+  border-radius:3px;
+  box-shadow:var(--button-inset-box-shadow);
+  font-weight:normal;
+}
+#histoToggleLeftSpan1, #histoToggleLeftSpan2,
+#histoToggleRightSpan1, #histoToggleRightSpan2 {
+  position:absolute;
+  width:9px;
+  height:2.5px;
+  background:var(--highlight-colour);
+}
+#histoToggleLeftSpan1 {
+  bottom:56%;
+  left:2px;
+  transform:rotate(-45deg);
+}
+#histoToggleLeftSpan2 {
+  top:56%;
+  left:2px;
+  transform:rotate(45deg);
+}
+#histoToggleRightSpan1 {
+  bottom:56%;
+  right:2px;
+  transform:rotate(45deg);
+}
+#histoToggleRightSpan2 {
+  top:56%;
+  right:2px;
+  transform:rotate(-45deg);
+}
+
+#histoAddSubNumText {
+  margin:0px 0px 0px 5px;
+}
+#histoAddSubIconDiv {
   position:relative;
-  left:5px;
+  margin:0px 0px 0px 5px;
+  width:25px;
+  background-color:var(--dark-background-colour);
+  border-left:1px solid var(--dark-background-colour);
+  border-top-right-radius:4px;
+  border-bottom-right-radius:4px;
+  transition:background-color .15s linear, border-color .15s linear;
 }
-#midLeftArrow {
+#histoAddSubIconSpan1, #histoAddSubIconSpan2 {
   position:absolute;
-  top:calc(var(--button-height) / 2 - 0.55em);
-  left:3px;
-  opacity:1;
+  top:10px;
+  right:6px;
+  width:13px;
+  height:3px;
+  background:var(--major-accent-colour);
+  transition:all .15s linear, transform .25s linear;
 }
-#midRightArrow {
-  position:absolute;
-  top:calc(var(--button-height) / 2 - 0.55em);
-  right:3px;
-  opacity:0;
+#histoAddSubIconSpan2 {
+  transform:rotate(90deg);
+}
+#histoAddSubButton:hover > #histoAddSubIconDiv {
+  background-color:var(--major-accent-colour);
+}
+#histoAddSubButton:hover > #histoAddSubIconDiv > span {
+  background-color:var(--dark-background-colour);
+}
+#histoAddSubButton.histo-subtract-variants > #histoAddSubIconDiv > span {
+  background-color:red;
+}
+#histoAddSubButton.histo-subtract-variants > #histoAddSubIconDiv > #histoAddSubIconSpan2 {
+  transform:unset;
+}
+
+#clearSliderButton {
+  position:relative;
+  width:55px;
+  height:25px;
+  line-height:9px;
+  font-size:12px;
 }
 
 /* Clusters table settings:*/

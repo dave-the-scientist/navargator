@@ -450,10 +450,20 @@
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
             </div>
             <div id="histoButtonsDiv" class="horizontal-row-div">
-              <button id="leftSliderButton" class="control-element">Add to<br>selection</button>
-              <span id="numSliderSpan">-- variants</span>
-              <button id="middleSliderButton" class="control-element"><span id="midLeftArrow">&lt;&lt;</span><span id="middleSliderButtonSpan">Variants<br>below</span><span id="midRightArrow">&gt;&gt;</span></button>
-              <button id="clearSliderButton" class="control-element">Reset</button>
+              <button id="histoToggleDirectionButton">
+                <span id="histoToggleLeftSpan1"></span>
+                <span id="histoToggleLeftSpan2"></span>
+                <span id="histoToggleRightSpan1"></span>
+                <span id="histoToggleRightSpan2"></span>
+                <label id="histoToggleLabel">Highlight</label>
+              </button>
+              <button id="histoAddSubButton" style="display:flex">
+                <b><label id="histoAddSubNumText">-- variants</label></b>
+                <div id="histoAddSubIconDiv">
+                  <span id="histoAddSubIconSpan1"></span>
+                  <span id="histoAddSubIconSpan2"></span>
+                </div>
+              </button>
             </div>
           </div>
 
