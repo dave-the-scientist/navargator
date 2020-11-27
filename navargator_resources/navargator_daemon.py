@@ -35,8 +35,8 @@ else:
 
 
 # TODO:
-# - find_variants() needs a better way of passing arguments to the vf; different methods use very different sets of args
-# - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long.
+# - find_variants() needs a better way of passing arguments to the vf; different methods (threshold) use very different sets of args
+# - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 # - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
 

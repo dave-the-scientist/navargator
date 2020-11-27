@@ -13,7 +13,6 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
-# - Finish _cluster_k_medoids_minibatch
 # - Implement threshold clustering.
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
@@ -239,7 +238,7 @@ class VariantFinder(object):
         self._distance_scale = 1.0 # Accessible as self.distance_scale
         # # #  Private attributes # # #
         self._not_ignored_inds = set(range(len(self.leaves)))
-        self._cluster_methods = set(['k medoids', 'brute force'])
+        self._cluster_methods = set(['k minibatch', 'k medoids', 'brute force'])
         self._distance_scale_max = 1000
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
         self._private_display_opts = set(['cluster_background_trans', 'cluster_highlight_trans'])
@@ -271,11 +270,13 @@ class VariantFinder(object):
                 print('Finding optimal variants using brute force. This should take ~{} seconds...'.format(expected_runtime))
             variants, scores, alt_variants = self._brute_force_clustering(num_variants)
         elif method == 'k medoids':
+            num_replicates = 10
             if self.verbose:
                 print('Choosing variants using k medoids...')
             fxn, args = self._cluster_k_medoids, (num_variants,)
             variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
         elif method == 'k minibatch':
+            num_replicates = 5
             batch_size = 500
             if self.verbose:
                 print('Choosing variants using k minibatch...')
@@ -496,7 +497,7 @@ class VariantFinder(object):
                     opt_count += optima[rv]['count']
                 else:
                     break
-            if self.verbose:
+            if not self.verbose:
                 self._print_alt_variant_results(num_replicates, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, best_scores, alt_variants
     def _brute_force_clustering(self, num_variants):
@@ -518,14 +519,20 @@ class VariantFinder(object):
             raise NavargatorRuntimeError('Error: big problem in brute force clustering, no comparisons were made.')
         return best_med_inds, best_scores, alt_variants
     def _cluster_k_medoids(self, num_variants):
-        avail_medoid_indices = sorted(self.index[n] for n in self.available)
+        avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = list(self.index[n] for n in self.chosen)
         num_chsn = len(chsn_indices)
-        best_med_inds = np.array(chsn_indices + random.sample(avail_medoid_indices, num_variants-num_chsn))
+        # This spaces the initial centroids around the tree
+        seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
+        rand_inds = []
+        for i in range(num_variants - num_chsn):
+            rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk)])
+        best_med_inds = np.array(chsn_indices + rand_inds)
+        # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters)
         best_score = sum(best_scores)
-        # Using a simple greedy algorithm:
+        # Using a simple greedy algorithm, typically converges after 2-3 iterations.
         improvement = True
         while improvement == True:
             improvement = False
@@ -538,30 +545,36 @@ class VariantFinder(object):
                     scores = self._sum_dist_scores(med_inds, clusters)
                     score = sum(scores)
                     if score < best_score:
-                        best_med_inds, best_scores, best_score = med_inds.copy(), scores, score
-                        # just alter the 1 number in best_inds, instead of copy
+                        best_scores, best_score = scores, score
+                        best_med_inds[i] = ind
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
     def _cluster_k_medoids_minibatch(self, num_variants, batch_size):
-        avail_medoid_indices = sorted(self.index[n] for n in self.available)
-        chsn_indices = list(self.index[n] for n in self.chosen)
+        """Runs a k-medoids clustering approach, but only on a random subsample of available variants. Yields massive time savings, with only a minor performance hit (if any). Identifying 3 clulsters in a tree of 4173 variants took ~10s per run, while 5 clusters took ~15s."""
+        avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
+        chsn_indices = [self.index[n] for n in self.chosen]
         num_chsn = len(chsn_indices)
-
-        best_med_inds = np.array(chsn_indices + random.sample(avail_medoid_indices, num_variants-num_chsn))
-        # use self.tree.get_ordered_names() to divide the tree into k sections, randomly choose one initial centroid from each section. speed/accuracy test this idea
-
+        # This spaces the initial centroids around the tree
+        seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
+        rand_inds = []
+        for i in range(num_variants - num_chsn):
+            rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk)])
+        best_med_inds = np.array(chsn_indices + rand_inds)
+        # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters)
         best_score = sum(best_scores)
-        # Using a simple greedy algorithm:
+        # Using a simple greedy algorithm, typically converges after 2-5 iterations.
         improvement = True
         while improvement == True:
-            # speed test on the big trees (k mediods to 3 is possible on 1483 tree, 4 might be; see how this does on the 4k tree in non-GUI mode). check the score improvement with each round, see if i should implement a heuristic cutoff. or maybe cap #iterations? Maybe I want a minimum # iterations as well (even if it's just 2 or 3) to allow for even-ish cover over the available variants.
             improvement = False
             med_inds = best_med_inds.copy()
-            avail_minibatch_inds = random.sample(avail_medoid_indices, batch_size)
+            if len(avail_medoid_indices) > batch_size:
+                avail_minibatch_inds = random.sample(avail_medoid_indices, batch_size)
+            else:
+                avail_minibatch_inds = avail_medoid_indices
             for i in range(num_chsn, num_variants):
                 for ind in avail_minibatch_inds:
                     if ind in med_inds: continue
@@ -570,8 +583,8 @@ class VariantFinder(object):
                     scores = self._sum_dist_scores(med_inds, clusters)
                     score = sum(scores)
                     if score < best_score:
-                        best_med_inds, best_scores, best_score = med_inds.copy(), scores, score
-                        # just alter the 1 number in best_inds, instead of copy. TEST IF THIS IS TRUE
+                        best_scores, best_score = scores, score
+                        best_med_inds[i] = ind
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]

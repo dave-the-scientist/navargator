@@ -4,10 +4,12 @@
 
 
 // TODO:
+// - When opening a tree (but not nvrgtr, if possible, but not a huge deal), have the page pick a reasonable clustering method by default. Brute force for small, medoids for medium, minibatch for large.
 // - In Run Options pane, get rid of the "auto open" checkbox. Singles will always auto-open, a range never will.
 //   - Set it up so that other options are shown/hidden based on the choice of clustering method.
 //   - K medoids should allow the user to set num_replicates; k minibatch to set num_replicates (lower default) and batch size (maybe); threshold to set the threshold and % required above it (but doesn't use "variants to fine" inputs).
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
+// - Profile
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
@@ -20,6 +22,9 @@
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
 
 //NOTE:
+// - For the Run Options help section:
+//   - It takes ~2 minutes to load a tree of 4173 variants in Chrome. Identifying 3 clusters only took ~10 seconds per replication using minibatch, vs ~70 seconds with k medoids.
+//   - When identifying 5 clusters, it took ~15 seconds per replication using minibatch compared to 112 sec per replication with k medoids.
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
 //   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and when finding variants if any of the assigned variants have changed. Those are all currently covered.
 //   - NEED TO CHECK THIS. After adding the re-ordering and rooting functions, make sure there's nothing more to do with them.
