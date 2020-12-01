@@ -13,6 +13,9 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
+# - Need to store the distance_scale value, load it, and re-apply it to self.orig_dist to create the correct self.dist
+#   - Actually, don't bother keeping self.dist around, as it might be tricky to keep straight when to use it and when to use orig_dist. Threshold clustering it doesn't really make sense to use self.dist, as the threshold comes from the tree and you can achieve similar results by just varying the required %.
+#   - Keep it as a param for the k/brute clustering, so gets passed to the clustering fxn, which can quickly generate the modified distance matrix (does this make sense with the function structure?).
 # - Implement threshold clustering.
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
@@ -444,7 +447,7 @@ class VariantFinder(object):
 
     def encode_distance_matrix(self):
         """Takes the current distance matrix, discards the unnecessary values, saves it in a binary format, then decodes that into an ascii representation that can be handled by JSON."""
-        flat = flatten_distance_matrix(self.dist)
+        flat = flatten_distance_matrix(self.orig_dist)
         with BytesIO() as b:
             np.save(b, flat, allow_pickle=False)
             bin_data = b.getvalue() # Bytes object, can't be JSON serialized
@@ -497,7 +500,7 @@ class VariantFinder(object):
                     opt_count += optima[rv]['count']
                 else:
                     break
-            if not self.verbose:
+            if self.verbose:
                 self._print_alt_variant_results(num_replicates, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, best_scores, alt_variants
     def _brute_force_clustering(self, num_variants):
@@ -737,7 +740,9 @@ class VariantFinder(object):
         elif val > self._distance_scale_max:
             raise NavargatorValueError('Error: distance_scale must be less than {}.'.format(self._distance_scale_max))
         self._distance_scale = val
-        self.dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0
+        #dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0 # @10, tbpb82 has a different pattern
+        dist = np.log((self.orig_dist.copy()+1.0/val)*val) # @20, @0.01 have similar but opposite effects on distribution skew. Positive values reduce the impact of outliers
+        self.dist = dist * self.orig_dist.max() / dist.max() # Ensures the magnitudes are *similar*, though they won't really be comparable.
         # self._clear_cache()
 
 

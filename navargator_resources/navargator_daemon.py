@@ -36,6 +36,8 @@ else:
 
 # TODO:
 # - find_variants() needs a better way of passing arguments to the vf; different methods (threshold) use very different sets of args
+#   - Need to change the vf cache, as it's currently referenced by var_num. Threshold clustering uses (thresh, %) as parameters. I want them to be able to co-exist, so maybe that's actually how I do want it...
+#   - Need to change how result links are presented on the input page, to allow for k- and threshold-clustered results. I could calculate a total score for a threshold clustering, so it could be graphed as a k- is. However, the minimization is different so k- will appear to be "better" than thresh-; this should be specified somewhere.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 # - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
@@ -137,7 +139,7 @@ class NavargatorDaemon(object):
                 return msg
             elif vf == None:
                 return ("error, global normalization cannot be calculated because there is no valid variant finder for session ID '{}'".format(s_id), 5509)
-            dist_scale = 1.0
+            dist_scale = 0.01
             cur_var = request.json['cur_var']
             max_var_dist = float(request.json['max_var_dist'])
             bins = list(map(float, request.json['global_bins']))
@@ -330,7 +332,10 @@ class NavargatorDaemon(object):
             num_vars = int(request.json['num_vars'])
             num_vars_range = int(request.json['num_vars_range'])
             cluster_method = request.json['cluster_method']
-            dist_scale = 1.0
+
+            dist_scale = 0.01
+            #dist_scale = float(request.json['dist_scale'])
+
             for num in range(num_vars, num_vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
@@ -356,7 +361,7 @@ class NavargatorDaemon(object):
                 return ("error in check_results_done(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
             var_nums = request.json['var_nums']
             var_scores, max_var_dists = [], []
-            dist_scale = 1.0
+            dist_scale = 0.01
             for num in var_nums:
                 num = int(num)
                 params = (num, dist_scale)
@@ -401,7 +406,7 @@ class NavargatorDaemon(object):
             elif vf == None:
                 return ("error in get_cluster_results(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
             num_vars = int(request.json['num_vars'])
-            dist_scale = 1.0
+            dist_scale = 0.01
             params = (num_vars, dist_scale)
             if params not in vf.cache:
                 error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'

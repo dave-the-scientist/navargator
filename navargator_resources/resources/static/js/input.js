@@ -7,9 +7,13 @@
 // - When opening a tree (but not nvrgtr, if possible, but not a huge deal), have the page pick a reasonable clustering method by default. Brute force for small, medoids for medium, minibatch for large.
 // - In Run Options pane, get rid of the "auto open" checkbox. Singles will always auto-open, a range never will.
 //   - Set it up so that other options are shown/hidden based on the choice of clustering method.
-//   - K medoids should allow the user to set num_replicates; k minibatch to set num_replicates (lower default) and batch size (maybe); threshold to set the threshold and % required above it (but doesn't use "variants to fine" inputs).
+//   - K medoids should allow the user to set num_replicates; k minibatch to set num_replicates (lower default) and batch size (sure); all these should provide the distance_scale (possibly rename it).
+//   - Threshold clustering provides the threshold and % required above it (but doesn't use "variants to find" inputs).
+// - Rename the toggled buttonbar options. Should be "by clusters" & "by threshold", or something like that. Move all of the threshold-related elements to this area.
+//   - Single/range should either be indicated by a checkbox, or left out totally (so a single happens if both input boxes have the same value).
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
-// - Profile
+// - Profile (in chrome) opening a large tree. Can the loading/drawing be sped up?
+// - When starting a run, the underlying vf doesn't start clustering until the tree has been drawn on the results page. At least it doesn't seem to be. Why is that? See if I can fix that.
 // - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
@@ -460,6 +464,11 @@ function setupRunOptions() {
   //$("#clustMethodSelect").selectmenu();
   //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
 
+  $("#distScaleSpinner").spinner({
+    min: 0, max: null,
+    numberFormat: 'N1', step: 0.1
+  }).spinner('value', 1);
+
   // Button callbacks:
   $("#singleRunCheckbox, #multipleRunCheckbox").change(function() {
     if ($("#singleRunCheckbox").is(':checked')) {
@@ -490,7 +499,7 @@ function setupRunOptions() {
       url: daemonURL('/find-variants'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({...getPageAssignedData(), 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range}),
+      data: JSON.stringify({...getPageAssignedData(), 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'dist_scale':$("#distScaleSpinner").val()}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         if (nvrgtr_page.session_id != data.session_id) {
