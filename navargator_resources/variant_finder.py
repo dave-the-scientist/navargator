@@ -13,7 +13,8 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
-# - Need to store the distance_scale value, load it, and re-apply it to self.orig_dist to create the correct self.dist
+# - Delete find_variants_OLD() when the new version is working well.
+# - Need to store the tolerance value, load it, and re-apply it to self.orig_dist to create the correct self.dist
 #   - Actually, don't bother keeping self.dist around, as it might be tricky to keep straight when to use it and when to use orig_dist. Threshold clustering it doesn't really make sense to use self.dist, as the threshold comes from the tree and you can achieve similar results by just varying the required %.
 #   - Keep it as a param for the k/brute clustering, so gets passed to the clustering fxn, which can quickly generate the modified distance matrix (does this make sense with the function structure?).
 # - Implement threshold clustering.
@@ -22,6 +23,7 @@ phylo.verbose = False
 #   - Thesis describing optimizations on it: https://nsuworks.nova.edu/cgi/viewcontent.cgi?referer=https://www.google.ca/&httpsredir=1&article=1042&context=gscis_etd
 #   - Considering allowing user to specify ex 90% of variants within threshold. What happens to the remaining? Added to nearest cluster center (probably) or specified as unclustered? Should user be allowed to choose? If so, probably works to push unclustered into "ignored" for results page.
 #   - How do the chosen factor in? They can't be added to any candidate cluster, as they must be cluster centers
+#   - Check if variants ever end up in one cluster, but are actually closer to another cluster centre. I doubt if it's common, but seems like it could happen. If so, include a final step in the clustering to ensure each variant is clustered with the closest centre.
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
@@ -191,6 +193,8 @@ class VariantFinder(object):
         self.ordered_names = []
         self.cache = {}
         self.normalize = self._empty_normalize()
+        self.k_cluster_methods = set(['k minibatch', 'k medoids', 'brute force'])
+        self.threshold_cluster_methods = set(['qt diameter'])
         if display_options:
             self.display_options = display_options
         else:
@@ -238,27 +242,25 @@ class VariantFinder(object):
         self._ignored = set() # Accessible as self.ignored
         self._available = set() # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
-        self._distance_scale = 1.0 # Accessible as self.distance_scale
+        self._tolerance = 1.0 # Accessible as self.tolerance
         # # #  Private attributes # # #
         self._not_ignored_inds = set(range(len(self.leaves)))
-        self._cluster_methods = set(['k minibatch', 'k medoids', 'brute force'])
-        self._distance_scale_max = 1000
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
         self._private_display_opts = set(['cluster_background_trans', 'cluster_highlight_trans'])
 
     # # # # #  Public methods  # # # # #
-    def find_variants(self, num_variants, distance_scale=None, method=None, num_replicates=10):
+    def find_variants_OLD(self, num_variants, tolerance=None, method=None, num_replicates=10):
         num_avail, num_chsn = len(self.available), len(self.chosen)
         if not num_chsn <= num_variants <= num_avail + num_chsn:
             raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than or equal to the number of chosen nodes ({}) but less than or equal to the number of available + chosen nodes ({}).'.format(num_chsn, num_avail + num_chsn))
-        if distance_scale != None:
-            self.distance_scale = distance_scale
+        if tolerance != None:
+            self.tolerance = tolerance
         num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
         if self.verbose:
             print('\nThere are {} possible combinations of variants.'.format(format_integer(num_possible_combinations)))
             init_time = time.time()
         method = self._validate_clustering_method(method, num_possible_combinations)
-        params = (num_variants, self.distance_scale)
+        params = (num_variants, self.tolerance)
         if self.cache.get(params, None):
             # Needed because the daemon sets self.cache[params] = None before this method is called.
             variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
@@ -289,6 +291,50 @@ class VariantFinder(object):
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         if self.verbose:
             self._print_clustering_results(num_variants, init_time, variants, scores, alt_variants)
+        self._calculate_cache_values(params, variants, scores, alt_variants)
+        return variants, scores, alt_variants
+
+    def find_variants(self, method, *args):
+        if method in self.k_cluster_methods:
+            num_variants, tolerance = args[:2]
+            num_avail, num_chsn = len(self.available), len(self.chosen)
+            if not num_chsn <= num_variants <= num_avail + num_chsn:
+                raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than or equal to the number of chosen nodes ({}) but less than or equal to the number of available + chosen nodes ({}).'.format(num_chsn, num_avail + num_chsn))
+            self.tolerance = tolerance
+            params = (num_variants, tolerance)
+            if self.cache.get(params, None):  # Already computed
+                # Needed because the daemon sets self.cache[params] = None before this method is called.
+                variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
+            elif num_variants == num_avail + num_chsn:  # Trivial clustering
+                variants = [self.index[name] for name in list(self.available)+list(self.chosen)]
+                clusters = self._partition_nearest(variants)
+                scores = self._sum_dist_scores(variants, clusters)
+                alt_variants = []
+            elif method == 'brute force':
+                if self.verbose:
+                    num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
+                    expected_runtime = int(round(num_possible_combinations * 0.000042, 0))
+                    print('Finding optimal variants using brute force. This should take ~{} seconds...'.format(expected_runtime))
+                variants, scores, alt_variants = self._brute_force_clustering(num_variants)
+            elif method == 'k medoids':
+                num_replicates = args[2]
+                if self.verbose:
+                    print('Choosing variants using k medoids...')
+                fxn, args = self._cluster_k_medoids, (num_variants,)
+                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
+            elif method == 'k minibatch':
+                num_replicates, batch_size = args[2:]
+                if self.verbose:
+                    print('Choosing variants using k minibatch...')
+                fxn, args = self._cluster_k_medoids_minibatch, (num_variants, batch_size)
+                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
+            if self.verbose:
+                self._print_clustering_results(num_variants, variants, scores, alt_variants)
+        elif method in self.threshold_cluster_methods:
+            if method == 'qt diameter':
+                pass
+        else:
+            raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(params, variants, scores, alt_variants)
         return variants, scores, alt_variants
 
@@ -476,7 +522,7 @@ class VariantFinder(object):
         vf._ignored = self.ignored.copy()
         vf._chosen = self.chosen.copy()
         vf._available = self.available.copy()
-        vf._distance_scale = self.distance_scale
+        vf.tolerance = self.tolerance
         return vf
 
     # # # # #  Clustering methods  # # # # #
@@ -525,16 +571,21 @@ class VariantFinder(object):
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = list(self.index[n] for n in self.chosen)
         num_chsn = len(chsn_indices)
-        # This spaces the initial centroids around the tree
-        seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
-        rand_inds = []
-        for i in range(num_variants - num_chsn):
-            rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk)])
-        best_med_inds = np.array(chsn_indices + rand_inds)
+        if num_chsn == num_variants:
+            best_med_inds = np.array(chsn_indices)
+        else:
+            # This spaces the initial centroids around the tree
+            seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
+            rand_inds = []
+            for i in range(num_variants - num_chsn):
+                rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk)])
+            best_med_inds = np.array(chsn_indices + rand_inds)
         # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters)
         best_score = sum(best_scores)
+        if num_chsn == num_variants:
+            return best_med_inds, best_scores
         # Using a simple greedy algorithm, typically converges after 2-3 iterations.
         improvement = True
         while improvement == True:
@@ -614,7 +665,7 @@ class VariantFinder(object):
         """
         return {'method':'self', 'custom_value':None, 'custom_max_count':0, 'global_value':None, 'global_max_count':0, 'global_nums':set(), 'global_bins':[]}
     def _calculate_cache_values(self, params, variant_inds, scores, alt_variants):
-        """Fills out the self.cache entry for the given clustering run. 'params'=(number_variants, distance_scale); 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]"""
+        """Fills out the self.cache entry for the given clustering run. 'params'=(number_variants, tolerance); 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]"""
         cluster_inds = self._partition_nearest(variant_inds)
         variants = [self.leaves[i] for i in variant_inds]
         clusters = [[self.leaves[i] for i in clst] for clst in cluster_inds]
@@ -634,16 +685,15 @@ class VariantFinder(object):
             if dist > max_dist:
                 max_dist = dist
         return max_dist
-    def _print_clustering_results(self, num_variants, init_time, variants, scores, alt_variants):
-        run_time = time.time() - init_time
+    def _print_clustering_results(self, num_variants, variants, scores, alt_variants):
         if alt_variants:
-            print('Found %i equal sets of %i representative variants in %.1f seconds.' % (len(alt_variants)+1, num_variants, run_time))
+            print('Found %i equal sets of %i representative variants.' % (len(alt_variants)+1, num_variants))
             alt_var_buff = []
             for avars in alt_variants:
                 alt_var_buff.append( 'Alternate variants: %s' % ', '.join(sorted(self.leaves[var_ind] for var_ind in avars)) )
             print('\n%s' % ('\n'.join(alt_var_buff)))
         else:
-            print('Found %i representative variants in %.1f seconds.' % (num_variants, run_time))
+            print('Found %i representative variants.' % num_variants)
         variant_names = ', '.join(sorted(self.leaves[v] for v in variants))
         print('\nBest score: %f\nBest variants: %s' % (sum(scores), variant_names))
     def _print_alt_variant_results(self, num_replicates, optima, ranked_vars, alt_optima, opt_count):
@@ -727,21 +777,19 @@ class VariantFinder(object):
             self._available = new_avail
             self._clear_cache()
     @property
-    def distance_scale(self):
-        return self._distance_scale
-    @distance_scale.setter
-    def distance_scale(self, val):
+    def tolerance(self):
+        return self._tolerance
+    @tolerance.setter
+    def tolerance(self, val):
         try:
             val = float(val)
         except:
-            raise NavargatorValueError('Error: distance_scale must be a number.')
+            raise NavargatorValueError('Error: tolerance must be a number.')
         if val <= 0.0:
-            raise NavargatorValueError('Error: distance_scale must be a strictly positive number.')
-        elif val > self._distance_scale_max:
-            raise NavargatorValueError('Error: distance_scale must be less than {}.'.format(self._distance_scale_max))
-        self._distance_scale = val
+            raise NavargatorValueError('Error: tolerance must be a strictly positive number.')
+        self._tolerance = val
         #dist = np.power(self.orig_dist.copy()+1.0, val) - 1.0 # @10, tbpb82 has a different pattern
-        dist = np.log((self.orig_dist.copy()+1.0/val)*val) # @20, @0.01 have similar but opposite effects on distribution skew. Positive values reduce the impact of outliers
+        dist = np.log(self.orig_dist.copy()*val + 1.0) # @20, @0.01 have similar but opposite effects on distribution skew. Values > 1 reduce the impact of outliers
         self.dist = dist * self.orig_dist.max() / dist.max() # Ensures the magnitudes are *similar*, though they won't really be comparable.
         # self._clear_cache()
 

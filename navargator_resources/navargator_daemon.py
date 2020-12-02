@@ -35,6 +35,8 @@ else:
 
 
 # TODO:
+# - Currently erroring out on various methods that are using hard-coded dist_scale values. Need to kill those, and get this from the js, meaning the js needs to store it somehwere.
+#   - Probably treat it like the avail/ignored/chsn sets, where if it changes (or at least user changes then presses "Find variants") it wipes the cache and resets results.
 # - find_variants() needs a better way of passing arguments to the vf; different methods (threshold) use very different sets of args
 #   - Need to change the vf cache, as it's currently referenced by var_num. Threshold clustering uses (thresh, %) as parameters. I want them to be able to co-exist, so maybe that's actually how I do want it...
 #   - Need to change how result links are presented on the input page, to allow for k- and threshold-clustered results. I could calculate a total score for a threshold clustering, so it could be graphed as a k- is. However, the minimization is different so k- will appear to be "better" than thresh-; this should be specified somewhere.
@@ -331,17 +333,32 @@ class NavargatorDaemon(object):
                 return msg
             num_vars = int(request.json['num_vars'])
             num_vars_range = int(request.json['num_vars_range'])
+
             cluster_method = request.json['cluster_method']
 
-            dist_scale = 0.01
-            #dist_scale = float(request.json['dist_scale'])
+            arg_list = request.json['args']
 
+            if cluster_method in vf.k_cluster_methods:
+                num_vars, num_vars_range, tolerance = arg_list[:3]
+                for num in range(num_vars, num_vars_range + 1):
+                    params = (num, tolerance)
+                    if params not in vf.cache:
+                        vf.cache[params] = None
+                        args = tuple([cluster_method, num, tolerance] + arg_list[3:])
+                        #vf.find_variants(*args)
+                        self.job_queue.addJob(vf.find_variants, args)
+            elif cluster_method in vf.threshold_cluster_methods:
+                pass
+            else:
+                print('ERROR') # Throw a real error.
+                exit()
+            """
             for num in range(num_vars, num_vars_range + 1):
                 params = (num, dist_scale)
                 if params not in vf.cache:
                     vf.cache[params] = None
                     args = (num, dist_scale, cluster_method)
-                    self.job_queue.addJob(vf.find_variants, args)
+                    self.job_queue.addJob(vf.find_variants, args)"""
             return json.dumps({'session_id':s_id})
         @self.server.route(self.daemonURL('/update-visual-options'), methods=['POST'])
         def update_visual_options():

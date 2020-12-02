@@ -39,6 +39,12 @@
 #clustMethodSelect {
   width:110px;
 }
+.clust-type-opts-table td {
+  padding: 3px 0px;
+}
+#clustBatchSizeSpinner {
+  width: 45px;
+}
 #findVariantsButton {
   width:100%;
 }

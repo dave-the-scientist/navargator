@@ -28,6 +28,7 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
+// - Several parts use nvrgtr_data.num_variants to identify the particular instance, and fetch data from the daemon. Need to replace these with calls using the unique parameters (num_vars, tolerance). nvrgtr_data.result_links, as well as the result pages urls
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc). Do this before saving cache to nvrgtr file
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
@@ -63,7 +64,6 @@ function setupPage() {
   setupNormalizationPane();
   setupDisplayOptionsPane();
   setupSelectionGroupsPane();
-  setupThresholdPane();
   setupExportPane();
   setupTreeElements();
   treeIsLoading();

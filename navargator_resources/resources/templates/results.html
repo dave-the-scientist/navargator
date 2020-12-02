@@ -282,51 +282,6 @@
               </div>
             </div>
 
-            <h2>Distance threshold<div id="distanceThreshHelp" class="help-button"></div></h2>
-            <div id="thresholdOutsideDiv">
-              <div id="thresholdComputePane" class="floating-pane">
-                <div>
-                  <h2 class="floating-pane-header">Compute distance threshold</h2>
-                  <button class="floating-pane-close"></button>
-                </div>
-                <div id="thresholdPaneMainDiv">
-                  <div id="thresholdPaneDataColumn">
-                    <label><b>Variant interaction data</b></label>
-                    <textarea id="thresholdDataText" autocomplete="off" spellcheck="false"></textarea>
-                    <div>
-                      <button id="thresholdLoadDataButton">Load file</button>
-                      <button id="thresholdValidateButton">Validate data</button>
-                      <label id="thresholdErrorLabel"></label>
-                    </div>
-                    <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
-                    <div id="thresholdPaneParamsDiv" style="display:none;">
-                      <label><b>Graph parameters</b></label>
-                      <label class="threshold-param-label">Max value: <input id="thresholdMaxValInput" placeholder="Re-calculate" title="Enter a custom value and click 'Fit curve' to constrain the maximum value of the curve."></input></label>
-                      <label class="threshold-param-label">Midline: <span id="thresholdMidlineValue">--</span></label>
-                      <label class="threshold-param-label">Steepness: <span id="thresholdSteepnessValue">--</span></label>
-                    </div>
-                  </div>
-                  <div id="thresholdPaneGraphColumn" style="display:none;">
-                    <label id="thresholdSvgLabel"><b>Variant interactions</b></label>
-                    <div id="thresholdGraphRowDiv">
-                      <div id="thresholdSlider">
-                        <div id="thresholdSliderHandle" class="ui-slider-handle"></div>
-                      </div>
-                      <svg id="thresholdSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
-                    </div>
-                    <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput" title="Enter a value here to exactly specify the critical interaction value."></input></label>
-                    <div id="thresholdCritDistDiv" class="horizontal-row-div">
-                      <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
-                      <button id="thresholdOkButton">OK</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <label>Critical threshold:</label>
-              <input id="thresholdInput" placeholder="None" />
-              <button id="thresholdComputeButton" class="jq-ui-button">Threshold from data</button>
-            </div>
-
           </div>
 
           <div id="resultsNormalizationDiv" class="style-box">

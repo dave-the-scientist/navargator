@@ -11,6 +11,7 @@
 //   - Threshold clustering provides the threshold and % required above it (but doesn't use "variants to find" inputs).
 // - Rename the toggled buttonbar options. Should be "by clusters" & "by threshold", or something like that. Move all of the threshold-related elements to this area.
 //   - Single/range should either be indicated by a checkbox, or left out totally (so a single happens if both input boxes have the same value).
+
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Profile (in chrome) opening a large tree. Can the loading/drawing be sped up?
 // - When starting a run, the underlying vf doesn't start clustering until the tree has been drawn on the results page. At least it doesn't seem to be. Why is that? See if I can fix that.
@@ -67,7 +68,7 @@ function setupPage() {
   setupSelectionGroupsPane();
   setupExportPane();
   setupNormalizationPane();
-  setupRunOptions();
+  setupClusteringOptions();
   setupResultsPane();
   setupVariantSelection();
   setupUploadSaveButtons();
@@ -436,7 +437,7 @@ function setupNormalizationPane() {
     setNormalizationMethod();
   });
 }
-function setupRunOptions() {
+function setupClusteringOptions() {
   $("#numVarSpinner").spinner({
     min: 1, max: null,
     numberFormat: 'N0', step: 1
@@ -459,37 +460,67 @@ function setupRunOptions() {
       single_spin.spinner('value', cur_val);
     }
   });
-  $(".multiple-run-only").css('visibility', 'hidden');
-  $("#rangeSpinner").parent().css('visibility', 'hidden');
   //$("#clustMethodSelect").selectmenu();
   //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
 
-  $("#distScaleSpinner").spinner({
+  $("#clustToleranceSpinner").spinner({
     min: 0, max: null,
-    numberFormat: 'N1', step: 0.1
+    numberFormat: 'N1', step: 1
   }).spinner('value', 1);
+  $("#clustRandStartsSpinner").spinner({
+    min: 0, max: null,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 10);
+  $("#clustBatchSizeSpinner").spinner({
+    min: 0, max: null,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 500);
+  $("#varRangeCheckbox").change(function() {
+    if ($("#varRangeCheckbox").is(':checked')) {
+      $(".variant-range-only").css('visibility', 'visible');
+    } else {
+      $(".variant-range-only").css('visibility', 'hidden');
+    }
+  });
+
+  // Final element setup
+  $("#rangeSpinner").parent().addClass('variant-range-only');
+  $(".clust-method-batch-size").hide();
+  $(".clust-method-thresh-ele").hide();
 
   // Button callbacks:
-  $("#singleRunCheckbox, #multipleRunCheckbox").change(function() {
-    if ($("#singleRunCheckbox").is(':checked')) {
-      $(".single-run-only").css('visibility', 'visible');
-      $(".multiple-run-only").css('visibility', 'hidden');
-      $("#rangeSpinner").parent().css('visibility', 'hidden');
+  $("#clustMethodNumberCheckbox, #clustMethodThresholdCheckbox").change(function() {
+    if ($("#clustMethodNumberCheckbox").is(':checked')) {
+      $(".clust-type-number-ele").show();
+      $(".clust-method-thresh-ele").hide();
     } else {
-      $(".single-run-only").css('visibility', 'hidden');
-      $(".multiple-run-only").css('visibility', 'visible');
-      $("#rangeSpinner").parent().css('visibility', 'visible');
+      $(".clust-type-number-ele").hide();
+      $(".clust-method-thresh-ele").show();
+    }
+  });
+  $("#clustMethodSelect").change(function(event) {
+    if (event.target.value == 'brute force') {
+      $(".clust-method-run-reps").hide();
+      $(".clust-method-batch-size").hide();
+    } else if (event.target.value == 'k medoids') {
+      $("#clustRandStartsSpinner").spinner('value', 10);
+      $(".clust-method-run-reps").show();
+      $(".clust-method-batch-size").hide();
+    } else if (event.target.value == 'k minibatch') {
+      $("#clustRandStartsSpinner").spinner('value', 5);
+      $(".clust-method-run-reps").show();
+      $(".clust-method-batch-size").show();
     }
   });
 
   $("#findVariantsButton").click(function() {
-    var ret = validateFindVariantsCall();
-    if (ret == false) {
+    var args = getValidateFindVariantsArgs();
+    if (args == false) {
       return false;
     }
-    var num_vars = ret.num_vars, num_vars_range = ret.num_vars_range,
+    var num_vars = args[0], num_vars_range = args[1], // SHOULDN'T need or use these. replace with unique params
       cluster_method = $("#clustMethodSelect").val();
-    var auto_open = ($("#singleRunCheckbox").is(':checked') && $("#autoOpenCheckbox").is(':checked')),
+    var auto_open = ($("#clustMethodNumberCheckbox").is(':checked') && !$("#varRangeCheckbox").is(':checked')),
       auto_result_page = null;
     if (auto_open == true) {
       // Have to open the page directly from the user's click to avoid popup blockers.
@@ -499,7 +530,7 @@ function setupRunOptions() {
       url: daemonURL('/find-variants'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({...getPageAssignedData(), 'cluster_method':cluster_method, 'num_vars':num_vars, 'num_vars_range':num_vars_range, 'dist_scale':$("#distScaleSpinner").val()}),
+      data: JSON.stringify({...getPageAssignedData(), 'cluster_method':cluster_method, 'args':args, 'num_vars':num_vars, 'num_vars_range':num_vars_range}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         if (nvrgtr_page.session_id != data.session_id) {
@@ -709,7 +740,7 @@ function redrawTree() {
   clearTree();
   drawTree();
   updateVarSelectList();
-  updateRunOptions();
+  updateClusteringOptions();
   applyAllSelectionGroupFormats();
 }
 function updateVarSelectList() {
@@ -735,7 +766,7 @@ function updateVarSelectList() {
   $("#numVariantsSpan").html(nvrgtr_data.leaves.length);
   $("#mainVariantSelectDiv").show();
 }
-function updateRunOptions() {
+function updateClusteringOptions() {
   // Updates the max on the number of variants spinner, and the labels of the choose available and ignored variant buttons. Should be called every time the assigned variants are modified.
   var maxVars = Math.max(nvrgtr_data.chosen.length + nvrgtr_data.available.length, 1);
   if ($("#numVarSpinner").spinner('value') > maxVars) {
@@ -975,7 +1006,7 @@ function addAssignedButtonHandler(event, button_element, assigned_key) {
       nodeLabelMouseoutHandler(var_name);
     }
   });
-  updateRunOptions();
+  updateClusteringOptions();
   numSelectedCallback();
   if (assigned_key != '') {
     // This must be after numSelectedCallback(), as it clears nvrgtr_data.assigned_added
@@ -996,18 +1027,15 @@ function clearAssignedButtonHandler(event, assigned_key, assigned_div_element) {
     assigned_div_element.removeClass('var-assigned-selected');
     nvrgtr_data.assigned_selected = '';
   }
-  updateRunOptions();
+  updateClusteringOptions();
 }
 function nodeLabelMouseoverHandlerCallback(var_name, label_colour) {
-  //nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
   nvrgtr_data.nodes[var_name].variant_select_label[0].style.background = label_colour;
 }
 function nodeLabelMouseoutHandlerCallback(var_name, label_colour) {
-  //nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
   nvrgtr_data.nodes[var_name].variant_select_label[0].style.background = label_colour;
 }
 function nodeLabelMouseclickHandlerCallback(var_name, label_colour) {
-  //nvrgtr_data.nodes[var_name].variant_select_label.css('background', label_colour);
   nvrgtr_data.nodes[var_name].variant_select_label[0].style.background = label_colour;
 }
 function numSelectedCallback() {
@@ -1076,44 +1104,64 @@ function calculateGlobalNormalization(max_var_dist) {
 }
 
 // =====  Data parsing / validation:
-function validateFindVariantsCall() {
+function getValidateFindVariantsArgs() {
   if (!nvrgtr_data.tree_data) {
     return false;
   }
-  var num_avail = nvrgtr_data.available.length, num_chosen = nvrgtr_data.chosen.length;
+  let num_avail = nvrgtr_data.available.length, num_chosen = nvrgtr_data.chosen.length;
   if (num_avail + num_chosen < 1) {
     showErrorPopup("You must select 1 or more variants from your tree and assign them as 'available' or 'chosen' before NaVARgator can perform clustering.");
     return false;
   }
-  if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
-    validateSpinner($("#rangeSpinner"), "The range of variants to find") )) {
-    return false;
-  }
-  var num_vars = parseInt($("#numVarSpinner").spinner('value')), num_vars_range = num_vars;
-  if ($("#multipleRunCheckbox").is(':checked')) {
-    num_vars_range = parseInt($("#rangeSpinner").spinner('value'));
-    if (num_vars_range < num_vars) {
-      let temp = num_vars;
-      num_vars = num_vars_range;
-      num_vars_range = temp;
-      $("#numVarSpinner").spinner('value', num_vars);
-      $("#rangeSpinner").spinner('value', num_vars_range);
+  let args = [];
+  if ($("#clustMethodNumberCheckbox").is(':checked')) { // k-based clustering
+    if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
+      validateSpinner($("#rangeSpinner"), "The range of variants to find") &&
+      validateSpinner($("#clustToleranceSpinner"), "Cluster tolerance") )) {
+      return false;
     }
-  }
-  if (num_vars < num_chosen || num_vars_range > num_chosen + num_avail) {
-    showErrorPopup("The variants to find must be greater than or equal to the number of 'chosen', but less than or equal to the number of 'chosen' + 'available'.");
-    return false;
-  }
-  var do_find_vars = false;
-  for (var i=num_vars; i<=num_vars_range; ++i) {
-    if (!nvrgtr_data.result_links.hasOwnProperty(i)) {
-      do_find_vars = true;
+    let num_vars = parseInt($("#numVarSpinner").spinner('value')), num_vars_range = num_vars;
+    if ($("#varRangeCheckbox").is(':checked')) {
+      num_vars_range = parseInt($("#rangeSpinner").spinner('value'));
+      if (num_vars_range < num_vars) {
+        let temp = num_vars;
+        num_vars = num_vars_range;
+        num_vars_range = temp;
+        $("#numVarSpinner").spinner('value', num_vars);
+        $("#rangeSpinner").spinner('value', num_vars_range);
+      }
     }
+    if (num_vars < num_chosen || num_vars_range > num_chosen + num_avail) {
+      showErrorPopup("The variants to find must be greater than or equal to the number of 'chosen', but less than or equal to the number of 'chosen' + 'available'.");
+      return false;
+    }
+    var do_find_vars = false;
+    for (var i=num_vars; i<=num_vars_range; ++i) {
+      if (!nvrgtr_data.result_links.hasOwnProperty(i)) {
+        do_find_vars = true;
+      }
+    }
+    if (do_find_vars == false) {
+      return false;
+    }
+    args = [num_vars, num_vars_range, parseFloat($("#clustToleranceSpinner").spinner('value'))];
+    let cluster_type = $("#clustMethodSelect").val();
+    if (cluster_type == 'k medoids' || cluster_type == 'k minibatch') {
+      if (!( validateSpinner($("#clustRandStartsSpinner"), "Random starts") )) {
+        return false;
+      }
+      args.push($("#clustRandStartsSpinner").spinner('value'));
+    }
+    if (cluster_type == 'k minibatch') {
+      if (!( validateSpinner($("#clustBatchSizeSpinner"), "Batch size") )) {
+        return false;
+      }
+      args.push($("#clustBatchSizeSpinner").spinner('value'));
+    }
+  } else { // Threshold clustering
+
   }
-  if (do_find_vars == false) {
-    return false;
-  }
-  return {'num_vars':num_vars, 'num_vars_range':num_vars_range};
+  return args;
 }
 function getNormalizationSettings() {
   var ret = {'method':null, 'value':null};
@@ -1135,8 +1183,6 @@ function setupSpecificHelpButtonText() {
   // Tree options help:
   //$("#treeOptsHelp .help-text-div").css('width', '500px');
   $("#treeOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
-  // Distance threshold help:
-  $("#distanceThreshHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Assigned variants help:
   $("#assignedVarsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Export data help:

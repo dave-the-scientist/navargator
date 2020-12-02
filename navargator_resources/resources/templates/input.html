@@ -332,8 +332,50 @@
                 <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
               </div>
             </div>
+            <hr>
 
-            <h2>Distance threshold<div id="distanceThreshHelp" class="help-button"></div></h2>
+            <div class="horizontal-row-div">
+              <button id="saveSessionButton" class="jq-ui-button">Save session</button>
+              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (90MB file for a tree with 4,000 leaves).">
+                <input id="sessionIncludeDistancesCheckbox" type="checkbox" />
+                <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">Include distances</label>
+              </label>
+            </div>
+          </div>
+
+          <div id="runOptionsDiv" class="style-box">
+            <h2>Results normalization</h2>
+            <table><tbody>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
+                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normValRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
+                </label>
+                <input id="normValInput" placeholder="value" />
+                <button id="normValGoButton" style="display:none">Ok</button>
+              </td></tr>
+            </tbody></table>
+
+            <h2>Clustering options</h2>
+            <div class="toggle-button-container">
+              <input type="radio" id="clustMethodNumberCheckbox" name="run-type-choice" class="toggle-button-input" checked>
+              <label for="clustMethodNumberCheckbox" class="toggle-button-label toggle-button-label-left">By number</label>
+              <input type="radio" id="clustMethodThresholdCheckbox" name="run-type-choice" class="toggle-button-input">
+              <label for="clustMethodThresholdCheckbox" class="toggle-button-label toggle-button-label-right">By threshold</label>
+            </div>
+
             <div id="thresholdOutsideDiv">
               <div id="thresholdComputePane" class="floating-pane">
                 <div>
@@ -373,78 +415,56 @@
                   </div>
                 </div>
               </div>
-              <label>Critical threshold:</label>
-              <input id="thresholdInput" placeholder="None" />
-              <button id="thresholdComputeButton" class="jq-ui-button">Threshold from data</button>
             </div>
-            <hr>
 
-            <div class="horizontal-row-div">
-              <button id="saveSessionButton" class="jq-ui-button">Save session</button>
-              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (90MB file for a tree with 4,000 leaves).">
-                <input id="sessionIncludeDistancesCheckbox" type="checkbox" />
-                <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">Include distances</label>
-              </label>
-            </div>
-          </div>
-
-          <div id="runOptionsDiv" class="style-box">
-            <h2>Results normalization</h2>
-            <table><tbody>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
-                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
-                </label>
-              </td></tr>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
-                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
-                </label>
-              </td></tr>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normValRadio" type="radio" name="normalizeRadios" />
-                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
-                </label>
-                <input id="normValInput" placeholder="value" />
-                <button id="normValGoButton" style="display:none">Ok</button>
-              </td></tr>
-            </tbody></table>
-
-            <h2>Run options</h2>
-            <div class="toggle-button-container">
-              <input type="radio" id="singleRunCheckbox" name="run-type-choice" class="toggle-button-input" checked>
-              <label for="singleRunCheckbox" id="singleRunLabel" class="toggle-button-label toggle-button-label-left">Single run</label>
-              <input type="radio" id="multipleRunCheckbox" name="run-type-choice" class="toggle-button-input">
-              <label for="multipleRunCheckbox" id="multipleRunLabel" class="toggle-button-label toggle-button-label-right">Variant range</label>
-            </div>
-            <table><tbody>
-              <tr><td>
-                <label for="numVarSpinner">Variants to find:</label>
-                <input id="numVarSpinner" class="param-spinner" />
-                <span class="multiple-run-only">to</span>
-                <input id="rangeSpinner" class="param-spinner" />
-              </td></tr>
-              <tr><td>
-                <label class="single-run-only nvrgtr-checkbox-outer">
-                  <input id="autoOpenCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="autoOpenCheckbox">Auto-open results page</label>
-                </label>
-
-              </td></tr>
+            <table class="clust-type-opts-table clust-type-number-ele"><tbody>
               <tr><td>
                 <label for="clustMethodSelect">Clustering method</label>
                 <select id="clustMethodSelect">
-                  <option value="k minibatch">K minibatch</option>
-                  <option value="k medoids" selected>K medoids</option>
                   <option value="brute force">Brute force</option>
+                  <option value="k medoids" selected>K medoids</option>
+                  <option value="k minibatch">K minibatch</option>
                 </select>
+              </td></tr>
+              <tr><td>
+                <label for="numVarSpinner">Variants to find:</label>
+                <input id="numVarSpinner" class="param-spinner" />
+                <span class="variant-range-only">to</span>
+                <input id="rangeSpinner" class="param-spinner" />
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="varRangeCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="varRangeCheckbox">Variant range</label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label for="clustToleranceSpinner">Clustering tolerance:</label>
+                <input id="clustToleranceSpinner" class="param-spinner" />
+              </td></tr>
+              <tr class="clust-method-run-reps"><td>
+                <label for="clustRandStartsSpinner">Random starts:</label>
+                <input id="clustRandStartsSpinner" class="param-spinner" />
+              </td></tr>
+              <tr class="clust-method-batch-size"><td>
+                <label for="clustBatchSizeSpinner">Batch size:</label>
+                <input id="clustBatchSizeSpinner" class="param-spinner" />
               </td></tr>
             </tbody></table>
 
-            <input id="distScaleSpinner" class="param-spinner" />
+            <table class="clust-type-opts-table clust-method-thresh-ele"><tbody>
+              <tr><td>
+                <label>Critical threshold:</label>
+                <input id="thresholdInput" placeholder="None" />
+              </tr></td>
+              <tr><td>
+                <button id="thresholdComputeButton" class="jq-ui-button">Get threshold from data</button>
+              </tr></td>
+              <tr><td>
+                <label for="threshPercentSpinner">Critical percentage:</label>
+                <input id="threshPercentSpinner" class="param-spinner" />
+              </tr></td>
+            </tbody></table>
 
             <button id="findVariantsButton" class="jq-ui-button"><b>Find variants</b></button>
           </div>
