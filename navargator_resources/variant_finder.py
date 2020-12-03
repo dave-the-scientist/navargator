@@ -191,7 +191,7 @@ class VariantFinder(object):
         self.verbose = bool(verbose)
         self.leaves = []
         self.ordered_names = []
-        self.cache = {}
+        self._clear_cache(reset_normalize=False) # self.cache = dict
         self.normalize = self._empty_normalize()
         self.k_cluster_methods = set(['k minibatch', 'k medoids', 'brute force'])
         self.threshold_cluster_methods = set(['qt diameter'])
@@ -294,7 +294,7 @@ class VariantFinder(object):
         self._calculate_cache_values(params, variants, scores, alt_variants)
         return variants, scores, alt_variants
 
-    def find_variants(self, method, *args):
+    def find_variants(self, run_id, method, *args):
         if method in self.k_cluster_methods:
             num_variants, tolerance = args[:2]
             num_avail, num_chsn = len(self.available), len(self.chosen)
@@ -302,9 +302,9 @@ class VariantFinder(object):
                 raise NavargatorValueError('Error finding variants: num_variants must be an integer greater than or equal to the number of chosen nodes ({}) but less than or equal to the number of available + chosen nodes ({}).'.format(num_chsn, num_avail + num_chsn))
             self.tolerance = tolerance
             params = (num_variants, tolerance)
-            if self.cache.get(params, None):  # Already computed
-                # Needed because the daemon sets self.cache[params] = None before this method is called.
-                variants, scores, alt_variants = self.cache[params]['variants'], self.cache[params]['scores'], self.cache[params]['alt_variants']
+            if self.cache.get(run_id, None):  # Already computed
+                # Needed because the daemon sets self.cache[run_id] = None before this method is called.
+                return self.cache[run_id]['variants'], self.cache[run_id]['scores'], self.cache[run_id]['alt_variants']
             elif num_variants == num_avail + num_chsn:  # Trivial clustering
                 variants = [self.index[name] for name in list(self.available)+list(self.chosen)]
                 clusters = self._partition_nearest(variants)
@@ -335,7 +335,7 @@ class VariantFinder(object):
                 pass
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
-        self._calculate_cache_values(params, variants, scores, alt_variants)
+        self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
         return variants, scores, alt_variants
 
     def root_midpoint(self):
@@ -384,12 +384,14 @@ class VariantFinder(object):
         # Don't have to modify self._not_ignored_inds as the order of self.leaves hasn't changed.
         # Re-generate the cache; names have changed, but cluster patterns and scores haven't:
         old_cache = self.cache
-        self.cache = {}
-        for params, info in old_cache.items():
+        self._clear_cache(reset_normalize=False)
+        for params, run_id in old_cache['params'].items():
+            #for run_id, info in old_cache.items():
+            info = old_cache[run_id]
             variant_inds = np.array([self.leaves.index(trans[name]) for name in info['variants']])
             scores = info['scores'][::]
             alt_variants = [alt.copy() for alt in info['alt_variants']]
-            self._calculate_cache_values(params, variant_inds, scores, alt_variants)
+            self._calculate_cache_values(run_id, params, variant_inds, scores, alt_variants)
         self.display_options['sizes']['max_variant_name_length'] = truncation
         if self.verbose:
             print('\nTruncated the tree names')
@@ -485,6 +487,14 @@ class VariantFinder(object):
             buff.append(tag_format_str.format(dist_matrix_tag, self.encode_distance_matrix()))
         return '\n\n'.join(buff)
 
+    def generate_run_id(self):
+        """Generates a unqiue string to represent one set of clustering parameters from any method."""
+        r_id_len = 4
+        r_id = 'r'+''.join([str(random.randint(0,9)) for i in range(r_id_len)])
+        while r_id in self.cache:
+            r_id = 'r'+''.join([str(random.randint(0,9)) for i in range(r_id_len)])
+        return r_id
+
     def get_distance(self, name1, name2):
         """Returns the phylogenetic distance between the two given sequence names. Uses the unscaled distance from the tree, and accounts for name truncations."""
         ind1 = self.leaves.index(name1)
@@ -578,7 +588,7 @@ class VariantFinder(object):
             seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
             rand_inds = []
             for i in range(num_variants - num_chsn):
-                rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk)])
+                rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk-1)])
             best_med_inds = np.array(chsn_indices + rand_inds)
         # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds)
@@ -657,15 +667,13 @@ class VariantFinder(object):
         return [sum(self.dist[med,inds]) for med,inds in zip(medoids,clusters)]
 
     # # # # #  Private methods  # # # # #
-    def _clear_cache(self):
-        self.cache = {}
-        self.normalize = self._empty_normalize()
-    def _empty_normalize(self):
-        """'method' can be one of 'self', 'global', or 'custom'. 'custom_max_count' is X.
-        """
-        return {'method':'self', 'custom_value':None, 'custom_max_count':0, 'global_value':None, 'global_max_count':0, 'global_nums':set(), 'global_bins':[]}
-    def _calculate_cache_values(self, params, variant_inds, scores, alt_variants):
-        """Fills out the self.cache entry for the given clustering run. 'params'=(number_variants, tolerance); 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]"""
+    def _clear_cache(self, reset_normalize=True):
+        """self.cache = {'run_id1':{cache_data}, 'run_id2':{}..., 'params':{(params1):'run_id1', ...}}"""
+        self.cache = {'params':{}}
+        if reset_normalize:
+            self.normalize = self._empty_normalize()
+    def _calculate_cache_values(self, run_id, params, variant_inds, scores, alt_variants):
+        """Fills out the self.cache entry for the given clustering run. 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]"""
         cluster_inds = self._partition_nearest(variant_inds)
         variants = [self.leaves[i] for i in variant_inds]
         clusters = [[self.leaves[i] for i in clst] for clst in cluster_inds]
@@ -676,7 +684,11 @@ class VariantFinder(object):
                 variant_distance[self.leaves[var_ind]] = dist
                 if dist > max_var_dist:
                     max_var_dist = dist
-        self.cache[params] = {'variants':variants, 'scores':scores, 'clusters':clusters, 'variant_distance':variant_distance, 'max_distance':max_var_dist, 'alt_variants':alt_variants}
+        self.cache['params'][params] = run_id
+        self.cache[run_id] = {'variants':variants, 'scores':scores, 'clusters':clusters, 'params':params, 'variant_distance':variant_distance, 'max_distance':max_var_dist, 'alt_variants':alt_variants}
+    def _empty_normalize(self):
+        """'method' can be one of 'self', 'global', or 'custom'."""
+        return {'method':'self', 'custom_value':None, 'custom_max_count':0, 'global_value':None, 'global_max_count':0, 'processed':set(), 'global_bins':[]}
     def _calc_max_root_dist(self):
         max_dist = 0.0
         root = self.tree.root
@@ -792,11 +804,3 @@ class VariantFinder(object):
         dist = np.log(self.orig_dist.copy()*val + 1.0) # @20, @0.01 have similar but opposite effects on distribution skew. Values > 1 reduce the impact of outliers
         self.dist = dist * self.orig_dist.max() / dist.max() # Ensures the magnitudes are *similar*, though they won't really be comparable.
         # self._clear_cache()
-
-
-# TODO:
-# The sliding scale does not appear to be changing the results, either applied to the dist matrix or to the summed score of a cluster. In theory it is able to, but it might have to be very dramatic to do so.
-# Should be a sliding scale for priority: what is best, some strains hit very well but some missed by a lot, or all strains hit decently?
-  # I think that if this is changed, there's probably a way to check if the clustering has to be redone or not (the pattern cannot be improved unless the scaling changes a distance by more than x). Prevent too much of the algorithm from being rerun.
-  # I think ((d+1.0)**x)-1.0 is probably good, where x is the sliding scale. The +1.0 is necessary because between 0 and 1 sqrt increases the value, while it decreases the values above 1 (which is what I want; also I may have some distances above and some below 1).
-    # x=1.0 is regular distances. x<1 makes long distances more acceptable (so getting lots of close hits is prioritized). x>1 makes long distances more costly, so the medeoids will try to cover everything poorly instead of a few things very well.

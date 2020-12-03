@@ -5,7 +5,7 @@
 
 // =====  Modified / additional common variables:
 $.extend(nvrgtr_page, {
-  'page':'results', 'check_results_interval':1000
+  'page':'results', 'run_id':null, 'check_results_interval':1000
 });
 $.extend(nvrgtr_data, {
   'num_variants':null, 'sorted_names':[], 'variants':[], 'clusters':{}, 'variant_distance':{}, 'max_variant_distance':0.0, 'normalized_max_distance':0.0, 'normalized_max_count':0, 'nice_max_var_dist':0.0, 'original_bins':[],
@@ -28,7 +28,10 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - Several parts use nvrgtr_data.num_variants to identify the particular instance, and fetch data from the daemon. Need to replace these with calls using the unique parameters (num_vars, tolerance). nvrgtr_data.result_links, as well as the result pages urls
+// - I added the nvrgtr_page.run_id attribute; integrate it, get rid of nvrgtr_data.num_variants if it's no longer useful
+//   - Finish incorporating run_ids everywhere instead of params
+
+// - Finish setupHistoSliderPane() & drawDistanceGraphs(), a couple of points left to address.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc). Do this before saving cache to nvrgtr file
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
@@ -52,7 +55,10 @@ function setupPage() {
   // =====  Variable parsing:
   var url_params = location.search.slice(1).split('_');
   nvrgtr_page.session_id = url_params[0];
-  nvrgtr_data.num_variants = url_params[1];
+  nvrgtr_page.run_id = url_params[1];
+
+  nvrgtr_data.num_variants = url_params[1]; // GET RID OF THIS. probably. or maybe it gets filled out by checkForClusteringResults()
+
   document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
@@ -218,7 +224,7 @@ function setupNormalizationPane() {
       url: daemonURL('/calculate-global-normalization'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({...getPageBasicData(), 'cur_var':nvrgtr_data.num_variants, 'var_nums':null, 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins}),
+      data: JSON.stringify({...getPageBasicData(), 'run_ids':[nvrgtr_page.run_id], 'max_var_dist':nvrgtr_data.max_variant_distance, 'global_bins':nvrgtr_data.original_bins}),
       success: function(data_obj) {
         var data = $.parseJSON(data_obj);
         nvrgtr_data.normalized_max_distance = data.global_value;
@@ -884,7 +890,7 @@ function selectNamesByThreshold(threshold, select_below) {
 
 // =====  Graph functions:
 function updateHistoBins() {
-  // Don't need to adjust the cumulative graph, as it uses the same x-axis (which is getting update) and its y-axis never changes for a given tree.
+  // Don't need to adjust the cumulative graph, as it uses the same x-axis (which is getting updated) and its y-axis never changes for a given tree.
   var x_ticks = calculateHistoTicks(nvrgtr_data.normalized_max_distance);
   nvrgtr_data.nice_max_var_dist = x_ticks[x_ticks.length-1];
   //nvrgtr_data.nice_max_var_dist = roundFloat(x_ticks[x_ticks.length-1], 3);

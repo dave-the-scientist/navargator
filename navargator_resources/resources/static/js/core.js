@@ -1542,7 +1542,7 @@ function maintainServer() {
   }
 }
 function changeSessionID(new_s_id) {
-  var old_s_id = nvrgtr_page.session_id;
+  let old_s_id = nvrgtr_page.session_id;
   nvrgtr_page.session_id = new_s_id;
   closeInstance(old_s_id);
 }

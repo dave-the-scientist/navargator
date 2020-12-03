@@ -36,7 +36,7 @@ else:
 
 # TODO:
 # - Currently erroring out on various methods that are using hard-coded dist_scale values. Need to kill those, and get this from the js, meaning the js needs to store it somehwere.
-#   - Probably treat it like the avail/ignored/chsn sets, where if it changes (or at least user changes then presses "Find variants") it wipes the cache and resets results.
+#   - Fix how the vf deals with the tolerance value. Is there any point in storing it? Yeah probably. Useful to store the scaled vf.dist matrix? Yeah probably; maybe change the name to vf.scaled_dist or something to reflect that it is not returning phylogenetic distances.
 # - find_variants() needs a better way of passing arguments to the vf; different methods (threshold) use very different sets of args
 #   - Need to change the vf cache, as it's currently referenced by var_num. Threshold clustering uses (thresh, %) as parameters. I want them to be able to co-exist, so maybe that's actually how I do want it...
 #   - Need to change how result links are presented on the input page, to allow for k- and threshold-clustered results. I could calculate a total score for a threshold clustering, so it could be graphed as a k- is. However, the minimization is different so k- will appear to be "better" than thresh-; this should be specified somewhere.
@@ -66,6 +66,7 @@ class NavargatorDaemon(object):
     5512 - Error truncating tree names because names became non-unique. From truncate_tree_names().
     5513 - Error creating a new session as the server is at capacity. Likely from upload_tree_file(), rarely from anything that calls update_or_copy_vf().
     5514 - Error parsing data from the client.
+    5515 - Error clustering the tree.
     """
     def __init__(self, server_port, threads=2, web_server=False, verbose=False):
         self.sessionID_length = 20 # Length of the unique session ID used
@@ -141,16 +142,10 @@ class NavargatorDaemon(object):
                 return msg
             elif vf == None:
                 return ("error, global normalization cannot be calculated because there is no valid variant finder for session ID '{}'".format(s_id), 5509)
-            dist_scale = 0.01
-            cur_var = request.json['cur_var']
+            run_ids = request.json['run_ids']
             max_var_dist = float(request.json['max_var_dist'])
             bins = list(map(float, request.json['global_bins']))
-            if not cur_var: # Called from input.js:calculateGlobalNormalization()
-                var_nums = map(int, request.json['var_nums'])
-                self.calc_global_normalization_values(var_nums, dist_scale, max_var_dist, bins, vf)
-            else: # Called from results.js
-                cur_var = int(cur_var)
-                self.calc_global_normalization_values([cur_var], dist_scale, max_var_dist, bins, vf)
+            self.calc_global_normalization_values(run_ids, max_var_dist, bins, vf)
             ret = {'global_value':vf.normalize['global_value'], 'global_max_count':vf.normalize['global_max_count']}
             return json.dumps(ret)
         @self.server.route(self.daemonURL('/fit-curve'), methods=['POST'])
@@ -331,35 +326,54 @@ class NavargatorDaemon(object):
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
                 return msg
-            num_vars = int(request.json['num_vars'])
-            num_vars_range = int(request.json['num_vars_range'])
-
             cluster_method = request.json['cluster_method']
-
             arg_list = request.json['args']
-
+            run_ids, run_descrs, run_tooltips = [], [], []
             if cluster_method in vf.k_cluster_methods:
                 num_vars, num_vars_range, tolerance = arg_list[:3]
                 for num in range(num_vars, num_vars_range + 1):
                     params = (num, tolerance)
-                    if params not in vf.cache:
-                        vf.cache[params] = None
-                        args = tuple([cluster_method, num, tolerance] + arg_list[3:])
-                        #vf.find_variants(*args)
+                    run_descr = '{} K@{:.1f}'.format(num, tolerance)
+                    run_tooltip = '{} clusters at a tolerance of {}'.format(num, tolerance)
+                    if params not in vf.cache['params']:
+                        run_id = vf.generate_run_id()
+                        vf.cache['params'][params] = run_id
+                        vf.cache[run_id] = None
+                        args = tuple([run_id, cluster_method, num, tolerance] + arg_list[3:])
                         self.job_queue.addJob(vf.find_variants, args)
+                    else:
+                        run_id = vf.cache['params'][params]
+                    run_ids.append(run_id)
+                    run_descrs.append(run_descr)
+                    run_tooltips.append(run_tooltip)
             elif cluster_method in vf.threshold_cluster_methods:
                 pass
             else:
-                print('ERROR') # Throw a real error.
-                exit()
-            """
-            for num in range(num_vars, num_vars_range + 1):
-                params = (num, dist_scale)
-                if params not in vf.cache:
-                    vf.cache[params] = None
-                    args = (num, dist_scale, cluster_method)
-                    self.job_queue.addJob(vf.find_variants, args)"""
-            return json.dumps({'session_id':s_id})
+                return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
+            return json.dumps({'session_id':s_id, 'run_ids':run_ids, 'descriptions':run_descrs, 'tooltips':run_tooltips})
+        @self.server.route(self.daemonURL('/check-results-done'), methods=['POST'])
+        def check_results_done():
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            elif vf == None:
+                return ("error in check_results_done(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
+            run_ids = request.json['run_ids']
+            scores, num_clusts, max_dists = [], [], []
+            for run_id in run_ids:
+                if run_id not in vf.cache:
+                    error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
+                    return (error_msg, 5506)
+                results = vf.cache[run_id]
+                if results == None:
+                    scores.append(False)
+                    num_clusts.append(False)
+                    max_dists.append(False)
+                else:
+                    scores.append(sum(results['scores']))
+                    num_clusts.append(len(results['scores']))
+                    max_dists.append(results['max_distance'])
+            return json.dumps({'run_ids':run_ids, 'scores':scores, 'num_clusts':num_clusts, 'max_dists':max_dists})
         @self.server.route(self.daemonURL('/update-visual-options'), methods=['POST'])
         def update_visual_options():
             vf, s_id, b_id, msg = self.get_instance()
@@ -369,30 +383,6 @@ class NavargatorDaemon(object):
             vf.selection_groups_order = request.json['selection_groups_order']
             vf.selection_groups_data = request.json['selection_groups_data']
             return "display options updated for {}".format(s_id)
-        @self.server.route(self.daemonURL('/check-results-done'), methods=['POST'])
-        def check_results_done():
-            vf, s_id, b_id, msg = self.get_instance()
-            if s_id == None:
-                return msg
-            elif vf == None:
-                return ("error in check_results_done(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
-            var_nums = request.json['var_nums']
-            var_scores, max_var_dists = [], []
-            dist_scale = 0.01
-            for num in var_nums:
-                num = int(num)
-                params = (num, dist_scale)
-                if params not in vf.cache:
-                    error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
-                    return (error_msg, 5506)
-                results = vf.cache[params]
-                if results == None:
-                    var_scores.append(False)
-                    max_var_dists.append(False)
-                else:
-                    var_scores.append(sum(results['scores']))
-                    max_var_dists.append(results['max_distance'])
-            return json.dumps({'var_nums':var_nums, 'var_scores':var_scores, 'max_var_dists':max_var_dists})
         @self.server.route(self.daemonURL('/set-normalization-method'), methods=['POST'])
         def set_normalization_method():
             vf, s_id, b_id, msg = self.get_instance()
@@ -576,28 +566,29 @@ class NavargatorDaemon(object):
         if vf != None:
             data_dict.update({'leaves':vf.leaves, 'ordered_names':vf.ordered_names, 'chosen':sorted(vf.chosen), 'available':sorted(vf.available), 'ignored':sorted(vf.ignored), 'phyloxml_data':vf.phyloxml_tree_data, 'display_opts':vf.display_options, 'selection_groups_order':vf.selection_groups_order, 'selection_groups_data':vf.selection_groups_data, 'file_name':vf.file_name, 'max_root_distance':vf.max_root_distance})
         return data_dict
-    def calc_global_normalization_values(self, var_nums, dist_scale, max_var_dist, bins, vf):
+    def calc_global_normalization_values(self, run_ids, max_var_dist, bins, vf):
         if vf.normalize['global_value'] == None or max_var_dist >= vf.normalize['global_value']:
             vf.normalize['global_value'] = max_var_dist
             if bins != vf.normalize['global_bins']:
                 vf.normalize['global_bins'] = bins
-                vf.normalize['global_nums'] = set()
+                vf.normalize['processed'] = set()
                 vf.normalize['global_max_count'] = 0
         elif max_var_dist < vf.normalize['global_value']:
             bins = vf.normalize['global_bins']
         max_count = vf.normalize['global_max_count'] or 0
-        for num in var_nums:
-            params = (num, dist_scale)
-            if num in vf.normalize['global_nums'] or vf.cache[params] == None:
+        for run_id in run_ids:
+            if run_id in vf.normalize['processed'] or vf.cache[run_id] == None:
                 continue # Already been processed, or clustering is still in progress
-            count = self.calculate_max_histo_count(vf.cache[params]['variant_distance'], num, bins)
+            var_dists, num_clusts = vf.cache[run_id]['variant_distance'], len(vf.cache[run_id]['scores'])
+            count = self.calculate_max_histo_count(var_dists, num_clusts, bins)
             if count > max_count:
                 max_count = count
-            vf.normalize['global_nums'].add(num)
+            vf.normalize['processed'].add(run_id)
         vf.normalize['global_max_count'] = max_count
-    def calculate_max_histo_count(self, var_dists, var_num, bins):
-        dists = sorted(var_dists.values())[var_num:]
-        max_count = var_num
+    def calculate_max_histo_count(self, var_dists, num_clusts, bins):
+        """Counts the frequency of each bin for the given distances, returns the largest."""
+        dists = sorted(var_dists.values())[num_clusts:] # The non-zero dists
+        max_count = num_clusts
         dists_ind = 0
         for threshold in bins[2:]: # bins[0] is negative (for chosen variants), bins[1] is zero.
             count = 0
