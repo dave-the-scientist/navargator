@@ -28,9 +28,6 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - I added the nvrgtr_page.run_id attribute; integrate it, get rid of nvrgtr_data.num_variants if it's no longer useful
-//   - Finish incorporating run_ids everywhere instead of params
-
 // - Finish setupHistoSliderPane() & drawDistanceGraphs(), a couple of points left to address.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc). Do this before saving cache to nvrgtr file
 // - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
@@ -53,13 +50,9 @@ function setupPage() {
   initializeFloatingPanes();
 
   // =====  Variable parsing:
-  var url_params = location.search.slice(1).split('_');
+  let url_params = location.search.slice(1).split('_');
   nvrgtr_page.session_id = url_params[0];
   nvrgtr_page.run_id = url_params[1];
-
-  nvrgtr_data.num_variants = url_params[1]; // GET RID OF THIS. probably. or maybe it gets filled out by checkForClusteringResults()
-
-  document.title = '['+nvrgtr_data.num_variants+'] ' + document.title;
   nvrgtr_page.browser_id = generateBrowserId(10);
   console.log('sessionID:'+nvrgtr_page.session_id+', browserID:'+nvrgtr_page.browser_id);
 
@@ -81,7 +74,6 @@ function setupPage() {
     data: JSON.stringify(getPageBasicData()),
     success: function(data_obj) {
       parseBasicData(data_obj);
-      $("#numClustersH2Span").html(nvrgtr_data.num_variants + ' clusters');
       $("#numNodesSpan").html(nvrgtr_data.leaves.length);
       treeHasLoaded();
       redrawTree(true);
@@ -413,7 +405,7 @@ function checkForClusteringResults() {
     url: daemonURL('/get-cluster-results'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({...getPageBasicData(), 'num_vars':nvrgtr_data.num_variants}),
+    data: JSON.stringify({...getPageBasicData(), 'run_id':nvrgtr_page.run_id}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
       if (data.variants == false) {
@@ -455,7 +447,7 @@ function redrawTree(initial_draw=false) {
 }
 function extendTreeLegend() {
   let contains_singletons = false, clstr;
-  for (let i=0; i<nvrgtr_data.num_variants; ++i) {
+  for (let i=0; i<nvrgtr_data.variants.length; ++i) { // i<nvrgtr_data.num_variants;
     clstr = nvrgtr_data.clusters[nvrgtr_data.variants[i]];
     if (clstr.nodes.length == 1) {
       contains_singletons = true;
@@ -1129,14 +1121,14 @@ function updateAreaGraphAndIndicator(distance, select_below, do_transition=false
 
 // =====  Data parsing:
 function parseClusteredData(data) {
-  if (data.variants.length != nvrgtr_data.num_variants) {
-    showErrorPopup("Error: data appears to be corrupted (num_variants and variants disagree).");
-    return false;
-  }
+  nvrgtr_data.variants = data.variants;
   nvrgtr_data.variant_distance = data.variant_distance;
   nvrgtr_data.max_variant_distance = data.max_variant_distance;
   nvrgtr_data.original_bins = calculateHistoTicks(data.max_variant_distance);
-
+  // Update the page title and some attributes with clustering information
+  document.title = '['+nvrgtr_data.variants.length+'] ' + document.title;
+  $("#numClustersH2Span").html(nvrgtr_data.variants.length + ' clusters');
+  // Deal with the normalization
   if (data.normalization.value == null) {
     // This can happen if the clustering completes + checkForClusteringResults() is called between calls of input.js:checkIfProcessingDone(). I only saw it when running a single calculation for multiple clusters, if Normalize across runs was set, and auto-open was enabled. It did not happen under any circumstances if a result link was clicked.
     // I couldn't find a good way to actually do the normalization, so instead I ignore "global" and set it to "self". Everything works fine if the user then switches it to "global" manually.
@@ -1153,7 +1145,6 @@ function parseClusteredData(data) {
       $("#normValInput").val(data.normalization.value);
     }
   }
-  nvrgtr_data.variants = data.variants;
   // Ensures nvrgtr_data.sorted_names begins with the chosen variants, and the rest stably sorted by variant distance.
   var delta, sorted_names = Object.keys(nvrgtr_data.variant_distance).filter(function(name) {
     return (data.variants.indexOf(name) == -1);

@@ -18,9 +18,10 @@ def new_random_port():
 
 # TODO:
 # - When I design the GUI-free version, ensure it makes good use of threading (brute force can split up the list of combinations; medoids+minibatch can split replicates; threshold might split up computation of cluster size?).
+#   - Can even use the same command line option for threads. If using GUI it's the number of whole runs that can be processed at once; if not using GUI it's the number of threads a single run makes use of.
 # - Actually put this together with the option menus.
 #   - When done, edit the IE warning message at the top of input.html to include the correct command line flag.
-# - Ensure that a message is printed indicating the server may hang, but ctrl-c can be used to stop the program at any time.
+# - Ensure that a message is printed indicating the server may occasionally hang, but ctrl-c can be used to stop the program at any time.
 
 # BUG reports:
 

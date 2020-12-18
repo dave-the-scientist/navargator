@@ -35,11 +35,6 @@ else:
 
 
 # TODO:
-# - Currently erroring out on various methods that are using hard-coded dist_scale values. Need to kill those, and get this from the js, meaning the js needs to store it somehwere.
-#   - Fix how the vf deals with the tolerance value. Is there any point in storing it? Yeah probably. Useful to store the scaled vf.dist matrix? Yeah probably; maybe change the name to vf.scaled_dist or something to reflect that it is not returning phylogenetic distances.
-# - find_variants() needs a better way of passing arguments to the vf; different methods (threshold) use very different sets of args
-#   - Need to change the vf cache, as it's currently referenced by var_num. Threshold clustering uses (thresh, %) as parameters. I want them to be able to co-exist, so maybe that's actually how I do want it...
-#   - Need to change how result links are presented on the input page, to allow for k- and threshold-clustered results. I could calculate a total score for a threshold clustering, so it could be graphed as a k- is. However, the minimization is different so k- will appear to be "better" than thresh-; this should be specified somewhere.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 # - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
@@ -163,7 +158,7 @@ class NavargatorDaemon(object):
                 name2 = datum.get('name2')
                 if name1 not in vf.leaves or name2 not in vf.leaves:
                     return ("malformed data for fit_curve() from the client.", 5514)
-                dist = vf.dist[vf.index[name1], vf.index[name2]]
+                dist = vf.orig_dists[vf.index[name1], vf.index[name2]]
                 datum['distance'] = dist
                 xvals.append(dist)
                 yvals.append(float(datum['value']))
@@ -412,13 +407,11 @@ class NavargatorDaemon(object):
                 return msg
             elif vf == None:
                 return ("error in get_cluster_results(), there is no valid variant finder for session ID '{}'".format(s_id), 5509)
-            num_vars = int(request.json['num_vars'])
-            dist_scale = 0.01
-            params = (num_vars, dist_scale)
-            if params not in vf.cache:
+            run_id = request.json['run_id']
+            if run_id not in vf.cache:
                 error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
                 return (error_msg, 5506)
-            results = vf.cache[params]
+            results = vf.cache[run_id]
             if results == None:
                 ret = {'variants': False}
             else:
@@ -455,7 +448,7 @@ class NavargatorDaemon(object):
             return json.dumps(active)
 
     # # # # #  Public methods  # # # # #
-    def new_variant_finder(self, tree_data, tree_format, file_name='unknown file', browser_id='unknown', available=[], ignored=[], distance_scale=1.0):
+    def new_variant_finder(self, tree_data, tree_format, file_name='unknown file', browser_id='unknown', available=[], ignored=[]):
         if type(tree_data) == bytes:
             tree_data = tree_data.decode()
         vf = VariantFinder(tree_data, tree_format=tree_format, file_name=file_name, verbose=self.verbose)

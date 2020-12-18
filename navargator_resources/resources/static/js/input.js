@@ -4,19 +4,9 @@
 
 
 // TODO:
-// - The x-axis of the score graph is clipping for some descriptions (over 10). Make it dynamic (already doing it for the y-axis in updateScoreGraph()) as I do with results.js:updateHistoHeight()
-// - With the new rotated x-axis ticks, they go off-screen to the right when the page width is very small. Adjust the width/margins to accommodate.
-// - nvrgtr_data.result_links should be keeping a list of params, used to access the data for each clustering result. It looks like I'm mostly using nvrgtr_data.result_links.var_nums for this purpose at the moment.
-// - result_links needs an array of run_ids, each of which are used like result_links.run_id to access specific information
-
-// - When opening a tree (but not nvrgtr, if possible, but not a huge deal), have the page pick a reasonable clustering method by default. Brute force for small, medoids for medium, minibatch for large.
-// - In Run Options pane, get rid of the "auto open" checkbox. Singles will always auto-open, a range never will.
-//   - Set it up so that other options are shown/hidden based on the choice of clustering method.
-//   - K medoids should allow the user to set num_replicates; k minibatch to set num_replicates (lower default) and batch size (sure); all these should provide the distance_scale (possibly rename it).
-//   - Threshold clustering provides the threshold and % required above it (but doesn't use "variants to find" inputs).
-// - Rename the toggled buttonbar options. Should be "by clusters" & "by threshold", or something like that. Move all of the threshold-related elements to this area.
-//   - Single/range should either be indicated by a checkbox, or left out totally (so a single happens if both input boxes have the same value).
+// - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - Might look good to move the "save session" button up to the load/manipulate group, and separate display/selection/export to their own block. Possibly more obvious, also would then be consistent between input and results.
+// - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out.
 
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Profile (in chrome) opening a large tree. Can the loading/drawing be sped up?
@@ -36,6 +26,28 @@
 // - For the Run Options help section:
 //   - It takes ~2 minutes to load a tree of 4173 variants in Chrome. Identifying 3 clusters only took ~10 seconds per replication using minibatch, vs ~70 seconds with k medoids.
 //   - When identifying 5 clusters, it took ~15 seconds per replication using minibatch compared to 112 sec per replication with k medoids.
+//   - Brute force
+//     - Tree=59: k=2 0.07s, k=3 1.3s, k=4 20.8s, k=5 248s
+//     - Tree=82: k=2 0.15s, k=3 4.4s, k=4 91.5s, k=5 1753s
+//     - Tree=275: k=2 4.6s, k=3 383s
+//     - Tree=487: k=2 22s, k=3 3634s
+//   - Medoids @ 10 reps:
+//     - Tree=59: k=2 0.10s, k=3 0.19s, k=4 0.22s, k=5 0.29s
+//     - Tree=82: k=2 0.17s, k=3 0.31s, k=4 0.45s, k=5 0.60s
+//     - Tree=275: k=2 1.5s, k=3 2.9s, k=4 3.5s, k=5 3.8s
+//     - Tree=487: k=2 3.6s, k=3 5.5s, k=4 11.9s, k=5 15.2s
+//     - Tree=1399: k=2 29s, k=3 45s, k=4 74s, k=5 105s
+//     - Tree=4173: k=2 263s, k=3 428s, k=4 595s, k=5 770s
+//   - Minibatch @ 5 reps / 5000 batch:
+//     - Tree=59: k=2 0.05s, k=3 0.08s, k=4 0.12s, k=5 0.15s
+//     - Tree=82: k=2 0.09s, k=3 0.17s, k=4 0.26s, k=5 0.30s
+//     - Tree=275: k=2 0.67s, k=3 1.5s, k=4 1.9s, k=5 2.7s
+//     - Tree=487: k=2 1.7s, k=3 2.6s, k=4 5.6s, k=5 8.2s
+//     - Tree=1399: k=2 7s, k=3 14s, k=4 19s, k=5 25s
+//     - Tree=4173: k=2 34s, k=3 37s, k=4 63s, k=5 88s
+// - For FAQs or something:
+//   - If threshold is used to identify 4 clusters, that result will always have a worse Tree score than if a k- method was used. This is a consequences of threshold optimizing a different function, while k- all optimize the Tree score directly. (ensure this is actually true in practice)
+
 // - If the underlying vf is replaced, have to call setNormalizationMethod() to inform the new vf of the user's choice.
 //   - This info is not retained when the new vf is created. I believe the only current points are on loading a new file (either from the button or the automatic load at the start), and when finding variants if any of the assigned variants have changed. Those are all currently covered.
 //   - NEED TO CHECK THIS. After adding the re-ordering and rooting functions, make sure there's nothing more to do with them.
@@ -49,7 +61,7 @@ $.extend(nvrgtr_data, {
   'graph':{'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null}
 });
 $.extend(nvrgtr_settings.graph, {
-  'margin':{top:7, right:27, bottom:35, left:37}
+  'margin':{top:7, right:32, bottom:45, left:37}
 });
 // Also adds nvrgtr_data.nodes[var_name].variant_select_label
 
@@ -471,7 +483,7 @@ function setupClusteringOptions() {
 
   $("#clustToleranceSpinner").spinner({
     min: 0, max: null,
-    numberFormat: 'N1', step: 1
+    numberFormat: 'N1', step: 0.001
   }).spinner('value', 1);
   $("#clustRandStartsSpinner").spinner({
     min: 0, max: null,
@@ -524,8 +536,7 @@ function setupClusteringOptions() {
     if (args == false) {
       return false;
     }
-    var num_vars = args[0], num_vars_range = args[1], // TO BE REMOVED
-      cluster_method = $("#clustMethodSelect").val();
+    var cluster_method = $("#clustMethodSelect").val();
     var auto_open = ($("#clustMethodNumberCheckbox").is(':checked') && !$("#varRangeCheckbox").is(':checked')),
       auto_result_page = null;
     if (auto_open == true) {
@@ -544,9 +555,9 @@ function setupClusteringOptions() {
           setNormalizationMethod();
           clearHideResultsPane();
         }
-        updateResultsPane(data.run_ids, data.descriptions, data.tooltips);
+        updateResultsLinksPane(data.run_ids, data.descriptions, data.tooltips);
         if (auto_open == true && auto_result_page != null) {
-          auto_result_page.location.href = nvrgtr_data.result_links[num_vars].url;
+          auto_result_page.location.href = nvrgtr_data.result_links[data.run_ids[0]].url;
         }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
@@ -589,7 +600,7 @@ function setupScoresGraph() {
     .attr("class", "y-axis")
     .call(nvrgtr_data.graph.y_axis);
   // Set up axis labels:
-  /*nvrgtr_data.graph.g.append("text") // x axis - NOT USED
+  /*nvrgtr_data.graph.g.append("text") // x axis label - NOT CURRENTLY BEING USED
     .attr("class", "score-axis-label x-axis-label")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
@@ -674,6 +685,10 @@ $(window).bind('beforeunload', function() {
 // =====  Page udating:
 function calcSpecificDefaultDisplayOpts(num_vars) {
   // Calculates new default values for certain options that are tree-specific. These will be overwritten by any loaded session values. Other display options will be taken from their current values on the page.
+  if (num_vars > 500) {
+    $("#clustMethodSelect").val('k minibatch');
+    $("#clustMethodSelect").change();
+  }
   nvrgtr_display_opts.sizes.scale_bar_distance = 0.0; // Resets the scale bar distance, so a default value will be calculated
   if (num_vars == 0) {
     return; // Happens for local version of the input page with no tree pre-loaded
@@ -816,7 +831,7 @@ function clearHideResultsPane() {
   $("#scoreGraphSvg").hide();
   $(".result-link-li").remove();
 }
-function updateResultsPane(run_ids, descriptions, tooltips) {
+function updateResultsLinksPane(run_ids, descriptions, tooltips) {
   var run_id, results_url, result_link_obj, result_list_obj,
     links_list = $("#resultsLinksList");
   // Add links for the new runs into the results pane:
@@ -939,25 +954,39 @@ function updateScoreGraph() {
     // Update x and y axes with the new domains:
     nvrgtr_data.graph.x_axis.tickValues(nvrgtr_data.result_links.var_nums);
     nvrgtr_data.graph.y_axis.tickValues(nvrgtr_data.graph.y_fxn.ticks(3));
-    nvrgtr_data.graph.g.select(".x-axis")
-      .call(nvrgtr_data.graph.x_axis)
+    nvrgtr_data.graph.g.select(".x-axis").call(nvrgtr_data.graph.x_axis)
       .selectAll("text")
         .style("text-anchor", "start")
         .attr("x", 7)
         .attr("y", 5)
         .attr("dy", ".35em")
         .attr("transform", "rotate(55)");
-    nvrgtr_data.graph.g.select(".y-axis")
-      .call(nvrgtr_data.graph.y_axis);
+    nvrgtr_data.graph.g.select(".y-axis").call(nvrgtr_data.graph.y_axis);
     // Calculate new margin values, apply to all relevant elements.
     $("#scoreGraphSvg").show();
-    let margin = nvrgtr_settings.graph.margin;
-    margin.left = 16 + nvrgtr_data.graph.g.select(".y-axis").node().getBBox().width;
-    let width = nvrgtr_settings.graph.total_width - margin.left - margin.right;
-    nvrgtr_data.graph.g.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    let margin = nvrgtr_settings.graph.margin,
+      x_axis_bbox = nvrgtr_data.graph.g.select(".x-axis").node().getBBox(),
+      y_axis_bbox = nvrgtr_data.graph.g.select(".y-axis").node().getBBox();
+    margin.bottom = x_axis_bbox.height;
+    margin.left = 16 + y_axis_bbox.width;
+    let width = nvrgtr_settings.graph.total_width - margin.left - margin.right,
+      height = nvrgtr_settings.graph.total_height - margin.top - margin.bottom;
     nvrgtr_data.graph.x_fxn.range([0, width]);
-    nvrgtr_data.graph.g.select(".x-axis-label").attr("x", width / 2);
-    nvrgtr_data.graph.g.select(".y-axis-label").attr("y", 12 - margin.left);
+    nvrgtr_data.graph.y_fxn.range([height, 0]);
+    nvrgtr_data.graph.g.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    nvrgtr_data.graph.g.select(".x-axis").attr("transform", "translate(0," + height + ")");
+    nvrgtr_data.graph.g.select(".x-axis").call(nvrgtr_data.graph.x_axis)
+      .selectAll("text")
+        .style("text-anchor", "start")
+        .attr("x", 7)
+        .attr("y", 5)
+        .attr("dy", ".35em")
+        .attr("transform", "rotate(55)");
+    nvrgtr_data.graph.g.select(".y-axis").call(nvrgtr_data.graph.y_axis);
+    //nvrgtr_data.graph.g.select(".x-axis-label").attr("x", width / 2); // NOT CURRENTLY USED
+    nvrgtr_data.graph.g.select(".y-axis-label")
+      .attr("x", 0 - height/2)
+      .attr("y", 12 - margin.left);
     // Update the graph line:
     nvrgtr_data.graph.g.select(".score-line")
       .transition()
