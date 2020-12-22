@@ -11,7 +11,7 @@
   display:inline-flex;
   flex-direction:column;
 }
-#inputOptionsDiv, #runOptionsDiv {
+#inputOptionsDiv, #coreOptionsDiv, #runOptionsDiv {
   width:var(--left-col-width);
 }
 #mainVariantSelectDiv {
@@ -34,6 +34,8 @@
 #sessionIncludeDistancesLabel {
   font-size:15px;
 }
+
+
 
 /* Run options:*/
 #clustMethodSelect {

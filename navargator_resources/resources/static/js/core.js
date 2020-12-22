@@ -2,7 +2,6 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// - Move setupThresholdPane() and all associated functions to input.js
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.
 // - Finish updateClusterTransColour(key, colour); need to inform the user when a colour can't be made.
 // - Many of the opts.colours should be pulled from core.css.
@@ -19,20 +18,11 @@ if (last_slash > 0) {
   showErrorPopup('Error: could not determine the base of the current URL.');
 }
 var nvrgtr_data = { // Variables used by each page.
-  'leaves':[], 'ordered_names':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'last_selected':null, 'last_was_select':true, 'considered_variants':{}, 'selection_groups':new Map(), 'banner_labels':[], 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'figure_svg_height':null, 'banner_legend_height':0, 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'banner_legend_paper':null, 'threshold':null,
-  'thresh':{
-    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
-  }
+  'leaves':[], 'ordered_names':[], 'chosen':[], 'available':[], 'ignored':[], 'search_results':[], 'selected':new Set(), 'num_selected':0, 'allow_select':true, 'last_selected':null, 'last_was_select':true, 'considered_variants':{}, 'selection_groups':new Map(), 'banner_labels':[], 'lc_leaves':{}, 'tree_data':null, 'nodes':{}, 'tree_background':null, 'file_name':'unknown file', 'figure_svg_height':null, 'banner_legend_height':0, 'max_root_distance':0.0, 'max_root_pixels':0.0, 'r_paper':null, 'pan_zoom':null, 'banner_legend_paper':null
 };
 var nvrgtr_settings = { // Page-specific settings, not user-modifiable.
   'graph' : {
     'histo_bins':15, 'total_width':null, 'total_height':null
-  },
-  'thresh':{
-    'width':null, 'height':null, 'label_font':'Helvetica, Arial, sans-serif', 'label_font_size':'14px', 'scatter_stroke_width':'1px', 'scatter_stroke':'#555555', 'scatter_fill':'#EAFEEC', 'scatter_radius':2.5, 'line_stroke_width':'2px', 'line_stroke':null,
-    'margin':{
-      'top':10, 'right':15, 'bottom':44, 'left':40
-    }
   },
   'banner_legend':{
     'bl_top_margin':10, 'header_font_size':18, 'header_top_margin':15, 'header_bot_margin':3, 'marker_width':8, 'marker_left_margin':10, 'marker_label_margin':8, 'label_font_size':12, 'label_y_margin':5, 'group_x_margin':15
@@ -70,7 +60,7 @@ function showErrorPopup(message, title) {
   $("#errorDialog").dialog("open");
 }
 function processError(error, message) {
-  console.log('Error occurred. The error object:');
+  console.log('Error occurred with message "'+message+'". The error object:');
   console.log(error);
   if (error.status == 559) {
     showErrorPopup(message+", as the server didn't recognize the given session ID. This generally means your session has timed out.");
@@ -88,7 +78,7 @@ function processError(error, message) {
     showErrorPopup(message+"; "+error.responseText);
   } else if (error.status == 5514) {
     showErrorPopup(message+"; "+error.responseText);
-  }else {
+  } else {
     showErrorPopup(message+"; the server returned code "+error.status);
   }
 }
@@ -634,383 +624,6 @@ function drawBannerLegend() {
   $("#showBannerLegendCheckbox").prop('disabled', false).prop('checked', true);
   nvrgtr_display_opts.show.banner_legend = true;
   nvrgtr_data.banner_legend_height = legend_height;
-}
-
-function setupThresholdPane() {
-  // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
-  var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
-  threshold_text.data('data', []); // The data to be graphed
-  function validateThresholdData() {
-    var cur_ind = 0, data = [], line, line_data, name1, name2, value;
-    var lines = threshold_text.val().trim().split('\n');
-    if (lines.length < 2) {
-      error_label.html('<b>Invalid data</b>');
-      return false;
-    }
-    for (var i=0; i<lines.length; ++i) {
-      line = lines[i];
-      line_data = line.split('\t');
-      if (line_data.length != 3 || line_data[0].length == 0 || line_data[1].length == 0 || line_data[2].length == 0) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + line.length);
-        error_label.html('<b>Invalid line</b>');
-        return false;
-      }
-      name1 = line_data[0], name2 = line_data[1], value = line_data[2];
-      if (!nvrgtr_data.leaves.includes(name1)) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name1.length);
-        error_label.html('<b>Invalid variant</b>');
-        return false;
-      } else {
-        cur_ind += name1.length + 1; // +1 for the removed \t
-      }
-      if (!nvrgtr_data.leaves.includes(name2)) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name2.length);
-        error_label.html('<b>Invalid variant</b>');
-        return false;
-      } else {
-        cur_ind += name2.length + 1; // +1 for the removed \t
-      }
-      if (isNaN(value) || parseFloat(value) < 0) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + value.length);
-        error_label.html('<b>Invalid number</b>');
-        return false;
-      } else {
-        cur_ind += value.length + 1; // +1 for the removed \n
-      }
-      data.push({'name1':name1, 'name2':name2, 'value':parseFloat(value)});
-    }
-    return data;
-  }
-  // End of function validateThresholdData()
-  $("#thresholdComputeButton").click(function() {
-    showFloatingPane(compute_pane);
-  });
-  $("#threshPercentSpinner").spinner({
-    min: 1, max: 100,
-    numberFormat: 'N1', step: 1
-  }).spinner('value', 90);
-  // Floating pane element setup
-  $("#thresholdDataText").keydown(function(e) {
-    if (e.which == 9) { // Causes tab to insert \t instead of switching focus
-      var sel_start = this.selectionStart, sel_end = this.selectionEnd,
-        cur_val = $(this).val();
-      $(this).val(cur_val.slice(0, sel_start) + "\t" + cur_val.slice(sel_end));
-      this.selectionStart = this.selectionEnd = sel_start + 1;
-      return false;
-    }
-  });
-  $("#thresholdLoadDataButton").click(function() {
-    threshold_text.val("Hps.Strain5.Unk\tHps.540.SV4\t1.0\nHps.Strain5.Unk\tHps.nx63.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21\nHps.Strain5.Unk\tApp.h167.Unk\t0.03\nA.suis.h57.Unk\tA.suis.h58.Unk\t0.99\nA.suis.h57.Unk\tApp.h49.SV7\t0.05\nA.suis.h57.Unk\tHps.h384.Unk\t0.46");
-  });
-  $("#thresholdValidateButton").click(function() {
-    var data = validateThresholdData();
-    if (data != false) {
-      error_label.html('Data are valid');
-    }
-  });
-  $("#thresholdFitCurveButton").click(function() {
-    var data = validateThresholdData();
-    if (data == false) {
-      return false;
-    }
-    var max_val = max_val_input.val();
-    if (!max_val_input.hasClass("threshold-max-modified")) {
-      max_val = null;
-    }
-    $.ajax({
-      url: daemonURL('/fit-curve'),
-      type: 'POST',
-      contentType: "application/json",
-      data: JSON.stringify({...getPageAssignedData(), 'data':data, 'max_val':max_val}),
-      success: function(data_obj) {
-        var thresh_data = $.parseJSON(data_obj);
-        nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
-        max_val_input.val(roundFloat(thresh_data.r, 6));
-        $("#thresholdMidlineValue").text(roundFloat(thresh_data.m, 6));
-        $("#thresholdSteepnessValue").text(roundFloat(thresh_data.b, 6));
-        nvrgtr_data.thresh.data = thresh_data.data;
-        error_label.html('');
-        if (nvrgtr_data.thresh.sigmoid_inv == null) {
-          // Expand the panel to show the graph
-          $("#thresholdPaneGraphColumn").show();
-          $("#thresholdPaneParamsDiv").show();
-          showFloatingPane(compute_pane);
-        }
-        updateThresholdGraph();
-        updateThresholdSlider($("#thresholdSlider").slider('value'));
-      },
-      error: function(error) { processError(error, "Error fitting the data to a curve"); }
-    });
-  });
-  max_val_input.change(function() {
-    var new_raw_val = max_val_input.val(), new_val = parseFloat(new_raw_val), old_val = roundFloat(nvrgtr_data.thresh.params.r, 6);
-    if (new_raw_val === '') {
-      max_val_input.removeClass("threshold-max-modified");
-      return false;
-    } else if (isFinite(new_val) && new_val != old_val && new_val > 0) {
-      max_val_input.val(new_val);
-      max_val_input.addClass("threshold-max-modified");
-    } else {
-      max_val_input.val(old_val);
-    }
-  });
-  max_val_input.on("keydown", function(event) {
-    if (event.which == 13) { // 'Enter' key
-      max_val_input.blur();
-      $("#thresholdFitCurveButton").click();
-    }
-  });
-  var val_input = $("#thresholdCritValInput");
-  val_input.val(0.7);
-  val_input.blur(function(event) {
-    var new_raw_val = val_input.val(), new_val = parseFloat(new_raw_val);
-    if (isFinite(new_val) && new_val >= 0) {
-      if (new_val > $("#thresholdSlider").slider('option', 'max')) {
-        new_val = $("#thresholdSlider").slider('option', 'max');
-      }
-      updateThresholdSlider(new_val);
-      $("#thresholdSlider").slider("value", new_val);
-    } else {
-      val_input.val($("#thresholdSlider").slider("value"));
-    }
-  });
-  val_input.on("keydown", function(event) {
-    if (event.which == 13) { // 'Enter' key
-      val_input.blur();
-    }
-  });
-  $("#thresholdOkButton").click(function() {
-    if (isFinite(nvrgtr_data.threshold)) {
-      $("#thresholdInput").val(nvrgtr_data.threshold);
-      $("#thresholdComputePane .floating-pane-close").click();
-    }
-  });
-
-  setupThresholdGraph();
-  setupThresholdSlider();
-}
-function setupThresholdSlider() {
-  var slider = $("#thresholdSlider").slider({
-    orientation:"vertical",
-    min: 0, max: 1.0,
-    value: 0.7, step: 0.001,
-    create: function() {
-    },
-    slide: function(event, ui) {
-      updateThresholdSlider(ui.value);
-    },
-    change: function(event, ui) { // Fires after programaticly changing the value
-      updateThresholdSlider(ui.value);
-    },
-    stop: function(event, ui) {
-      nvrgtr_data.thresh.indicator.attr("display", "none");
-    }
-  });
-  slider.css("height", nvrgtr_settings.thresh.height+"px");
-  slider.css("margin-top", nvrgtr_settings.thresh.margin.top+"px");
-  slider.on("mousedown", function() {
-    if (nvrgtr_data.thresh.sigmoid_inv != null) { // Prevents it from showing until a curve has been fit.
-      nvrgtr_data.thresh.indicator.attr("display", "");
-    }
-  });
-}
-function setupThresholdGraph() {
-  var graph_width_str = $("#thresholdSvg").css('width'), graph_height_str = $("#thresholdSvg").css('height'),
-    total_width = parseInt(graph_width_str.slice(0,-2)),
-    total_height = parseInt(graph_height_str.slice(0,-2)),
-    margin = nvrgtr_settings.thresh.margin;
-  nvrgtr_settings.thresh.line_stroke = getComputedStyle(document.documentElement)
-    .getPropertyValue('--dark-background-colour');
-  nvrgtr_settings.thresh.width = total_width - margin.right - margin.left;
-  nvrgtr_settings.thresh.height = total_height - margin.top - margin.bottom;
-  // Set up svg objects:
-  var svg = d3.select("#thresholdSvg")
-    .attr("width", total_width)
-    .attr("height", total_height);
-  nvrgtr_data.thresh.g = svg.append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-  // Set up scales and data objects:
-  nvrgtr_data.thresh.x_fxn = d3.scaleLinear()
-    .rangeRound([0, nvrgtr_settings.thresh.width])
-    .clamp(true);
-  nvrgtr_data.thresh.y_fxn = d3.scaleLinear()
-    .range([nvrgtr_settings.thresh.height, 0])
-    .clamp(true);
-  nvrgtr_data.thresh.line_fxn = d3.line()
-    .x(function(d) { return nvrgtr_data.thresh.x_fxn(d) })
-    .y(function(d) { return nvrgtr_data.thresh.y_fxn(nvrgtr_data.thresh.sigmoid_fxn(d)) })
-    .curve(d3.curveMonotoneX);
-  // Graph axes:
-  nvrgtr_data.thresh.x_axis = d3.axisBottom(nvrgtr_data.thresh.x_fxn);
-  nvrgtr_data.thresh.y_axis = d3.axisLeft(nvrgtr_data.thresh.y_fxn);
-  nvrgtr_data.thresh.g.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", "translate(0," + nvrgtr_settings.thresh.height + ")");
-  nvrgtr_data.thresh.g.append("g")
-    .attr("class", "y-axis");
-  var x_axis_vert_offset = 40, y_axis_vert_offset = 0, y_axis_horiz_offset = -30;
-  nvrgtr_data.thresh.g.append("text") // x axis label
-    .attr("font-family", nvrgtr_settings.thresh.label_font)
-    .attr("font-size", nvrgtr_settings.thresh.label_font_size)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "text-after-edge")
-    .attr("x", nvrgtr_settings.thresh.width/2)
-    .attr("y", nvrgtr_settings.thresh.height + x_axis_vert_offset)
-    .text("Phylogenetic distance");
-  nvrgtr_data.thresh.g.append("text") // y axis label
-    .attr("font-family", nvrgtr_settings.thresh.label_font)
-    .attr("font-size", nvrgtr_settings.thresh.label_font_size)
-    .attr("text-anchor", "middle")
-    .attr("x", 0 - nvrgtr_settings.thresh.height/2 - y_axis_vert_offset)
-    .attr("y", 0 + y_axis_horiz_offset)
-    .attr("transform", "rotate(-90)")
-    .text("Interaction value");
-  // Line graph:
-  nvrgtr_data.thresh.line_graph = nvrgtr_data.thresh.g.append("path")
-    .attr("stroke-width", nvrgtr_settings.thresh.line_stroke_width)
-    .attr("stroke", nvrgtr_settings.thresh.line_stroke)
-    .attr("fill", "none");
-  // Indicator shape and lines:
-  nvrgtr_data.thresh.indicator = nvrgtr_data.thresh.g.append("g")
-    .attr("display", "none");
-  nvrgtr_data.thresh.indicator.append("circle")
-    .attr("stroke", "#555555")
-    .attr("stroke-width", "1px")
-    .attr("fill", "none")
-    .attr("r", "7")
-    .attr("cx", "0")
-    .attr("cy", "0");
-  nvrgtr_data.thresh.indicator_line_v = nvrgtr_data.thresh.indicator.append("line")
-    .attr("stroke", "#555555")
-    .attr("stroke-width", "0.5px")
-    .attr("x1", "0")
-    .attr("y1", "6") // Is circle.attr("r") - 1
-    .attr("x2", "0");
-  nvrgtr_data.thresh.indicator_line_h = nvrgtr_data.thresh.indicator.append("line")
-    .attr("stroke", "#555555")
-    .attr("stroke-width", "0.5px")
-    .attr("x1", "-6")  // Is circle.attr("r") - 1
-    .attr("y1", "0")
-    .attr("y2", "0");
-  updateThreshAxes();
-}
-function updateThresholdGraph() {
-  // Called when the graph is first drawn, and when the graph parameters are changed.
-  updateThreshData();
-  updateThreshGraph();
-  updateThreshAxes();
-}
-function updateThreshData() {
-  // Updates the domains of the x_ and y_fxn, updates sigmoid_fxn and line_fxn, generates sigmoid_data for the line, and binds them to the line
-  // Update the sigmoid function:
-  var params = nvrgtr_data.thresh.params;
-  nvrgtr_data.thresh.sigmoid_fxn = generateSigmoidFunction(params.b, params.m, params.r);
-  nvrgtr_data.thresh.sigmoid_inv = generateSigmoidInverse(params.b, params.m, params.r);
-  var graph_y_intcpt = nvrgtr_data.thresh.sigmoid_fxn(0);
-
-  // Update the axis domains:
-  var max_dist = 0, max_value = 0;
-  for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
-    if (nvrgtr_data.thresh.data[i].distance > max_dist) {
-      max_dist = nvrgtr_data.thresh.data[i].distance;
-    }
-    if (nvrgtr_data.thresh.data[i].value > max_value) {
-      max_value = nvrgtr_data.thresh.data[i].value;
-    }
-  }
-  var max_x_val = max_dist * 1.3, max_y_val = Math.max(max_value, graph_y_intcpt);
-  nvrgtr_data.thresh.x_fxn.domain([0, max_x_val]).nice();
-  nvrgtr_data.thresh.y_fxn.domain([0, max_y_val]).nice();
-  max_x_val = nvrgtr_data.thresh.x_fxn.ticks()[nvrgtr_data.thresh.x_fxn.ticks().length-1];
-
-  // Update the data used to draw the sigmoid line:
-  var num_sigmoid_points = 20;
-  nvrgtr_data.thresh.sigmoid_data = [];
-  for (var i=0; i<(num_sigmoid_points-1); ++i) {
-    nvrgtr_data.thresh.sigmoid_data.push(i * max_x_val / (num_sigmoid_points-1));
-  }
-  nvrgtr_data.thresh.sigmoid_data.push(max_x_val);
-
-  // Update the slider range:
-  if ($("#thresholdSlider").slider("value") > graph_y_intcpt) {
-    $("#thresholdSlider").slider("value", graph_y_intcpt);
-  }
-  $("#thresholdSlider").slider({max:graph_y_intcpt});
-  var slider_offset = nvrgtr_data.thresh.y_fxn(graph_y_intcpt);
-  $("#thresholdSlider").animate({
-    'marginTop':(nvrgtr_settings.thresh.margin.top+slider_offset)+'px',
-    'height':(nvrgtr_settings.thresh.height-slider_offset)+'px'
-  }, 250);
-}
-function updateThreshGraph() {
-  // The sigmoid line:
-  nvrgtr_data.thresh.line_graph.datum(nvrgtr_data.thresh.sigmoid_data)
-    .transition()
-    .attr("d", nvrgtr_data.thresh.line_fxn);
-  // The scatter plot:
-  var scatter_circles = nvrgtr_data.thresh.g.selectAll(".thresh-circle")
-    .data(nvrgtr_data.thresh.data);
-  scatter_circles.enter().append("circle")
-    .attr("class", "thresh-circle")
-    .attr("stroke-width", nvrgtr_settings.thresh.scatter_stroke_width)
-    .attr("stroke", nvrgtr_settings.thresh.scatter_stroke)
-    .attr("fill", nvrgtr_settings.thresh.scatter_fill)
-    .attr("r", nvrgtr_settings.thresh.scatter_radius)
-    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
-    .attr("cy", nvrgtr_settings.thresh.height)
-    .transition()
-    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
-    .attr("cy", function(d) { return nvrgtr_data.thresh.y_fxn(d.value); });
-  scatter_circles.transition()
-    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
-    .attr("cy", function(d) { return nvrgtr_data.thresh.y_fxn(d.value); });
-  scatter_circles.exit().transition()
-    .attr("cy", nvrgtr_settings.thresh.height)
-    .remove();
-}
-function updateThreshAxes() {
-  nvrgtr_data.thresh.x_axis.tickFormat(d3.format(".3")); // trims trailing zeros
-  nvrgtr_data.thresh.y_axis.tickFormat(d3.format(".3")); // trims trailing zeros
-  nvrgtr_data.thresh.g.select(".x-axis")
-    .transition()
-    .call(nvrgtr_data.thresh.x_axis)
-    .selectAll("text")
-      .style("text-anchor", "start")
-      .attr("x", 7)
-      .attr("y", 5)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(55)");
-  nvrgtr_data.thresh.g.select(".y-axis")
-    .transition()
-    .call(nvrgtr_data.thresh.y_axis);
-}
-function updateThresholdSlider(value) {
-  $("#thresholdCritValInput").val(value);
-  if (nvrgtr_data.thresh.sigmoid_inv != null) {
-    nvrgtr_data.threshold = Math.max(nvrgtr_data.thresh.sigmoid_inv(value), 0);
-    $("#thresholdCritDistSpan").text(roundFloat(nvrgtr_data.threshold, 3));
-    updateThresholdIndicator(value, nvrgtr_data.threshold);
-  }
-}
-function updateThresholdIndicator(val, dist) {
-  var x_pos = nvrgtr_data.thresh.x_fxn(dist), y_pos = nvrgtr_data.thresh.y_fxn(val),
-    v_line_length = nvrgtr_settings.thresh.height - y_pos;
-  nvrgtr_data.thresh.indicator.attr("transform", "translate("+x_pos+", "+y_pos+")");
-  nvrgtr_data.thresh.indicator_line_v.attr("y2", v_line_length);
-  nvrgtr_data.thresh.indicator_line_h.attr("x2", -x_pos);
-}
-function generateSigmoidFunction(b, m, r) {
-  // Generates the sigmoid function with the given parameters
-  return function(x) {
-    return (r/2)*(b*(m-x) / Math.sqrt((b*(m-x))**2 + 1) + 1);
-  }
-}
-function generateSigmoidInverse(b, m, r) {
-  // Generates the inverse of the sigmoid function with the given parameters
-  return function(y) {
-    let c = 2*y/r - 1;
-    return m - c / (b*Math.sqrt(1-c*c));
-  }
 }
 
 // =====  Display option updating:
@@ -1720,16 +1333,6 @@ function downloadData(filename, data, blob_type) {
   download_link.click();
   document.body.removeChild(download_link);
   download_link = null; // Removes the element
-}
-function focusScrollSelectInTextarea(textarea, start, end) {
-  // textarea is the jquery object, start and end are integers representing character counts. Will select the given range, and attempt to scroll the textarea so that the selected text is on the bottom of the view.
-  textarea.focus();
-  var full_text = textarea.val();
-  textarea.val(full_text.slice(0, end));
-  textarea.scrollTop(0);
-  textarea.scrollTop(textarea[0].scrollHeight);
-  textarea.val(full_text);
-  textarea[0].setSelectionRange(start, end);
 }
 function calculateHistoTicks(max_var_dist) {
   // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.

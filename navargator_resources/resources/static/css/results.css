@@ -8,7 +8,7 @@
   display:inline-flex;
   flex-direction:column;
 }
-#leftOptionsDiv, #resultsNormalizationDiv {
+#coreOptionsDiv, #resultsNormalizationDiv {
   width:250px;
 }
 #selectionDiv, #clustersListDiv {

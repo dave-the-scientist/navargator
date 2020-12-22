@@ -13,8 +13,6 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
-# - I've got a bunch of logic in the _available etc setters. Is it really needed anymore?
-# - In _cluster_k_medoids() I have a short circuit if num_variants == num_available, but I don't do that in the minibatch. Is there a reason for that?
 # - Implement threshold clustering.
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
@@ -256,9 +254,12 @@ class VariantFinder(object):
             if self.cache.get(run_id, None):  # Already computed
                 # Needed because the daemon sets self.cache[run_id] = None before this method is called.
                 return self.cache[run_id]['variants'], self.cache[run_id]['scores'], self.cache[run_id]['alt_variants']
-            elif num_variants == num_avail + num_chsn:  # Trivial clustering
+            elif num_variants == num_chsn or num_variants == num_avail + num_chsn:  # Trivial clustering
                 dists = self._transform_distances(tolerance)
-                variants = [self.index[name] for name in list(self.available)+list(self.chosen)]
+                if num_variants == num_chsn:
+                    variants = [self.index[name] for name in list(self.chosen)]
+                else:
+                    variants = [self.index[name] for name in list(self.available)+list(self.chosen)]
                 clusters = self._partition_nearest(variants, dists)
                 scores = self._sum_dist_scores(variants, clusters, dists)
                 alt_variants = []
@@ -552,15 +553,12 @@ class VariantFinder(object):
         chsn_indices = list(self.index[n] for n in self.chosen)
         num_chsn = len(chsn_indices)
         dists = self._transform_distances(tolerance)
-        if num_chsn == num_variants:
-            best_med_inds = np.array(chsn_indices)
-        else:
-            # This spaces the initial centroids around the tree
-            seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
-            rand_inds = []
-            for i in range(num_variants - num_chsn):
-                rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk-1)])
-            best_med_inds = np.array(chsn_indices + rand_inds)
+        # This spaces the initial centroids around the tree
+        seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
+        rand_inds = []
+        for i in range(num_variants - num_chsn):
+            rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk-1)])
+        best_med_inds = np.array(chsn_indices + rand_inds)
         # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds, dists)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
@@ -592,12 +590,14 @@ class VariantFinder(object):
         chsn_indices = [self.index[n] for n in self.chosen]
         num_chsn = len(chsn_indices)
         dists = self._transform_distances(tolerance)
+
         # This spaces the initial centroids around the tree
         seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
         rand_inds = []
         for i in range(num_variants - num_chsn):
             rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk-1)])
         best_med_inds = np.array(chsn_indices + rand_inds)
+
         # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds, dists)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)

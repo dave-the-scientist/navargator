@@ -10,7 +10,7 @@
     <script>
       var is_IE = /MSIE|Trident|Edge\//.test(window.navigator.userAgent);
       if (is_IE) {
-        alert("You appear to be using Internet Explorer or Edge! Unfortunately NaVARgator doesn't work well with either, so you'll probably have to try with another browser.\n\nIf you're running the command line version of the software, include the XXX flag to prevent the automatic use of your default browser.");
+        alert("You appear to be using Internet Explorer or Edge. Unfortunately NaVARgator doesn't work well with either, so you'll probably have to try with another browser.\n\nIf you're running the command line version of the software, include the XXX flag to prevent the automatic use of your default browser.");
       }
     </script>
     <script src="static/libs/jquery-1.11.1.min.js"></script>
@@ -98,6 +98,17 @@
               </div>
             </div>
 
+            <hr>
+            <div class="horizontal-row-div">
+              <button id="saveSessionButton" class="jq-ui-button" title="Save the current session, which includes visual features as well as clustering results.">Save session</button>
+              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (90MB file for a tree with 4,000 leaves).">
+                <input id="sessionIncludeDistancesCheckbox" type="checkbox" />
+                <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">Include distances</label>
+              </label>
+            </div>
+          </div>
+
+          <div id="coreOptionsDiv" class="style-box">
             <h2 class="collapsible-header">Display options<div id="displayOptsHelp" class="help-button"></div></h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
               <table class="display-options-table"><tbody>
@@ -332,15 +343,7 @@
                 <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
               </div>
             </div>
-            <hr>
 
-            <div class="horizontal-row-div">
-              <button id="saveSessionButton" class="jq-ui-button">Save session</button>
-              <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (90MB file for a tree with 4,000 leaves).">
-                <input id="sessionIncludeDistancesCheckbox" type="checkbox" />
-                <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">Include distances</label>
-              </label>
-            </div>
           </div>
 
           <div id="runOptionsDiv" class="style-box">

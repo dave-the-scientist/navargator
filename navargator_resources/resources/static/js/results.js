@@ -28,9 +28,7 @@ $.extend(nvrgtr_settings.graph, {
 //BUG:
 
 //TODO:
-// - Finish setupHistoSliderPane() & drawDistanceGraphs(), a couple of points left to address.
 // - In summary statistics pane should indicate which clustering method was used, and give any relevant info (like support for the pattern if k-medoids, etc). Do this before saving cache to nvrgtr file
-// - When parsing the sessionID and num_variants, need to display a meaningful pop-up if one or the other doesn't exist (ie the user modified their URL for some reason).
 // - Need a more efficient selectNamesByThreshold(). Or do I? It's working surprisingly great on a tree of 1400 sequences.
 //   - Should have a data structure that has each node sorted by score, knows the previous call, and the dist the next node is at. Then when it gets called, it checks the new threshold against the 'next node'. If its not there yet, it does nothing. Otherwise processes nodes until it hits the new threshold.
 //   - The point is that I don't want to be continualy iterating through the object from beginning to current. This way subsequent iterations start where the previous call left off.
@@ -91,9 +89,6 @@ function setupHistoSliderPane() {
   var histo_add_title = "Add these variants to the current selection",
     histo_sub_title = "Remove these variants from the current selection";
   function setButtonAddToSelection() {
-
-    // IS do_remove NEEDED?? WHATS THE INTERACTION WITH select_below?
-
     if (do_remove == true) {
       add_sub.removeClass('histo-subtract-variants');
       add_sub.attr('title', histo_add_title);
@@ -431,7 +426,7 @@ function checkForClusteringResults() {
         $("#redrawTreeButton").button('enable');
       }
     },
-    error: function(error) { processError(error, "Error getting clustering data from the server"); }
+    error: function(error) { processError(error, "Error getting data from the server (invalid runID), which usually means the URL is incorrect or expired"); }
   });
 }
 function redrawTree(initial_draw=false) {
@@ -628,7 +623,7 @@ function drawDistanceGraphs() {
     histo_l_margin_str = $("#histoSlider").css('marginLeft');
   nvrgtr_settings.graph.total_width = parseInt(graph_width_str.slice(0,-2));
   nvrgtr_settings.graph.total_height = parseInt(graph_height_str.slice(0,-2));
-  //$("#histoSvg")[0].setAttribute('viewBox', '0 0 '+(nvrgtr_settings.graph.total_width*1.01)+' '+(nvrgtr_settings.graph.total_height*1.01)); // Needed to prevent clipping from IE and image viewers
+  $("#histoSvg")[0].setAttribute('viewBox', '0 0 '+(nvrgtr_settings.graph.total_width*1.01)+' '+(nvrgtr_settings.graph.total_height*1.01)); // Needed to prevent clipping from IE and some image viewers
   nvrgtr_settings.graph.histo_left_margin = parseInt(histo_l_margin_str.slice(0,-2));
   nvrgtr_settings.graph.line_area_stroke = getComputedStyle(document.documentElement)
     .getPropertyValue('--dark-background-colour');
