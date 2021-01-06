@@ -3,7 +3,7 @@ Defines the following public functions:
   load_navargator_file(file_path)
 """
 import os, sys, itertools, random, time, base64
-from math import log, exp
+from math import log, exp, ceil
 from io import BytesIO
 from copy import deepcopy
 import numpy as np
@@ -191,7 +191,7 @@ class VariantFinder(object):
         self._clear_cache(reset_normalize=False) # self.cache = {}
         self.normalize = self._empty_normalize()
         self.k_cluster_methods = set(['k minibatch', 'k medoids', 'brute force'])
-        self.threshold_cluster_methods = set(['qt diameter'])
+        self.threshold_cluster_methods = set(['qt radius'])
         if display_options:
             self.display_options = display_options
         else:
@@ -284,9 +284,10 @@ class VariantFinder(object):
             if self.verbose:
                 self._print_clustering_results(num_variants, variants, scores, alt_variants)
         elif method in self.threshold_cluster_methods:
-            if method == 'qt diameter':
-                #params = (whatever they should be)
-                pass
+            threshold, thresh_percent = args[:2]
+            params = (threshold, thresh_percent)
+            if method == 'qt radius':
+                variants, scores, alt_variants = self._qt_radius_clustering(threshold, thresh_percent)
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -534,20 +535,6 @@ class VariantFinder(object):
             if self.verbose:
                 self._print_alt_variant_results(num_replicates, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, final_scores, alt_variants
-
-    def _transform_distances(self, tolerance):
-        """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances."""
-        try:
-            tolerance = float(tolerance)
-        except:
-            raise NavargatorValueError('Error: tolerance must be a number.')
-        if tolerance <= 0.0:
-            raise NavargatorValueError('Error: tolerance must be a strictly positive number.')
-        elif tolerance == 1.0:
-            return self.orig_dists
-        dists = np.power(self.orig_dists.copy()*tolerance + 1.0, 1.0/tolerance) - 1.0
-        return dists
-
     def _cluster_k_medoids(self, num_variants, tolerance):
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = list(self.index[n] for n in self.chosen)
@@ -585,19 +572,17 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
     def _cluster_k_medoids_minibatch(self, num_variants, tolerance, batch_size):
-        """Runs a k-medoids clustering approach, but only on a random subsample of available variants. Yields massive time savings, with only a minor performance hit (often none). Identifying 3 clulsters in a tree of 4173 variants took ~10s per run, while 5 clusters took ~15s."""
+        """Runs a k-medoids clustering approach, but only on a random subsample of the available variants. Yields massive time savings, with only a minor performance hit (often none)."""
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = [self.index[n] for n in self.chosen]
         num_chsn = len(chsn_indices)
         dists = self._transform_distances(tolerance)
-
         # This spaces the initial centroids around the tree
         seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
         rand_inds = []
         for i in range(num_variants - num_chsn):
             rand_inds.append(avail_medoid_indices[random.randint(i*seq_chunk, (i+1)*seq_chunk-1)])
         best_med_inds = np.array(chsn_indices + rand_inds)
-
         # Initial random sets
         best_clusters = self._partition_nearest(best_med_inds, dists)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
@@ -626,6 +611,68 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
 
+    def _qt_radius_clustering(self, threshold, thresh_percent):
+        avail_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
+        chsn_indices = [self.index[n] for n in self.chosen]
+        #num_chsn = len(chsn_indices)
+        reduced = self.orig_dists.copy()
+        #reduced = reduced[:6,:6] ## TESTING
+        reduced[reduced <= threshold] = 0
+
+        ignrd_indices = [self.index[name] for name in self.ignored]
+        reduced[:,ignrd_indices] = np.inf  # Removes ignored variants
+        reduced[ignrd_indices,:] = np.inf  # from all consideration
+        unassigned_indices = list(self._not_ignored_inds - set(self.index[name] for name in self.available) - set(self.index[name] for name in self.chosen))
+        reduced[:,unassigned_indices] = np.inf  # Removes unassigned from centre consideration
+
+
+        # Also need to make sure all cluster variants are removed from consideration once a candidate is selected. Probably set values in reduced to -1 or np.inf or something like that.
+        centre_inds, clustered_inds = [], set()
+        min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
+        while len(clustered_inds) < min_to_cluster:
+            centre_ind, cluster_inds = self._find_largest_candidate(reduced)
+            centre_inds.append(centre_ind)
+            clustered_inds.update(cluster_inds)
+            reduced[:,cluster_inds] = np.inf
+            reduced[cluster_inds,:] = np.inf
+            #print len(centre_inds), centre_ind, self.leaves[centre_ind], len(cluster_inds)
+            #print ', '.join(self.leaves[ind] for ind in cluster_inds)
+        final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
+        final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+        alt_variants = []
+        return centre_inds, final_scores, alt_variants
+
+    def _find_largest_candidate(self, reduced):
+        """Identifies the index of the variant with the most close neighbours. Assumes all distances below the threshold of interest have already been set to 0. Returns the index of the cluster centre, and an array of indices representing the variants in that cluster (including the cluster centre)."""
+
+        nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
+
+        max_inds = np.nonzero(nbr_counts == nbr_counts.max())[0] # Array containing the indices of all variants with the max number of neighbours.
+        if len(max_inds) == 1: #
+            best_center = max_inds[0]
+            best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
+        else: # If len > 1, there is a tie. Broken by smallest sum of full scores
+            best_center, best_clstr, best_score = None, [], np.inf
+            for max_ind in max_inds:
+                clstr_inds = np.nonzero(reduced[:,max_ind] == 0)[0]
+                score = np.sum(self.orig_dists[clstr_inds,max_ind])
+                if score < best_score:
+                    best_center, best_clstr, best_score = max_ind, clstr_inds, score
+        return best_center, best_clstr
+
+
+    def _transform_distances(self, tolerance):
+        """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances."""
+        try:
+            tolerance = float(tolerance)
+        except:
+            raise NavargatorValueError('Error: tolerance must be a number.')
+        if tolerance <= 0.0:
+            raise NavargatorValueError('Error: tolerance must be a strictly positive number.')
+        elif tolerance == 1.0:
+            return self.orig_dists
+        dists = np.power(self.orig_dists.copy()*tolerance + 1.0, 1.0/tolerance) - 1.0
+        return dists
     def _partition_nearest(self, medoids, dists):
         """Given an array of indices, returns a list of lists, where the ith sublist contains the indices of the nodes closest to the ith medoid in inds."""
         closest_medoid_ind = np.argmin(dists[:,medoids], 1) # If len(inds)==3, would look like [2,1,1,0,1,2,...].

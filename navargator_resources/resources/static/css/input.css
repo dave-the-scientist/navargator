@@ -37,15 +37,21 @@
 
 
 
-/* Run options:*/
+/* Clustering options:*/
 #clustMethodSelect {
   width:110px;
 }
 .clust-type-opts-table td {
-  padding: 3px 0px;
+  padding:3px 0px;
+}
+#clustToleranceSpinner {
+  width:40px;
 }
 #clustBatchSizeSpinner {
-  width: 45px;
+  width:45px;
+}
+#threshPercentSpinner {
+  width:35px;
 }
 #findVariantsButton {
   width:100%;

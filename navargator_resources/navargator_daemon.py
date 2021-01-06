@@ -327,9 +327,9 @@ class NavargatorDaemon(object):
             if cluster_method in vf.k_cluster_methods:
                 num_vars, num_vars_range, tolerance = arg_list[:3]
                 for num in range(num_vars, num_vars_range + 1):
-                    params = (num, tolerance)
                     run_descr = '{} K@{:.1f}'.format(num, tolerance)
                     run_tooltip = '{} clusters at a tolerance of {}'.format(num, tolerance)
+                    params = (num, tolerance)
                     if params not in vf.cache['params']:
                         run_id = vf.generate_run_id()
                         vf.cache['params'][params] = run_id
@@ -342,7 +342,19 @@ class NavargatorDaemon(object):
                     run_descrs.append(run_descr)
                     run_tooltips.append(run_tooltip)
             elif cluster_method in vf.threshold_cluster_methods:
-                pass
+                thresh, percent = arg_list[:2]
+                run_descrs = ['{:.3f}@{:.1f}%'.format(thresh, percent)]
+                run_tooltips = ['{}% of variants within distance {} of a cluster centre'.format(percent, thresh)]
+                params = (thresh, percent)
+                if params not in vf.cache['params']:
+                    run_id = vf.generate_run_id()
+                    vf.cache['params'][params] = run_id
+                    vf.cache[run_id] = None
+                    args = (run_id, cluster_method, thresh, percent)
+                    self.job_queue.addJob(vf.find_variants, args)
+                else:
+                    run_id = vf.cache['params'][params]
+                run_ids = [run_id]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
             return json.dumps({'session_id':s_id, 'run_ids':run_ids, 'descriptions':run_descrs, 'tooltips':run_tooltips})

@@ -473,6 +473,7 @@ function setupNormalizationPane() {
   });
 }
 function setupClusteringOptions() {
+  // K-based methods setup
   $("#numVarSpinner").spinner({
     min: 1, max: null,
     numberFormat: 'N0', step: 1
@@ -495,9 +496,6 @@ function setupClusteringOptions() {
       single_spin.spinner('value', cur_val);
     }
   });
-  //$("#clustMethodSelect").selectmenu();
-  //$("#clustMethodSelect").selectmenu('refresh'); Needed if I dynamically modify the menu.
-
   $("#clustToleranceSpinner").spinner({
     min: 0, max: null,
     numberFormat: 'N1', step: 0.001
@@ -517,11 +515,14 @@ function setupClusteringOptions() {
       $(".variant-range-only").css('visibility', 'hidden');
     }
   });
-
-  // Final element setup
   $("#rangeSpinner").parent().addClass('variant-range-only');
   $(".clust-method-batch-size").hide();
   $(".clust-method-thresh-ele").hide();
+  // Threshold-based methods setup
+  $("#threshPercentSpinner").spinner({
+    min: 1, max: 100,
+    numberFormat: 'N1', step: 0.1
+  }).spinner('value', 95);
 
   // Button callbacks:
   $("#clustMethodNumberCheckbox, #clustMethodThresholdCheckbox").change(function() {
@@ -553,7 +554,12 @@ function setupClusteringOptions() {
     if (args == false) {
       return false;
     }
-    var cluster_method = $("#clustMethodSelect").val();
+    var cluster_method;
+    if ($("#clustMethodNumberCheckbox").is(':checked')) {
+      cluster_method = $("#clustMethodSelect").val();
+    } else {
+      cluster_method = 'qt radius';
+    }
     var auto_open = ($("#clustMethodNumberCheckbox").is(':checked') && !$("#varRangeCheckbox").is(':checked')),
       auto_result_page = null;
     if (auto_open == true) {
@@ -631,10 +637,6 @@ function setupThresholdPane() {
   $("#thresholdComputeButton").click(function() {
     showFloatingPane(compute_pane);
   });
-  $("#threshPercentSpinner").spinner({
-    min: 1, max: 100,
-    numberFormat: 'N1', step: 1
-  }).spinner('value', 90);
   // Floating pane element setup
   $("#thresholdDataText").keydown(function(e) {
     if (e.which == 9) { // Causes tab to insert \t instead of switching focus
@@ -1575,15 +1577,6 @@ function getValidateFindVariantsArgs() {
       showErrorPopup("The variants to find must be greater than or equal to the number of 'chosen', but less than or equal to the number of 'chosen' + 'available'.");
       return false;
     }
-    var do_find_vars = false;
-    for (var i=num_vars; i<=num_vars_range; ++i) {
-      if (!nvrgtr_data.result_links.hasOwnProperty(i)) {
-        do_find_vars = true;
-      }
-    }
-    if (do_find_vars == false) {
-      return false;
-    }
     args = [num_vars, num_vars_range, parseFloat($("#clustToleranceSpinner").spinner('value'))];
     let cluster_type = $("#clustMethodSelect").val();
     if (cluster_type == 'k medoids' || cluster_type == 'k minibatch') {
@@ -1599,7 +1592,17 @@ function getValidateFindVariantsArgs() {
       args.push($("#clustBatchSizeSpinner").spinner('value'));
     }
   } else { // Threshold clustering
-
+    let thresh_val = parseFloat($("#thresholdInput").val());
+    if (isNaN(thresh_val) || thresh_val < 0) {
+      showErrorPopup("The Critical threshold value must be a positive number.");
+      return false;
+    }
+    $("#thresholdInput").val(thresh_val);
+    args.push(thresh_val);
+    if (!( validateSpinner($("#threshPercentSpinner"), "Threshold percent") )) {
+      return false;
+    }
+    args.push($("#threshPercentSpinner").spinner('value'));
   }
   return args;
 }
