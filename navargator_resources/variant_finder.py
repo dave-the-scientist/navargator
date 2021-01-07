@@ -612,22 +612,28 @@ class VariantFinder(object):
         return best_med_inds, best_scores
 
     def _qt_radius_clustering(self, threshold, thresh_percent):
-        avail_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
-        chsn_indices = [self.index[n] for n in self.chosen]
-        #num_chsn = len(chsn_indices)
-        reduced = self.orig_dists.copy()
-        #reduced = reduced[:6,:6] ## TESTING
-        reduced[reduced <= threshold] = 0
-
-        ignrd_indices = [self.index[name] for name in self.ignored]
-        reduced[:,ignrd_indices] = np.inf  # Removes ignored variants
-        reduced[ignrd_indices,:] = np.inf  # from all consideration
-        unassigned_indices = list(self._not_ignored_inds - set(self.index[name] for name in self.available) - set(self.index[name] for name in self.chosen))
-        reduced[:,unassigned_indices] = np.inf  # Removes unassigned from centre consideration
-
-
-        # Also need to make sure all cluster variants are removed from consideration once a candidate is selected. Probably set values in reduced to -1 or np.inf or something like that.
         centre_inds, clustered_inds = [], set()
+        reduced = self.orig_dists.copy()
+        reduced[reduced <= threshold] = 0
+        # Remove ignored from all consideration
+        ignrd_indices = [self.index[name] for name in self.ignored]
+        if ignrd_indices:
+            reduced[:,ignrd_indices] = np.inf
+            reduced[ignrd_indices,:] = np.inf
+        # Remove chosen and their clusters from all consideration
+        chsn_indices = [self.index[name] for name in self.chosen]
+        for chsn_ind in chsn_indices:
+            cluster_inds = np.nonzero(reduced[:,chsn_ind] == 0)[0]
+            centre_inds.append(chsn_ind)
+            clustered_inds.update(cluster_inds)
+            reduced[:,cluster_inds] = np.inf
+            reduced[cluster_inds,:] = np.inf
+
+        # Remove unassigned from centre consideration
+        unassigned_indices = list(self._not_ignored_inds - set(self.index[name] for name in self.available) - set(chsn_indices))
+        reduced[:,unassigned_indices] = np.inf
+
+        # Iteratively find the largest cluster, until enough variants are clustered
         min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
         while len(clustered_inds) < min_to_cluster:
             centre_ind, cluster_inds = self._find_largest_candidate(reduced)
@@ -635,8 +641,6 @@ class VariantFinder(object):
             clustered_inds.update(cluster_inds)
             reduced[:,cluster_inds] = np.inf
             reduced[cluster_inds,:] = np.inf
-            #print len(centre_inds), centre_ind, self.leaves[centre_ind], len(cluster_inds)
-            #print ', '.join(self.leaves[ind] for ind in cluster_inds)
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
         alt_variants = []
@@ -644,14 +648,12 @@ class VariantFinder(object):
 
     def _find_largest_candidate(self, reduced):
         """Identifies the index of the variant with the most close neighbours. Assumes all distances below the threshold of interest have already been set to 0. Returns the index of the cluster centre, and an array of indices representing the variants in that cluster (including the cluster centre)."""
-
         nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
-
         max_inds = np.nonzero(nbr_counts == nbr_counts.max())[0] # Array containing the indices of all variants with the max number of neighbours.
-        if len(max_inds) == 1: #
+        if len(max_inds) == 1: # The largest cluster
             best_center = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
-        else: # If len > 1, there is a tie. Broken by smallest sum of full scores
+        else: # A tie for largest cluster. Broken by smallest sum of full scores
             best_center, best_clstr, best_score = None, [], np.inf
             for max_ind in max_inds:
                 clstr_inds = np.nonzero(reduced[:,max_ind] == 0)[0]
@@ -659,7 +661,6 @@ class VariantFinder(object):
                 if score < best_score:
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
-
 
     def _transform_distances(self, tolerance):
         """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances."""
