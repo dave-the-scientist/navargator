@@ -350,8 +350,9 @@ class NavargatorDaemon(object):
                     run_id = vf.generate_run_id()
                     vf.cache['params'][params] = run_id
                     vf.cache[run_id] = None
-                    args = (run_id, cluster_method, thresh, percent)
-                    self.job_queue.addJob(vf.find_variants, args)
+                    #args = (run_id, cluster_method, thresh, percent)
+                    #self.job_queue.addJob(vf.find_variants, args)
+                    vf.find_variants(run_id, cluster_method, thresh, percent)
                 else:
                     run_id = vf.cache['params'][params]
                 run_ids = [run_id]
@@ -373,8 +374,12 @@ class NavargatorDaemon(object):
                     return (error_msg, 5506)
                 results = vf.cache[run_id]
                 if results == None:
-                    scores.append(False)
+                    scores.append(False) # Used to signal that processing is ongoing.
                     num_clusts.append(False)
+                    max_dists.append(False)
+                elif 'error_message' in results:
+                    scores.append('error') # Used to signal that the run finished in error.
+                    num_clusts.append(results['error_message'])
                     max_dists.append(False)
                 else:
                     scores.append(sum(results['scores']))
@@ -425,7 +430,9 @@ class NavargatorDaemon(object):
                 return (error_msg, 5506)
             results = vf.cache[run_id]
             if results == None:
-                ret = {'variants': False}
+                ret = {'variants':False}
+            elif 'error_message' in results:
+                ret = {'variants':'error', 'error_message':results['error_message']}
             else:
                 norm = {'method':vf.normalize['method'], 'value':results['max_distance'], 'max_count':0}
                 if vf.normalize['method'] == 'global':

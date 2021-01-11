@@ -405,6 +405,8 @@ function checkForClusteringResults() {
       var data = $.parseJSON(data_obj);
       if (data.variants == false) {
         setTimeout(checkForClusteringResults, nvrgtr_page.check_results_interval);
+      } else if (data.variants == 'error') {
+        showErrorPopup(data.error_message);
       } else {
         $("#calculatingMessageGroup").remove();
         $("#treeGroup").attr("opacity", "1.0");

@@ -13,6 +13,8 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
+# - Finish / clean up _qt_radius_clustering().
+# - Look to a non-greedy implementation that should be much better for our goals
 # - Implement threshold clustering.
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
@@ -505,11 +507,12 @@ class VariantFinder(object):
                 best_med_inds, best_scores, best_score, best_clusters = med_inds, scores, score, clusters
                 alt_variants = []
         if best_med_inds == None:
-            raise NavargatorRuntimeError('Error: big problem in brute force clustering, no comparisons were made.')
+            error_msg = 'Error: big problem in brute force clustering, no comparisons were made.'
+            return [], error_msg, []
         final_scores = self._sum_dist_scores(best_med_inds, best_clusters, self.orig_dists) # Untransformed distances
         return best_med_inds, final_scores, alt_variants
     def _heuristic_rand_starts(self, fxn, args, num_replicates):
-        # Run num_replicates times and find the best
+        # Run num_replicates times and find the best score
         optima = {}
         for i in range(num_replicates):
             variants, scores = fxn(*args)
@@ -612,6 +615,9 @@ class VariantFinder(object):
         return best_med_inds, best_scores
 
     def _qt_radius_clustering(self, threshold, thresh_percent):
+        # greedy implementation
+        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants."""
+        print 'starting qt'
         centre_inds, clustered_inds = [], set()
         reduced = self.orig_dists.copy()
         reduced[reduced <= threshold] = 0
@@ -628,19 +634,27 @@ class VariantFinder(object):
             clustered_inds.update(cluster_inds)
             reduced[:,cluster_inds] = np.inf
             reduced[cluster_inds,:] = np.inf
-
         # Remove unassigned from centre consideration
         unassigned_indices = list(self._not_ignored_inds - set(self.index[name] for name in self.available) - set(chsn_indices))
-        reduced[:,unassigned_indices] = np.inf
-
+        if unassigned_indices:
+            reduced[:,unassigned_indices] = np.inf
         # Iteratively find the largest cluster, until enough variants are clustered
         min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
+        print len(centre_inds), len(clustered_inds), min_to_cluster, 'starting while'
         while len(clustered_inds) < min_to_cluster:
             centre_ind, cluster_inds = self._find_largest_candidate(reduced)
+            if centre_ind == None:
+                error_msg = 'Error: clustering finished prematurely ({:.2f}% placed). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format( len(clustered_inds)*100.0/float(len(self._not_ignored_inds)) )
+                return [], error_msg, []
+            print centre_ind, len(cluster_inds)
             centre_inds.append(centre_ind)
             clustered_inds.update(cluster_inds)
-            reduced[:,cluster_inds] = np.inf
-            reduced[cluster_inds,:] = np.inf
+            reduced[:,cluster_inds] = np.inf  # Also removes centre_ind
+            reduced[cluster_inds,:] = np.inf  # from consideration
+            print 'end of while', len(centre_inds), len(clustered_inds)
+            if centre_ind == 0:
+                print ', '.join(self.leaves[ind] for ind in self._not_ignored_inds - clustered_inds)
+                exit()
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
         alt_variants = []
@@ -649,7 +663,12 @@ class VariantFinder(object):
     def _find_largest_candidate(self, reduced):
         """Identifies the index of the variant with the most close neighbours. Assumes all distances below the threshold of interest have already been set to 0. Returns the index of the cluster centre, and an array of indices representing the variants in that cluster (including the cluster centre)."""
         nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
-        max_inds = np.nonzero(nbr_counts == nbr_counts.max())[0] # Array containing the indices of all variants with the max number of neighbours.
+        count_max = nbr_counts.max()
+        if count_max == 0:  # Indicates there are no available variants
+            return None, [] # close enough to the remaining unassigned
+        max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
+        print 'max', nbr_counts.max()
+        print 'max_inds', max_inds
         if len(max_inds) == 1: # The largest cluster
             best_center = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
@@ -658,6 +677,7 @@ class VariantFinder(object):
             for max_ind in max_inds:
                 clstr_inds = np.nonzero(reduced[:,max_ind] == 0)[0]
                 score = np.sum(self.orig_dists[clstr_inds,max_ind])
+                print 'testing', len(clstr_inds), score
                 if score < best_score:
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
@@ -692,7 +712,11 @@ class VariantFinder(object):
         if reset_normalize:
             self.normalize = self._empty_normalize()
     def _calculate_cache_values(self, run_id, params, variant_inds, scores, alt_variants):
-        """Fills out the self.cache entry for the given clustering run. 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]"""
+        """Fills out the self.cache entry for the given clustering run. 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]. If the clustering run terminated with an error, variant_inds=[] and scores is the given error message."""
+        if len(variant_inds) == 0:
+            self.cache['params'][params] = run_id
+            self.cache[run_id] = {'error_message':scores, 'params':params}
+            return
         cluster_inds = self._partition_nearest(variant_inds, self.orig_dists)
         variants = [self.leaves[i] for i in variant_inds]
         clusters = [[self.leaves[i] for i in clst] for clst in cluster_inds]

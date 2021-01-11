@@ -4,6 +4,7 @@
 
 
 // TODO:
+// - Finish checkIfProcessingDone().
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out.
 
@@ -1159,18 +1160,29 @@ function checkIfProcessingDone() {
         if (score == false) {
           draw_graph = false;
         } else if (nvrgtr_data.result_links[run_id].score == null) {
-          nvrgtr_data.result_links[run_id].score = score;
-          desc = nvrgtr_data.result_links[run_id].description;
-          if (desc[0] == 'T') {  // Add number of clusters to threshold result description.
-            desc = data.num_clusts[i]+' '+desc;
-            nvrgtr_data.result_links[run_id].description = desc;
-          }
-          nvrgtr_data.result_links.run_descripts.push(desc);
-          desc += ' ['+roundFloat(score, 4)+']';
-          nvrgtr_data.result_links[run_id].link.html(desc);
-          max_dist = parseFloat(data.max_dists[i]);
-          if (max_dist > max_var_dist) {
-            max_var_dist = max_dist;
+          if (score == 'error') {  // Run ended in error
+            let error_msg = data.num_clusts[i];
+            nvrgtr_data.result_links[run_id].score = error_msg;
+
+            // Working to here. Update link text to show [error]. Ensure the graphing isn't messed up, have errored runs sorted sanely. On results page, hide the "clustering calculations in progress..." text but keep the tree opacity down.
+
+          } else {  // Run has ended but not yet been processed
+            nvrgtr_data.result_links[run_id].score = score;
+            desc = nvrgtr_data.result_links[run_id].description;
+
+            // FIX / IMPLEMENT THIS
+            if (desc[0] == 'T') {  // Add number of clusters to threshold result description.
+              desc = data.num_clusts[i]+' '+desc;
+              nvrgtr_data.result_links[run_id].description = desc;
+            }
+
+            nvrgtr_data.result_links.run_descripts.push(desc);
+            desc += ' ['+roundFloat(score, 4)+']';
+            nvrgtr_data.result_links[run_id].link.html(desc);
+            max_dist = parseFloat(data.max_dists[i]);
+            if (max_dist > max_var_dist) {
+              max_var_dist = max_dist;
+            }
           }
         } else if (nvrgtr_data.result_links[run_id].score != score) {
           showErrorPopup("Error: scores from the server don't match existing scores.");
