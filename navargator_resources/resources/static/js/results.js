@@ -403,11 +403,12 @@ function checkForClusteringResults() {
     data: JSON.stringify({...getPageBasicData(), 'run_id':nvrgtr_page.run_id}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
-      if (data.variants == false) {
+      if (data.variants == false) { // Run not yet finished
         setTimeout(checkForClusteringResults, nvrgtr_page.check_results_interval);
-      } else if (data.variants == 'error') {
+      } else if (data.variants == 'error') { // Run finished with an error
+        $("#calculatingMessageGroup").hide();
         showErrorPopup(data.error_message);
-      } else {
+      } else { // Run finished normally
         $("#calculatingMessageGroup").remove();
         $("#treeGroup").attr("opacity", "1.0");
         $("#currentTreeFile").html(nvrgtr_data.file_name);

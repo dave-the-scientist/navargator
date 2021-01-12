@@ -615,9 +615,7 @@ class VariantFinder(object):
         return best_med_inds, best_scores
 
     def _qt_radius_clustering(self, threshold, thresh_percent):
-        # greedy implementation
-        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants."""
-        print 'starting qt'
+        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy."""
         centre_inds, clustered_inds = [], set()
         reduced = self.orig_dists.copy()
         reduced[reduced <= threshold] = 0
@@ -640,21 +638,15 @@ class VariantFinder(object):
             reduced[:,unassigned_indices] = np.inf
         # Iteratively find the largest cluster, until enough variants are clustered
         min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
-        print len(centre_inds), len(clustered_inds), min_to_cluster, 'starting while'
         while len(clustered_inds) < min_to_cluster:
             centre_ind, cluster_inds = self._find_largest_candidate(reduced)
             if centre_ind == None:
                 error_msg = 'Error: clustering finished prematurely ({:.2f}% placed). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format( len(clustered_inds)*100.0/float(len(self._not_ignored_inds)) )
                 return [], error_msg, []
-            print centre_ind, len(cluster_inds)
             centre_inds.append(centre_ind)
             clustered_inds.update(cluster_inds)
             reduced[:,cluster_inds] = np.inf  # Also removes centre_ind
             reduced[cluster_inds,:] = np.inf  # from consideration
-            print 'end of while', len(centre_inds), len(clustered_inds)
-            if centre_ind == 0:
-                print ', '.join(self.leaves[ind] for ind in self._not_ignored_inds - clustered_inds)
-                exit()
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
         alt_variants = []
@@ -667,8 +659,6 @@ class VariantFinder(object):
         if count_max == 0:  # Indicates there are no available variants
             return None, [] # close enough to the remaining unassigned
         max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
-        print 'max', nbr_counts.max()
-        print 'max_inds', max_inds
         if len(max_inds) == 1: # The largest cluster
             best_center = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
@@ -677,7 +667,6 @@ class VariantFinder(object):
             for max_ind in max_inds:
                 clstr_inds = np.nonzero(reduced[:,max_ind] == 0)[0]
                 score = np.sum(self.orig_dists[clstr_inds,max_ind])
-                print 'testing', len(clstr_inds), score
                 if score < best_score:
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr

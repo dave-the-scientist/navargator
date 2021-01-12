@@ -350,9 +350,8 @@ class NavargatorDaemon(object):
                     run_id = vf.generate_run_id()
                     vf.cache['params'][params] = run_id
                     vf.cache[run_id] = None
-                    #args = (run_id, cluster_method, thresh, percent)
-                    #self.job_queue.addJob(vf.find_variants, args)
-                    vf.find_variants(run_id, cluster_method, thresh, percent)
+                    args = (run_id, cluster_method, thresh, percent)
+                    self.job_queue.addJob(vf.find_variants, args)
                 else:
                     run_id = vf.cache['params'][params]
                 run_ids = [run_id]
@@ -589,8 +588,8 @@ class NavargatorDaemon(object):
             bins = vf.normalize['global_bins']
         max_count = vf.normalize['global_max_count'] or 0
         for run_id in run_ids:
-            if run_id in vf.normalize['processed'] or vf.cache[run_id] == None:
-                continue # Already been processed, or clustering is still in progress
+            if run_id in vf.normalize['processed'] or vf.cache[run_id] == None or 'error_message' in vf.cache[run_id]:
+                continue # Already processed or still clustering or run errored
             var_dists, num_clusts = vf.cache[run_id]['variant_distance'], len(vf.cache[run_id]['scores'])
             count = self.calculate_max_histo_count(var_dists, num_clusts, bins)
             if count > max_count:

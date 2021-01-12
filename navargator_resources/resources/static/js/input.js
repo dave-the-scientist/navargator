@@ -4,7 +4,7 @@
 
 
 // TODO:
-// - Finish checkIfProcessingDone().
+// - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section.
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out.
 
@@ -1153,20 +1153,22 @@ function checkIfProcessingDone() {
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
       let score, run_id, desc, max_dist,
-        draw_graph = true, max_var_dist = 0;
+        draw_graph = false, max_var_dist = 0;
       for (let i=0; i<data.scores.length; ++i) {
         score = data.scores[i];
         run_id = data.run_ids[i];
-        if (score == false) {
-          draw_graph = false;
-        } else if (nvrgtr_data.result_links[run_id].score == null) {
+        if (score == false) { // Run has not yet ended
+          //draw_graph = false;
+        } else if (nvrgtr_data.result_links[run_id].score == null) { // Run ended but not yet processed
           if (score == 'error') {  // Run ended in error
+            // Don't add to nvrgtr_data.result_links.run_descripts or .scores, which inform the score graph
             let error_msg = data.num_clusts[i];
-            nvrgtr_data.result_links[run_id].score = error_msg;
-
-            // Working to here. Update link text to show [error]. Ensure the graphing isn't messed up, have errored runs sorted sanely. On results page, hide the "clustering calculations in progress..." text but keep the tree opacity down.
-
-          } else {  // Run has ended but not yet been processed
+            nvrgtr_data.result_links[run_id].score = 'error';
+            nvrgtr_data.result_links[run_id].link.attr('title', error_msg);
+            desc = nvrgtr_data.result_links[run_id].description + ' [error]';
+            nvrgtr_data.result_links[run_id].link.html(desc);
+          } else {  // Run ended normally
+            draw_graph = true;
             nvrgtr_data.result_links[run_id].score = score;
             desc = nvrgtr_data.result_links[run_id].description;
 
@@ -1197,17 +1199,32 @@ function checkIfProcessingDone() {
         nvrgtr_data.result_links.scores = data.scores;
         // Indices used to sort by descending result score
         let sorted_inds = [...nvrgtr_data.result_links.run_ids.keys()];
-        sorted_inds.sort(function(ind1, ind2) {
-          return data.scores[ind2] - data.scores[ind1];
+        sorted_inds.sort(function(ind1, ind2) { // Sorts errors to the end
+          let cmp = data.scores[ind2] - data.scores[ind1];
+          if (isNaN(cmp)) { // At least one score == 'error'
+            if (data.scores[ind2] == 'error') {
+              return -1;
+            } else {
+              return 1;
+            }
+          } else { // Regular scores
+            return cmp;
+          }
         });
+        let num_not_errors = 0;
+        for (let i=0; i<data.scores.length; ++i) {
+          if (data.scores[i] != 'error') {
+            num_not_errors += 1;
+          }
+        }
         // Sort backend
         nvrgtr_data.result_links.run_ids = sorted_inds.map(function(ind) {
           return nvrgtr_data.result_links.run_ids[ind];
         });
-        nvrgtr_data.result_links.scores = sorted_inds.map(function(ind) {
+        nvrgtr_data.result_links.scores = sorted_inds.slice(0,num_not_errors).map(function(ind) {
           return nvrgtr_data.result_links.scores[ind];
         });
-        nvrgtr_data.result_links.run_descripts = sorted_inds.map(function(ind) {
+        nvrgtr_data.result_links.run_descripts = sorted_inds.slice(0,num_not_errors).map(function(ind) {
           return nvrgtr_data.result_links.run_descripts[ind];
         });
         // Sort frontend
