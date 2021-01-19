@@ -614,8 +614,10 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
 
-    def _qt_radius_clustering(self, threshold, thresh_percent):
-        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy."""
+    def _qt_radius_clustering_greedy(self, threshold, thresh_percent):
+        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
+        Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
+        Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?"""
         centre_inds, clustered_inds = [], set()
         reduced = self.orig_dists.copy()
         reduced[reduced <= threshold] = 0
@@ -656,8 +658,8 @@ class VariantFinder(object):
         """Identifies the index of the variant with the most close neighbours. Assumes all distances below the threshold of interest have already been set to 0. Returns the index of the cluster centre, and an array of indices representing the variants in that cluster (including the cluster centre)."""
         nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
         count_max = nbr_counts.max()
-        if count_max == 0:  # Indicates there are no available variants
-            return None, [] # close enough to the remaining unassigned
+        if count_max == 0:  # Indicates there are no available variants close enough
+            return None, [] # to the remaining unassigned. Results in an error.
         max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
         if len(max_inds) == 1: # The largest cluster
             best_center = max_inds[0]
@@ -670,6 +672,85 @@ class VariantFinder(object):
                 if score < best_score:
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
+
+    def _qt_radius_clustering(self, threshold, thresh_percent):
+        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
+        Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
+        Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?"""
+        reduced = self.orig_dists.copy()
+        reduced[reduced <= threshold] = 0
+        chsn_indices = [self.index[name] for name in self.chosen]
+        ignrd_indices = [self.index[name] for name in self.ignored]
+        avail_indices = [self.index[name] for name in self.available]
+
+        unassigned_indices = list(self._not_ignored_inds - set(avail_indices) - set(chsn_indices))
+        # Remove ignored from all consideration
+        if ignrd_indices:
+            reduced[:,ignrd_indices] = np.inf
+            reduced[ignrd_indices,:] = np.inf
+        # Remove chosen from all consideration
+        if chsn_indices:
+            reduced[:,chsn_indices] = np.inf
+            reduced[chsn_indices,:] = np.inf
+        # Remove unassigned from centre consideration
+        if unassigned_indices:
+            reduced[:,unassigned_indices] = np.inf
+
+
+        nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
+        avail_order = np.argsort(nbr_counts) # = variant indices in increasing order of initial cluster size
+        min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
+
+        neighbors_of = {}
+        for ind in chsn_indices + avail_indices:
+            clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
+            neighbors_of[ind] = set(clstr_inds)
+
+        covered_inds = Counter()
+        for ind in chsn_indices:
+            covered_inds.add(neighbors_of[ind])
+
+        best_score, best_centre_inds = np.inf, self._not_ignored_inds
+        best_score, best_centre_inds = self._recursive_qt_cluster(0, chsn_indices, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
+
+
+        final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
+        final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+        alt_variants = []
+        return centre_inds, final_scores, alt_variants
+
+    def _recursive_qt_cluster(self, order_ind, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order):
+        # include a check to see if there are enough possible avail variants remaning to satisfy min_to_cluster.
+
+        if order_ind >= len(avail_order):
+            # Index out of bounds
+            return best_score, best_centre_inds
+        elif len(centre_inds) >= len(best_centre_inds):
+            # Not ">", as the new centre hasn't been added yet
+            return best_score, best_centre_inds
+
+        cur_ind = avail_order[order_ind]
+
+        # First assume we include this ind
+        centre_inds.append(cur_ind)
+        covered_inds.add(neighbors_of[cur_ind])
+
+        if len(covered_inds) >= min_to_cluster: # So it's a valid configuration
+            cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
+            score = sum(self._sum_dist_scores(centre_inds, cluster_inds, self.orig_dists))
+            if score < best_score:
+                best_score, best_centre_inds = score, centre_inds[::]
+        best_score, best_centre_inds = self._recursive_qt_cluster(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
+
+        # Then assume ind is excluded
+        centre_inds.remove(cur_ind)
+        covered_inds.remove(neighbors_of[cur_ind])
+        best_score, best_centre_inds = self._recursive_qt_cluster(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
+
+        # Is it a good idea to add ind, run, remove ind, run. Should I assume not to include it first?
+
+        return best_score, best_centre_inds
+
 
     def _transform_distances(self, tolerance):
         """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances."""
@@ -820,3 +901,31 @@ class VariantFinder(object):
         if new_avail != self._available:
             self._available = new_avail
             self._clear_cache()
+
+
+class Counter(object):
+    """Object used to monitor variants covered by some centre during clustering. If 2 possible centres both cover some variant, and then 1 centre is removed from consideration, this data structure will indicate that the variant is still being covered."""
+    def __init__(self):
+        self._dict = {}
+    def get_all(self):
+        return set(self._dict.keys())
+    def add(self, to_add):
+        for ele in to_add:
+            self._dict.setdefault(ele, 0)
+            self._dict[ele] += 1
+    def remove(self, to_rem):
+        for ele in to_rem:
+            if ele not in self._dict:
+                continue
+            elif self._dict[ele] == 1:
+                del self._dict[ele]
+            else:
+                self._dict[ele] -= 1
+    def __len__(self):
+        return len(self._dict)
+    def __contains__(self, ele):
+        return ele in self._dict
+    def __sub__(self, other):
+        return set(self._dict.keys()) - other
+    def __rsub__(self, other):
+        return other - set(self._dict.keys())
