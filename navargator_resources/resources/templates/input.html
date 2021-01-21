@@ -422,8 +422,8 @@
 
             <table class="clust-type-opts-table clust-type-number-ele"><tbody>
               <tr><td>
-                <label for="clustMethodSelect">Clustering method</label>
-                <select id="clustMethodSelect">
+                <label for="kClustMethodSelect">Algorithm</label>
+                <select id="kClustMethodSelect">
                   <option value="brute force">Brute force</option>
                   <option value="k medoids" selected>K medoids</option>
                   <option value="k minibatch">K minibatch</option>
@@ -456,6 +456,13 @@
             </tbody></table>
 
             <table class="clust-type-opts-table clust-method-thresh-ele"><tbody>
+              <tr><td>
+                <label for="threshClustMethodSelect">Algorithm</label>
+                <select id="threshClustMethodSelect">
+                  <option value="qt optimal" selected>QT optimal</option>
+                  <option value="qt greedy">QT greedy</option>
+                </select>
+              </td></tr>
               <tr><td>
                 <label>Critical threshold:</label>
                 <input id="thresholdInput" placeholder="Distance" autocomplete="off" spellcheck="false" />

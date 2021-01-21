@@ -318,6 +318,7 @@ class NavargatorDaemon(object):
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str, 'filename':default_filename}, ensure_ascii=False)
         @self.server.route(self.daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
+            """The vf.cache values determine x."""
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
                 return msg
@@ -330,14 +331,17 @@ class NavargatorDaemon(object):
                     run_descr = '{} K@{:.1f}'.format(num, tolerance)
                     run_tooltip = '{} clusters at a tolerance of {}'.format(num, tolerance)
                     params = (num, tolerance)
-                    if params not in vf.cache['params']:
+                    if params in vf.cache['params']:
+                        run_id = vf.cache['params'][params]
+                        prev_method = vf.cache[run_id]['method']
+                    else:
+                        prev_method = None
+                    if prev_method == None or (cluster_method == 'brute force' != prev_method) or (cluster_method == 'k medoids' and prev_method == 'k minibatch'):
                         run_id = vf.generate_run_id()
                         vf.cache['params'][params] = run_id
-                        vf.cache[run_id] = None
+                        vf.cache[run_id] = {'status':'running', 'params':params, 'method':cluster_method, 'run_time':time.time()}
                         args = tuple([run_id, cluster_method, num, tolerance] + arg_list[3:])
                         self.job_queue.addJob(vf.find_variants, args)
-                    else:
-                        run_id = vf.cache['params'][params]
                     run_ids.append(run_id)
                     run_descrs.append(run_descr)
                     run_tooltips.append(run_tooltip)
@@ -346,14 +350,18 @@ class NavargatorDaemon(object):
                 run_descrs = ['{:.3f}@{:.1f}%'.format(thresh, percent)]
                 run_tooltips = ['{}% of variants within distance {} of a cluster centre'.format(percent, thresh)]
                 params = (thresh, percent)
-                if params not in vf.cache['params']:
+                if params in vf.cache['params']:
+                    run_id = vf.cache['params'][params]
+                    prev_method = vf.cache[run_id]['method']
+                else:
+                    prev_method = None
+                if prev_method == None or (cluster_method == 'qt optimal' != prev_method):
                     run_id = vf.generate_run_id()
                     vf.cache['params'][params] = run_id
-                    vf.cache[run_id] = None
-                    args = (run_id, cluster_method, thresh, percent)
-                    self.job_queue.addJob(vf.find_variants, args)
-                else:
-                    run_id = vf.cache['params'][params]
+                    vf.cache[run_id] = {'status':'running', 'params':params, 'method':cluster_method, 'run_time':time.time()}
+                    #args = (run_id, cluster_method, thresh, percent)
+                    #self.job_queue.addJob(vf.find_variants, args)
+                    vf.find_variants(run_id, cluster_method, thresh, percent)
                 run_ids = [run_id]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
@@ -372,18 +380,20 @@ class NavargatorDaemon(object):
                     error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
                     return (error_msg, 5506)
                 results = vf.cache[run_id]
-                if results == None:
+                if results['status'] == 'running':
                     scores.append(False) # Used to signal that processing is ongoing.
                     num_clusts.append(False)
                     max_dists.append(False)
-                elif 'error_message' in results:
+                elif results['status'] == 'error':
                     scores.append('error') # Used to signal that the run finished in error.
                     num_clusts.append(results['error_message'])
                     max_dists.append(False)
-                else:
+                elif results['status'] == 'done':
                     scores.append(sum(results['scores']))
                     num_clusts.append(len(results['scores']))
                     max_dists.append(results['max_distance'])
+                else:
+                    raise NavargatorRuntimeError('Error: unknown status code "{}" in check_results_done()'.format(results['status']))
             return json.dumps({'run_ids':run_ids, 'scores':scores, 'num_clusts':num_clusts, 'max_dists':max_dists})
         @self.server.route(self.daemonURL('/update-visual-options'), methods=['POST'])
         def update_visual_options():
@@ -428,11 +438,11 @@ class NavargatorDaemon(object):
                 error_msg = 'Error: attempting to retrieve results for a clustering run that was never started.'
                 return (error_msg, 5506)
             results = vf.cache[run_id]
-            if results == None:
+            if results['status'] == 'running':
                 ret = {'variants':False}
-            elif 'error_message' in results:
+            elif results['status'] == 'error':
                 ret = {'variants':'error', 'error_message':results['error_message']}
-            else:
+            elif results['status'] == 'done':
                 norm = {'method':vf.normalize['method'], 'value':results['max_distance'], 'max_count':0}
                 if vf.normalize['method'] == 'global':
                     norm['value'] = vf.normalize['global_value']
@@ -441,6 +451,8 @@ class NavargatorDaemon(object):
                     norm['value'] = vf.normalize['custom_value']
                     norm['max_count'] = vf.normalize['custom_max_count']
                 ret = {'variants':results['variants'], 'scores':results['scores'], 'clusters':results['clusters'], 'variant_distance':results['variant_distance'], 'max_variant_distance':results['max_distance'], 'normalization':norm}
+            else:
+                raise NavargatorRuntimeError('Error: unknown status code "{}" in get_cluster_results()'.format(results['status']))
             return json.dumps(ret)
         # # #  Serving the pages locally
         @self.server.route('/input')
@@ -588,8 +600,8 @@ class NavargatorDaemon(object):
             bins = vf.normalize['global_bins']
         max_count = vf.normalize['global_max_count'] or 0
         for run_id in run_ids:
-            if run_id in vf.normalize['processed'] or vf.cache[run_id] == None or 'error_message' in vf.cache[run_id]:
-                continue # Already processed or still clustering or run errored
+            if run_id in vf.normalize['processed'] or vf.cache[run_id]['status'] in ('running', 'error'):
+                continue # Already processed or still clustering or error in run
             var_dists, num_clusts = vf.cache[run_id]['variant_distance'], len(vf.cache[run_id]['scores'])
             count = self.calculate_max_histo_count(var_dists, num_clusts, bins)
             if count > max_count:

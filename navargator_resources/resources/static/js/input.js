@@ -4,9 +4,10 @@
 
 
 // TODO:
+// - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section.
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
-// - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out.
+// - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out. Also finish the bit in checkIfProcessingDone()
 
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Profile (in chrome) opening a large tree. Can the loading/drawing be sped up?
@@ -535,7 +536,7 @@ function setupClusteringOptions() {
       $(".clust-method-thresh-ele").show();
     }
   });
-  $("#clustMethodSelect").change(function(event) {
+  $("#kClustMethodSelect").change(function(event) {
     if (event.target.value == 'brute force') {
       $(".clust-method-run-reps").hide();
       $(".clust-method-batch-size").hide();
@@ -557,9 +558,9 @@ function setupClusteringOptions() {
     }
     var cluster_method;
     if ($("#clustMethodNumberCheckbox").is(':checked')) {
-      cluster_method = $("#clustMethodSelect").val();
+      cluster_method = $("#kClustMethodSelect").val();
     } else {
-      cluster_method = 'qt radius';
+      cluster_method = $("#threshClustMethodSelect").val();
     }
     var auto_open = ($("#clustMethodNumberCheckbox").is(':checked') && !$("#varRangeCheckbox").is(':checked')),
       auto_result_page = null;
@@ -964,8 +965,8 @@ $(window).bind('beforeunload', function() {
 function calcSpecificDefaultDisplayOpts(num_vars) {
   // Calculates new default values for certain options that are tree-specific. These will be overwritten by any loaded session values. Other display options will be taken from their current values on the page.
   if (num_vars > 500) {
-    $("#clustMethodSelect").val('k minibatch');
-    $("#clustMethodSelect").change();
+    $("#kClustMethodSelect").val('k minibatch');
+    $("#kClustMethodSelect").change();
   }
   nvrgtr_display_opts.sizes.scale_bar_distance = 0.0; // Resets the scale bar distance, so a default value will be calculated
   if (num_vars == 0) {
@@ -1607,7 +1608,7 @@ function getValidateFindVariantsArgs() {
       return false;
     }
     args = [num_vars, num_vars_range, parseFloat($("#clustToleranceSpinner").spinner('value'))];
-    let cluster_type = $("#clustMethodSelect").val();
+    let cluster_type = $("#kClustMethodSelect").val();
     if (cluster_type == 'k medoids' || cluster_type == 'k minibatch') {
       if (!( validateSpinner($("#clustRandStartsSpinner"), "Random starts") )) {
         return false;

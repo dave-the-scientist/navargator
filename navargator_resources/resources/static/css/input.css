@@ -38,11 +38,11 @@
 
 
 /* Clustering options:*/
-#clustMethodSelect {
-  width:110px;
-}
 .clust-type-opts-table td {
   padding:3px 0px;
+}
+#kClustMethodSelect, #threshClustMethodSelect {
+  width:110px;
 }
 #clustToleranceSpinner {
   width:40px;
