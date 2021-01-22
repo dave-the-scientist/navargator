@@ -355,13 +355,13 @@ class NavargatorDaemon(object):
                     prev_method = vf.cache[run_id]['method']
                 else:
                     prev_method = None
-                if prev_method == None or (cluster_method == 'qt optimal' != prev_method):
+                if prev_method == None or (cluster_method == 'qt minimal' != prev_method):
                     run_id = vf.generate_run_id()
                     vf.cache['params'][params] = run_id
                     vf.cache[run_id] = {'status':'running', 'params':params, 'method':cluster_method, 'run_time':time.time()}
-                    #args = (run_id, cluster_method, thresh, percent)
-                    #self.job_queue.addJob(vf.find_variants, args)
-                    vf.find_variants(run_id, cluster_method, thresh, percent)
+                    args = (run_id, cluster_method, thresh, percent)
+                    self.job_queue.addJob(vf.find_variants, args)
+                    #vf.find_variants(run_id, cluster_method, thresh, percent)
                 run_ids = [run_id]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
