@@ -6,6 +6,7 @@ import os, sys, itertools, random, time, base64
 from math import log, exp, ceil
 from io import BytesIO
 from copy import deepcopy
+from collections import Counter
 import numpy as np
 from navargator_resources import phylo
 from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
@@ -292,6 +293,7 @@ class VariantFinder(object):
             threshold, thresh_percent = args[:2]
             params = (threshold, thresh_percent)
             reduced, min_to_cluster = self._reduce_distances(threshold, thresh_percent)
+
             if len(reduced) == 0:
                 num_orphans, total_clusterable = min_to_cluster, float(len(self._not_ignored_inds))
                 percent_feasible = (total_clusterable - num_orphans) / total_clusterable * 100.0
@@ -301,6 +303,8 @@ class VariantFinder(object):
                 variants, scores, alt_variants = self._qt_radius_clustering_minimal(threshold, min_to_cluster, reduced)
             elif method == 'qt greedy':
                 variants, scores, alt_variants = self._qt_radius_clustering_greedy(threshold, min_to_cluster, reduced)
+
+            print variants ## TESTING
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -554,7 +558,7 @@ class VariantFinder(object):
         chsn_indices = list(self.index[n] for n in self.chosen)
         num_chsn = len(chsn_indices)
         dists = self._transform_distances(tolerance)
-        # This spaces the initial centroids around the tree
+        # This spaces the initial centroids randomly around the tree
         seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
         rand_inds = []
         for i in range(num_variants - num_chsn):
@@ -591,7 +595,7 @@ class VariantFinder(object):
         chsn_indices = [self.index[n] for n in self.chosen]
         num_chsn = len(chsn_indices)
         dists = self._transform_distances(tolerance)
-        # This spaces the initial centroids around the tree
+        # This spaces the initial centroids randomly around the tree
         seq_chunk = len(avail_medoid_indices) // (num_variants - num_chsn)
         rand_inds = []
         for i in range(num_variants - num_chsn):
@@ -661,6 +665,7 @@ class VariantFinder(object):
         if count_max == 0:  # Indicates there are no available variants close enough
             return None, [] # to the remaining unassigned. Usually results in an error.
         max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
+        print max_inds
         if len(max_inds) == 1: # A single largest cluster
             best_center = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
@@ -675,7 +680,8 @@ class VariantFinder(object):
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
 
-    def _qt_radius_clustering_minimal(self, threshold, min_to_cluster, reduced):
+
+    def _qt_radius_clustering_minimal_old(self, threshold, min_to_cluster, reduced):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
@@ -690,7 +696,8 @@ class VariantFinder(object):
         for ind in chsn_indices + avail_indices:
             clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
             neighbors_of[ind] = set(clstr_inds)
-        covered_inds = Counter()
+
+        covered_inds = Counter_old()
         for ind in chsn_indices:
             covered_inds.add(neighbors_of[ind])
         # Get initial solution, use it to constrain the brute force search
@@ -698,7 +705,7 @@ class VariantFinder(object):
 
         if len(greedy_centre_inds) == 0:
             # Indicates the greedy solver didn't complete, but there is a guaranteed feasible solution.
-            # Fills out greedy_centre_inds with a quick greedy feasible solution
+            # Fills out greedy_centre_inds with a quick feasible solution
             greedy_centre_inds, greedy_orphans = alt_info
             greedy_orphans = np.array(list(greedy_orphans))
             num_allowed_orphans = len(self._not_ignored_inds) - min_to_cluster
@@ -719,27 +726,23 @@ class VariantFinder(object):
         avail_order = greedy_centre_inds + avail_order
 
         print 'greedy', greedy_centre_inds, greedy_score
-        score, centre_inds = self._recursive_qt_cluster(0, [], covered_inds, greedy_score, greedy_centre_inds, neighbors_of, min_to_cluster, avail_order)
+        score, centre_inds = self._recursive_qt_cluster_old(0, [], covered_inds, greedy_score, greedy_centre_inds, neighbors_of, min_to_cluster, avail_order)
         print 'final', centre_inds, score
 
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
         alt_variants = []
         return centre_inds, final_scores, alt_variants
-
-    def _recursive_qt_cluster(self, order_ind, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order):
-
+    def _recursive_qt_cluster_old(self, order_ind, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order):
         # include a check to see if there are enough possible avail variants remaning to satisfy min_to_cluster. Is that even possible?
         # can I use a np matrix somehow? keep track of which avail cover which variants?
         # what about bottom-up. what if each variant knows the avail within thresh, and the decision variables (1 per non-ignored) indicate which group it belongs to?
-
         if order_ind >= len(avail_order):
             # Index out of bounds
             return best_score, best_centre_inds
         elif len(centre_inds) >= len(best_centre_inds):
             # Already have a guaranteed better solution. Not ">", as the new centre hasn't been added yet
             return best_score, best_centre_inds
-
         cur_ind = avail_order[order_ind]
 
         # First assume we include this ind
@@ -750,18 +753,101 @@ class VariantFinder(object):
             cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
             score = sum(self._sum_dist_scores(centre_inds, cluster_inds, self.orig_dists))
             if score < best_score:
-                print '  =================  ', best_score, score
                 best_score, best_centre_inds = score, centre_inds[::]
-        best_score, best_centre_inds = self._recursive_qt_cluster(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
+        best_score, best_centre_inds = self._recursive_qt_cluster_old(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
 
         # Then assume ind is excluded
         centre_inds.remove(cur_ind)
         covered_inds.remove(neighbors_of[cur_ind])
-        best_score, best_centre_inds = self._recursive_qt_cluster(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
-
-        # Is it a good idea to add ind, run, remove ind, run. Should I assume not to include it first?
-
+        best_score, best_centre_inds = self._recursive_qt_cluster_old(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
         return best_score, best_centre_inds
+
+
+    def _qt_radius_clustering_minimal(self, threshold, min_to_cluster, reduced):
+        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
+        Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
+        Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
+        This implementation uses the "reduced" distance matrix for initialization, but not during the algorithm. It will, however, be modified during execution of the greedy implementation which is used as an initial solution. """
+        # 0.2 @ 98% takes 59 sec for minimal, fraction of a sec for greedy
+
+        # doesn't use 'threshold'
+
+        chsn_indices = set(self.index[name] for name in self.chosen)
+        avail_indices = set(self.index[name] for name in self.available)
+
+        neighbors_of = {}
+        for ind in chsn_indices | avail_indices:
+            clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
+            neighbors_of[ind] = set(clstr_inds)
+
+        # check for dominated avails.
+        # should i? if A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
+
+        covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, chosen=chsn_indices)
+
+        covered_inds.cycle = 0 ### TESTING
+
+        centre_inds, score = self._recursive_qt_cluster(chsn_indices, min_to_cluster, covered_inds, self._not_ignored_inds, np.inf)
+        centre_inds = list(centre_inds)
+
+        final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
+        final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+        alt_variants = []
+        return centre_inds, final_scores, alt_variants
+    def _recursive_qt_cluster(self, centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score):
+        # what about bottom-up. what if each variant knows the avail within thresh, and the decision variables (1 per non-ignored) indicate which group it belongs to?
+
+        # implement a cycle threshold, passed from the page. test it, but I think it'll do a very good job
+
+        # Once we find a valid solution of length N, it would then remove the last-added ind and check all valid solutions sharing N-1 centres but continuously swapping in less-optimal centres (guaranteed, as the single-best choice is always made first, and with 1 choice left greedy is guaranteed optimal). These can all be safely ignored, as they will be equal or worse in score and equal in length. This happens whenever a solution becomes valid, regardless of whether it's the current best or not. 'terminal_config' allows me to cut these from the search space.
+
+        if len(centre_inds) >= len(best_centre_inds):
+            # Already have a guaranteed better solution. Using ">=" as the new centre hasn't been added yet
+            return best_centre_inds, best_score
+
+        cur_ind = covered_inds.next_index()
+        if cur_ind == None: # Indicates a short-circuit cut of this branch
+            #print 'no more valid configs'
+            return best_centre_inds, best_score
+
+        # First select the next ind and assume it's a centre
+        centre_inds.add(cur_ind)
+        covered_inds.add(cur_ind)
+        covered_inds.blacklist(cur_ind) # Ensures ind isn't selected again down this branch
+
+        #print cur_ind, centre_inds, best_centre_inds, best_score, len(covered_inds)
+
+        # Check if it's a valid configuration
+        terminal_config = False
+        if len(covered_inds) >= min_to_cluster:
+            terminal_config = True
+            centre_list = list(centre_inds)
+            cluster_inds = self._partition_nearest(centre_list, self.orig_dists)
+            score = sum(self._sum_dist_scores(centre_list, cluster_inds, self.orig_dists))
+            #print '  ====  valid', score
+            if score < best_score:
+                # Could be a good idea to try replacing each centre_ind with all possible avail; this situation only happens a handful of times. Often a greedy solution is close to the optimal. Would be useful if I stop the search after x seconds or cycles; don't think it helps me at all with reducing the search space (as the solution wouldn't be shorter, which is the real useful constraint).
+                # BETTER IDEA: do that run-through when exiting early based on time or cycles, not every time a better score is found. Test if there's much difference, but might help
+                best_centre_inds, best_score = centre_inds.copy(), score
+        elif len(centre_inds) == len(best_centre_inds):
+            terminal_config = True # We already have a valid solution of this size, this one isn't valid and can't get any better.
+        else:
+            #print 'calling +', cur_ind, centre_inds
+            best_centre_inds, best_score = self._recursive_qt_cluster(centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score)
+            #print 'return from +', cur_ind, centre_inds
+        # Then assume ind is excluded from being a centre
+        centre_inds.remove(cur_ind)
+        covered_inds.remove(cur_ind)
+
+        if not terminal_config:
+            # Prune the branch if we got to a terminal config, as it can't be improved
+            #print 'calling -', cur_ind, centre_inds
+            best_centre_inds, best_score = self._recursive_qt_cluster(centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score)
+            #print 'return from -', cur_ind, centre_inds
+        covered_inds.whitelist(cur_ind) # Allows ind to be selected again down another branch
+        return best_centre_inds, best_score
+
+
 
     def _reduce_distances(self, threshold, thresh_percent):
         """Does not remove chosen. If the given thresholds are infeasible, returns ([], num_orphans) to indicate an error."""
@@ -939,7 +1025,58 @@ class VariantFinder(object):
             self._clear_cache()
 
 
-class Counter(object):
+class CoverManager(object):
+    """Used by the _qt_radius_clustering_minimal() method to track variants covered by different combinations of centre variants. Intelligently chooses the next potential centre ind."""
+    def __init__(self, min_covered, nbrs, dists, chosen=set()):
+        self.min_covered = min_covered
+        self.nbrs = nbrs
+        self.dists = dists
+        self.inds_to_try = set(nbrs) - chosen
+        self.cur_covered = Counter()
+        self.remaining_coverage = Counter()
+        for ind in chosen:
+            self.add(ind)
+        for ind, nbr_inds in self.nbrs.items():
+            if ind in chosen: continue
+            self.remaining_coverage.update(nbr_inds)
+        self._empty = Counter()
+    def add(self, centre_ind):
+        self.cur_covered.update(self.nbrs[centre_ind])
+    def remove(self, centre_ind):
+        self.cur_covered.subtract(self.nbrs[centre_ind])
+        self.cur_covered += self._empty # Removes 0s. Faster to do this than self.cur_covered | self._empty
+    def next_index(self):
+        def next_index_sort(ind):
+            # Sorts largest cluster to front, ties broken by the cluster score
+            clstr_inds = list(self.nbrs[ind] - cur_covered)
+            return (len(clstr_inds), -np.sum(self.dists[clstr_inds,ind]))
+        # End of sort function.
+
+        #self.cycle += 1
+        #if self.cycle >= 2000:
+        #    exit()
+        if len(self.inds_to_try) == 0 or len(self.cur_covered | self.remaining_coverage) < self.min_covered:
+            # None left to try, or the remaining are not big enough clusters to cover the required number.
+            # PROBABLY don't actually need the len == 0 check any more. test it
+            return None
+        cur_covered = set(self.cur_covered)
+        ind = max(self.inds_to_try, key=next_index_sort)
+        if len(self.nbrs[ind] - cur_covered) == 0:
+            return None
+        return ind
+    def blacklist(self, centre_ind):
+        self.inds_to_try.remove(centre_ind)
+        self.remaining_coverage.subtract(self.nbrs[centre_ind])
+        #self.remaining_coverage += self._empty  # Removes 0s, but not needed and faster to omit
+    def whitelist(self, centre_ind):
+        self.inds_to_try.add(centre_ind)
+        self.remaining_coverage.update(self.nbrs[centre_ind])
+    def __len__(self):
+        return len(self.cur_covered)
+
+
+
+class Counter_old(object):
     """Object used to monitor variants covered by some centre during clustering. If 2 possible centres both cover some variant, and then 1 centre is removed from consideration, this data structure will indicate that the variant is still being covered."""
     def __init__(self):
         self._dict = {}
