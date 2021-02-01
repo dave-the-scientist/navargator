@@ -24,6 +24,7 @@ phylo.verbose = False
 #   - Considering allowing user to specify ex 90% of variants within threshold. What happens to the remaining? Added to nearest cluster center (probably) or specified as unclustered? Should user be allowed to choose? If so, probably works to push unclustered into "ignored" for results page.
 #   - How do the chosen factor in? They can't be added to any candidate cluster, as they must be cluster centers. Maybe one iteration with only chosen as candidates, then continue with the rest of the available.
 #   - Check if variants ever end up in one cluster, but are actually closer to another cluster centre. I doubt if it's common, but seems like it could happen. If so, include a final step in the clustering to ensure each variant is clustered with the closest centre.
+# - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
@@ -300,9 +301,9 @@ class VariantFinder(object):
                 error_msg = 'Error: infeasible parameters (only {:.2f}% could be clustered within the given threhsold). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format(percent_feasible)
                 variants, scores, alt_variants = [], error_msg, []
             elif method == 'qt minimal':
-                variants, scores, alt_variants = self._qt_radius_clustering_minimal(threshold, min_to_cluster, reduced)
+                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced)
             elif method == 'qt greedy':
-                variants, scores, alt_variants = self._qt_radius_clustering_greedy(threshold, min_to_cluster, reduced)
+                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced)
 
             print variants ## TESTING
         else:
@@ -629,7 +630,7 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
         return best_med_inds, best_scores
 
-    def _qt_radius_clustering_greedy(self, threshold, min_to_cluster, reduced):
+    def _qt_radius_clustering_greedy(self, min_to_cluster, reduced):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?"""
@@ -665,7 +666,6 @@ class VariantFinder(object):
         if count_max == 0:  # Indicates there are no available variants close enough
             return None, [] # to the remaining unassigned. Usually results in an error.
         max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
-        print max_inds
         if len(max_inds) == 1: # A single largest cluster
             best_center = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
@@ -681,96 +681,11 @@ class VariantFinder(object):
         return best_center, best_clstr
 
 
-    def _qt_radius_clustering_minimal_old(self, threshold, min_to_cluster, reduced):
+    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
         This implementation uses the "reduced" distance matrix for initialization, but not during the algorithm. It will, however, be modified during execution of the greedy implementation which is used as an initial solution. """
-        # 0.2 @ 98% takes 59 sec for minimal, fraction of a sec for greedy
-
-        chsn_indices = [self.index[name] for name in self.chosen]
-        avail_indices = [self.index[name] for name in self.available]
-        nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index (columns summed).
-
-        neighbors_of = {}
-        for ind in chsn_indices + avail_indices:
-            clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
-            neighbors_of[ind] = set(clstr_inds)
-
-        covered_inds = Counter_old()
-        for ind in chsn_indices:
-            covered_inds.add(neighbors_of[ind])
-        # Get initial solution, use it to constrain the brute force search
-        greedy_centre_inds, greedy_scores, alt_info = self._qt_radius_clustering_greedy(threshold, min_to_cluster, reduced.copy())
-
-        if len(greedy_centre_inds) == 0:
-            # Indicates the greedy solver didn't complete, but there is a guaranteed feasible solution.
-            # Fills out greedy_centre_inds with a quick feasible solution
-            greedy_centre_inds, greedy_orphans = alt_info
-            greedy_orphans = np.array(list(greedy_orphans))
-            num_allowed_orphans = len(self._not_ignored_inds) - min_to_cluster
-            while len(greedy_orphans) > num_allowed_orphans:
-                orphans_in_range = np.count_nonzero(reduced[greedy_orphans,:] == 0, axis=0)
-                avail_ind = np.argmax(orphans_in_range)
-                still_orphans = reduced[greedy_orphans,avail_ind] != 0
-                greedy_orphans = greedy_orphans[still_orphans]
-                greedy_centre_inds.append(avail_ind)
-            greedy_cluster_inds = self._partition_nearest(greedy_centre_inds, self.orig_dists)
-            greedy_score = sum(self._sum_dist_scores(greedy_centre_inds, greedy_cluster_inds, self.orig_dists))
-        else:
-            greedy_score = sum(greedy_scores)
-
-        avail_order = np.argsort(nbr_counts)[::-1] # = variant indices in decreasing order of initial cluster size
-        # np.argsort(nbr_counts)[::-1] cut tbpb59/0.2/98% from 60 to 30 sec
-        avail_order = [ind for ind in avail_order if ind in avail_indices and ind not in greedy_centre_inds]
-        avail_order = greedy_centre_inds + avail_order
-
-        print 'greedy', greedy_centre_inds, greedy_score
-        score, centre_inds = self._recursive_qt_cluster_old(0, [], covered_inds, greedy_score, greedy_centre_inds, neighbors_of, min_to_cluster, avail_order)
-        print 'final', centre_inds, score
-
-        final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
-        final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-        alt_variants = []
-        return centre_inds, final_scores, alt_variants
-    def _recursive_qt_cluster_old(self, order_ind, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order):
-        # include a check to see if there are enough possible avail variants remaning to satisfy min_to_cluster. Is that even possible?
-        # can I use a np matrix somehow? keep track of which avail cover which variants?
-        # what about bottom-up. what if each variant knows the avail within thresh, and the decision variables (1 per non-ignored) indicate which group it belongs to?
-        if order_ind >= len(avail_order):
-            # Index out of bounds
-            return best_score, best_centre_inds
-        elif len(centre_inds) >= len(best_centre_inds):
-            # Already have a guaranteed better solution. Not ">", as the new centre hasn't been added yet
-            return best_score, best_centre_inds
-        cur_ind = avail_order[order_ind]
-
-        # First assume we include this ind
-        centre_inds.append(cur_ind)
-        covered_inds.add(neighbors_of[cur_ind])
-
-        if len(covered_inds) >= min_to_cluster: # So it's a valid configuration
-            cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
-            score = sum(self._sum_dist_scores(centre_inds, cluster_inds, self.orig_dists))
-            if score < best_score:
-                best_score, best_centre_inds = score, centre_inds[::]
-        best_score, best_centre_inds = self._recursive_qt_cluster_old(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
-
-        # Then assume ind is excluded
-        centre_inds.remove(cur_ind)
-        covered_inds.remove(neighbors_of[cur_ind])
-        best_score, best_centre_inds = self._recursive_qt_cluster_old(order_ind+1, centre_inds, covered_inds, best_score, best_centre_inds, neighbors_of, min_to_cluster, avail_order)
-        return best_score, best_centre_inds
-
-
-    def _qt_radius_clustering_minimal(self, threshold, min_to_cluster, reduced):
-        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
-        Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
-        Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
-        This implementation uses the "reduced" distance matrix for initialization, but not during the algorithm. It will, however, be modified during execution of the greedy implementation which is used as an initial solution. """
-        # 0.2 @ 98% takes 59 sec for minimal, fraction of a sec for greedy
-
-        # doesn't use 'threshold'
 
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
@@ -780,24 +695,27 @@ class VariantFinder(object):
             clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
             neighbors_of[ind] = set(clstr_inds)
 
+        # Identify components. For each, perform the below.
+        # - If the # allowed to be missed is greater than the number of single components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
+        # - Some choices of threshold and assignments will leave some unassigned as a part of more than 1 component (because it only "chains" with avails). Should they be part of 1, both, or neither? Should I solve each indepenently then run it again with their combo (and the good quality solution)?
+        
+
         # check for dominated avails.
         # should i? if A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
 
-        covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, chosen=chsn_indices)
+        max_cycles = 40#0000
 
-        covered_inds.cycle = 0 ### TESTING
+        covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, max_cycles, chosen=chsn_indices)
 
         centre_inds, score = self._recursive_qt_cluster(chsn_indices, min_to_cluster, covered_inds, self._not_ignored_inds, np.inf)
         centre_inds = list(centre_inds)
-
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+        if max_cycles != None:
+            centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, min_to_cluster, reduced)
         alt_variants = []
         return centre_inds, final_scores, alt_variants
     def _recursive_qt_cluster(self, centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score):
-        # what about bottom-up. what if each variant knows the avail within thresh, and the decision variables (1 per non-ignored) indicate which group it belongs to?
-
-        # implement a cycle threshold, passed from the page. test it, but I think it'll do a very good job
 
         # Once we find a valid solution of length N, it would then remove the last-added ind and check all valid solutions sharing N-1 centres but continuously swapping in less-optimal centres (guaranteed, as the single-best choice is always made first, and with 1 choice left greedy is guaranteed optimal). These can all be safely ignored, as they will be equal or worse in score and equal in length. This happens whenever a solution becomes valid, regardless of whether it's the current best or not. 'terminal_config' allows me to cut these from the search space.
 
@@ -807,15 +725,12 @@ class VariantFinder(object):
 
         cur_ind = covered_inds.next_index()
         if cur_ind == None: # Indicates a short-circuit cut of this branch
-            #print 'no more valid configs'
             return best_centre_inds, best_score
 
         # First select the next ind and assume it's a centre
         centre_inds.add(cur_ind)
         covered_inds.add(cur_ind)
         covered_inds.blacklist(cur_ind) # Ensures ind isn't selected again down this branch
-
-        #print cur_ind, centre_inds, best_centre_inds, best_score, len(covered_inds)
 
         # Check if it's a valid configuration
         terminal_config = False
@@ -824,7 +739,6 @@ class VariantFinder(object):
             centre_list = list(centre_inds)
             cluster_inds = self._partition_nearest(centre_list, self.orig_dists)
             score = sum(self._sum_dist_scores(centre_list, cluster_inds, self.orig_dists))
-            #print '  ====  valid', score
             if score < best_score:
                 # Could be a good idea to try replacing each centre_ind with all possible avail; this situation only happens a handful of times. Often a greedy solution is close to the optimal. Would be useful if I stop the search after x seconds or cycles; don't think it helps me at all with reducing the search space (as the solution wouldn't be shorter, which is the real useful constraint).
                 # BETTER IDEA: do that run-through when exiting early based on time or cycles, not every time a better score is found. Test if there's much difference, but might help
@@ -847,6 +761,36 @@ class VariantFinder(object):
         covered_inds.whitelist(cur_ind) # Allows ind to be selected again down another branch
         return best_centre_inds, best_score
 
+    def _single_pass_optimize(self, centre_inds, best_scores, best_score, min_to_cluster, reduced):
+        """Quick check to see if the solution can be improved by replacing each given non-chosen with any of the remaining available. In practice, greedy and cycle-limited solutions are often only 1 swapped index from the optimal solution."""
+        chsn_indices = set(self.index[name] for name in self.chosen)
+        avail_indices = [self.index[name] for name in self.available]
+        allowed_missed = len(self._not_ignored_inds) - min_to_cluster
+
+        out_of_range = reduced.copy()
+        out_of_range[out_of_range != 0] = 1
+
+        best_inds = centre_inds[::]
+        for i, cur_ind in enumerate(best_inds):
+            if cur_ind in chsn_indices:
+                continue
+            for ind in avail_indices:
+                if ind in best_inds:
+                    continue
+                best_inds[i] = ind
+                cluster_inds = self._partition_nearest(best_inds, self.orig_dists)
+                num_missed = sum(self._sum_dist_scores(best_inds, cluster_inds, out_of_range))
+                if num_missed > allowed_missed:
+                    continue
+                scores = self._sum_dist_scores(best_inds, cluster_inds, self.orig_dists)
+                score = sum(scores)
+                if score < best_score:
+                    best_score = score
+                    best_scores = scores
+                    cur_ind = ind
+            best_inds[i] = cur_ind
+
+        return best_inds, best_scores
 
 
     def _reduce_distances(self, threshold, thresh_percent):
@@ -1027,8 +971,10 @@ class VariantFinder(object):
 
 class CoverManager(object):
     """Used by the _qt_radius_clustering_minimal() method to track variants covered by different combinations of centre variants. Intelligently chooses the next potential centre ind."""
-    def __init__(self, min_covered, nbrs, dists, chosen=set()):
+    def __init__(self, min_covered, nbrs, dists, max_cycles=None, chosen=set()):
         self.min_covered = min_covered
+        self.max_cycles = max_cycles
+        self.cycle = 0
         self.nbrs = nbrs
         self.dists = dists
         self.inds_to_try = set(nbrs) - chosen
@@ -1052,17 +998,17 @@ class CoverManager(object):
             return (len(clstr_inds), -np.sum(self.dists[clstr_inds,ind]))
         # End of sort function.
 
-        #self.cycle += 1
-        #if self.cycle >= 2000:
-        #    exit()
-        if len(self.inds_to_try) == 0 or len(self.cur_covered | self.remaining_coverage) < self.min_covered:
-            # None left to try, or the remaining are not big enough clusters to cover the required number.
-            # PROBABLY don't actually need the len == 0 check any more. test it
+        self.cycle += 1
+        if self.max_cycles != None and self.cycle >= self.max_cycles:
+            return None
+        #if len(self.inds_to_try) == 0: # Covered by the below test
+        #    return None
+        if len(self.cur_covered | self.remaining_coverage) < self.min_covered:
             return None
         cur_covered = set(self.cur_covered)
         ind = max(self.inds_to_try, key=next_index_sort)
-        if len(self.nbrs[ind] - cur_covered) == 0:
-            return None
+        #if len(self.nbrs[ind] - cur_covered) == 0: # Covered by the above test
+        #    return None
         return ind
     def blacklist(self, centre_ind):
         self.inds_to_try.remove(centre_ind)
@@ -1073,37 +1019,3 @@ class CoverManager(object):
         self.remaining_coverage.update(self.nbrs[centre_ind])
     def __len__(self):
         return len(self.cur_covered)
-
-
-
-class Counter_old(object):
-    """Object used to monitor variants covered by some centre during clustering. If 2 possible centres both cover some variant, and then 1 centre is removed from consideration, this data structure will indicate that the variant is still being covered."""
-    def __init__(self):
-        self._dict = {}
-        self._len = 0
-    def get_all(self):
-        return set(self._dict.keys())
-    def add(self, to_add):
-        for ele in to_add:
-            if ele in self._dict:
-                self._dict[ele] += 1
-            else:
-                self._dict[ele] = 1
-                self._len += 1
-    def remove(self, to_rem):
-        for ele in to_rem:
-            if ele not in self._dict:
-                continue
-            elif self._dict[ele] == 1:
-                del self._dict[ele]
-                self._len -= 1
-            else:
-                self._dict[ele] -= 1
-    def __len__(self):
-        return self._len
-    def __contains__(self, ele):
-        return ele in self._dict
-    def __sub__(self, other):
-        return set(self._dict.keys()) - other
-    def __rsub__(self, other):
-        return other - set(self._dict.keys())

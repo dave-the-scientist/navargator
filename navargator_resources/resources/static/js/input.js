@@ -5,7 +5,7 @@
 
 // TODO:
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
-// - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section.
+// - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section. Also add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal.
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out. Also finish the bit in checkIfProcessingDone()
 
