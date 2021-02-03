@@ -6,6 +6,7 @@
 // TODO:
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section. Also add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal.
+// - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out. Also finish the bit in checkIfProcessingDone()
 
@@ -525,6 +526,18 @@ function setupClusteringOptions() {
     min: 1, max: 100,
     numberFormat: 'N1', step: 0.1
   }).spinner('value', 95);
+  $("#threshMaxCyclesSpinner").spinner({
+    min: 1, max: 1000000,
+    numberFormat: 'N0', step: 1
+  }).spinner('value', 50000);
+  $("#threshCapCyclesCheckbox").change(function() {
+    if ($("#threshCapCyclesCheckbox").is(':checked')) {
+      $("#threshMaxCyclesSpinner").prop('disabled', false);
+    } else {
+      $("#threshMaxCyclesSpinner").prop('disabled', true);
+    }
+  });
+  $("#threshMaxCyclesSpinner").prop('disabled', true);
 
   // Button callbacks:
   $("#clustMethodNumberCheckbox, #clustMethodThresholdCheckbox").change(function() {
@@ -548,6 +561,13 @@ function setupClusteringOptions() {
       $("#clustRandStartsSpinner").spinner('value', 5);
       $(".clust-method-run-reps").show();
       $(".clust-method-batch-size").show();
+    }
+  });
+  $("#threshClustMethodSelect").change(function(event) {
+    if (event.target.value == 'qt minimal') {
+      $(".thresh-method-max-cycles").show();
+    } else if (event.target.value == 'qt greedy') {
+      $(".thresh-method-max-cycles").hide();
     }
   });
 
@@ -1633,6 +1653,17 @@ function getValidateFindVariantsArgs() {
       return false;
     }
     args.push($("#threshPercentSpinner").spinner('value'));
+    let thresh_type = $("#threshClustMethodSelect").val();
+    if (thresh_type == 'qt minimal') {
+      if ($("#threshCapCyclesCheckbox").is(':checked')) {
+        if (!( validateSpinner($("#threshMaxCyclesSpinner"), "Max cycles") )) {
+          return false;
+        }
+        args.push($("#threshMaxCyclesSpinner").spinner('value'));
+      } else {
+        args.push(null);
+      }
+    }
   }
   return args;
 }

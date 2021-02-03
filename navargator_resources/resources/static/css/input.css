@@ -53,6 +53,9 @@
 #threshPercentSpinner {
   width:35px;
 }
+#threshMaxCyclesSpinner {
+  width:60px;
+}
 #findVariantsButton {
   width:100%;
 }

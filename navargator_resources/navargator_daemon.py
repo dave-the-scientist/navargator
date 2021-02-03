@@ -35,6 +35,7 @@ else:
 
 
 # TODO:
+# - Fine-tune the logic in find_variants that decides if a run goes through or not. Right now it will allow more strict algorithms (brute force over medoids), but it should also allow runs with equal strictness if the parameters are looser (ie more replicates, more cycles, etc). Put that (and ideally some other code) into a separate function.
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 # - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
@@ -359,9 +360,9 @@ class NavargatorDaemon(object):
                     run_id = vf.generate_run_id()
                     vf.cache['params'][params] = run_id
                     vf.cache[run_id] = {'status':'running', 'params':params, 'method':cluster_method, 'run_time':time.time()}
-                    #args = (run_id, cluster_method, thresh, percent)
+                    args = tuple([run_id, cluster_method, thresh, percent] + arg_list[2:])
                     #self.job_queue.addJob(vf.find_variants, args)
-                    vf.find_variants(run_id, cluster_method, thresh, percent)
+                    vf.find_variants(*args)
                 run_ids = [run_id]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)

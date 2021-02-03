@@ -15,8 +15,8 @@ phylo.verbose = False
 
 # TODO:
 # - Finish / clean up _qt_radius_clustering().
-#   - Ensure the greedy and optimal are working as intended. I thought I saw some weird behavior on tbpb59 around t=0.2 or 0.3
-# - Look to a non-greedy implementation that should be much better for our goals
+#   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
+#   - I'm pretty sure the partition_nearest and sum_scores functions could use some major optimization via vectorization.
 # - Implement threshold clustering.
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
@@ -301,7 +301,8 @@ class VariantFinder(object):
                 error_msg = 'Error: infeasible parameters (only {:.2f}% could be clustered within the given threhsold). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format(percent_feasible)
                 variants, scores, alt_variants = [], error_msg, []
             elif method == 'qt minimal':
-                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced)
+                max_cycles = args[2]
+                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, max_cycles)
             elif method == 'qt greedy':
                 variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced)
 
@@ -681,7 +682,7 @@ class VariantFinder(object):
         return best_center, best_clstr
 
 
-    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced):
+    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
@@ -696,14 +697,23 @@ class VariantFinder(object):
             neighbors_of[ind] = set(clstr_inds)
 
         # Identify components. For each, perform the below.
-        # - If the # allowed to be missed is greater than the number of single components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
-        # - Some choices of threshold and assignments will leave some unassigned as a part of more than 1 component (because it only "chains" with avails). Should they be part of 1, both, or neither? Should I solve each indepenently then run it again with their combo (and the good quality solution)?
-        
+        # - If the # allowed to be missed is greater than the number of singleton components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
+        #   - Probably apply the same threshold to all components. But then it's not guaranteed optimal...
+        # - Some choices of threshold and assignments will leave some unassigned as a part of more than 1 component (because it only "chains" with avails). Should they be part of 1, both, or neither? Should I solve each indepenently then run it again with their combo (and the good quality solution)? Or should my definition of components chain on unassigned? Loses some speed, but retains the optimal guarantee.
+        # - How should cycles be balanced? Probably just proportional based on component size, with carry-over from one to the next (start small, or large? small less likely to use resources). Details matter less, as we have no optimal guarantee.
+        # - Pre-component timings:
+        #  - tree_1399 1@95% (1500 cycles) took 58s, gave [349, 165, 82, 604, 586]=697.434
+        #  - tree_4173 0.5@95% (1500 cycles) took 446s, gave [2368, 1422, 1077, 887]=1016.444
+
+        component_inds = self._identify_components(neighbors_of)
+        print len(component_inds)
+        for comp in component_inds:
+            print len(comp)
+            print ', '.join(self.leaves[ind] for ind in comp)
+        exit()
 
         # check for dominated avails.
         # should i? if A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
-
-        max_cycles = 40#0000
 
         covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, max_cycles, chosen=chsn_indices)
 
@@ -711,8 +721,14 @@ class VariantFinder(object):
         centre_inds = list(centre_inds)
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-        if max_cycles != None:
+        print 'cycles', max_cycles, covered_inds.cycle, 'score', sum(final_scores), centre_inds
+        if max_cycles != None and covered_inds.cycle >= max_cycles:
+            # With this optimization, even before components, 50 cycles usually recovers the optimal tree
+            # tree_487 0.05@95% required 500. Possibly cycles ~== leaves is a decent guess?
+            # For 3-5 clusters: 15ms for 56 avail; 30ms for 79; 130ms for 275; 380ms for 487; 4s for 1399; 30s for 4173
+            t0 = time.time()
             centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, min_to_cluster, reduced)
+            print 'single opt time', time.time() - t0, 'score', sum(final_scores), centre_inds
         alt_variants = []
         return centre_inds, final_scores, alt_variants
     def _recursive_qt_cluster(self, centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score):
@@ -740,8 +756,6 @@ class VariantFinder(object):
             cluster_inds = self._partition_nearest(centre_list, self.orig_dists)
             score = sum(self._sum_dist_scores(centre_list, cluster_inds, self.orig_dists))
             if score < best_score:
-                # Could be a good idea to try replacing each centre_ind with all possible avail; this situation only happens a handful of times. Often a greedy solution is close to the optimal. Would be useful if I stop the search after x seconds or cycles; don't think it helps me at all with reducing the search space (as the solution wouldn't be shorter, which is the real useful constraint).
-                # BETTER IDEA: do that run-through when exiting early based on time or cycles, not every time a better score is found. Test if there's much difference, but might help
                 best_centre_inds, best_score = centre_inds.copy(), score
         elif len(centre_inds) == len(best_centre_inds):
             terminal_config = True # We already have a valid solution of this size, this one isn't valid and can't get any better.
@@ -791,6 +805,26 @@ class VariantFinder(object):
             best_inds[i] = cur_ind
 
         return best_inds, best_scores
+
+    def _identify_components(self, neighbors_of):
+        """Runs trivially fast. GET SOME TIMINGS"""
+        components, cur_component = [], set()
+        avail, to_visit = set(neighbors_of.keys()), set()
+        while len(avail) > 0:
+            if len(to_visit) == 0:
+                cur_ind = avail.pop()
+                if len(cur_component) != 0:
+                    components.append(cur_component)
+                    cur_component = set()
+            else:
+                cur_ind = to_visit.pop()
+                avail.remove(cur_ind)
+            nbrs = neighbors_of[cur_ind]
+            cur_component.update(nbrs)
+            to_visit.update(nbrs & avail)
+        if len(cur_component) != 0:
+            components.append(cur_component)
+        return components
 
 
     def _reduce_distances(self, threshold, thresh_percent):
