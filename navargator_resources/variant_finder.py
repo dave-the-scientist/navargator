@@ -682,7 +682,7 @@ class VariantFinder(object):
         return best_center, best_clstr
 
 
-    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles):
+    def _qt_radius_clustering_minimal_old(self, min_to_cluster, reduced, max_cycles):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
@@ -702,97 +702,148 @@ class VariantFinder(object):
         # - Some choices of threshold and assignments will leave some unassigned as a part of more than 1 component (because it only "chains" with avails). Should they be part of 1, both, or neither? Should I solve each indepenently then run it again with their combo (and the good quality solution)? Or should my definition of components chain on unassigned? Loses some speed, but retains the optimal guarantee.
         # - How should cycles be balanced? Probably just proportional based on component size, with carry-over from one to the next (start small, or large? small less likely to use resources). Details matter less, as we have no optimal guarantee.
         # - Pre-component timings:
+        #  - tbpb82 0.3@95% (uncapped) took 11.0s, gave [64, 16, 53, 21]=10.19053 [24091 cycles]
+        #  - tbpb82 0.2@95% (uncapped) unfinished after 477k cycles, gave [64, 1, 5, 16, 43, 21]=4.5458
         #  - tree_1399 1@95% (1500 cycles) took 58s, gave [349, 165, 82, 604, 586]=697.434
         #  - tree_4173 0.5@95% (1500 cycles) took 446s, gave [2368, 1422, 1077, 887]=1016.444
 
         component_inds = self._identify_components(neighbors_of)
-        print len(component_inds)
-        for comp in component_inds:
-            print len(comp)
-            print ', '.join(self.leaves[ind] for ind in comp)
-        exit()
+        print len(component_inds), 'components'
 
         # check for dominated avails.
         # should i? if A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
 
         covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, max_cycles, chosen=chsn_indices)
-
-        centre_inds, score = self._recursive_qt_cluster(chsn_indices, min_to_cluster, covered_inds, self._not_ignored_inds, np.inf)
+        centre_inds, score = self._recursive_qt_cluster(self._not_ignored_inds, min_to_cluster, covered_inds, chsn_indices, self._not_ignored_inds, np.inf)
         centre_inds = list(centre_inds)
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-        print 'cycles', max_cycles, covered_inds.cycle, 'score', sum(final_scores), centre_inds
         if max_cycles != None and covered_inds.cycle >= max_cycles:
             # With this optimization, even before components, 50 cycles usually recovers the optimal tree
             # tree_487 0.05@95% required 500. Possibly cycles ~== leaves is a decent guess?
-            # For 3-5 clusters: 15ms for 56 avail; 30ms for 79; 130ms for 275; 380ms for 487; 4s for 1399; 30s for 4173
-            t0 = time.time()
             centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, min_to_cluster, reduced)
-            print 'single opt time', time.time() - t0, 'score', sum(final_scores), centre_inds
+        print 'cycles', max_cycles, covered_inds.cycle, 'score', sum(final_scores), centre_inds
         alt_variants = []
         return centre_inds, final_scores, alt_variants
-    def _recursive_qt_cluster(self, centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score):
+    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles):
+        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
+        Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
+        Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
+        This implementation uses the "reduced" distance matrix for initialization, but not during the algorithm. It will, however, be modified during execution of the greedy implementation which is used as an initial solution. """
 
-        # Once we find a valid solution of length N, it would then remove the last-added ind and check all valid solutions sharing N-1 centres but continuously swapping in less-optimal centres (guaranteed, as the single-best choice is always made first, and with 1 choice left greedy is guaranteed optimal). These can all be safely ignored, as they will be equal or worse in score and equal in length. This happens whenever a solution becomes valid, regardless of whether it's the current best or not. 'terminal_config' allows me to cut these from the search space.
+        chsn_indices = set(self.index[name] for name in self.chosen)
+        avail_indices = set(self.index[name] for name in self.available)
+
+        neighbors_of = {}
+        for ind in chsn_indices | avail_indices:
+            clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
+            neighbors_of[ind] = set(clstr_inds)
+
+        # check for dominated avails.
+        # If A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
+        # tree_275 is a good worst-case example, as it's such a gradual and even and balanced. I think excluding dominated will help
+
+        # Identify components. For each, perform the below.
+        # - If the # allowed to be missed is greater than the number of singleton components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
+        #   - Probably apply the same threshold to all components. But then it's not guaranteed optimal...
+        # - Some choices of threshold and assignments will leave some unassigned as a part of more than 1 component (because it only "chains" with avails). Should they be part of 1, both, or neither? Should I solve each indepenently then run it again with their combo (and the good quality solution)? Or should my definition of components chain on unassigned? Loses some speed, but retains the optimal guarantee.
+        # - How should cycles be balanced? Probably just proportional based on component size, with carry-over from one to the next (start small, or large? small less likely to use resources). Details matter less, as we have no optimal guarantee.
+        # - Pre-component timings:
+        #  - tbpb82 0.3@95% (uncapped) took 11.0s, gave [64, 16, 53, 21]=10.19053 [24091 cycles]
+        #  - tbpb82 0.2@95% (uncapped) unfinished after 477k cycles, gave [64, 1, 5, 16, 43, 21]=4.5458
+        #  - tree_1399 1@95% (1500 cycles) took 58s, gave [349, 165, 82, 604, 586]=697.434
+        #  - tree_4173 0.5@95% (1500 cycles) took 446s, gave [2368, 1422, 1077, 887]=1016.444
+
+        #  - tbpb82 0.4@100% (uncapped) took 9.32s, gave [53, 47, 5, 21]=10.2145 [21062 cycles]
+        # - With components:
+        #  - tree_275 (0.04@100%) 15-solution @ 4.107147 until cycle 219k, @ 4.067367 until cycle 228k, 4.048546
+
+        out_of_range = reduced.copy()
+        out_of_range[out_of_range != 0] = 1
+        comp_centre_inds, comp_scores = [], []
+        component_inds = self._identify_components(neighbors_of)
+        print len(component_inds), 'components'
+        for comp in component_inds:
+            #if len(comp & avail_indices) == 1:
+            #    pass # trivial solution
+            nbrs = {ind:ns for ind, ns in neighbors_of.items() if ind in comp}
+
+
+            min_to_cluster = len(comp)
+            #allowed_missed = len(self._not_ignored_inds) - min_to_cluster
+            allowed_missed = 0
+
+            covered_inds = CoverManager(min_to_cluster, nbrs, self.orig_dists, max_cycles, chosen=chsn_indices)
+
+            centre_inds, score = self._recursive_qt_cluster(comp, min_to_cluster, covered_inds, chsn_indices, comp, np.inf)
+            centre_inds = list(centre_inds)
+            final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
+            final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+            if max_cycles != None and covered_inds.cycle >= max_cycles:
+                # With this optimization, even before components, 50 cycles usually recovers the optimal tree
+                # tree_487 0.05@95% required 500. Possibly cycles ~== leaves is a decent guess?
+                comp_chosen = chsn_indices & comp
+                comp_avail = avail_indices & comp
+                centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, allowed_missed, comp, comp_chosen, comp_avail, out_of_range)
+            print 'cycles', covered_inds.cycle, len(comp), centre_inds, sum(final_scores)
+            comp_centre_inds.extend(centre_inds)
+            comp_scores.extend(final_scores)
+
+        print 'score', sum(comp_scores), comp_centre_inds
+        alt_variants = []
+        return comp_centre_inds, comp_scores, alt_variants
+    def _recursive_qt_cluster(self, component, min_to_cluster, covered_inds, centre_inds, best_centre_inds, best_score):
+        # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N-1 formed by swapping one index. Assuming N-1 indices as correct, the greedy choice of the next index is guaranteed optimal.
+
+        if covered_inds.cycle % 1000 == 0:
+            print covered_inds.cycle, centre_inds, best_centre_inds, best_score
 
         if len(centre_inds) >= len(best_centre_inds):
             # Already have a guaranteed better solution. Using ">=" as the new centre hasn't been added yet
             return best_centre_inds, best_score
-
         cur_ind = covered_inds.next_index()
         if cur_ind == None: # Indicates a short-circuit cut of this branch
             return best_centre_inds, best_score
-
-        # First select the next ind and assume it's a centre
+        # First select the next cur_ind and assume it's a centre
         centre_inds.add(cur_ind)
         covered_inds.add(cur_ind)
         covered_inds.blacklist(cur_ind) # Ensures ind isn't selected again down this branch
-
         # Check if it's a valid configuration
-        terminal_config = False
+        valid_config = False
         if len(covered_inds) >= min_to_cluster:
-            terminal_config = True
+            valid_config = True
             centre_list = list(centre_inds)
-            cluster_inds = self._partition_nearest(centre_list, self.orig_dists)
+            cluster_inds = self._partition_nearest(centre_list, self.orig_dists, only_these=component)
             score = sum(self._sum_dist_scores(centre_list, cluster_inds, self.orig_dists))
             if score < best_score:
                 best_centre_inds, best_score = centre_inds.copy(), score
         elif len(centre_inds) == len(best_centre_inds):
-            terminal_config = True # We already have a valid solution of this size, this one isn't valid and can't get any better.
+            valid_config = True # We already have a valid solution of this size, this one isn't valid and can't get any better.
         else:
-            #print 'calling +', cur_ind, centre_inds
-            best_centre_inds, best_score = self._recursive_qt_cluster(centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score)
-            #print 'return from +', cur_ind, centre_inds
-        # Then assume ind is excluded from being a centre
+            best_centre_inds, best_score = self._recursive_qt_cluster(component, min_to_cluster, covered_inds, centre_inds, best_centre_inds, best_score)
+        # Then assume cur_ind is excluded from being a centre
         centre_inds.remove(cur_ind)
         covered_inds.remove(cur_ind)
-
-        if not terminal_config:
-            # Prune the branch if we got to a terminal config, as it can't be improved
-            #print 'calling -', cur_ind, centre_inds
-            best_centre_inds, best_score = self._recursive_qt_cluster(centre_inds, min_to_cluster, covered_inds, best_centre_inds, best_score)
-            #print 'return from -', cur_ind, centre_inds
+        # Prune the branch if we got to a valid config, as it can't be improved
+        if not valid_config:
+            best_centre_inds, best_score = self._recursive_qt_cluster(component, min_to_cluster, covered_inds, centre_inds, best_centre_inds, best_score)
         covered_inds.whitelist(cur_ind) # Allows ind to be selected again down another branch
         return best_centre_inds, best_score
 
-    def _single_pass_optimize(self, centre_inds, best_scores, best_score, min_to_cluster, reduced):
-        """Quick check to see if the solution can be improved by replacing each given non-chosen with any of the remaining available. In practice, greedy and cycle-limited solutions are often only 1 swapped index from the optimal solution."""
-        chsn_indices = set(self.index[name] for name in self.chosen)
-        avail_indices = [self.index[name] for name in self.available]
-        allowed_missed = len(self._not_ignored_inds) - min_to_cluster
-
-        out_of_range = reduced.copy()
-        out_of_range[out_of_range != 0] = 1
-
+    def _single_pass_optimize(self, centre_inds, best_scores, best_score, allowed_missed, component, chosen_indices, avail_indices, out_of_range):
+        """Quick check to see if the solution can be improved by replacing each given non-chosen with any of the remaining available. Works quite well in practice, as greedy and cycle-limited solutions are often only 1 swapped index from the optimal solution."""
+        # For 3-5 clusters: 15ms for 56 avail; 30ms for 79; 130ms for 275; 380ms for 487; 4s for 1399; 30s for 4173
+        if len(component) == 1 or len(centre_inds) == len(avail_indices):
+            return best_inds, best_scores
         best_inds = centre_inds[::]
-        for i, cur_ind in enumerate(best_inds):
-            if cur_ind in chsn_indices:
-                continue
+        for i, best_ind in enumerate(best_inds):
+            if best_ind in chosen_indices:
+                continue # Don't touch these
             for ind in avail_indices:
                 if ind in best_inds:
                     continue
                 best_inds[i] = ind
-                cluster_inds = self._partition_nearest(best_inds, self.orig_dists)
+                cluster_inds = self._partition_nearest(best_inds, self.orig_dists, only_these=component)
                 num_missed = sum(self._sum_dist_scores(best_inds, cluster_inds, out_of_range))
                 if num_missed > allowed_missed:
                     continue
@@ -801,13 +852,12 @@ class VariantFinder(object):
                 if score < best_score:
                     best_score = score
                     best_scores = scores
-                    cur_ind = ind
-            best_inds[i] = cur_ind
-
+                    best_ind = ind
+            best_inds[i] = best_ind
         return best_inds, best_scores
 
     def _identify_components(self, neighbors_of):
-        """Runs trivially fast. GET SOME TIMINGS"""
+        """Runs trivially fast, under 100ms even for a tree of size 4173."""
         components, cur_component = [], set()
         avail, to_visit = set(neighbors_of.keys()), set()
         while len(avail) > 0:
@@ -863,12 +913,16 @@ class VariantFinder(object):
             return self.orig_dists.copy()
         dists = np.power(self.orig_dists.copy()*tolerance + 1.0, 1.0/tolerance) - 1.0
         return dists
-    def _partition_nearest(self, medoids, dists):
+    def _partition_nearest(self, medoids, dists, only_these=set()):
         """Given an array of indices, returns a list of lists, where the ith sublist contains the indices of the nodes closest to the ith medoid in inds."""
-        closest_medoid_ind = np.argmin(dists[:,medoids], 1) # If len(inds)==3, would look like [2,1,1,0,1,2,...].
+        if len(only_these) == 0:
+            allowed_inds = self._not_ignored_inds
+        else:
+            allowed_inds = self._not_ignored_inds & only_these
+        closest_medoid_ind = np.argmin(dists[:,medoids], 1) # If len(medoids)==3, would look like [2,1,1,0,1,2,...].
         clusts = [[] for i in medoids]
         for node_ind, med_ind in enumerate(closest_medoid_ind):
-            if node_ind in self._not_ignored_inds:
+            if node_ind in allowed_inds:
                 clusts[med_ind].append(node_ind)
         return clusts
     def _sum_dist_scores(self, medoids, clusters, dists):
@@ -1031,14 +1085,13 @@ class CoverManager(object):
             clstr_inds = list(self.nbrs[ind] - cur_covered)
             return (len(clstr_inds), -np.sum(self.dists[clstr_inds,ind]))
         # End of sort function.
-
-        self.cycle += 1
         if self.max_cycles != None and self.cycle >= self.max_cycles:
             return None
         #if len(self.inds_to_try) == 0: # Covered by the below test
         #    return None
         if len(self.cur_covered | self.remaining_coverage) < self.min_covered:
             return None
+        self.cycle += 1
         cur_covered = set(self.cur_covered)
         ind = max(self.inds_to_try, key=next_index_sort)
         #if len(self.nbrs[ind] - cur_covered) == 0: # Covered by the above test
