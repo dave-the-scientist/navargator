@@ -760,6 +760,36 @@ class VariantFinder(object):
 
         out_of_range = reduced.copy()
         out_of_range[out_of_range != 0] = 1
+
+        # The below identifies equal and dominating sets, where A dominates B iff len(A-B) > 0 & len(B-A) == 0
+        #diffs = out_of_range[:, np.newaxis] - out_of_range
+        #diffs[diffs == -1] = 0
+        #is_dominating = 1 - diffs.any(axis=2)
+        #np.fill_diagonal(is_dominating, 0)
+        #dom_coords = np.argwhere(is_dominating == 1)
+        #for dom_ind, sub_ind in dom_coords:
+        #    print dom_ind, sub_ind, self.leaves[dom_ind], self.leaves[sub_ind]
+        # Can't actually replace the sub inds by the dom inds. Can only do that for equal sets.
+
+        # PROBLEM. This is currently invalid (tbpb82 0.2@100%) slightly different answers for 1 centre. Maybe the replacment should be the smallest sum to all inds within threshold, instead of the smallest sum to all identical neighbors? Aren't those the same calc?
+
+        uniq_nbrs, count = np.unique(out_of_range.T, axis=0, return_counts=True) # Only checks avail+chosen
+        repeated_nbrs = uniq_nbrs[count > 1]
+        for rep_nbrs in repeated_nbrs:
+            rep_inds = np.argwhere(np.all(out_of_range.T == rep_nbrs, axis=1)).ravel() # These inds all have identical columns in out_of_range
+            rep_inds_set = set(rep_inds)
+            chsn_rep_inds = chsn_indices & rep_inds_set
+            if len(chsn_rep_inds) == 0:
+                rep_scores = np.sum(self.orig_dists[np.ix_(rep_inds,rep_inds)], axis=0)
+                best_ind = rep_inds[np.argmin(np.sum(self.orig_dists[np.ix_(rep_inds,rep_inds)], axis=0))] # Most central of the rep_inds
+                rep_inds_set.remove(best_ind)
+                to_del = rep_inds_set
+            else:
+                to_del = rep_inds_set - chsn_rep_inds
+            for del_ind in to_del:
+                del neighbors_of[del_ind]
+
+
         comp_centre_inds, comp_scores = [], []
         component_inds = self._identify_components(neighbors_of)
         print len(component_inds), 'components'
@@ -767,6 +797,8 @@ class VariantFinder(object):
             #if len(comp & avail_indices) == 1:
             #    pass # trivial solution
             nbrs = {ind:ns for ind, ns in neighbors_of.items() if ind in comp}
+
+
 
 
             min_to_cluster = len(comp)
