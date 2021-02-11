@@ -1,7 +1,7 @@
 import os, sys, time, threading
 from collections import deque
 from random import randint
-from flask import Flask, request, render_template, json
+from flask import Flask, request, render_template, json, cli
 from navargator_resources.variant_finder import VariantFinder, navargator_from_data
 from navargator_resources.curve_fitting import fit_to_sigmoid
 from navargator_resources.job_queue import JobQueue
@@ -45,6 +45,10 @@ else:
 
 # NOTES:
 # Negative branches are first balanced, or failing that are set to 0. Isn't great for the clustering or several display features to have negative distances.
+
+
+# This suppresses: "WARNING: This is a development server. Do not use it in a production deployment."
+cli.show_server_banner = lambda *_: None
 
 class NavargatorDaemon(object):
     """Background daemon to serve NaVARgator requests.

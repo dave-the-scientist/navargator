@@ -9,6 +9,8 @@
 // - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out. Also finish the bit in checkIfProcessingDone()
+//   - Better idea. Use "R1, R2, ..." for graph x-axis. Then in the Results pages section, can expand the parameters of that run: "R1 - [3] 100% within 0.02 (11.4213)". Re-order as necesary, so R1 is always the worst-scoring. If just one result, don't use the "R1 -" notation.
+//   - Though I want previously-visited links to indicate that; makes navigating new results easier.
 
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Profile (in chrome) opening a large tree. Can the loading/drawing be sped up?
@@ -525,7 +527,7 @@ function setupClusteringOptions() {
   $("#threshPercentSpinner").spinner({
     min: 1, max: 100,
     numberFormat: 'N1', step: 0.1
-  }).spinner('value', 95);
+  }).spinner('value', 100);
   $("#threshMaxCyclesSpinner").spinner({
     min: 1, max: 1000000,
     numberFormat: 'N0', step: 1

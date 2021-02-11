@@ -14,6 +14,7 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
+# - I changed _reduce_distances() so that unassigned are no longer inf out. Carefully check everything that uses the reduced matrix, to make sure this change doesn't affect them (it was messing with counting unassigned orphans).
 # - Finish / clean up _qt_radius_clustering().
 #   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
 #   - I'm pretty sure the partition_nearest and sum_scores functions could use some major optimization via vectorization.
@@ -306,7 +307,7 @@ class VariantFinder(object):
             elif method == 'qt greedy':
                 variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced)
 
-            print variants ## TESTING
+            print(variants) ## TESTING
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -637,11 +638,16 @@ class VariantFinder(object):
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?"""
         centre_inds, clustered_inds = [], set()
         chsn_indices = [self.index[name] for name in self.chosen]
+        avail_indices = set(self.index[name] for name in self.available)
+        unassigned_indices = list(self._not_ignored_inds - avail_indices - set(chsn_indices))
+        if unassigned_indices:
+            # Remove unassigned from centre consideration
+            reduced[:,unassigned_indices] = np.inf
         for chsn_ind in chsn_indices:
             cluster_inds = np.nonzero(reduced[:,chsn_ind] == 0)[0]
             centre_inds.append(chsn_ind)
             clustered_inds.update(cluster_inds)
-            # Remove chosen and their clusters from all consideration
+            # Remove chosen and their clusters from all future consideration
             reduced[:,cluster_inds] = np.inf
             reduced[cluster_inds,:] = np.inf
         # Iteratively find the largest cluster, until enough variants are clustered
@@ -665,7 +671,7 @@ class VariantFinder(object):
         nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
         count_max = nbr_counts.max()
         if count_max == 0:  # Indicates there are no available variants close enough
-            return None, [] # to the remaining unassigned. Usually results in an error.
+            return None, [] # to the remaining unassigned. Usually raises an error.
         max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
         if len(max_inds) == 1: # A single largest cluster
             best_center = max_inds[0]
@@ -707,11 +713,6 @@ class VariantFinder(object):
         #  - tree_1399 1@95% (1500 cycles) took 58s, gave [349, 165, 82, 604, 586]=697.434
         #  - tree_4173 0.5@95% (1500 cycles) took 446s, gave [2368, 1422, 1077, 887]=1016.444
 
-        component_inds = self._identify_components(neighbors_of)
-        print len(component_inds), 'components'
-
-        # check for dominated avails.
-        # should i? if A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
 
         covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, max_cycles, chosen=chsn_indices)
         centre_inds, score = self._recursive_qt_cluster(self._not_ignored_inds, min_to_cluster, covered_inds, chsn_indices, self._not_ignored_inds, np.inf)
@@ -722,7 +723,7 @@ class VariantFinder(object):
             # With this optimization, even before components, 50 cycles usually recovers the optimal tree
             # tree_487 0.05@95% required 500. Possibly cycles ~== leaves is a decent guess?
             centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, min_to_cluster, reduced)
-        print 'cycles', max_cycles, covered_inds.cycle, 'score', sum(final_scores), centre_inds
+        print('cycles', max_cycles, covered_inds.cycle, 'score', sum(final_scores), centre_inds)
         alt_variants = []
         return centre_inds, final_scores, alt_variants
     def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles):
@@ -730,18 +731,10 @@ class VariantFinder(object):
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
         This implementation uses the "reduced" distance matrix for initialization, but not during the algorithm. It will, however, be modified during execution of the greedy implementation which is used as an initial solution. """
-
-        chsn_indices = set(self.index[name] for name in self.chosen)
-        avail_indices = set(self.index[name] for name in self.available)
-
         neighbors_of = {}
-        for ind in chsn_indices | avail_indices:
+        for ind in self._not_ignored_inds:
             clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
             neighbors_of[ind] = set(clstr_inds)
-
-        # check for dominated avails.
-        # If A dominates B, then C is chosen such that A & B now have the same # of neighbors, B could have a lower score than A. I can check for that though.
-        # tree_275 is a good worst-case example, as it's such a gradual and even and balanced. I think excluding dominated will help
 
         # Identify components. For each, perform the below.
         # - If the # allowed to be missed is greater than the number of singleton components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
@@ -756,10 +749,17 @@ class VariantFinder(object):
 
         #  - tbpb82 0.4@100% (uncapped) took 9.32s, gave [53, 47, 5, 21]=10.2145 [21062 cycles]
         # - With components:
-        #  - tree_275 (0.04@100%) 15-solution @ 4.107147 until cycle 219k, @ 4.067367 until cycle 228k, 4.048546
+        #  - tree_275 (0.04@100%) 15-solution @ 4.107147 until cycle 219k, @ 4.067367 until cycle 228k, 4.048546; nothing else up to ~1.2mil
+        #  - Removing identical sets: 4.067367 was found at 44k cycles instead of 219k, 4.048546 @ 49k, 4.048471 @ 211k, 4.044133 @ 237k, 4.038715 @ 351k, 4.034377 @ 377k, 4.033913 @ 491k, 4.029575 @ 517k, nothing up to 1mil
 
-        out_of_range = reduced.copy()
-        out_of_range[out_of_range != 0] = 1
+        #  - The progression of solutions; anything here suggests any new algorithmic improvements?
+        #print 'oldest', ', '.join(self.leaves[x] for x in [0, 128, 34, 6, 262, 12, 144, 273, 19, 85, 246, 87, 185, 90, 253])
+        # NEIS1690_1903_GN, NEIS1690_3151_GN, NEIS1690_1745_GN, NEIS1690_1699_GN, NEIS1690_724_GN, NEIS1690_731_GN, NEIS1690_1709_GN, NEIS1690_2065_GN, NEIS1690_95_GN, NEIS1690_1725_GN, NEIS1690_4442_GN, NEIS1690_697_GN, NEIS1690_1836_GN, NEIS1690_2533_GN, NEIS1690_709_GN
+        #print 'old', ', '.join(self.leaves[x] for x in [0, 128, 34, 6, 262, 12, 144, 273, 19, 212, 246, 87, 185, 90, 253])
+        # NEIS1690_117_GN, NEIS1690_1903_GN, NEIS1690_1745_GN, NEIS1690_1699_GN, NEIS1690_724_GN, NEIS1690_1709_GN, NEIS1690_2065_GN, NEIS1690_95_GN, NEIS1690_1725_GN, NEIS1690_4442_GN, NEIS1690_697_GN, NEIS1690_1836_GN, NEIS1690_2533_GN, NEIS1690_1839_GN, NEIS1690_709_GN
+        #print 'best', ', '.join(self.leaves[x] for x in [128, 193, 34, 6, 262, 267, 12, 144, 273, 19, 212, 246, 87, 185, 253])
+        # NEIS1690_1903_GN, NEIS1690_3151_GN, NEIS1690_1745_GN, NEIS1690_1699_GN, NEIS1690_724_GN, NEIS1690_731_GN, NEIS1690_1709_GN, NEIS1690_2065_GN, NEIS1690_95_GN, NEIS1690_1725_GN, NEIS1690_4442_GN, NEIS1690_697_GN, NEIS1690_1836_GN, NEIS1690_2533_GN, NEIS1690_709_GN
+
 
         # The below identifies equal and dominating sets, where A dominates B iff len(A-B) > 0 & len(B-A) == 0
         #diffs = out_of_range[:, np.newaxis] - out_of_range
@@ -769,66 +769,108 @@ class VariantFinder(object):
         #dom_coords = np.argwhere(is_dominating == 1)
         #for dom_ind, sub_ind in dom_coords:
         #    print dom_ind, sub_ind, self.leaves[dom_ind], self.leaves[sub_ind]
-        # Can't actually replace the sub inds by the dom inds. Can only do that for equal sets.
+        # Can't replace the sub inds by the dom inds. Can only do that for equal sets.
 
-        # PROBLEM. This is currently invalid (tbpb82 0.2@100%) slightly different answers for 1 centre. Maybe the replacment should be the smallest sum to all inds within threshold, instead of the smallest sum to all identical neighbors? Aren't those the same calc?
+        chsn_indices = set(self.index[name] for name in self.chosen)
+        avail_indices = set(self.index[name] for name in self.available)
 
-        uniq_nbrs, count = np.unique(out_of_range.T, axis=0, return_counts=True) # Only checks avail+chosen
+        # For all variants with identical neighbors, only a single one needs to be considered (most central).
+        # Filters all other non-optimal identical neighbors, as well as all unassigned from neighbors_of
+        considered_nbrs = {}
+        out_of_range = reduced.copy()
+        out_of_range[out_of_range != 0] = 1
+        uniq_nbrs, count = np.unique(out_of_range.T, axis=0, return_counts=True)
         repeated_nbrs = uniq_nbrs[count > 1]
         for rep_nbrs in repeated_nbrs:
-            rep_inds = np.argwhere(np.all(out_of_range.T == rep_nbrs, axis=1)).ravel() # These inds all have identical columns in out_of_range
+            rep_inds = np.argwhere(np.all(out_of_range.T == rep_nbrs, axis=1)).ravel() # Inds with identical columns in out_of_range
             rep_inds_set = set(rep_inds)
             chsn_rep_inds = chsn_indices & rep_inds_set
-            if len(chsn_rep_inds) == 0:
-                rep_scores = np.sum(self.orig_dists[np.ix_(rep_inds,rep_inds)], axis=0)
-                best_ind = rep_inds[np.argmin(np.sum(self.orig_dists[np.ix_(rep_inds,rep_inds)], axis=0))] # Most central of the rep_inds
-                rep_inds_set.remove(best_ind)
-                to_del = rep_inds_set
+            if len(chsn_rep_inds) != 0: # If any chosen in the set, they are the only valid choices
+                for chsn_ind in chsn_rep_inds:
+                    considered_nbrs[chsn_ind] = neighbors_of[chsn_ind]
             else:
-                to_del = rep_inds_set - chsn_rep_inds
-            for del_ind in to_del:
-                del neighbors_of[del_ind]
-
+                avail_reps = [rep_ind for rep_ind in rep_inds if rep_ind in avail_indices]
+                if len(avail_reps) != 0:
+                    common_nbrs = list(neighbors_of[avail_reps[0]])
+                    best_ind = avail_reps[np.argmin(np.sum(self.orig_dists[np.ix_(common_nbrs,avail_reps)], axis=0))] # Most central of the rep_inds
+                    considered_nbrs[best_ind] = neighbors_of[best_ind]
 
         comp_centre_inds, comp_scores = [], []
         component_inds = self._identify_components(neighbors_of)
-        print len(component_inds), 'components'
-        for comp in component_inds:
-            #if len(comp & avail_indices) == 1:
-            #    pass # trivial solution
-            nbrs = {ind:ns for ind, ns in neighbors_of.items() if ind in comp}
-
-
-
-
-            min_to_cluster = len(comp)
-            #allowed_missed = len(self._not_ignored_inds) - min_to_cluster
-            allowed_missed = 0
-
-            covered_inds = CoverManager(min_to_cluster, nbrs, self.orig_dists, max_cycles, chosen=chsn_indices)
-
-            centre_inds, score = self._recursive_qt_cluster(comp, min_to_cluster, covered_inds, chsn_indices, comp, np.inf)
-            centre_inds = list(centre_inds)
-            final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
-            final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-            if max_cycles != None and covered_inds.cycle >= max_cycles:
-                # With this optimization, even before components, 50 cycles usually recovers the optimal tree
-                # tree_487 0.05@95% required 500. Possibly cycles ~== leaves is a decent guess?
+        print('num components', len(component_inds))
+        if min_to_cluster == len(self._not_ignored_inds): # Critical percent = 100%
+            comp_cycles, cycle_rollover = None, 0
+            for comp in component_inds:
                 comp_chosen = chsn_indices & comp
                 comp_avail = avail_indices & comp
-                centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, allowed_missed, comp, comp_chosen, comp_avail, out_of_range)
-            print 'cycles', covered_inds.cycle, len(comp), centre_inds, sum(final_scores)
-            comp_centre_inds.extend(centre_inds)
-            comp_scores.extend(final_scores)
+                print('comp', len(comp), 'C', len(comp_chosen), 'A', len(comp_avail))
+                # #  Trivial cases
+                if len(comp_avail) == 0: # Must take all chosen
+                    for centre_ind in comp_chosen:
+                        comp_centre_inds.append(centre_ind)
+                        comp_scores.append(0.0)
+                    continue
+                elif len(comp) == 1:
+                    centre_ind = next(iter(comp)) # Gets value without modifying the set
+                    comp_centre_inds.append(centre_ind)
+                    comp_scores.append(0.0)
+                    continue
+                elif len(comp_avail) == 1 and len(comp_chosen) == 0:
+                    centre_ind = next(iter(comp_avail))
+                    other_inds = list(comp - comp_avail)
+                    comp_centre_inds.append(centre_ind)
+                    comp_scores.append(np.sum(self.orig_dists[other_inds,centre_ind]))
+                    continue
+                elif len(comp) == 2:
+                    if len(comp_chosen) == 1: # Already know len(comp_chosen) != 2, as len(comp_avail) != 0
+                        centre_ind = next(iter(comp_chosen))
+                        other_ind = (comp - comp_chosen).pop()
+                    else: # len(comp_avail) must be 1 or 2, both cases are equivalent
+                        centre_ind = next(iter(comp_avail))
+                        other_ind = (comp - set([centre_ind])).pop()
+                    comp_centre_inds.append(centre_ind)
+                    comp_scores.append(self.orig_dists[other_ind,centre_ind])
+                    continue
+                # #  Non-trivial component
+                comp_nbrs = {ind:considered_nbrs[ind] for ind in comp if ind in considered_nbrs}
+                comp_to_cluster, allowed_missed = len(comp), 0
+                if max_cycles != None:
+                    comp_cycles = ceil(comp_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
+                covered_inds = CoverManager(comp_to_cluster, comp_nbrs, self.orig_dists, comp_cycles, chosen=comp_chosen)
+                print('covered before recursion', len(covered_inds.cur_covered), 'of', comp_to_cluster)
+                if len(covered_inds.cur_covered) >= comp_to_cluster: # The chosen are sufficient
+                    centre_inds = list(comp_chosen)
+                    final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
+                    final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+                    if max_cycles != None:
+                        cycle_rollover += comp_cycles
+                else:
+                    centre_inds, score = self._recursive_qt_cluster(comp, comp_to_cluster, covered_inds, comp_chosen, comp, np.inf)
+                    centre_inds = list(centre_inds)
+                    final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
+                    final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
+                    if max_cycles != None:
+                        if covered_inds.cycle < comp_cycles: # optimal solution was found
+                            cycle_rollover += comp_cycles - covered_inds.cycle
+                        else:
+                            centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, allowed_missed, comp, comp_chosen, comp_avail, out_of_range)
+                            cycle_rollover = 0
+                comp_centre_inds.extend(centre_inds)
+                comp_scores.extend(final_scores)
+                print('cycles', covered_inds.cycle, centre_inds, sum(final_scores))
+        else:
+            pass # Deal with sub-100 crit %
+            # Split into singletons & larger components
+            # I should be able to reduce min_to_cluster by removing from consideration all unassigned > threshold, as they're guaranteed to be part of allowed_missed and I can add them back at the end.
 
-        print 'score', sum(comp_scores), comp_centre_inds
+        print('score', sum(comp_scores), comp_centre_inds)
         alt_variants = []
         return comp_centre_inds, comp_scores, alt_variants
     def _recursive_qt_cluster(self, component, min_to_cluster, covered_inds, centre_inds, best_centre_inds, best_score):
-        # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N-1 formed by swapping one index. Assuming N-1 indices as correct, the greedy choice of the next index is guaranteed optimal.
+        # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N formed by swapping one index. Assuming N-1 indices as correct, the greedy choice of the next index is guaranteed optimal.
 
-        if covered_inds.cycle % 1000 == 0:
-            print covered_inds.cycle, centre_inds, best_centre_inds, best_score
+        #if covered_inds.cycle % 1000 == 0:
+        #    print(covered_inds.cycle, centre_inds, best_centre_inds, best_score)
 
         if len(centre_inds) >= len(best_centre_inds):
             # Already have a guaranteed better solution. Using ">=" as the new centre hasn't been added yet
@@ -891,42 +933,41 @@ class VariantFinder(object):
     def _identify_components(self, neighbors_of):
         """Runs trivially fast, under 100ms even for a tree of size 4173."""
         components, cur_component = [], set()
-        avail, to_visit = set(neighbors_of.keys()), set()
-        while len(avail) > 0:
+        not_visited, to_visit = set(neighbors_of.keys()), set()
+        while len(not_visited) > 0:
             if len(to_visit) == 0:
-                cur_ind = avail.pop()
-                if len(cur_component) != 0:
+                if len(cur_component) > 0:
                     components.append(cur_component)
                     cur_component = set()
+                cur_ind = not_visited.pop()
             else:
                 cur_ind = to_visit.pop()
-                avail.remove(cur_ind)
+                not_visited.remove(cur_ind)
             nbrs = neighbors_of[cur_ind]
             cur_component.update(nbrs)
-            to_visit.update(nbrs & avail)
-        if len(cur_component) != 0:
+            to_visit.update(nbrs & not_visited)
+        if len(cur_component) > 0:
             components.append(cur_component)
         return components
 
 
     def _reduce_distances(self, threshold, thresh_percent):
-        """Does not remove chosen. If the given thresholds are infeasible, returns ([], num_orphans) to indicate an error."""
+        """Returns a copy of the distance matrix, where all distances <= threshold are set to 0. Removes the ignored variants from consideration by setting their columns and rows to inf. If the given threshold is infeasible, returns ([], num_orphans) to indicate an error."""
         reduced = self.orig_dists.copy()
         reduced[reduced <= threshold] = 0
-        chsn_indices = [self.index[name] for name in self.chosen]
-        ignrd_indices = [self.index[name] for name in self.ignored]
-        avail_indices = [self.index[name] for name in self.available]
-        unassigned_indices = list(self._not_ignored_inds - set(avail_indices) - set(chsn_indices))
         # Remove ignored from all consideration
+        ignrd_indices = [self.index[name] for name in self.ignored]
         if ignrd_indices:
             reduced[:,ignrd_indices] = np.inf
             reduced[ignrd_indices,:] = np.inf
-        # Remove unassigned from centre consideration
-        if unassigned_indices:
-            reduced[:,unassigned_indices] = np.inf
         # Check if the given parameters are feasible
+        chsn_indices = set(self.index[name] for name in self.chosen)
+        avail_indices = set(self.index[name] for name in self.available)
+        ca_indices = chsn_indices | avail_indices
+        unassigned_indices = list(self._not_ignored_inds - ca_indices)
+        ca_indices = list(ca_indices)
         min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
-        avail_in_range = np.count_nonzero(reduced[unassigned_indices,:] == 0, axis=1)
+        avail_in_range = np.count_nonzero(reduced[np.ix_(unassigned_indices,ca_indices)] == 0, axis=1)
         unassigned_orphans = np.sum(avail_in_range == 0)
         if unassigned_orphans > (len(self._not_ignored_inds) - min_to_cluster):
             # Too many unassigned further than threshold distance from the closest available
@@ -970,7 +1011,7 @@ class VariantFinder(object):
         """Fills out the self.cache entry for the given clustering run. 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]. If the clustering run terminated with an error, variant_inds=[] and scores is the given error message."""
         self.cache['params'][params] = run_id
         run_length = time.time() - self.cache[run_id]['run_time']
-        print 'run time', self.cache[run_id]['method'], run_length
+        print('run time', self.cache[run_id]['method'], run_length)
         if len(variant_inds) == 0:
             self.cache[run_id].update( {'status':'error', 'error_message':scores, 'run_time':run_length} )
             return
