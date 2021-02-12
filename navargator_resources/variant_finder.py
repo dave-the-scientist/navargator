@@ -294,16 +294,18 @@ class VariantFinder(object):
         elif method in self.threshold_cluster_methods:
             threshold, thresh_percent = args[:2]
             params = (threshold, thresh_percent)
-            reduced, min_to_cluster = self._reduce_distances(threshold, thresh_percent)
 
-            if len(reduced) == 0:
-                num_orphans, total_clusterable = min_to_cluster, float(len(self._not_ignored_inds))
-                percent_feasible = (total_clusterable - num_orphans) / total_clusterable * 100.0
+            reduced, unassigned_orphans = self._reduce_distances(threshold)
+            min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
+            num_allowed_orphans = len(self._not_ignored_inds) - min_to_cluster
+            if len(unassigned_orphans) > num_allowed_orphans:
+                # Too many unassigned further than threshold distance from the closest available
+                percent_feasible = (len(self._not_ignored_inds)-len(unassigned_orphans)) / float(len(self._not_ignored_inds)) * 100.0
                 error_msg = 'Error: infeasible parameters (only {:.2f}% could be clustered within the given threhsold). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format(percent_feasible)
                 variants, scores, alt_variants = [], error_msg, []
             elif method == 'qt minimal':
                 max_cycles = args[2]
-                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, max_cycles)
+                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, max_cycles, unassigned_orphans)
             elif method == 'qt greedy':
                 variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced)
 
@@ -687,46 +689,7 @@ class VariantFinder(object):
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
 
-
-    def _qt_radius_clustering_minimal_old(self, min_to_cluster, reduced, max_cycles):
-        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
-        Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
-        Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
-        This implementation uses the "reduced" distance matrix for initialization, but not during the algorithm. It will, however, be modified during execution of the greedy implementation which is used as an initial solution. """
-
-        chsn_indices = set(self.index[name] for name in self.chosen)
-        avail_indices = set(self.index[name] for name in self.available)
-
-        neighbors_of = {}
-        for ind in chsn_indices | avail_indices:
-            clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
-            neighbors_of[ind] = set(clstr_inds)
-
-        # Identify components. For each, perform the below.
-        # - If the # allowed to be missed is greater than the number of singleton components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
-        #   - Probably apply the same threshold to all components. But then it's not guaranteed optimal...
-        # - Some choices of threshold and assignments will leave some unassigned as a part of more than 1 component (because it only "chains" with avails). Should they be part of 1, both, or neither? Should I solve each indepenently then run it again with their combo (and the good quality solution)? Or should my definition of components chain on unassigned? Loses some speed, but retains the optimal guarantee.
-        # - How should cycles be balanced? Probably just proportional based on component size, with carry-over from one to the next (start small, or large? small less likely to use resources). Details matter less, as we have no optimal guarantee.
-        # - Pre-component timings:
-        #  - tbpb82 0.3@95% (uncapped) took 11.0s, gave [64, 16, 53, 21]=10.19053 [24091 cycles]
-        #  - tbpb82 0.2@95% (uncapped) unfinished after 477k cycles, gave [64, 1, 5, 16, 43, 21]=4.5458
-        #  - tree_1399 1@95% (1500 cycles) took 58s, gave [349, 165, 82, 604, 586]=697.434
-        #  - tree_4173 0.5@95% (1500 cycles) took 446s, gave [2368, 1422, 1077, 887]=1016.444
-
-
-        covered_inds = CoverManager(min_to_cluster, neighbors_of, self.orig_dists, max_cycles, chosen=chsn_indices)
-        centre_inds, score = self._recursive_qt_cluster(self._not_ignored_inds, min_to_cluster, covered_inds, chsn_indices, self._not_ignored_inds, np.inf)
-        centre_inds = list(centre_inds)
-        final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
-        final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-        if max_cycles != None and covered_inds.cycle >= max_cycles:
-            # With this optimization, even before components, 50 cycles usually recovers the optimal tree
-            # tree_487 0.05@95% required 500. Possibly cycles ~== leaves is a decent guess?
-            centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, min_to_cluster, reduced)
-        print('cycles', max_cycles, covered_inds.cycle, 'score', sum(final_scores), centre_inds)
-        alt_variants = []
-        return centre_inds, final_scores, alt_variants
-    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles):
+    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles, unassigned_orphans):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %). Might want to use greedy to find a quick first solution, then iterate over the smallest clusters first in the CP algorithm. We want a fast decent solution for the branch/bound part, but for CP you want to fail fast to cut out solution space. Try it both ways.
         Still don't know if it's a good idea to inf out both rows and columns of variants being considered as assigned to some centre; maybe count them as clustered, but still allow them to be available?
@@ -771,11 +734,12 @@ class VariantFinder(object):
         #    print dom_ind, sub_ind, self.leaves[dom_ind], self.leaves[sub_ind]
         # Can't replace the sub inds by the dom inds. Can only do that for equal sets.
 
+        # Another potential improvement only for 100% runs: consider a CoverManager with all avail+chosen selected. If any variants are only covered by 1 centre, that must become a chosen. Any only covered by 2, at least one of those must be chosen. Could make up some rules pertaining to those and use to constrain: len(chosen & rule1) > 0 and len(chosen & rule2) > 0 and so on...
+
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
 
         # For all variants with identical neighbors, only a single one needs to be considered (most central).
-        # Filters all other non-optimal identical neighbors, as well as all unassigned from neighbors_of
         considered_nbrs = {}
         out_of_range = reduced.copy()
         out_of_range[out_of_range != 0] = 1
@@ -797,18 +761,24 @@ class VariantFinder(object):
 
         comp_centre_inds, comp_scores = [], []
         component_inds = self._identify_components(neighbors_of)
+
         print('num components', len(component_inds))
-        if min_to_cluster == len(self._not_ignored_inds): # Critical percent = 100%
+        if min_to_cluster == len(self._not_ignored_inds): # Critical percent == 100%
             comp_cycles, cycle_rollover = None, 0
             for comp in component_inds:
+                comp_to_cluster, allowed_missed = len(comp), 0
+                if max_cycles != None:
+                    comp_cycles = ceil(comp_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
+                    cycle_rollover = comp_cycles # Premature, but to allow "continue" statements below
                 comp_chosen = chsn_indices & comp
                 comp_avail = avail_indices & comp
-                print('comp', len(comp), 'C', len(comp_chosen), 'A', len(comp_avail))
-                # #  Trivial cases
+                # #  Trivial components
                 if len(comp_avail) == 0: # Must take all chosen
-                    for centre_ind in comp_chosen:
-                        comp_centre_inds.append(centre_ind)
-                        comp_scores.append(0.0)
+                    centre_inds = list(comp_chosen)
+                    cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
+                    final_scores = self._sum_dist_scores(centre_inds, cluster_inds, self.orig_dists)
+                    comp_centre_inds.extend(centre_inds)
+                    comp_scores.extend(final_scores)
                     continue
                 elif len(comp) == 1:
                     centre_ind = next(iter(comp)) # Gets value without modifying the set
@@ -831,19 +801,15 @@ class VariantFinder(object):
                     comp_centre_inds.append(centre_ind)
                     comp_scores.append(self.orig_dists[other_ind,centre_ind])
                     continue
-                # #  Non-trivial component
+                # #  Non-trivial components
                 comp_nbrs = {ind:considered_nbrs[ind] for ind in comp if ind in considered_nbrs}
-                comp_to_cluster, allowed_missed = len(comp), 0
-                if max_cycles != None:
-                    comp_cycles = ceil(comp_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
+                print('num nbrs', len(comp_nbrs))
                 covered_inds = CoverManager(comp_to_cluster, comp_nbrs, self.orig_dists, comp_cycles, chosen=comp_chosen)
                 print('covered before recursion', len(covered_inds.cur_covered), 'of', comp_to_cluster)
                 if len(covered_inds.cur_covered) >= comp_to_cluster: # The chosen are sufficient
                     centre_inds = list(comp_chosen)
                     final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
                     final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-                    if max_cycles != None:
-                        cycle_rollover += comp_cycles
                 else:
                     centre_inds, score = self._recursive_qt_cluster(comp, comp_to_cluster, covered_inds, comp_chosen, comp, np.inf)
                     centre_inds = list(centre_inds)
@@ -851,17 +817,30 @@ class VariantFinder(object):
                     final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
                     if max_cycles != None:
                         if covered_inds.cycle < comp_cycles: # optimal solution was found
-                            cycle_rollover += comp_cycles - covered_inds.cycle
-                        else:
+                            cycle_rollover -= covered_inds.cycle
+                        else: # max_cycles reached, no optimality guarantee
                             centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, allowed_missed, comp, comp_chosen, comp_avail, out_of_range)
                             cycle_rollover = 0
                 comp_centre_inds.extend(centre_inds)
                 comp_scores.extend(final_scores)
                 print('cycles', covered_inds.cycle, centre_inds, sum(final_scores))
         else:
-            pass # Deal with sub-100 crit %
+            comp_cycles, cycle_rollover = None, 0
+            #unassigned_orphans
+
+            for comp in component_inds:
+                pass # Deal with sub-100 crit %
             # Split into singletons & larger components
             # I should be able to reduce min_to_cluster by removing from consideration all unassigned > threshold, as they're guaranteed to be part of allowed_missed and I can add them back at the end.
+            # Do I solve the 100% first using components, then solve the sub-100 with them all combined? The 100 solution could be the temp best. Would be a problem if the new optimal solution is the same length but has a better score (the recursion assumes that isn't possible).
+            #  - Quick feasibility check might be to consider each centre, and see how many orphans are produced if it were removed. If that's true for any of them (check smallest first), then there is a solution guaranteed better than the 100% solution. If it's not true for any, there may or may not be a valid smaller solution
+            # Can I identify which variants will be removed from the solution?
+            #  - All components comprising unassigned_orphans MUST be in the set to be removed (they're already removed, by definition). May be some in a tree, may be none.
+            #  - I can identify some components that could not possibly have variants removed to improve the overall score: any component which only requires 1 cluster centre (whether there are multiple avail+chosen options or it's constrained to one). May be some in a tree, may be none.
+            #  - Wouldn't that just be like another set cover problem? But easier this time?
+            #  - If I could remove a component of 2, is that always better than removing 2 variants from a large component with 2 centres, if that large component can now be covered by 1? No, it is definitely not always better.
+            # Do I not do 100% first, but instead solve each component for len(comp)-allowed_missed? Some components would give the same answer (ie 100% and sub-100% yielded same solution), so I know none of the allowed_missed can be allocated there. Other components might have a 4 solution that missed 10, a 5 solution that misses 4, a 6 solution that misses 2, etc; and I'd have to pick a combo of 1 option per component (backpack problem I think).
+
 
         print('score', sum(comp_scores), comp_centre_inds)
         alt_variants = []
@@ -951,7 +930,7 @@ class VariantFinder(object):
         return components
 
 
-    def _reduce_distances(self, threshold, thresh_percent):
+    def _reduce_distances(self, threshold):
         """Returns a copy of the distance matrix, where all distances <= threshold are set to 0. Removes the ignored variants from consideration by setting their columns and rows to inf. If the given threshold is infeasible, returns ([], num_orphans) to indicate an error."""
         reduced = self.orig_dists.copy()
         reduced[reduced <= threshold] = 0
@@ -964,15 +943,11 @@ class VariantFinder(object):
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
         ca_indices = chsn_indices | avail_indices
-        unassigned_indices = list(self._not_ignored_inds - ca_indices)
+        unassigned_indices = np.array(list(self._not_ignored_inds - ca_indices))
         ca_indices = list(ca_indices)
-        min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
         avail_in_range = np.count_nonzero(reduced[np.ix_(unassigned_indices,ca_indices)] == 0, axis=1)
-        unassigned_orphans = np.sum(avail_in_range == 0)
-        if unassigned_orphans > (len(self._not_ignored_inds) - min_to_cluster):
-            # Too many unassigned further than threshold distance from the closest available
-            return [], unassigned_orphans
-        return reduced, min_to_cluster
+        unassigned_orphans = unassigned_indices[avail_in_range == 0]
+        return reduced, unassigned_orphans
 
     def _transform_distances(self, tolerance):
         """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances."""
