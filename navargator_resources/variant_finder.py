@@ -718,6 +718,7 @@ class VariantFinder(object):
         # - With components:
         #  - tree_275 (0.04@100%) 15-solution @ 4.107147 until cycle 219k, @ 4.067367 until cycle 228k, 4.048546; nothing else up to ~1.2mil
         #  - Removing identical sets: 4.067367 was found at 44k cycles instead of 219k, 4.048546 @ 49k, 4.048471 @ 211k, 4.044133 @ 237k, 4.038715 @ 351k, 4.034377 @ 377k, 4.033913 @ 491k, 4.029575 @ 517k, nothing up to 1mil
+        #  - Feb18 with new ind selection (much slower per cycle, fewer cycles?): 4.048546 @ 1k, 4.029575 @ 246k, nothing up to 825k
 
         #  - The progression of solutions; anything here suggests any new algorithmic improvements?
         #print 'oldest', ', '.join(self.leaves[x] for x in [0, 128, 34, 6, 262, 12, 144, 273, 19, 85, 246, 87, 185, 90, 253])
@@ -766,92 +767,30 @@ class VariantFinder(object):
         for uniq_ind in (chsn_indices | avail_indices) - repeated_inds:
             considered_nbrs[uniq_ind] = neighbors_of[uniq_ind]
 
-        comp_centre_inds, comp_scores = [], []
+        final_centre_inds, final_scores = [], []
         component_inds = self._identify_components(neighbors_of)
 
         print('num components', len(component_inds))
         if min_to_cluster == len(self._not_ignored_inds): # Critical percent == 100%
-            comp_cycles, cycle_rollover = None, 0
-            for comp in component_inds:
-                comp_to_cluster, allowed_missed = len(comp), 0
-
-                """
+            subset_cycles, cycle_rollover = None, 0
+            for subset_indices in component_inds:
+                subset_to_cluster = len(subset_indices)
+                subset_chosen = chsn_indices & subset_indices
+                subset_avail = avail_indices & subset_indices
                 if max_cycles != None:
-                    comp_cycles = ceil(comp_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
-                    cycle_rollover = comp_cycles # Premature, but allows the "continue" statements below
-                comp_chosen = chsn_indices & comp
-                comp_avail = avail_indices & comp
-                # #  Trivial components
-                if len(comp_avail) == 0: # Must take all chosen
-                    centre_inds = list(comp_chosen)
-                    cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
-                    final_scores = self._sum_dist_scores(centre_inds, cluster_inds, self.orig_dists)
-                    comp_centre_inds.extend(centre_inds)
-                    comp_scores.extend(final_scores)
-                    continue
-                elif len(comp) == 1:
-                    centre_ind = next(iter(comp)) # Gets value without modifying the set
-                    comp_centre_inds.append(centre_ind)
-                    comp_scores.append(0.0)
-                    continue
-                elif len(comp_avail) == 1 and len(comp_chosen) == 0:
-                    centre_ind = next(iter(comp_avail))
-                    other_inds = list(comp - comp_avail)
-                    comp_centre_inds.append(centre_ind)
-                    comp_scores.append(np.sum(self.orig_dists[other_inds,centre_ind]))
-                    continue
-                elif len(comp) == 2:
-                    if len(comp_chosen) == 1: # Already know len(comp_chosen) != 2, as len(comp_avail) != 0
-                        centre_ind = next(iter(comp_chosen))
-                        other_ind = (comp - comp_chosen).pop()
-                    else: # len(comp_avail) must be 1 or 2, both cases are equivalent
-                        centre_ind = next(iter(comp_avail))
-                        other_ind = (comp - set([centre_ind])).pop()
-                    comp_centre_inds.append(centre_ind)
-                    comp_scores.append(self.orig_dists[other_ind,centre_ind])
-                    continue
-                # #  Non-trivial components
-                comp_nbrs = {ind:considered_nbrs[ind] for ind in comp if ind in considered_nbrs}
-                print('num nbrs', len(comp_nbrs), comp_nbrs.keys())
-                covered_inds = CoverManager(comp_to_cluster, comp_nbrs, self.orig_dists, comp_cycles, chosen=comp_chosen)
-                print('covered before recursion', len(covered_inds.cur_covered), 'of', comp_to_cluster)
-                if len(covered_inds.cur_covered) >= comp_to_cluster: # The chosen are sufficient
-                    centre_inds = list(comp_chosen)
-                    final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
-                    final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-                else:
-                    centre_inds, score = self._recursive_qt_cluster(comp, comp_to_cluster, covered_inds, comp_chosen, comp, np.inf)
-                    centre_inds = list(centre_inds)
-                    final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists, only_these=comp)
-                    final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
-                    if max_cycles != None:
-                        if covered_inds.cycle < comp_cycles: # optimal solution was found
-                            cycle_rollover -= covered_inds.cycle
-                        else: # max_cycles reached, no optimality guarantee
-                            centre_inds, final_scores = self._single_pass_optimize(centre_inds, final_scores, score, comp_to_cluster, comp, comp_chosen, comp_avail, out_of_range)
-                            cycle_rollover = 0
-                comp_centre_inds.extend(centre_inds)
-                comp_scores.extend(final_scores)
-                print('cycles', covered_inds.cycle, centre_inds, sum(final_scores))
-
-                """
-                subset_chosen = chsn_indices & comp
-                subset_avail = avail_indices & comp
-                if max_cycles != None:
-                    comp_cycles = ceil(comp_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
-                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(comp, subset_chosen, subset_avail, considered_nbrs, comp_to_cluster, comp_cycles, out_of_range)
-                if subset_cycles_used == None or subset_cycles_used >= comp_cycles:
+                    subset_cycles = ceil(subset_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
+                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(subset_indices, subset_chosen, subset_avail, considered_nbrs, subset_to_cluster, subset_cycles, out_of_range)
+                if subset_cycles_used == None or subset_cycles_used >= subset_cycles:
                     cycle_rollover = 0
                 else:
-                    cycle_rollover = comp_cycles - subset_cycles_used
-                comp_centre_inds.extend(subset_centre_inds)
-                comp_scores.extend(subset_scores)
-
+                    cycle_rollover = subset_cycles - subset_cycles_used
+                final_centre_inds.extend(subset_centre_inds)
+                final_scores.extend(subset_scores)
         else:
-            comp_cycles, cycle_rollover = None, 0
+            subset_cycles, cycle_rollover = None, 0
             #unassigned_orphans
 
-            for comp in component_inds:
+            for subset_indices in component_inds:
                 pass # Deal with sub-100 crit %
             # Split into singletons & larger components
             # I should be able to reduce min_to_cluster by removing from consideration all unassigned > threshold, as they're guaranteed to be part of allowed_missed and I can add them back at the end.
@@ -867,9 +806,9 @@ class VariantFinder(object):
             #  - If I re-submit some subset to clustering but reduce min_to_cluster, is it a good idea to take the 100% solution for that subset, add 1 garbage element to the solution, and submit that as best_centre_inds with a score of np.inf? The 100% solution is guaranteed to be a valid solution to a sub-100% run, but it may or may not be optimal. Might not need to add the garbage element, but I think it might simplify score checking (as the recursive doesn't bother to score solutions of equal length to best_centre_inds).
 
 
-        print('score', sum(comp_scores), comp_centre_inds)
+        print('score', sum(final_scores), final_centre_inds)
         alt_variants = []
-        return comp_centre_inds, comp_scores, alt_variants
+        return final_centre_inds, final_scores, alt_variants
 
     def _qt_radius_cluster_subset(self, subset_indices, subset_chosen, subset_avail, considered_nbrs, subset_to_cluster, subset_cycles, out_of_range):
         # TODO: identify any unassigned orphans generated by the returned pattern
@@ -913,16 +852,16 @@ class VariantFinder(object):
             return [subset_centre_ind], [subset_score], subset_cycles_used
         # #  Non-trivial subsets
         subset_nbrs = {ind:considered_nbrs[ind] for ind in subset_indices if ind in considered_nbrs}
-        #print('num nbrs', len(subset_nbrs), subset_nbrs.keys())
+        print('num nbrs', len(subset_nbrs), subset_nbrs.keys())
         covered_inds = CoverManager(subset_to_cluster, subset_nbrs, self.orig_dists, subset_cycles, chosen=subset_chosen)
-        #print('covered before recursion', len(covered_inds.cur_covered), 'of', subset_to_cluster)
+        print('covered before recursion', len(covered_inds.cur_covered), 'of', subset_to_cluster)
         if len(covered_inds.cur_covered) >= subset_to_cluster: # The chosen are sufficient
             subset_centre_inds = list(subset_chosen)
             # TODO: identify any unassigned orphans
             cluster_inds = self._partition_nearest(subset_centre_inds, self.orig_dists, only_these=subset_indices)
             subset_scores = self._sum_dist_scores(subset_centre_inds, cluster_inds, self.orig_dists)
         else:
-            subset_centre_inds, recursive_score = self._recursive_qt_cluster(subset_indices, subset_to_cluster, covered_inds, subset_chosen.copy(), subset_indices, np.inf)
+            subset_centre_inds, recursive_score = self._recursive_qt_cluster(list(subset_indices), subset_to_cluster, covered_inds, subset_chosen.copy(), subset_indices, np.inf)
             subset_centre_inds = list(subset_centre_inds)
             # TODO: identify any unassigned orphans
             cluster_inds = self._partition_nearest(subset_centre_inds, self.orig_dists, only_these=subset_indices)
@@ -933,15 +872,15 @@ class VariantFinder(object):
                 else: # max_cycles reached, no optimality guarantee
                     subset_centre_inds, subset_scores = self._single_pass_optimize(subset_centre_inds, subset_scores, recursive_score, subset_to_cluster, subset_indices, subset_chosen, subset_avail, out_of_range)
                     subset_cycles_used = subset_cycles
-        #print('cycles', covered_inds.cycle, subset_centre_inds, sum(subset_scores))
+        print('cycles', covered_inds.cycle, subset_centre_inds, sum(subset_scores))
         return subset_centre_inds, subset_scores, subset_cycles_used
 
 
     def _recursive_qt_cluster(self, component, min_to_cluster, covered_inds, centre_inds, best_centre_inds, best_score):
         # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N formed by swapping one index. Assuming N-1 indices as optimal, the greedy choice of the next index is guaranteed optimal.
 
-        #if covered_inds.cycle % 1000 == 0:
-        #    print(covered_inds.cycle, centre_inds, best_centre_inds, best_score)
+        if covered_inds.cycle % 1000 == 0:
+            print(covered_inds.cycle, len(best_centre_inds), best_centre_inds, best_score)
 
         if len(centre_inds) >= len(best_centre_inds):
             # Already have a guaranteed better solution. Using ">=" as the new centre hasn't been added yet
@@ -962,16 +901,19 @@ class VariantFinder(object):
         #ci = self._partition_nearest(cl, self.orig_dists, only_these=component)
         #scr = sum(self._sum_dist_scores(cl, ci, self.orig_dists))
         #print('scrs', centre_inds, len(covered_inds), scr, best_centre_inds, best_score)
-        #print(' equal', sorted(centre_inds) == sorted(covered_inds.cur_centres))
 
         valid_config = False
         if len(covered_inds) >= min_to_cluster:
             #print('is valid')
             valid_config = True
             centre_list = list(centre_inds)
-            cluster_inds = self._partition_nearest(centre_list, self.orig_dists, only_these=component)
-            score = sum(self._sum_dist_scores(centre_list, cluster_inds, self.orig_dists))
-            if score < best_score:
+
+            #cluster_inds = self._partition_nearest(centre_list, self.orig_dists, only_these=component)
+            #score = sum(self._sum_dist_scores(centre_list, cluster_inds, self.orig_dists))
+
+            score = self._score_pattern(centre_list, self.orig_dists, only_these=component)
+
+            if len(centre_inds) < len(best_centre_inds) or (len(centre_inds) == len(best_centre_inds) and score < best_score):
                 best_centre_inds, best_score = centre_inds.copy(), score
         elif len(centre_inds) == len(best_centre_inds):
             valid_config = True # We already have a valid solution of this size, this one isn't valid and can't get any better.
@@ -1256,10 +1198,16 @@ class CoverManager(object):
             # Sorts largest cluster to front, ties broken by the cluster score
             # PROBLEM. Should not consider nbrs[ind] - cur_covered, which are the new vars not covered by the current centre, but rather the number of variants that are closer to ind vs any current centre. As a new ind might "steal" some variants from an existing centre. This may not strictly increase num_covered, but I don't think that's a problem. That does mean this class needs to track the current centre inds.
 
-            #num_new = len(self.nbrs[ind] - set(self.cur_covered))
+            cvrd = list(set(self.cur_covered) | self.nbrs[ind])
+            self.cur_centres.append(ind)
+            score = np.sum(np.min(self.dists[np.ix_(cvrd,self.cur_centres)], axis=1))
+            self.cur_centres.pop()
+            #print(' -', ind, len(cvrd), score)
+            return (len(cvrd), -score)
 
-            clstr_inds = list(self.nbrs[ind] - set(self.cur_covered))
-            return (len(clstr_inds), -np.sum(self.dists[clstr_inds,ind]))
+        #    clstr_inds = list(self.nbrs[ind] - set(self.cur_covered))
+        #    print(' -', ind, len(clstr_inds), np.sum(self.dists[clstr_inds,ind]))
+        #    return (len(clstr_inds), -np.sum(self.dists[clstr_inds,ind]))
 
         # End of sort function.
         if self.max_cycles != None and self.cycle >= self.max_cycles:
@@ -1272,15 +1220,6 @@ class CoverManager(object):
         ind = max(self.inds_to_try, key=next_index_sort)
         #if len(self.nbrs[ind] - self.cur_covered) == 0: # Covered by the above test
         #    return None
-
-        #for x in self.inds_to_try:
-        #    cvrd = list(self.cur_covered + self._empty)
-        #    self.cur_centres.append(x)
-        #    score = np.sum(np.min(self.dists[np.ix_(cvrd,self.cur_centres)], axis=1))
-        #    self.cur_centres.pop()
-        #
-        #    cis = list(self.nbrs[x] - set(self.cur_covered))
-        #    print(' -', x, len(cis), -np.sum(self.dists[cis,x]))
 
         # Want it to return ind and score
         return ind
