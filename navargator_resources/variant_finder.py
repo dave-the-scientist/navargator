@@ -16,6 +16,9 @@ phylo.verbose = False
 # TODO:
 # - CoverManager() should not short-circuit even if max_cycles have been reached until the greedy solution has been found. Probably set a flag once num_covered reaches min_to_cluster
 #   - Issue in next_index_sort(): needs a bit of redesign. On tree_82, 0.15@100%, commenting out lines 765 (adding uniq to considered_nbrs) finds true (at least best) optimal pattern, including lines finds sub-optimal (uniqs definitely need to be added back in)
+#  - Get it to compute scores using the current centres and a method like in _score_pattern().
+#  - Is that vectorizable?? Something like the code to find dominated sets? Something about element-wise multiplying of columns, so that 0s propagate; do that for cur_centres, then broadcast that one column against all considered columns, count num covered, break ties with score. Could be useful in finding the largest candidate for qt_greedy, and in CoverManager for finding next best ind
+# - Get the qt methods using _score_pattern() instead of the 2-step process.
 # - Compare using _find_largest_candidate() in _qt_radius_clustering_greedy() with using a CoverManager() as in the minimal method
 # - Finish / clean up _qt_radius_clustering().
 #   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
@@ -29,6 +32,7 @@ phylo.verbose = False
 #   - Check if variants ever end up in one cluster, but are actually closer to another cluster centre. I doubt if it's common, but seems like it could happen. If so, include a final step in the clustering to ensure each variant is clustered with the closest centre.
 # - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
 # - Implement a max_cycles value for brute-force and k- methods (and I guess qt_greedy, though that'll never actually be used). On the input page, report this every second or whenever it checks for completion (a good indicator for the user that calculations are indeed ongoing, and gives them an idea of how long a cycle lasts for their tree and parameters).
+#   - On a related note, could be very useful to have a "kill" button (on the link?) that stops a run. Would have to end in error for brute force and qt_greedy (latter isn't a concern), but could just return the current best config for k-s and qt_minimal (assuming they're past a very early point, otherwise also an error). To implement, maybe have an attribute in vf.cache[params] that is passed to the algorithms, and checked every so often. If set to False, have it return early.
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
@@ -517,22 +521,21 @@ class VariantFinder(object):
         avail_medoid_indices = sorted(self.index[n] for n in self.available)
         chsn_tup = tuple(self.index[n] for n in self.chosen)
         dists = self._transform_distances(tolerance)
-        best_med_inds, best_scores, best_score, best_clusters = None, None, float('inf'), None
+        best_med_inds, best_score = None, float('inf')
         alt_variants = []
         for avail_inds in itertools.combinations(avail_medoid_indices, num_variants-len(chsn_tup)):
             med_inds = avail_inds + chsn_tup
-            clusters = self._partition_nearest(med_inds, dists)
-            scores = self._sum_dist_scores(med_inds, clusters, dists)
-            score = sum(scores)
+            score = self._score_pattern(med_inds, dists)
             if score == best_score:
                 alt_variants.append(med_inds)
             elif score < best_score:
-                best_med_inds, best_scores, best_score, best_clusters = med_inds, scores, score, clusters
+                best_med_inds, best_score = med_inds, score
                 alt_variants = []
         if best_med_inds == None:
             error_msg = 'Error: big problem in brute force clustering, no comparisons were made.'
             return [], error_msg, []
-        final_scores = self._sum_dist_scores(best_med_inds, best_clusters, self.orig_dists) # Untransformed distances
+        final_clusters = self._partition_nearest(best_med_inds, self.orig_dists)
+        final_scores = self._sum_dist_scores(best_med_inds, final_clusters, self.orig_dists) # Untransformed distances
         return best_med_inds, final_scores, alt_variants
     def _heuristic_rand_starts(self, fxn, args, num_replicates):
         # Run num_replicates times and find the best score
@@ -587,15 +590,15 @@ class VariantFinder(object):
                 for ind in avail_medoid_indices:
                     if ind in med_inds: continue
                     med_inds[i] = ind
-                    clusters = self._partition_nearest(med_inds, dists)
-                    scores = self._sum_dist_scores(med_inds, clusters, dists)
-                    score = sum(scores)
+                    score = self._score_pattern(med_inds, dists)
                     if score < best_score:
-                        best_scores, best_score = scores, score
+                        best_score = score
                         best_med_inds[i] = ind
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]
+        best_clusters = self._partition_nearest(best_med_inds, dists)
+        best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
     def _cluster_k_medoids_minibatch(self, num_variants, tolerance, batch_size):
         """Runs a k-medoids clustering approach, but only on a random subsample of the available variants. Yields massive time savings, with only a minor performance hit (often none)."""
@@ -626,15 +629,15 @@ class VariantFinder(object):
                 for ind in avail_minibatch_inds:
                     if ind in med_inds: continue
                     med_inds[i] = ind
-                    clusters = self._partition_nearest(med_inds, dists)
-                    scores = self._sum_dist_scores(med_inds, clusters, dists)
-                    score = sum(scores)
+                    score = self._score_pattern(med_inds, dists)
                     if score < best_score:
-                        best_scores, best_score = scores, score
+                        best_score = score
                         best_med_inds[i] = ind
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]
+        best_clusters = self._partition_nearest(best_med_inds, dists)
+        best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
 
     def _qt_radius_clustering_greedy(self, min_to_cluster, reduced):
@@ -910,9 +913,9 @@ class VariantFinder(object):
             return [subset_centre_ind], [subset_score], subset_cycles_used
         # #  Non-trivial subsets
         subset_nbrs = {ind:considered_nbrs[ind] for ind in subset_indices if ind in considered_nbrs}
-        print('num nbrs', len(subset_nbrs), subset_nbrs.keys())
+        #print('num nbrs', len(subset_nbrs), subset_nbrs.keys())
         covered_inds = CoverManager(subset_to_cluster, subset_nbrs, self.orig_dists, subset_cycles, chosen=subset_chosen)
-        print('covered before recursion', len(covered_inds.cur_covered), 'of', subset_to_cluster)
+        #print('covered before recursion', len(covered_inds.cur_covered), 'of', subset_to_cluster)
         if len(covered_inds.cur_covered) >= subset_to_cluster: # The chosen are sufficient
             subset_centre_inds = list(subset_chosen)
             # TODO: identify any unassigned orphans
@@ -930,7 +933,7 @@ class VariantFinder(object):
                 else: # max_cycles reached, no optimality guarantee
                     subset_centre_inds, subset_scores = self._single_pass_optimize(subset_centre_inds, subset_scores, recursive_score, subset_to_cluster, subset_indices, subset_chosen, subset_avail, out_of_range)
                     subset_cycles_used = subset_cycles
-        print('cycles', covered_inds.cycle, subset_centre_inds, sum(subset_scores))
+        #print('cycles', covered_inds.cycle, subset_centre_inds, sum(subset_scores))
         return subset_centre_inds, subset_scores, subset_cycles_used
 
 
@@ -945,8 +948,7 @@ class VariantFinder(object):
             return best_centre_inds, best_score
         cur_ind = covered_inds.next_index()
 
-        #if 70 in component:
-        print('cyc', covered_inds.cycle, cur_ind)
+        #print('cyc', covered_inds.cycle, cur_ind)
 
         if cur_ind == None: # Indicates a short-circuit cut of this branch
             return best_centre_inds, best_score
@@ -956,14 +958,15 @@ class VariantFinder(object):
         covered_inds.blacklist(cur_ind) # Ensures ind isn't selected again down this branch
         # Check if it's a valid configuration
 
-        cl = list(centre_inds)
-        ci = self._partition_nearest(cl, self.orig_dists, only_these=component)
-        scr = sum(self._sum_dist_scores(cl, ci, self.orig_dists))
-        print('scrs', centre_inds, len(covered_inds), scr, best_centre_inds, best_score)
+        #cl = list(centre_inds)
+        #ci = self._partition_nearest(cl, self.orig_dists, only_these=component)
+        #scr = sum(self._sum_dist_scores(cl, ci, self.orig_dists))
+        #print('scrs', centre_inds, len(covered_inds), scr, best_centre_inds, best_score)
+        #print(' equal', sorted(centre_inds) == sorted(covered_inds.cur_centres))
 
         valid_config = False
         if len(covered_inds) >= min_to_cluster:
-            print('is valid')
+            #print('is valid')
             valid_config = True
             centre_list = list(centre_inds)
             cluster_inds = self._partition_nearest(centre_list, self.orig_dists, only_these=component)
@@ -1056,17 +1059,30 @@ class VariantFinder(object):
         return reduced, unassigned_orphans
 
     def _transform_distances(self, tolerance):
-        """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances."""
+        """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances. Also sets all ignored rows and columns to 0."""
         try:
             tolerance = float(tolerance)
         except:
             raise NavargatorValueError('Error: tolerance must be a number.')
         if tolerance <= 0.0:
             raise NavargatorValueError('Error: tolerance must be a strictly positive number.')
-        elif tolerance == 1.0:
-            return self.orig_dists.copy()
-        dists = np.power(self.orig_dists.copy()*tolerance + 1.0, 1.0/tolerance) - 1.0
+        if tolerance == 1.0:
+            dists = self.orig_dists.copy()
+        else:
+            dists = np.power(self.orig_dists.copy()*tolerance + 1.0, 1.0/tolerance) - 1.0
+        for name in self.ignored:
+            ind = self.index[name]
+            dists[ind,:] = 0
+            dists[:,ind] = 0
         return dists
+
+
+    def _score_pattern(self, centres, dists, only_these=[]):
+        """Approximately 2-4x faster then _partition_nearest() and _sum_dist_scores(); twice as fast if only_these is empty."""
+        if len(only_these) == 0:
+            return np.sum(np.min(dists[:,centres], axis=1))
+        else:
+            return np.sum(np.min(dists[np.ix_(only_these,centres)], axis=1))
     def _partition_nearest(self, medoids, dists, only_these=set()):
         """Given an array of indices, returns a list of lists, where the ith sublist contains the indices of the nodes closest to the ith medoid in inds."""
         if len(only_these) == 0:
@@ -1220,25 +1236,31 @@ class CoverManager(object):
         self.nbrs = nbrs
         self.dists = dists
         self.inds_to_try = set(nbrs) - chosen
+        self.cur_centres = []
         self.cur_covered = Counter()
         self.remaining_coverage = Counter()
         for ind in chosen:
             self.add(ind)
-        for ind, nbr_inds in self.nbrs.items():
-            if ind in chosen: continue
-            self.remaining_coverage.update(nbr_inds)
+        for ind in self.inds_to_try:
+            self.remaining_coverage.update(nbrs[ind])
         self._empty = Counter()
     def add(self, centre_ind):
         self.cur_covered.update(self.nbrs[centre_ind])
+        self.cur_centres.append(centre_ind)
     def remove(self, centre_ind):
         self.cur_covered.subtract(self.nbrs[centre_ind])
         self.cur_covered += self._empty # Removes 0s. Faster to do this than self.cur_covered | self._empty
+        self.cur_centres.pop()
     def next_index(self):
         def next_index_sort(ind):
             # Sorts largest cluster to front, ties broken by the cluster score
             # PROBLEM. Should not consider nbrs[ind] - cur_covered, which are the new vars not covered by the current centre, but rather the number of variants that are closer to ind vs any current centre. As a new ind might "steal" some variants from an existing centre. This may not strictly increase num_covered, but I don't think that's a problem. That does mean this class needs to track the current centre inds.
+
+            #num_new = len(self.nbrs[ind] - set(self.cur_covered))
+
             clstr_inds = list(self.nbrs[ind] - set(self.cur_covered))
             return (len(clstr_inds), -np.sum(self.dists[clstr_inds,ind]))
+
         # End of sort function.
         if self.max_cycles != None and self.cycle >= self.max_cycles:
             return None
@@ -1250,6 +1272,17 @@ class CoverManager(object):
         ind = max(self.inds_to_try, key=next_index_sort)
         #if len(self.nbrs[ind] - self.cur_covered) == 0: # Covered by the above test
         #    return None
+
+        #for x in self.inds_to_try:
+        #    cvrd = list(self.cur_covered + self._empty)
+        #    self.cur_centres.append(x)
+        #    score = np.sum(np.min(self.dists[np.ix_(cvrd,self.cur_centres)], axis=1))
+        #    self.cur_centres.pop()
+        #
+        #    cis = list(self.nbrs[x] - set(self.cur_covered))
+        #    print(' -', x, len(cis), -np.sum(self.dists[cis,x]))
+
+        # Want it to return ind and score
         return ind
     def blacklist(self, centre_ind):
         self.inds_to_try.remove(centre_ind)
@@ -1258,5 +1291,8 @@ class CoverManager(object):
     def whitelist(self, centre_ind):
         self.inds_to_try.add(centre_ind)
         self.remaining_coverage.update(self.nbrs[centre_ind])
+    def cur_score(self):
+        covered_inds = list(self.cur_covered + self._empty)
+
     def __len__(self):
         return len(self.cur_covered)
