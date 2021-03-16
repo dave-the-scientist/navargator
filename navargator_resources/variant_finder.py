@@ -22,10 +22,7 @@ phylo.verbose = False
 #   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
 
 # - Move _test_dominated_inds(). Working well, but put it in the cluster_subset fxn. it should also integrate with single_pass_optimize somehow
-# - I question whether _remove_dominated_inds() still provides an optimal guarantee. I'm quite positive it does.
-#   - tree_275 0.07@100% gives very slightly different answers.
-#   - tree_487 does too. Using it allowed us to improve the 5-solution after 197k cycles (17.3319226314 to 16.7833195781); without it had not found the improved solution after 600k cycles
-#   - Are these differences meaningful? I don't really think they're just floating point issues, but is possible.
+
 # - Implement threshold clustering.
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
@@ -318,7 +315,7 @@ class VariantFinder(object):
             elif method == 'qt greedy':
                 variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced)
 
-            print(variants) ## TESTING
+            print('score', sum(scores), variants)
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -686,9 +683,13 @@ class VariantFinder(object):
             best_center = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_center] == 0)[0]
         else: # A tie for largest cluster. Broken by smallest sum of full scores
+            # This was tested with the below more accurate and true scoring function. Unfortunately it became hideously slow (clustered_inds and centre_inds were given as args):
+            # clstr_inds = np.nonzero(reduced[:,max_ind] == 0)[0]
+            # covered_inds = list(clustered_inds | set(clstr_inds))
+            # centre_inds.append(max_ind)
+            # score = np.sum(np.min(self.orig_dists[np.ix_(covered_inds,centre_inds)], axis=1))
+            # centre_inds.pop()
             best_center, best_clstr, best_score = None, [], np.inf
-
-            # TODO: THIS SHOULD be vectorized. don't use a For.
             for max_ind in max_inds:
                 clstr_inds = np.nonzero(reduced[:,max_ind] == 0)[0]
                 score = np.sum(self.orig_dists[clstr_inds,max_ind])
@@ -699,6 +700,8 @@ class VariantFinder(object):
     def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles, unassigned_orphans):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %)."""
+        # Separating components and removing dominated indices reduced runtime on tbpb82 0.4@100% from 10s to 10ms.
+        # Before removing dominated, tree_275 0.04@100% found a solution with score 4.0485 after 228k cycles. After, found it in 49k. After adding the second Counter to CoverManager, found it under 1k cycles. Each cycle was substantially slower, but the solution still was found ~1000x faster (ms instead of 20 min).
         neighbors_of = {}
         for ind in self._not_ignored_inds:
             clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
@@ -720,42 +723,18 @@ class VariantFinder(object):
         #  - Feb18 with new ind selection (much slower per cycle, fewer cycles?): 4.048546 @ 1k, 4.029575 @ 246k, nothing up to 825k
         #  - Sending the 4.048546 solution to _single_pass_optimize() yields 3.49693129 = [26, 251, 6, 262, 12, 267, 47, 144, 146, 34, 185, 19, 87, 193, 273] (plus 2 singletons that all prev solutions also included; separate components)
 
-        #  - The progression of solutions; anything here suggests any new algorithmic improvements?
-        #print 'oldest', ', '.join(self.leaves[x] for x in [0, 128, 34, 6, 262, 12, 144, 273, 19, 85, 246, 87, 185, 90, 253])
-        # NEIS1690_1903_GN, NEIS1690_3151_GN, NEIS1690_1745_GN, NEIS1690_1699_GN, NEIS1690_724_GN, NEIS1690_731_GN, NEIS1690_1709_GN, NEIS1690_2065_GN, NEIS1690_95_GN, NEIS1690_1725_GN, NEIS1690_4442_GN, NEIS1690_697_GN, NEIS1690_1836_GN, NEIS1690_2533_GN, NEIS1690_709_GN
-        #print 'old', ', '.join(self.leaves[x] for x in [0, 128, 34, 6, 262, 12, 144, 273, 19, 212, 246, 87, 185, 90, 253])
-        # NEIS1690_117_GN, NEIS1690_1903_GN, NEIS1690_1745_GN, NEIS1690_1699_GN, NEIS1690_724_GN, NEIS1690_1709_GN, NEIS1690_2065_GN, NEIS1690_95_GN, NEIS1690_1725_GN, NEIS1690_4442_GN, NEIS1690_697_GN, NEIS1690_1836_GN, NEIS1690_2533_GN, NEIS1690_1839_GN, NEIS1690_709_GN
-        #print 'best', ', '.join(self.leaves[x] for x in [128, 193, 34, 6, 262, 267, 12, 144, 273, 19, 212, 246, 87, 185, 253])
-        # NEIS1690_1903_GN, NEIS1690_3151_GN, NEIS1690_1745_GN, NEIS1690_1699_GN, NEIS1690_724_GN, NEIS1690_731_GN, NEIS1690_1709_GN, NEIS1690_2065_GN, NEIS1690_95_GN, NEIS1690_1725_GN, NEIS1690_4442_GN, NEIS1690_697_GN, NEIS1690_1836_GN, NEIS1690_2533_GN, NEIS1690_709_GN
-
-
-        # The below identifies equal and dominating sets, where A dominates B iff len(A-B) > 0 & len(B-A) == 0
-        #diffs = out_of_range[:, np.newaxis] - out_of_range
-        #diffs[diffs == -1] = 0
-        #is_dominating = 1 - diffs.any(axis=2)
-        #np.fill_diagonal(is_dominating, 0)
-        #dom_coords = np.argwhere(is_dominating == 1)
-        #for dom_ind, sub_ind in dom_coords:
-        #    print dom_ind, sub_ind, self.leaves[dom_ind], self.leaves[sub_ind]
-        # Can't replace the sub inds by the dom inds. Can only do that for equal sets.
-
-        # Another potential improvement only for 100% runs: consider a CoverManager with all avail+chosen selected. If any variants are only covered by 1 centre, that must become a chosen. Any only covered by 2, at least one of those must be chosen. Could make up some rules pertaining to those and use to constrain: len(chosen & rule1) > 0 and len(chosen & rule2) > 0 and so on...
-
         out_of_range = reduced.copy()
         out_of_range[out_of_range != 0] = 1
 
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
+        num_not_ignored = len(self._not_ignored_inds)
 
-        # For all variants with identical neighbors in range, only a single one needs to be considered (most central).
         considered_nbrs, dominated_inds = self._remove_dominated_inds(neighbors_of, chsn_indices, avail_indices, out_of_range)
-        #considered_nbrs = neighbors_of
-
-        component_inds = self._identify_components(neighbors_of)
-        print('num components', len(component_inds))
 
         final_centre_inds, final_scores = [], []
-        if min_to_cluster == len(self._not_ignored_inds): # Critical percent == 100%
+        if min_to_cluster == num_not_ignored: # Critical percent equivalent to 100%
+            component_inds = self._identify_components(neighbors_of)
             subset_cycles, cycle_rollover = None, 0
             for subset_indices in component_inds:
                 subset_to_cluster = len(subset_indices)
@@ -770,27 +749,33 @@ class VariantFinder(object):
                     cycle_rollover = subset_cycles - subset_cycles_used
                 final_centre_inds.extend(subset_centre_inds)
                 final_scores.extend(subset_scores)
-        else:
+        elif min_to_cluster == num_not_ignored - len(unassigned_orphans): # Can still use the component speedup
+            orphan_inds = set(unassigned_orphans)
+            component_inds = self._identify_components(neighbors_of)
             subset_cycles, cycle_rollover = None, 0
-            #unassigned_orphans
-
             for subset_indices in component_inds:
-                pass # Deal with sub-100 crit %
-            # Split into singletons & larger components
-            # I should be able to reduce min_to_cluster by removing from consideration all unassigned > threshold, as they're guaranteed to be part of allowed_missed and I can add them back at the end.
-            # Do I solve the 100% first using components, then solve the sub-100 with them all combined? The 100 solution could be the temp best. Would be a problem if the new optimal solution is the same length but has a better score (the recursion assumes that isn't possible).
-            #  - Quick feasibility check might be to consider each centre, and see how many orphans are produced if it were removed. If that's true for any of them (check smallest first), then there is a solution guaranteed better than the 100% solution. If it's not true for any, there may or may not be a valid smaller solution
-            # Can I identify which variants will be removed from the solution?
-            #  - All components comprising unassigned_orphans MUST be in the set to be removed (they're already removed, by definition). May be some in a tree, may be none.
-            #  - I can identify some components that could not possibly have variants removed to improve the overall score: any component which only requires 1 cluster centre (whether there are multiple avail+chosen options or it's constrained to one). May be some in a tree, may be none.
-            #  - Wouldn't that just be like another set cover problem? But easier this time?
-            #  - If I could remove a component of 2, is that always better than removing 2 variants from a large component with 2 centres, if that large component can now be covered by 1? No, it is definitely not always better.
-            # Do I not do 100% first, but instead solve each component for len(comp)-allowed_missed? Some components would give the same answer (ie 100% and sub-100% yielded same solution), so I know none of the allowed_missed can be allocated there. Other components might have a 4 solution that missed 10, a 5 solution that misses 4, a 6 solution that misses 2, etc; and I'd have to pick a combo of 1 option per component (backpack problem I think).
-            #  - Instead of identifying every breakpoint for subsets and then solving backpack, best to just combine those subsets that were allowed to miss variants but didn't need to and re-run as a whole.
-            #  - If I re-submit some subset to clustering but reduce min_to_cluster, is it a good idea to take the 100% solution for that subset, add 1 garbage element to the solution, and submit that as best_centre_inds with a score of np.inf? The 100% solution is guaranteed to be a valid solution to a sub-100% run, but it may or may not be optimal. Might not need to add the garbage element, but I think it might simplify score checking (as the recursive doesn't bother to score solutions of equal length to best_centre_inds).
-
-
-        print('score', sum(final_scores), final_centre_inds)
+                if max_cycles != None:
+                    subset_cycles = ceil(len(subset_indices)/float(min_to_cluster) * max_cycles) + cycle_rollover
+                subset_to_cluster = len(subset_indices - orphan_inds)
+                if subset_to_cluster == 0: # The entire subset is orphaned, so no centers can be found
+                    if max_cycles != None:
+                        cycle_rollover += subset_cycles
+                    continue
+                subset_chosen = chsn_indices & subset_indices
+                subset_avail = avail_indices & subset_indices
+                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, subset_cycles, out_of_range)
+                if subset_cycles_used == None or subset_cycles_used >= subset_cycles:
+                    cycle_rollover = 0
+                else:
+                    cycle_rollover = subset_cycles - subset_cycles_used
+                final_centre_inds.extend(subset_centre_inds)
+                final_scores.extend(subset_scores)
+        else:
+            # Can't split into components and guarantee optimal, as I can't predict which component should be allowed to miss some variants.
+            # May be a way to remove some components from consideration, but likely requires running _qt_radius_cluster_subset() multiple times. May still be faster, so worth considering if more speed is actually useful here.
+            #  - All unassigned orphans are part of total_allowed_missed by definition. So all other clusters are only allowed to miss allowed_missed = total_allowed_missed - len(unassigned_orphans).
+            #  - The global optimal solution for some component is guaranteed to fall between the solution for that component finding 100% of variants, and the solution for that component finding len(component)-allowed_missed variants. If they are equal, that's the global optimal solution for that component, and it can be excluded from the combined run. If they're unequal, it was a waste of time and the component has to be included in the combined run.
+            final_centre_inds, final_scores, _cycles_used = self._qt_radius_cluster_subset(set(neighbors_of.keys()), chsn_indices, avail_indices, considered_nbrs, dominated_inds, min_to_cluster, max_cycles, out_of_range)
         alt_variants = []
         return final_centre_inds, final_scores, alt_variants
 
@@ -876,7 +861,7 @@ class VariantFinder(object):
             return best_centre_inds, best_score
         cover_manager.add_centre(next_ind) # Select next_ind and assume it's a centre
         cover_manager.blacklist(next_ind) # Ensures ind isn't selected again down this branch
-        print('MIN', len(cover_manager), len(cover_manager.centre_inds), cover_manager.centre_inds) # # #  TESTING
+        #print('MIN', len(cover_manager), len(cover_manager.centre_inds), cover_manager.centre_inds) # # #  TESTING
         # Check if it's a valid configuration
         continue_recursion = True
         if num_covered >= min_to_cluster:

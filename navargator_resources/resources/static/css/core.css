@@ -47,7 +47,7 @@ p {
   margin:12px auto 10px auto;
 }
 h1 {
-  font-size:2.5em;
+  font-size:4.5em;
   color:#212121;
   margin:0px;
 }
@@ -103,18 +103,26 @@ span {
   width:100%;
   min-width:var(--min-page-width);
   background:linear-gradient(var(--dark-background-light-gradient), var(--dark-background-colour));
-  text-align:center;
+  text-align:left;
   box-shadow:1px 1px 2px var(--shadow-colour);
 }
 #headerDiv p, #headerDiv h1 {
   color:white;
 }
 #headerDiv h1 {
-  text-shadow:1px 1px 2px var(--shadow-colour);
+  margin:10px 0px 10px 302px;
+  text-shadow:3px 3px 3px var(--shadow-colour);
 }
 #headerInnerDiv {
-  display:inline-block;
-  margin:10px auto 10px auto;
+  margin:0px;
+  display:inline-flex;
+  align-items:center;
+}
+#headerLogoImg {
+  position:absolute;
+  margin:0px;
+  top:-9px;
+  left:80px;
 }
 #bodyMainDiv {
   padding:5px;

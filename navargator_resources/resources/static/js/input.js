@@ -20,14 +20,13 @@
 //   - Might be possible to build a big pathstring of the tree, then draw it once at the end. Instead of drawing each line segment one at a time. Not as a string though; as an array of arrays of strings to avoid Raphael's text parsing which is somewhat slow
 //   - Some other tips here https://inductive-kickback.com/2015/03/squeezing-the-most-out-of-raphael-js-for-svg-generation/
 // - When starting a run, the underlying vf doesn't start clustering until the tree has been drawn on the results page. At least it doesn't seem to be. Why is that? See if I can fix that.
-// - Would be great to also have export functions that produce files that can be read by TreeView (very popular software), or cytoscape. The files would be the tree, with nodes coloured or grouped together in some visual manner. Might have to get tricky with cytoscape; though I believe there is a "hierarchial" layout option that i could use.
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
 //   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
-// - The header needs some finishing design work. I'd like to incorporate more green, but should wait for the icon to be finished first.
+// - Resize the page logo image file to whatever size I decide on.
 // - I quite like how the toggle button came out. Use that to style my buttons instead of relying on jqueryui.
 // - I love the simple animations on hover. Would be great if I find a use for them (from the answer of https://stackoverflow.com/questions/30681684/animated-toggle-button-for-mobile)
 
