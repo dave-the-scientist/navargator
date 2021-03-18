@@ -110,7 +110,7 @@ span {
   color:white;
 }
 #headerDiv h1 {
-  margin:10px 0px 10px 302px;
+  margin:10px 0px 10px 170px;
   text-shadow:3px 3px 3px var(--shadow-colour);
 }
 #headerInnerDiv {
@@ -122,7 +122,7 @@ span {
   position:absolute;
   margin:0px;
   top:-9px;
-  left:80px;
+  left:20px;
 }
 #bodyMainDiv {
   padding:5px;

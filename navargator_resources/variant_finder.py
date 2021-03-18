@@ -27,11 +27,10 @@ phylo.verbose = False
 #   - Holy shit I think it's deterministic. So single run is enough
 #   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
 #   - Thesis describing optimizations on it: https://nsuworks.nova.edu/cgi/viewcontent.cgi?referer=https://www.google.ca/&httpsredir=1&article=1042&context=gscis_etd
-#   - Considering allowing user to specify ex 90% of variants within threshold. What happens to the remaining? Added to nearest cluster center (probably) or specified as unclustered? Should user be allowed to choose? If so, probably works to push unclustered into "ignored" for results page.
-#   - How do the chosen factor in? They can't be added to any candidate cluster, as they must be cluster centers. Maybe one iteration with only chosen as candidates, then continue with the rest of the available.
 # - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
 # - Implement a max_cycles value for brute-force and k- methods (and I guess qt_greedy, though that'll never actually be used). On the input page, report this every second or whenever it checks for completion (a good indicator for the user that calculations are indeed ongoing, and gives them an idea of how long a cycle lasts for their tree and parameters).
-#   - On a related note, could be very useful to have a "kill" button (on the link?) that stops a run. Would have to end in error for brute force and qt_greedy (latter isn't a concern), but could just return the current best config for k-s and qt_minimal (assuming they're past a very early point, otherwise also an error). To implement, maybe have an attribute in vf.cache[params] that is passed to the algorithms, and checked every so often. If set to False, have it return early.
+#   - On a related note, could be very useful to have a "kill" button (on the link?) that stops a run. Would have to end in error for brute force and qt_greedy (latter isn't a concern), but could just return the current best config for k-s and qt_minimal. To implement, maybe have an attribute in vf.cache[params] that is passed to the algorithms, and checked every so often. If set to False, have it return early.
+#   - If a run ended early, due to cycle cap or kill, would be nice if it could be re-started at the same spot in search space if run again with more permissive options.
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
@@ -42,7 +41,7 @@ phylo.verbose = False
 
 
 # # # # #  Session file strings  # # # # #
-# Note: tags are expected to be capitalized
+# Note: tags are expected to be in sentence case
 tag_affixes = ('[(', ')]')
 chosen_nodes_tag = 'Chosen variants'
 available_nodes_tag = 'Available variants'
@@ -257,11 +256,6 @@ class VariantFinder(object):
 
     # # # # #  Public methods  # # # # #
     def find_variants(self, run_id, method, *args):
-        # No longer checking to see if the run has already completed. Moved that to navargator_daemon.py:find_variants()
-        #results = self.cache.get(run_id, None)
-        #if results != None:  # Already computed
-        #    # Needed because the daemon sets self.cache[run_id] = None before this method is called.
-        #    return self.cache[run_id]['variants'], self.cache[run_id]['scores'], self.cache[run_id]['alt_variants']
         if method in self.k_cluster_methods:
             num_variants, tolerance = args[:2]
             num_avail, num_chsn = len(self.available), len(self.chosen)
@@ -734,6 +728,7 @@ class VariantFinder(object):
 
         final_centre_inds, final_scores = [], []
         if min_to_cluster == num_not_ignored: # Critical percent equivalent to 100%
+            # Can dramatically speed up the search by separating components
             component_inds = self._identify_components(neighbors_of)
             subset_cycles, cycle_rollover = None, 0
             for subset_indices in component_inds:
@@ -749,7 +744,8 @@ class VariantFinder(object):
                     cycle_rollover = subset_cycles - subset_cycles_used
                 final_centre_inds.extend(subset_centre_inds)
                 final_scores.extend(subset_scores)
-        elif min_to_cluster == num_not_ignored - len(unassigned_orphans): # Can still use the component speedup
+        elif min_to_cluster == num_not_ignored - len(unassigned_orphans):
+            # Can still use the component speedup in this case
             orphan_inds = set(unassigned_orphans)
             component_inds = self._identify_components(neighbors_of)
             subset_cycles, cycle_rollover = None, 0
@@ -780,18 +776,14 @@ class VariantFinder(object):
         return final_centre_inds, final_scores, alt_variants
 
     def _qt_radius_cluster_subset(self, subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, subset_cycles, out_of_range):
-        # TODO: identify any unassigned orphans generated by the returned pattern
-
         subset_centre_inds, subset_scores, subset_cycles_used = [], [], None
         subset_len, subset_chosen_len, subset_avail_len = len(subset_indices), len(subset_chosen), len(subset_avail)
         # #  Trivial subset configurations
         if subset_chosen_len == subset_avail_len == 0:
             # No avil and no chosen: subset is entirely unassigned orphans
-            # TODO: identify any unassigned orphans
             return subset_centre_inds, subset_scores, subset_cycles_used
         elif subset_avail_len == 0: # Must take all chosen
-            # No avail but 1 or more chosen: centres must be only the chosen.
-            # TODO: identify any unassigned orphans
+            # No avail but 1 or more chosen: centres must be exactly equal to the chosen.
             subset_centre_inds = list(subset_chosen)
             cluster_inds = self._partition_nearest(subset_centre_inds, self.orig_dists, only_these=subset_indices)
             subset_scores = self._sum_dist_scores(subset_centre_inds, cluster_inds, self.orig_dists)
@@ -803,7 +795,6 @@ class VariantFinder(object):
             return [subset_centre_ind], [subset_score], subset_cycles_used
         elif subset_avail_len == 1 and subset_chosen_len == 0:
             # The 1 avail is the only possible centre.
-            # TODO: identify any unassigned orphans
             subset_centre_ind = next(iter(subset_avail))
             other_inds = list(subset_indices - subset_avail)
             subset_score = np.sum(self.orig_dists[other_inds,subset_centre_ind])
@@ -821,17 +812,13 @@ class VariantFinder(object):
             return [subset_centre_ind], [subset_score], subset_cycles_used
         # #  Non-trivial subsets
         subset_nbrs = {ind:considered_nbrs[ind] for ind in subset_indices if ind in considered_nbrs}
-        print('num nbrs', len(subset_nbrs), subset_nbrs.keys())
         cover_manager = CoverManager(subset_to_cluster, subset_nbrs, self.orig_dists, subset_cycles, chosen=subset_chosen)
-        print('covered before recursion', len(cover_manager.cur_covered), 'of', subset_to_cluster)
         if len(cover_manager.cur_covered) >= subset_to_cluster: # The chosen are sufficient
             subset_centre_inds = list(subset_chosen)
-            # TODO: identify any unassigned orphans
             cluster_inds = self._partition_nearest(subset_centre_inds, self.orig_dists, only_these=subset_indices)
             subset_scores = self._sum_dist_scores(subset_centre_inds, cluster_inds, self.orig_dists)
         else:
             subset_centre_inds, recursive_score = self._recursive_qt_cluster(subset_to_cluster, cover_manager, list(subset_nbrs), np.inf)
-            # TODO: identify any unassigned orphans
             if subset_cycles == None: # optimal solution was found
                 subset_centre_inds = self._test_dominated_inds(subset_centre_inds, recursive_score, dominated_inds)
             else:
@@ -843,7 +830,6 @@ class VariantFinder(object):
                     subset_cycles_used = subset_cycles
             cluster_inds = self._partition_nearest(subset_centre_inds, self.orig_dists, only_these=subset_indices)
             subset_scores = self._sum_dist_scores(subset_centre_inds, cluster_inds, self.orig_dists)
-        print('cycles', cover_manager.cycle, subset_centre_inds, sum(subset_scores))
         return subset_centre_inds, subset_scores, subset_cycles_used
 
 

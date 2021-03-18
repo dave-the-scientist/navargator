@@ -35,7 +35,7 @@ else:
 
 
 # TODO:
-# - Fine-tune the logic in find_variants that decides if a run goes through or not. Right now it will allow more strict algorithms (brute force over medoids), but it should also allow runs with equal strictness if the parameters are looser (ie more replicates, more cycles, etc). Put that (and ideally some other code) into a separate function.
+# - Finish and test process_args_for_find_variants()
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 # - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
@@ -336,16 +336,8 @@ class NavargatorDaemon(object):
                     run_descr = '{} K@{:.1f}'.format(num, tolerance)
                     run_tooltip = '{} clusters at a tolerance of {}'.format(num, tolerance)
                     params = (num, tolerance)
-                    if params in vf.cache['params']:
-                        run_id = vf.cache['params'][params]
-                        prev_method = vf.cache[run_id]['method']
-                    else:
-                        prev_method = None
-                    if prev_method == None or (cluster_method == 'brute force' != prev_method) or (cluster_method == 'k medoids' and prev_method == 'k minibatch'):
-                        run_id = vf.generate_run_id()
-                        vf.cache['params'][params] = run_id
-                        vf.cache[run_id] = {'status':'running', 'params':params, 'method':cluster_method, 'run_time':time.time()}
-                        args = tuple([run_id, cluster_method, num, tolerance] + arg_list[3:])
+                    args, run_id, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
+                    if to_run_clustering:
                         self.job_queue.addJob(vf.find_variants, args)
                     run_ids.append(run_id)
                     run_descrs.append(run_descr)
@@ -355,18 +347,10 @@ class NavargatorDaemon(object):
                 run_descrs = ['{:.3f}@{:.1f}%'.format(thresh, percent)]
                 run_tooltips = ['{}% of variants within distance {} of a cluster centre'.format(percent, thresh)]
                 params = (thresh, percent)
-                if params in vf.cache['params']:
-                    run_id = vf.cache['params'][params]
-                    prev_method = vf.cache[run_id]['method']
-                else:
-                    prev_method = None
-                if prev_method == None or (cluster_method == 'qt minimal' != prev_method):
-                    run_id = vf.generate_run_id()
-                    vf.cache['params'][params] = run_id
-                    vf.cache[run_id] = {'status':'running', 'params':params, 'method':cluster_method, 'run_time':time.time()}
-                    args = tuple([run_id, cluster_method, thresh, percent] + arg_list[2:])
-                    #self.job_queue.addJob(vf.find_variants, args)
-                    vf.find_variants(*args)
+                args, run_id, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
+                if to_run_clustering:
+                    self.job_queue.addJob(vf.find_variants, args)
+                    #vf.find_variants(*args)
                 run_ids = [run_id]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
@@ -574,6 +558,7 @@ class NavargatorDaemon(object):
         vf.selection_groups_order = request.json.get('selection_groups_order', [])
         vf.selection_groups_data = request.json.get('selection_groups_data', {})
         return vf, s_id, msg
+
     # # # # #  Private methods  # # # # #
     def daemonURL(self, url):
         """Prefix added to the routes that should only ever be called by the page itself. Doesn't really matter what the prefix is, but it must match that used by the daemonURL function in core.js.
@@ -629,6 +614,53 @@ class NavargatorDaemon(object):
                 max_count = count
             dists_ind += count
         return max_count
+    def process_args_for_find_variants(self, vf, cluster_method, params, arg_list):
+        # Check previous cycles used. Clustering should not be run if prev_cycles are None, or if prev_cycles didn't use all it was allocated even if allowed_cycles is higher now. Should be run if the previous run was killed early (how is that going to be recorded?).
+        run_id, to_run_clustering = None, True
+        if cluster_method in vf.k_cluster_methods:
+            if params in vf.cache['params']:
+                run_id = vf.cache['params'][params]
+                prev_method = vf.cache[run_id]['method']
+                prev_args = vf.cache[run_id]['args']
+                if cluster_method == 'brute force':
+                    if prev_method == 'brute force':
+                        to_run_clustering = False
+                elif cluster_method == 'k medoids':
+                    if prev_method == 'brute force':
+                        to_run_clustering = False
+                    elif prev_method == 'k medoids':
+                        prev_rand_starts, rand_starts = prev_args[4], arg_list[3]
+                        if prev_rand_starts >= rand_starts:
+                            to_run_clustering = False
+                elif cluster_method == 'k minibatch':
+                    if prev_method == 'brute force' or prev_method == 'k medoids':
+                        to_run_clustering = False
+                    elif prev_method == 'k minibatch':
+                        prev_rand_starts, prev_batch = prev_args[4:6]
+                        rand_starts, batch_size = arg_list[3:5]
+                        if prev_rand_starts >= rand_starts and prev_batch >= batch_size:
+                            to_run_clustering = False
+            args = [run_id, cluster_method, *params] + arg_list[3:]
+        elif cluster_method in vf.threshold_cluster_methods:
+            if params in vf.cache['params']:
+                run_id = vf.cache['params'][params]
+                prev_method = vf.cache[run_id]['method']
+                prev_args = vf.cache[run_id]['args']
+                if cluster_method == 'qt minimal':
+                    if prev_method == 'qt minimal':
+                        prev_max_cycles, max_cycles = prev_args[4], arg_list[2]
+                        if prev_max_cycles == None or max_cycles != None and prev_max_cycles >= max_cycles:
+                            to_run_clustering = False
+                elif cluster_method == 'qt greedy':
+                    if prev_method == 'qt minimal':
+                        to_run_clustering = False
+            args = [run_id, cluster_method, *params] + arg_list[2:]
+        if to_run_clustering == True:
+            run_id = vf.generate_run_id()
+            args[0] = run_id
+            vf.cache['params'][params] = run_id
+            vf.cache[run_id] = {'status':'running', 'params':params, 'args':tuple(args), 'method':cluster_method, 'run_time':time.time()}
+        return tuple(args), run_id, to_run_clustering
 
     # # #  Server maintainence  # # #
     def collect_garbage(self):
@@ -656,6 +688,7 @@ class NavargatorDaemon(object):
                     self.error_occurred = True
                     print('\nError encountered:\n{}'.format(line.strip()))
                 self.error_log.append(line)
+
 
 class ConnectionManager(object):
     """New instances that do exist but have not yet been maintained are identified by self.session_connections[s_id] = None. This should only happen when a new VariantFinder is instanciated."""
