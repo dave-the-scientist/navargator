@@ -467,26 +467,25 @@
               <tr><td>
                 <label>Critical threshold:</label>
                 <input id="thresholdInput" placeholder="Distance" autocomplete="off" spellcheck="false" />
-              </tr></td>
+              </td></tr>
               <tr><td>
                 <button id="thresholdComputeButton" class="jq-ui-button">Get threshold from data</button>
-              </tr></td>
+              </td></tr>
               <tr><td>
                 <label for="threshPercentSpinner">Critical percentage:</label>
                 <input id="threshPercentSpinner" class="param-spinner" />
-              </tr></td>
-              <tr class="thresh-method-max-cycles"><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="threshCapCyclesCheckbox" type="checkbox" />
-                  <label class="nvrgtr-checkbox-label" for="threshCapCyclesCheckbox">Cap cycles</label>
-                </label>
-              </tr></td>
-              <tr class="thresh-method-max-cycles"><td>
-                <label for="threshMaxCyclesSpinner">Max cycles:</label>
-                <input id="threshMaxCyclesSpinner" class="param-spinner" />
-              </tr></td>
+              </td></tr>
             </tbody></table>
 
+            <hr>
+            <label class="nvrgtr-checkbox-outer">
+              <input id="capCyclesCheckbox" type="checkbox" />
+              <label class="nvrgtr-checkbox-label" for="capCyclesCheckbox">Limit processing cycles</label>
+            </label>
+            <div>
+              <label for="maxCyclesSpinner">Max cycles:</label>
+              <input id="maxCyclesSpinner" class="param-spinner" />
+            </div>
             <button id="findVariantsButton" class="jq-ui-button"><b>Find variants</b></button>
           </div>
 

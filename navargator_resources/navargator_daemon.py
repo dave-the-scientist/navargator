@@ -323,35 +323,33 @@ class NavargatorDaemon(object):
             return json.dumps({'session_id':s_id, 'saved_locally':saved_locally, 'nvrgtr_as_string':nvrgtr_str, 'filename':default_filename}, ensure_ascii=False)
         @self.server.route(self.daemonURL('/find-variants'), methods=['POST'])
         def find_variants():
-            """The vf.cache values determine x."""
             vf, s_id, msg = self.update_or_copy_vf()
             if s_id == None:
                 return msg
             cluster_method = request.json['cluster_method']
             arg_list = request.json['args']
             run_ids, run_descrs, run_tooltips = [], [], []
+            print('arglist', arg_list)
             if cluster_method in vf.k_cluster_methods:
-                num_vars, num_vars_range, tolerance = arg_list[:3]
+                num_vars, num_vars_range, tolerance = arg_list[1:4]
                 for num in range(num_vars, num_vars_range + 1):
-                    run_descr = '{} K@{:.1f}'.format(num, tolerance)
-                    run_tooltip = '{} clusters at a tolerance of {}'.format(num, tolerance)
                     params = (num, tolerance)
-                    args, run_id, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
+                    run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                     if to_run_clustering:
                         self.job_queue.addJob(vf.find_variants, args)
                     run_ids.append(run_id)
                     run_descrs.append(run_descr)
                     run_tooltips.append(run_tooltip)
             elif cluster_method in vf.threshold_cluster_methods:
-                thresh, percent = arg_list[:2]
-                run_descrs = ['{:.3f}@{:.1f}%'.format(thresh, percent)]
-                run_tooltips = ['{}% of variants within distance {} of a cluster centre'.format(percent, thresh)]
+                thresh, percent = arg_list[1:3]
                 params = (thresh, percent)
-                args, run_id, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
+                run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                 if to_run_clustering:
                     self.job_queue.addJob(vf.find_variants, args)
                     #vf.find_variants(*args)
                 run_ids = [run_id]
+                run_descrs = [run_descr]
+                run_tooltips = [run_tooltip]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
             return json.dumps({'session_id':s_id, 'run_ids':run_ids, 'descriptions':run_descrs, 'tooltips':run_tooltips})
@@ -617,6 +615,9 @@ class NavargatorDaemon(object):
     def process_args_for_find_variants(self, vf, cluster_method, params, arg_list):
         # Check previous cycles used. Clustering should not be run if prev_cycles are None, or if prev_cycles didn't use all it was allocated even if allowed_cycles is higher now. Should be run if the previous run was killed early (how is that going to be recorded?).
         run_id, to_run_clustering = None, True
+
+        max_cycles = arg_list[0] # Not checking this yet
+
         if cluster_method in vf.k_cluster_methods:
             if params in vf.cache['params']:
                 run_id = vf.cache['params'][params]
@@ -629,18 +630,21 @@ class NavargatorDaemon(object):
                     if prev_method == 'brute force':
                         to_run_clustering = False
                     elif prev_method == 'k medoids':
-                        prev_rand_starts, rand_starts = prev_args[4], arg_list[3]
+                        prev_rand_starts, rand_starts = prev_args[5], arg_list[4]
                         if prev_rand_starts >= rand_starts:
                             to_run_clustering = False
                 elif cluster_method == 'k minibatch':
                     if prev_method == 'brute force' or prev_method == 'k medoids':
                         to_run_clustering = False
                     elif prev_method == 'k minibatch':
-                        prev_rand_starts, prev_batch = prev_args[4:6]
-                        rand_starts, batch_size = arg_list[3:5]
+                        prev_rand_starts, prev_batch = prev_args[5:7]
+                        rand_starts, batch_size = arg_list[4:6]
                         if prev_rand_starts >= rand_starts and prev_batch >= batch_size:
                             to_run_clustering = False
-            args = [run_id, cluster_method, *params] + arg_list[3:]
+            args = [run_id, cluster_method, max_cycles, *params] + arg_list[4:]
+            num_variants, tolerance = params
+            run_description = '{} K@{:.1f}'.format(num_variants, tolerance)
+            run_tooltip = '{} clusters at a tolerance of {}'.format(num_variants, tolerance)
         elif cluster_method in vf.threshold_cluster_methods:
             if params in vf.cache['params']:
                 run_id = vf.cache['params'][params]
@@ -648,19 +652,22 @@ class NavargatorDaemon(object):
                 prev_args = vf.cache[run_id]['args']
                 if cluster_method == 'qt minimal':
                     if prev_method == 'qt minimal':
-                        prev_max_cycles, max_cycles = prev_args[4], arg_list[2]
+                        prev_max_cycles = prev_args[2]
                         if prev_max_cycles == None or max_cycles != None and prev_max_cycles >= max_cycles:
                             to_run_clustering = False
                 elif cluster_method == 'qt greedy':
                     if prev_method == 'qt minimal':
                         to_run_clustering = False
-            args = [run_id, cluster_method, *params] + arg_list[2:]
+            args = [run_id, cluster_method, max_cycles, *params] + arg_list[3:]
+            threshold, percent = params
+            run_description = '{:.3f}@{:.1f}%'.format(threshold, percent)
+            run_tooltip = '{}% of variants within distance {} of a cluster centre'.format(percent, threshold)
         if to_run_clustering == True:
             run_id = vf.generate_run_id()
             args[0] = run_id
             vf.cache['params'][params] = run_id
             vf.cache[run_id] = {'status':'running', 'params':params, 'args':tuple(args), 'method':cluster_method, 'run_time':time.time()}
-        return tuple(args), run_id, to_run_clustering
+        return run_id, tuple(args), run_description, run_tooltip, to_run_clustering
 
     # # #  Server maintainence  # # #
     def collect_garbage(self):

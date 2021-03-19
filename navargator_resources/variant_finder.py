@@ -255,7 +255,7 @@ class VariantFinder(object):
         self._private_display_opts = set(['cluster_background_trans', 'cluster_highlight_trans'])
 
     # # # # #  Public methods  # # # # #
-    def find_variants(self, run_id, method, *args):
+    def find_variants(self, run_id, method, max_cycles, *args):
         if method in self.k_cluster_methods:
             num_variants, tolerance = args[:2]
             num_avail, num_chsn = len(self.available), len(self.chosen)
@@ -276,19 +276,19 @@ class VariantFinder(object):
                     num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
                     expected_runtime = int(round(num_possible_combinations * 0.000042, 0))
                     print('Finding optimal variants using brute force. This should take ~{} seconds...'.format(expected_runtime))
-                variants, scores, alt_variants = self._brute_force_clustering(num_variants, tolerance)
+                variants, scores, alt_variants = self._brute_force_clustering(num_variants, tolerance, max_cycles)
             elif method == 'k medoids':
                 num_replicates = args[2]
                 if self.verbose:
                     print('Choosing variants using k medoids...')
-                fxn, args = self._cluster_k_medoids, (num_variants, tolerance)
-                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
+                fxn, fxn_args = self._cluster_k_medoids, (num_variants, tolerance)
+                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, fxn_args, num_replicates, max_cycles)
             elif method == 'k minibatch':
                 num_replicates, batch_size = args[2:]
                 if self.verbose:
                     print('Choosing variants using k minibatch...')
-                fxn, args = self._cluster_k_medoids_minibatch, (num_variants, tolerance, batch_size)
-                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, args, num_replicates)
+                fxn, fxn_args = self._cluster_k_medoids_minibatch, (num_variants, tolerance, batch_size)
+                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, fxn_args, num_replicates, max_cycles)
             if self.verbose:
                 self._print_clustering_results(num_variants, variants, scores, alt_variants)
         elif method in self.threshold_cluster_methods:
@@ -304,12 +304,9 @@ class VariantFinder(object):
                 error_msg = 'Error: infeasible parameters (only {:.2f}% could be clustered within the given threhsold). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format(percent_feasible)
                 variants, scores, alt_variants = [], error_msg, []
             elif method == 'qt minimal':
-                max_cycles = args[2]
-                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, max_cycles, unassigned_orphans)
+                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, unassigned_orphans, max_cycles)
             elif method == 'qt greedy':
-                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced)
-
-            print('score', sum(scores), variants)
+                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced, max_cycles)
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -510,10 +507,11 @@ class VariantFinder(object):
         return vf
 
     # # # # #  Clustering methods  # # # # #
-    def _brute_force_clustering(self, num_variants, tolerance):
+    def _brute_force_clustering(self, num_variants, tolerance, max_cycles):
         avail_medoid_indices = sorted(self.index[n] for n in self.available)
         chsn_tup = tuple(self.index[n] for n in self.chosen)
         dists = self._transform_distances(tolerance)
+        num_cycles = 0
         best_med_inds, best_score = None, float('inf')
         alt_variants = []
         for avail_inds in itertools.combinations(avail_medoid_indices, num_variants-len(chsn_tup)):
@@ -524,17 +522,23 @@ class VariantFinder(object):
             elif score < best_score:
                 best_med_inds, best_score = med_inds, score
                 alt_variants = []
+            num_cycles += 1
+            if max_cycles != None and num_cycles >= max_cycles:
+                break
         if best_med_inds == None:
             error_msg = 'Error: big problem in brute force clustering, no comparisons were made.'
             return [], error_msg, []
         final_clusters = self._partition_nearest(best_med_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(best_med_inds, final_clusters, self.orig_dists) # Untransformed distances
         return best_med_inds, final_scores, alt_variants
-    def _heuristic_rand_starts(self, fxn, args, num_replicates):
+    def _heuristic_rand_starts(self, fxn, args, num_replicates, max_cycles):
         # Run num_replicates times and find the best score
         optima = {}
+        replicate_cycles = None
         for i in range(num_replicates):
-            variants, scores = fxn(*args)
+            if max_cycles != None:
+                replicate_cycles = ceil(max_cycles / num_replicates)
+            variants, scores = fxn(*args, replicate_cycles)
             var_tup = tuple(sorted(variants))
             if var_tup in optima:
                 optima[var_tup]['count'] += 1
@@ -557,7 +561,7 @@ class VariantFinder(object):
             if self.verbose:
                 self._print_alt_variant_results(num_replicates, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, final_scores, alt_variants
-    def _cluster_k_medoids(self, num_variants, tolerance):
+    def _cluster_k_medoids(self, num_variants, tolerance, max_cycles):
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = list(self.index[n] for n in self.chosen)
         num_chsn = len(chsn_indices)
@@ -575,7 +579,7 @@ class VariantFinder(object):
         if num_chsn == num_variants:
             return best_med_inds, best_scores
         # Using a simple greedy algorithm, typically converges after 2-3 iterations.
-        improvement = True
+        improvement, num_cycles = True, 0
         while improvement == True:
             improvement = False
             med_inds = best_med_inds.copy()
@@ -590,10 +594,16 @@ class VariantFinder(object):
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]
+                    num_cycles += 1
+                    if max_cycles != None and num_cycles >= max_cycles:
+                        break
+                if max_cycles != None and num_cycles >= max_cycles:
+                    improvement = False
+                    break
         best_clusters = self._partition_nearest(best_med_inds, dists)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
-    def _cluster_k_medoids_minibatch(self, num_variants, tolerance, batch_size):
+    def _cluster_k_medoids_minibatch(self, num_variants, tolerance, batch_size, max_cycles):
         """Runs a k-medoids clustering approach, but only on a random subsample of the available variants. Yields massive time savings, with only a minor performance hit (often none)."""
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = [self.index[n] for n in self.chosen]
@@ -610,7 +620,7 @@ class VariantFinder(object):
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         best_score = sum(best_scores)
         # Using a simple greedy algorithm, typically converges after 2-5 iterations.
-        improvement = True
+        improvement, num_cycles = True, 0
         while improvement == True:
             improvement = False
             med_inds = best_med_inds.copy()
@@ -629,13 +639,18 @@ class VariantFinder(object):
                         improvement = True
                     else:
                         med_inds[i] = best_med_inds[i]
+                    num_cycles += 1
+                    if max_cycles != None and num_cycles >= max_cycles:
+                        break
+                if max_cycles != None and num_cycles >= max_cycles:
+                    improvement = False
+                    break
         best_clusters = self._partition_nearest(best_med_inds, dists)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
 
-    def _qt_radius_clustering_greedy(self, min_to_cluster, reduced):
+    def _qt_radius_clustering_greedy(self, min_to_cluster, reduced, max_cycles):
         """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to the single_pass_optimization, but also due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). I think I can probably fix those issues, as this speed is amazing."""
-        # 1s vs 34s, but with 325 avail
         centre_inds, clustered_inds = [], set()
         chsn_indices = [self.index[name] for name in self.chosen]
         avail_indices = set(self.index[name] for name in self.available)
@@ -649,8 +664,9 @@ class VariantFinder(object):
             clustered_inds.update(cluster_inds)
             # Remove chosen and their clusters from all future consideration
             reduced[:,cluster_inds] = np.inf
-            reduced[cluster_inds,:] = np.inf
+            reduced[cluster_inds,:] = np.inf # This one may not be a great idea for the score
         # Iteratively find the largest cluster, until enough variants are clustered
+        num_cycles = 0
         while len(clustered_inds) < min_to_cluster:
             centre_ind, cluster_inds = self._find_largest_candidate(reduced)
             if centre_ind == None:
@@ -661,6 +677,9 @@ class VariantFinder(object):
             clustered_inds.update(cluster_inds)
             reduced[:,centre_ind] = np.inf
             reduced[cluster_inds,:] = np.inf
+            num_cycles += 1
+            if max_cycles != None and num_cycles >= max_cycles:
+                break
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
         alt_variants = []
@@ -691,7 +710,7 @@ class VariantFinder(object):
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
 
-    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, max_cycles, unassigned_orphans):
+    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, max_cycles):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %)."""
         # Separating components and removing dominated indices reduced runtime on tbpb82 0.4@100% from 10s to 10ms.
@@ -700,22 +719,6 @@ class VariantFinder(object):
         for ind in self._not_ignored_inds:
             clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
             neighbors_of[ind] = set(clstr_inds)
-
-        # Identify components. For each, perform the below.
-        # - If the # allowed to be missed is greater than the number of singleton components, one or more of the larger components will have to have a critical % < 100. How does that get balanced?
-        #   - Probably apply the same threshold to all components. But then it's not guaranteed optimal...
-        # - Pre-component timings:
-        #  - tbpb82 0.3@95% (uncapped) took 11.0s, gave [64, 16, 53, 21]=10.19053 [24091 cycles]
-        #  - tbpb82 0.2@95% (uncapped) unfinished after 477k cycles, gave [64, 1, 5, 16, 43, 21]=4.5458
-        #  - tree_1399 1@95% (1500 cycles) took 58s, gave [349, 165, 82, 604, 586]=697.434
-        #  - tree_4173 0.5@95% (1500 cycles) took 446s, gave [2368, 1422, 1077, 887]=1016.444
-
-        #  - tbpb82 0.4@100% (uncapped) took 9.32s, gave [53, 47, 5, 21]=10.2145 [21062 cycles]
-        # - With components:
-        #  - tree_275 (0.04@100%) 15-solution @ 4.107147 until cycle 219k, @ 4.067367 until cycle 228k, 4.048546; nothing else up to ~1.2mil
-        #  - Removing identical sets: 4.067367 was found at 44k cycles instead of 219k, 4.048546 @ 49k, 4.048471 @ 211k, 4.044133 @ 237k, 4.038715 @ 351k, 4.034377 @ 377k, 4.033913 @ 491k, 4.029575 @ 517k, nothing up to 1mil
-        #  - Feb18 with new ind selection (much slower per cycle, fewer cycles?): 4.048546 @ 1k, 4.029575 @ 246k, nothing up to 825k
-        #  - Sending the 4.048546 solution to _single_pass_optimize() yields 3.49693129 = [26, 251, 6, 262, 12, 267, 47, 144, 146, 34, 185, 19, 87, 193, 273] (plus 2 singletons that all prev solutions also included; separate components)
 
         out_of_range = reduced.copy()
         out_of_range[out_of_range != 0] = 1

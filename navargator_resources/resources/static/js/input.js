@@ -527,18 +527,18 @@ function setupClusteringOptions() {
     min: 1, max: 100,
     numberFormat: 'N1', step: 0.1
   }).spinner('value', 100);
-  $("#threshMaxCyclesSpinner").spinner({
+  $("#maxCyclesSpinner").spinner({
     min: 1, max: 1000000,
     numberFormat: 'N0', step: 1
   }).spinner('value', 50000);
-  $("#threshCapCyclesCheckbox").change(function() {
-    if ($("#threshCapCyclesCheckbox").is(':checked')) {
-      $("#threshMaxCyclesSpinner").prop('disabled', false);
+  $("#capCyclesCheckbox").change(function() {
+    if ($("#capCyclesCheckbox").is(':checked')) {
+      $("#maxCyclesSpinner").prop('disabled', false);
     } else {
-      $("#threshMaxCyclesSpinner").prop('disabled', true);
+      $("#maxCyclesSpinner").prop('disabled', true);
     }
   });
-  $("#threshMaxCyclesSpinner").prop('disabled', true);
+  $("#maxCyclesSpinner").prop('disabled', true);
 
   // Button callbacks:
   $("#clustMethodNumberCheckbox, #clustMethodThresholdCheckbox").change(function() {
@@ -566,9 +566,9 @@ function setupClusteringOptions() {
   });
   $("#threshClustMethodSelect").change(function(event) {
     if (event.target.value == 'qt minimal') {
-      $(".thresh-method-max-cycles").show();
+      // When minimal selected
     } else if (event.target.value == 'qt greedy') {
-      $(".thresh-method-max-cycles").hide();
+      // When greedy selected
     }
   });
 
@@ -1607,6 +1607,14 @@ function getValidateFindVariantsArgs() {
     return false;
   }
   let args = [];
+  if ($("#capCyclesCheckbox").is(':checked')) {
+    if (!( validateSpinner($("#maxCyclesSpinner"), "Max cycles") )) {
+      return false;
+    }
+    args.push($("#maxCyclesSpinner").spinner('value'));
+  } else {
+    args.push(null);
+  }
   if ($("#clustMethodNumberCheckbox").is(':checked')) { // k-based clustering
     if (!( validateSpinner($("#numVarSpinner"), "Variants to find") &&
       validateSpinner($("#rangeSpinner"), "The range of variants to find") &&
@@ -1628,7 +1636,9 @@ function getValidateFindVariantsArgs() {
       showErrorPopup("The variants to find must be greater than or equal to the number of 'chosen', but less than or equal to the number of 'chosen' + 'available'.");
       return false;
     }
-    args = [num_vars, num_vars_range, parseFloat($("#clustToleranceSpinner").spinner('value'))];
+    args.push(num_vars);
+    args.push(num_vars_range);
+    args.push(parseFloat($("#clustToleranceSpinner").spinner('value')));
     let cluster_type = $("#kClustMethodSelect").val();
     if (cluster_type == 'k medoids' || cluster_type == 'k minibatch') {
       if (!( validateSpinner($("#clustRandStartsSpinner"), "Random starts") )) {
@@ -1654,17 +1664,8 @@ function getValidateFindVariantsArgs() {
       return false;
     }
     args.push($("#threshPercentSpinner").spinner('value'));
-    let thresh_type = $("#threshClustMethodSelect").val();
-    if (thresh_type == 'qt minimal') {
-      if ($("#threshCapCyclesCheckbox").is(':checked')) {
-        if (!( validateSpinner($("#threshMaxCyclesSpinner"), "Max cycles") )) {
-          return false;
-        }
-        args.push($("#threshMaxCyclesSpinner").spinner('value'));
-      } else {
-        args.push(null);
-      }
-    }
+    //let thresh_type = $("#threshClustMethodSelect").val();
+    //if (thresh_type == 'qt minimal') {  }
   }
   return args;
 }
