@@ -1174,17 +1174,18 @@ function checkIfProcessingDone() {
         console.log('Aborting checkIfProcessingDone(), as the returned list does not match. Likely due to a race condition.');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
-      let score, run_id, desc, max_dist,
+      let score, run_id, desc, max_dist, cycles_used, error_msg,
         draw_graph = false, max_var_dist = 0;
       for (let i=0; i<data.scores.length; ++i) {
         score = data.scores[i];
         run_id = data.run_ids[i];
         if (score == false) { // Run has not yet ended
-          //draw_graph = false;
+          cycles_used = data.num_clusts[i];
+          console.log('cycles used: '+cycles_used);
         } else if (nvrgtr_data.result_links[run_id].score == null) { // Run ended but not yet processed
           if (score == 'error') {  // Run ended in error
             // Don't add to nvrgtr_data.result_links.run_descripts or .scores, which inform the score graph
-            let error_msg = data.num_clusts[i];
+            error_msg = data.num_clusts[i];
             nvrgtr_data.result_links[run_id].score = 'error';
             nvrgtr_data.result_links[run_id].link.attr('title', error_msg);
             desc = nvrgtr_data.result_links[run_id].description + ' [error]';

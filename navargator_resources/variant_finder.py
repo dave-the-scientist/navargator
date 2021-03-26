@@ -17,7 +17,6 @@ phylo.verbose = False
 # - CoverManager() should not short-circuit even if max_cycles have been reached until the greedy solution has been found. Probably set a flag once num_covered reaches min_to_cluster
 #  - Is that further vectorizable?? Something like the code to find dominated sets? Something about element-wise multiplying of columns, so that 0s propagate; do that for cur_centres, then broadcast that one column against all considered columns, count num covered, break ties with score. Could be useful in finding the largest candidate for qt_greedy, and in CoverManager for finding next best ind
 # - Get the qt methods using _score_pattern() instead of the 2-step process.
-# - Compare using _find_largest_candidate() in _qt_radius_clustering_greedy() with using a CoverManager() as in the minimal method
 # - Finish / clean up _qt_radius_clustering().
 #   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
 
@@ -276,19 +275,19 @@ class VariantFinder(object):
                     num_possible_combinations = binomial_coefficient(num_avail, num_variants-num_chsn)
                     expected_runtime = int(round(num_possible_combinations * 0.000042, 0))
                     print('Finding optimal variants using brute force. This should take ~{} seconds...'.format(expected_runtime))
-                variants, scores, alt_variants = self._brute_force_clustering(num_variants, tolerance, max_cycles)
+                variants, scores, alt_variants = self._brute_force_clustering(num_variants, tolerance, self.cache[run_id], max_cycles)
             elif method == 'k medoids':
                 num_replicates = args[2]
                 if self.verbose:
                     print('Choosing variants using k medoids...')
-                fxn, fxn_args = self._cluster_k_medoids, (num_variants, tolerance)
-                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, fxn_args, num_replicates, max_cycles)
+                fxn, fxn_args = self._cluster_k_medoids, (num_variants, tolerance, self.cache[run_id])
+                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, fxn_args, num_replicates, self.cache[run_id], max_cycles)
             elif method == 'k minibatch':
                 num_replicates, batch_size = args[2:]
                 if self.verbose:
                     print('Choosing variants using k minibatch...')
-                fxn, fxn_args = self._cluster_k_medoids_minibatch, (num_variants, tolerance, batch_size)
-                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, fxn_args, num_replicates, max_cycles)
+                fxn, fxn_args = self._cluster_k_medoids_minibatch, (num_variants, tolerance, batch_size, self.cache[run_id])
+                variants, scores, alt_variants = self._heuristic_rand_starts(fxn, fxn_args, num_replicates, self.cache[run_id], max_cycles)
             if self.verbose:
                 self._print_clustering_results(num_variants, variants, scores, alt_variants)
         elif method in self.threshold_cluster_methods:
@@ -304,9 +303,9 @@ class VariantFinder(object):
                 error_msg = 'Error: infeasible parameters (only {:.2f}% could be clustered within the given threhsold). To fix this, raise the critical threshold, lower the critical percent, or add more available variants.'.format(percent_feasible)
                 variants, scores, alt_variants = [], error_msg, []
             elif method == 'qt minimal':
-                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, unassigned_orphans, max_cycles)
+                variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, unassigned_orphans, self.cache[run_id], max_cycles)
             elif method == 'qt greedy':
-                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced, max_cycles)
+                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, reduced, self.cache[run_id], max_cycles)
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -507,11 +506,11 @@ class VariantFinder(object):
         return vf
 
     # # # # #  Clustering methods  # # # # #
-    def _brute_force_clustering(self, num_variants, tolerance, max_cycles):
+    def _brute_force_clustering(self, num_variants, tolerance, cache, max_cycles):
         avail_medoid_indices = sorted(self.index[n] for n in self.available)
         chsn_tup = tuple(self.index[n] for n in self.chosen)
         dists = self._transform_distances(tolerance)
-        num_cycles = 0
+        cache['cycles_used'] = 0
         best_med_inds, best_score = None, float('inf')
         alt_variants = []
         for avail_inds in itertools.combinations(avail_medoid_indices, num_variants-len(chsn_tup)):
@@ -522,8 +521,8 @@ class VariantFinder(object):
             elif score < best_score:
                 best_med_inds, best_score = med_inds, score
                 alt_variants = []
-            num_cycles += 1
-            if max_cycles != None and num_cycles >= max_cycles:
+            cache['cycles_used'] += 1
+            if max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
         if best_med_inds == None:
             error_msg = 'Error: big problem in brute force clustering, no comparisons were made.'
@@ -531,9 +530,10 @@ class VariantFinder(object):
         final_clusters = self._partition_nearest(best_med_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(best_med_inds, final_clusters, self.orig_dists) # Untransformed distances
         return best_med_inds, final_scores, alt_variants
-    def _heuristic_rand_starts(self, fxn, args, num_replicates, max_cycles):
+    def _heuristic_rand_starts(self, fxn, args, num_replicates, cache, max_cycles):
         # Run num_replicates times and find the best score
         optima = {}
+        cache['cycles_used'] = 0
         replicate_cycles = None
         for i in range(num_replicates):
             if max_cycles != None:
@@ -561,7 +561,7 @@ class VariantFinder(object):
             if self.verbose:
                 self._print_alt_variant_results(num_replicates, optima, ranked_vars, alt_optima, opt_count)
         return best_variants, final_scores, alt_variants
-    def _cluster_k_medoids(self, num_variants, tolerance, max_cycles):
+    def _cluster_k_medoids(self, num_variants, tolerance, cache, max_cycles):
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = list(self.index[n] for n in self.chosen)
         num_chsn = len(chsn_indices)
@@ -579,7 +579,8 @@ class VariantFinder(object):
         if num_chsn == num_variants:
             return best_med_inds, best_scores
         # Using a simple greedy algorithm, typically converges after 2-3 iterations.
-        improvement, num_cycles = True, 0
+        num_cycles = 0
+        improvement = True
         while improvement == True:
             improvement = False
             med_inds = best_med_inds.copy()
@@ -595,6 +596,7 @@ class VariantFinder(object):
                     else:
                         med_inds[i] = best_med_inds[i]
                     num_cycles += 1
+                    cache['cycles_used'] += 1
                     if max_cycles != None and num_cycles >= max_cycles:
                         break
                 if max_cycles != None and num_cycles >= max_cycles:
@@ -603,7 +605,7 @@ class VariantFinder(object):
         best_clusters = self._partition_nearest(best_med_inds, dists)
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
-    def _cluster_k_medoids_minibatch(self, num_variants, tolerance, batch_size, max_cycles):
+    def _cluster_k_medoids_minibatch(self, num_variants, tolerance, batch_size, cache, max_cycles):
         """Runs a k-medoids clustering approach, but only on a random subsample of the available variants. Yields massive time savings, with only a minor performance hit (often none)."""
         avail_medoid_indices = [self.index[name] for name in self.tree.get_ordered_names() if name in self.available]
         chsn_indices = [self.index[n] for n in self.chosen]
@@ -620,7 +622,8 @@ class VariantFinder(object):
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         best_score = sum(best_scores)
         # Using a simple greedy algorithm, typically converges after 2-5 iterations.
-        improvement, num_cycles = True, 0
+        num_cycles = 0
+        improvement = True
         while improvement == True:
             improvement = False
             med_inds = best_med_inds.copy()
@@ -640,6 +643,7 @@ class VariantFinder(object):
                     else:
                         med_inds[i] = best_med_inds[i]
                     num_cycles += 1
+                    cache['cycles_used'] += 1
                     if max_cycles != None and num_cycles >= max_cycles:
                         break
                 if max_cycles != None and num_cycles >= max_cycles:
@@ -649,7 +653,7 @@ class VariantFinder(object):
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
 
-    def _qt_radius_clustering_greedy(self, min_to_cluster, reduced, max_cycles):
+    def _qt_radius_clustering_greedy(self, min_to_cluster, reduced, cache, max_cycles):
         """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to the single_pass_optimization, but also due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). I think I can probably fix those issues, as this speed is amazing."""
         centre_inds, clustered_inds = [], set()
         chsn_indices = [self.index[name] for name in self.chosen]
@@ -666,7 +670,7 @@ class VariantFinder(object):
             reduced[:,cluster_inds] = np.inf
             reduced[cluster_inds,:] = np.inf # This one may not be a great idea for the score
         # Iteratively find the largest cluster, until enough variants are clustered
-        num_cycles = 0
+        cache['cycles_used'] = 0
         while len(clustered_inds) < min_to_cluster:
             centre_ind, cluster_inds = self._find_largest_candidate(reduced)
             if centre_ind == None:
@@ -677,8 +681,8 @@ class VariantFinder(object):
             clustered_inds.update(cluster_inds)
             reduced[:,centre_ind] = np.inf
             reduced[cluster_inds,:] = np.inf
-            num_cycles += 1
-            if max_cycles != None and num_cycles >= max_cycles:
+            cache['cycles_used'] += 1
+            if max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
@@ -710,7 +714,7 @@ class VariantFinder(object):
                     best_center, best_clstr, best_score = max_ind, clstr_inds, score
         return best_center, best_clstr
 
-    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, max_cycles):
+    def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, cache, max_cycles):
         """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %)."""
         # Separating components and removing dominated indices reduced runtime on tbpb82 0.4@100% from 10s to 10ms.
@@ -729,6 +733,7 @@ class VariantFinder(object):
 
         considered_nbrs, dominated_inds = self._remove_dominated_inds(neighbors_of, chsn_indices, avail_indices, out_of_range)
 
+        cache['cycles_used'] = 0
         final_centre_inds, final_scores = [], []
         if min_to_cluster == num_not_ignored: # Critical percent equivalent to 100%
             # Can dramatically speed up the search by separating components
@@ -740,7 +745,7 @@ class VariantFinder(object):
                 subset_avail = avail_indices & subset_indices
                 if max_cycles != None:
                     subset_cycles = ceil(subset_to_cluster/float(min_to_cluster) * max_cycles) + cycle_rollover
-                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, subset_cycles, out_of_range)
+                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, cache, subset_cycles, out_of_range)
                 if subset_cycles_used == None or subset_cycles_used >= subset_cycles:
                     cycle_rollover = 0
                 else:
@@ -762,7 +767,7 @@ class VariantFinder(object):
                     continue
                 subset_chosen = chsn_indices & subset_indices
                 subset_avail = avail_indices & subset_indices
-                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, subset_cycles, out_of_range)
+                subset_centre_inds, subset_scores, subset_cycles_used = self._qt_radius_cluster_subset(subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, cache, subset_cycles, out_of_range)
                 if subset_cycles_used == None or subset_cycles_used >= subset_cycles:
                     cycle_rollover = 0
                 else:
@@ -774,11 +779,11 @@ class VariantFinder(object):
             # May be a way to remove some components from consideration, but likely requires running _qt_radius_cluster_subset() multiple times. May still be faster, so worth considering if more speed is actually useful here.
             #  - All unassigned orphans are part of total_allowed_missed by definition. So all other clusters are only allowed to miss allowed_missed = total_allowed_missed - len(unassigned_orphans).
             #  - The global optimal solution for some component is guaranteed to fall between the solution for that component finding 100% of variants, and the solution for that component finding len(component)-allowed_missed variants. If they are equal, that's the global optimal solution for that component, and it can be excluded from the combined run. If they're unequal, it was a waste of time and the component has to be included in the combined run.
-            final_centre_inds, final_scores, _cycles_used = self._qt_radius_cluster_subset(set(neighbors_of.keys()), chsn_indices, avail_indices, considered_nbrs, dominated_inds, min_to_cluster, max_cycles, out_of_range)
+            final_centre_inds, final_scores, _cycles_used = self._qt_radius_cluster_subset(set(neighbors_of.keys()), chsn_indices, avail_indices, considered_nbrs, dominated_inds, min_to_cluster, cache, max_cycles, out_of_range)
         alt_variants = []
         return final_centre_inds, final_scores, alt_variants
 
-    def _qt_radius_cluster_subset(self, subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, subset_cycles, out_of_range):
+    def _qt_radius_cluster_subset(self, subset_indices, subset_chosen, subset_avail, considered_nbrs, dominated_inds, subset_to_cluster, cache, subset_cycles, out_of_range):
         subset_centre_inds, subset_scores, subset_cycles_used = [], [], None
         subset_len, subset_chosen_len, subset_avail_len = len(subset_indices), len(subset_chosen), len(subset_avail)
         # #  Trivial subset configurations
@@ -815,7 +820,7 @@ class VariantFinder(object):
             return [subset_centre_ind], [subset_score], subset_cycles_used
         # #  Non-trivial subsets
         subset_nbrs = {ind:considered_nbrs[ind] for ind in subset_indices if ind in considered_nbrs}
-        cover_manager = CoverManager(subset_to_cluster, subset_nbrs, self.orig_dists, subset_cycles, chosen=subset_chosen)
+        cover_manager = CoverManager(subset_to_cluster, subset_nbrs, self.orig_dists, cache, subset_cycles, chosen=subset_chosen)
         if len(cover_manager.cur_covered) >= subset_to_cluster: # The chosen are sufficient
             subset_centre_inds = list(subset_chosen)
             cluster_inds = self._partition_nearest(subset_centre_inds, self.orig_dists, only_these=subset_indices)
@@ -1149,12 +1154,13 @@ class VariantFinder(object):
 
 class CoverManager(object):
     """Used by the _qt_radius_clustering_minimal() method to track variants covered by different combinations of centre variants. Intelligently chooses the next potential centre ind."""
-    def __init__(self, min_covered, nbrs, dists, max_cycles=None, chosen=set()):
+    def __init__(self, min_covered, nbrs, dists, vf_cache, max_cycles=None, chosen=set()):
         self.min_covered = min_covered
         self.max_cycles = max_cycles
         self.cycle = 0
         self.nbrs = nbrs
         self.dists = dists
+        self.vf_cache = vf_cache
         self.inds_to_try = set(nbrs) - chosen
         self.centre_inds = []
         self.greedy_found = False
@@ -1188,6 +1194,7 @@ class CoverManager(object):
             # Also ensures len(self.inds_to_try)!=0 && len(self.nbrs[ind]-self.cur_covered)!=0
             return None, np.inf, 0
         self.cycle += 1
+        self.vf_cache['cycles_used'] += 1
         cur_covered_set = set(self.cur_covered)
         cvrd_inds = [list(cur_covered_set | self.nbrs[ind])+[ind] for ind in self.inds_to_try]
         max_cvrd = len(max(cvrd_inds, key=len))

@@ -337,6 +337,7 @@ class NavargatorDaemon(object):
                     run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                     if to_run_clustering:
                         self.job_queue.addJob(vf.find_variants, args)
+                        #vf.find_variants(*args)
                     run_ids.append(run_id)
                     run_descrs.append(run_descr)
                     run_tooltips.append(run_tooltip)
@@ -369,7 +370,7 @@ class NavargatorDaemon(object):
                 results = vf.cache[run_id]
                 if results['status'] == 'running':
                     scores.append(False) # Used to signal that processing is ongoing.
-                    num_clusts.append(False)
+                    num_clusts.append(results['cycles_used'])
                     max_dists.append(False)
                 elif results['status'] == 'error':
                     scores.append('error') # Used to signal that the run finished in error.
@@ -666,7 +667,7 @@ class NavargatorDaemon(object):
             run_id = vf.generate_run_id()
             args[0] = run_id
             vf.cache['params'][params] = run_id
-            vf.cache[run_id] = {'status':'running', 'params':params, 'args':tuple(args), 'method':cluster_method, 'run_time':time.time()}
+            vf.cache[run_id] = {'status':'running', 'params':params, 'args':tuple(args), 'method':cluster_method, 'run_time':time.time(), 'cycles_used':0}
         return run_id, tuple(args), run_description, run_tooltip, to_run_clustering
 
     # # #  Server maintainence  # # #
