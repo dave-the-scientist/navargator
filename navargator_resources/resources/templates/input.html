@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="NaVARgator input page">
+    <meta name="description" content="Navargator input page">
     <meta name="author" content="Dave Curran">
     <title>NaVARgator input page</title>
     <script>
@@ -577,14 +577,28 @@
         </div>
 
         <div id="mainVariantSelectDiv" class="style-box" style="display:none">
-          <div id="resultsLinksDiv" style="display:none">
+          <div id="resultsMainDiv" style="display:none">
             <h2>Clustering results</h2>
-            <div id="resultsLinksContentDiv">
+            <div id="resultsContentDiv">
               <svg id="scoreGraphSvg" style="display:none" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
-              <div id="resultsLinksListDiv">
-                <label style="margin-left:3px"><b>Results pages:</b></label>
-                <ul id="resultsLinksList"></ul>
+
+              <div id="resultsLinksMainDiv">
+
+                <div id="newLinksListDiv" class="run-links-div">
+                  <label><b>Running:</b></label>
+                  <ul id="newLinksList" class="run-links-ul"></ul>
+                </div>
+                <div id="resultsLinksListDiv" class="run-links-div" style="display:none">
+                  <label><b>Results:</b></label>
+                  <ol id="resultsLinksList" class="run-links-ol"></ol>
+                </div>
+                <div id="errLinksListDiv" class="run-links-div" style="display:none">
+                  <label><b>Errors:</b></label>
+                  <ul id="errLinksList" class="run-links-ul"></ul>
+                </div>
+
               </div>
+
             </div>
           </div>
 

@@ -64,30 +64,52 @@
 }
 
 /* Result links pane settings:*/
-#resultsLinksDiv {
+#resultsMainDiv {
   margin-bottom:15px; /*Should equal the top margin on non-first H2 headers.*/
 }
-#resultsLinksContentDiv {
+#resultsContentDiv {
   display:flex;
   flex-wrap:wrap;
 }
-#resultsLinksListDiv {
+#resultsLinksMainDiv {
   margin-top:3px;
   min-width:var(--results-graph-height);
   max-height:calc(var(--results-graph-height) - 3px); /*To account for the top margin*/
   overflow-y:auto;
   flex-grow:1;
 }
-#resultsLinksList {
-  list-style-type:disc;
-  padding:0px 0px 0px 20px;
+.run-links-div {
+  margin-top:5px;
+}
+.run-links-div > label {
+  margin-left:3px;
+}
+.run-links-ul {
+  padding:0px 0px 0px 3px;
   margin:0px;
-  column-width:150px;
-  /*column-fill:auto; /* This isn't working because it doesn't have a set height. Would be nice, but more problematic when I do set a height.*/
+  column-width:185px;
 }
-.result-link-li {
-  text-indent:-3px; /*Moves it closer to the bullet. Probably looks terrible if multi-line.*/
+.run-links-ol {
+  padding:0px 0px 0px 3px;
+  margin:0px;
+  column-width:185px;
 }
+.run-link-li {
+
+}
+
+#resultsLinksList {
+  list-style-type:none;
+  counter-reset:result-link-counter;
+}
+#resultsLinksList > li {
+  counter-increment:result-link-counter;
+}
+#resultsLinksList > li::before {
+  content:"Run " counter(result-link-counter) ": ";
+}
+
+
 
 /* Score graph settings:*/
 #scoreGraphSvg {

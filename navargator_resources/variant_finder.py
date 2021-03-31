@@ -19,6 +19,7 @@ phylo.verbose = False
 # - Get the qt methods using _score_pattern() instead of the 2-step process.
 # - Finish / clean up _qt_radius_clustering().
 #   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
+# - _brute_force_clustering() throws an awkward error if quit before finding a valid solution. Make this more graceful.
 
 # - Move _test_dominated_inds(). Working well, but put it in the cluster_subset fxn. it should also integrate with single_pass_optimize somehow
 
@@ -522,7 +523,7 @@ class VariantFinder(object):
                 best_med_inds, best_score = med_inds, score
                 alt_variants = []
             cache['cycles_used'] += 1
-            if max_cycles != None and cache['cycles_used'] >= max_cycles:
+            if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
         if best_med_inds == None:
             error_msg = 'Error: big problem in brute force clustering, no comparisons were made.'
@@ -597,9 +598,9 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
                     num_cycles += 1
                     cache['cycles_used'] += 1
-                    if max_cycles != None and num_cycles >= max_cycles:
+                    if cache['quit_now'] or max_cycles != None and num_cycles >= max_cycles:
                         break
-                if max_cycles != None and num_cycles >= max_cycles:
+                if cache['quit_now'] or max_cycles != None and num_cycles >= max_cycles:
                     improvement = False
                     break
         best_clusters = self._partition_nearest(best_med_inds, dists)
@@ -644,9 +645,9 @@ class VariantFinder(object):
                         med_inds[i] = best_med_inds[i]
                     num_cycles += 1
                     cache['cycles_used'] += 1
-                    if max_cycles != None and num_cycles >= max_cycles:
+                    if cache['quit_now'] or max_cycles != None and num_cycles >= max_cycles:
                         break
-                if max_cycles != None and num_cycles >= max_cycles:
+                if cache['quit_now'] or max_cycles != None and num_cycles >= max_cycles:
                     improvement = False
                     break
         best_clusters = self._partition_nearest(best_med_inds, dists)
@@ -682,7 +683,7 @@ class VariantFinder(object):
             reduced[:,centre_ind] = np.inf
             reduced[cluster_inds,:] = np.inf
             cache['cycles_used'] += 1
-            if max_cycles != None and cache['cycles_used'] >= max_cycles:
+            if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
@@ -855,7 +856,6 @@ class VariantFinder(object):
             return best_centre_inds, best_score
         cover_manager.add_centre(next_ind) # Select next_ind and assume it's a centre
         cover_manager.blacklist(next_ind) # Ensures ind isn't selected again down this branch
-        #print('MIN', len(cover_manager), len(cover_manager.centre_inds), cover_manager.centre_inds) # # #  TESTING
         # Check if it's a valid configuration
         continue_recursion = True
         if num_covered >= min_to_cluster:
@@ -1187,16 +1187,17 @@ class CoverManager(object):
             score = np.sum(np.min(self.dists[np.ix_(inds,self.centre_inds)], axis=1))
             self.centre_inds.pop()
             return (len(inds), -score, ind)
-        if self.max_cycles != None and self.greedy_found and self.cycle >= self.max_cycles:
-            # Won't trigger until a valid solution has been found.
-            return None, np.inf, 0
-        elif len(self.cur_covered | self.remaining_coverage) < self.min_covered:
+        if self.greedy_found:  # Can't exit until a valid solution has been found
+            if self.vf_cache['quit_now'] or self.max_cycles != None and self.cycle >= self.max_cycles:
+                return None, np.inf, 0
+        if len(self.cur_covered | self.remaining_coverage) < self.min_covered:
             # Also ensures len(self.inds_to_try)!=0 && len(self.nbrs[ind]-self.cur_covered)!=0
             return None, np.inf, 0
         self.cycle += 1
         self.vf_cache['cycles_used'] += 1
         cur_covered_set = set(self.cur_covered)
         cvrd_inds = [list(cur_covered_set | self.nbrs[ind])+[ind] for ind in self.inds_to_try]
+        #print(len(cvrd_inds), len(cur_covered_set), len(self.cur_covered | self.remaining_coverage))
         max_cvrd = len(max(cvrd_inds, key=len))
         score_vals = map(score_max_coverage, filter(lambda inds: len(inds)==max_cvrd, cvrd_inds))
         num_cvrd, neg_score, next_ind = max(score_vals)

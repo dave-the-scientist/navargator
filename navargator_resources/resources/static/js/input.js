@@ -4,6 +4,7 @@
 
 
 // TODO:
+// - Add a cancel button / hover to the <a> in updateResultsLinksPane(). remove it once it's out of "running".
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section. Also add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal.
 // - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
@@ -64,13 +65,19 @@
 $.extend(nvrgtr_page, {
   'page':'input', 'check_results_timer':null, 'check_results_interval':500
 });
+// Ensure clearHideResultsPane() represents these
 $.extend(nvrgtr_data, {
-  'result_links':{'run_ids':[], 'run_descripts':[], 'scores':[]}, 'assigned_selected':'', 'assigned_added':'', 'threshold':null,
+  'run_links':{'run_ids':[],
+    'running':{'run_ids':[]},
+    'results':{'run_ids':[]},
+    'errors':{'run_ids':[]}
+  },
+  'assigned_selected':'', 'assigned_added':'', 'threshold':null,
   'thresh':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
   },
   'graph':{
-    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null
+    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null, 'x_labels':[], 'y_scores':[]
   }
 });
 $.extend(nvrgtr_settings, {
@@ -603,7 +610,7 @@ function setupClusteringOptions() {
         }
         updateResultsLinksPane(data.run_ids, data.descriptions, data.tooltips);
         if (auto_open == true && auto_result_page != null) {
-          auto_result_page.location.href = nvrgtr_data.result_links[data.run_ids[0]].url;
+          auto_result_page.location.href = nvrgtr_data.run_links[data.run_ids[0]].url;
         }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
@@ -886,17 +893,19 @@ function setupScoresGraph() {
   nvrgtr_data.graph.y_fxn = d3.scaleLinear()
     .range([height, 0]);
   nvrgtr_data.graph.line_fxn = d3.line()
-    .x(function(d,i) { return nvrgtr_data.graph.x_fxn(nvrgtr_data.result_links.run_descripts[i]); })
+    .x(function(d,i) { return nvrgtr_data.graph.x_fxn(nvrgtr_data.graph.x_labels[i]); })
     .y(function(d,i) { return nvrgtr_data.graph.y_fxn(d); });
   // Set up graph axes:
   nvrgtr_data.graph.x_axis = d3.axisBottom(nvrgtr_data.graph.x_fxn);
   nvrgtr_data.graph.g.append("g")
+    .style("font-size", "12px")
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + height + ")")
     .call(nvrgtr_data.graph.x_axis);
   nvrgtr_data.graph.y_axis = d3.axisLeft(nvrgtr_data.graph.y_fxn)
     .tickFormat(d3.format("d"));
   nvrgtr_data.graph.g.append("g")
+    .style("font-size", "12px")
     .attr("class", "y-axis")
     .call(nvrgtr_data.graph.y_axis);
   // Set up axis labels:
@@ -1126,26 +1135,34 @@ function updateCAIVariantMarkers() {
   }
 }
 function clearHideResultsPane() {
-  nvrgtr_data.result_links = {'run_ids':[], 'run_descripts':[], 'scores':[]};
-  $("#resultsLinksDiv").hide();
+  console.log('called clearHideResultsPane, hides graph');
+  nvrgtr_data.run_links = {'run_ids':[], 'running':{'run_ids':[]}, 'results':{'run_ids':[]}, 'errors':{'run_ids':[]}};
+  nvrgtr_data.graph.x_labels = [];
+  nvrgtr_data.graph.y_scores = [];
+  $("#resultsMainDiv").hide();
   $("#scoreGraphSvg").hide();
-  $(".result-link-li").remove();
+  $(".run-link-li").remove();
 }
 function updateResultsLinksPane(run_ids, descriptions, tooltips) {
-  var run_id, results_url, result_link_obj, result_list_obj,
-    links_list = $("#resultsLinksList");
+  var run_id, score_span, results_url, result_link_obj, result_list_obj,
+    links_list = $("#newLinksList");
   // Add links for the new runs into the results pane:
   for (let i=0; i<run_ids.length; ++i) {
     run_id = run_ids[i];
-    if (nvrgtr_data.result_links.run_ids.includes(run_id)) {
+    if (nvrgtr_data.run_links.running.run_ids.includes(run_id) ||
+      nvrgtr_data.run_links.results.run_ids.includes(run_id) ||
+      nvrgtr_data.run_links.errors.run_ids.includes(run_id)) {
       continue;
     }
+    score_span = $('<span>[processing...]</span>');
     results_url = nvrgtr_page.server_url + '/results?' + nvrgtr_page.session_id + '_' + run_id;
-    result_link_obj = $('<a class="result-link" href="'+results_url+'" title="'+tooltips[i]+'" target="_blank">'+descriptions[i]+' [processing...]</a>');
-    result_list_obj = result_link_obj.wrap('<li class="result-link-li">').parent();
+    result_link_obj = $('<a href="'+results_url+'" title="'+tooltips[i]+'" target="_blank">'+descriptions[i]+' </a>');
+    result_link_obj.append(score_span);
+    result_list_obj = result_link_obj.wrap('<li class="run-link-li">').parent();
     links_list.append(result_list_obj);
-    nvrgtr_data.result_links[run_id] = {'url':results_url, 'link':result_link_obj, 'description':descriptions[i], 'score':null};
-    nvrgtr_data.result_links.run_ids.push(run_id);
+    nvrgtr_data.run_links.run_ids.push(run_id);
+    nvrgtr_data.run_links.running.run_ids.push(run_id);
+    nvrgtr_data.run_links.running[run_id] = {'url':results_url, 'description':descriptions[i], 'score':null, 'num_clusters':0, 'link':result_link_obj, 'score_span':score_span};
     // Update the display options just-in-time before a results page is opened.
     result_link_obj.click(function() {
       $.ajax({
@@ -1158,7 +1175,10 @@ function updateResultsLinksPane(run_ids, descriptions, tooltips) {
     });
   }
   // Act on the new results list:
-  $("#resultsLinksDiv").show();
+  $("#resultsMainDiv").show();
+  if (nvrgtr_data.run_links.running.run_ids.length > 0) {
+    $("#newLinksListDiv").show();
+  }
   clearTimeout(nvrgtr_page.check_results_timer); // In case it's still checking for a previous run.
   checkIfProcessingDone();
 }
@@ -1167,96 +1187,108 @@ function checkIfProcessingDone() {
     url: daemonURL('/check-results-done'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({...getPageBasicData(), 'run_ids':nvrgtr_data.result_links.run_ids}),
+    data: JSON.stringify({...getPageBasicData(), 'run_ids':nvrgtr_data.run_links.run_ids}),
     success: function(data_obj) {
       var data = $.parseJSON(data_obj);
-      if (JSON.stringify(data.run_ids) != JSON.stringify(nvrgtr_data.result_links.run_ids)) {
+      if (JSON.stringify(data.run_ids) != JSON.stringify(nvrgtr_data.run_links.run_ids)) {
         console.log('Aborting checkIfProcessingDone(), as the returned list does not match. Likely due to a race condition.');
         return false; // RACE CONDITION: Don't update anything, because the user has already re-run the analysis.
       }
-      let score, run_id, desc, max_dist, cycles_used, error_msg,
-        draw_graph = false, max_var_dist = 0;
+      let score, run_id, score_str, max_dist, cycles_used, error_msg, num_clusts, run_id_index,
+        running = nvrgtr_data.run_links.running, errors = nvrgtr_data.run_links.errors, results = nvrgtr_data.run_links.results, error_list = $("#errLinksList"), results_list = $("#resultsLinksList"),
+        num_running = 0, num_new_ended = 0, max_var_dist = 0;
       for (let i=0; i<data.scores.length; ++i) {
         score = data.scores[i];
         run_id = data.run_ids[i];
-        if (score == false) { // Run has not yet ended
-          cycles_used = data.num_clusts[i];
-          console.log('cycles used: '+cycles_used);
-        } else if (nvrgtr_data.result_links[run_id].score == null) { // Run ended but not yet processed
-          if (score == 'error') {  // Run ended in error
-            // Don't add to nvrgtr_data.result_links.run_descripts or .scores, which inform the score graph
-            error_msg = data.num_clusts[i];
-            nvrgtr_data.result_links[run_id].score = 'error';
-            nvrgtr_data.result_links[run_id].link.attr('title', error_msg);
-            desc = nvrgtr_data.result_links[run_id].description + ' [error]';
-            nvrgtr_data.result_links[run_id].link.html(desc);
-          } else {  // Run ended normally
-            draw_graph = true;
-            nvrgtr_data.result_links[run_id].score = score;
-            desc = nvrgtr_data.result_links[run_id].description;
-
-            // FIX / IMPLEMENT THIS
-            if (desc[0] == 'T') {  // Add number of clusters to threshold result description.
-              desc = data.num_clusts[i]+' '+desc;
-              nvrgtr_data.result_links[run_id].description = desc;
+        if (running.run_ids.includes(run_id)) {
+          if (score == false) { // Run has not yet ended
+            num_running += 1;
+            cycles_used = data.num_clusts[i];
+            if (cycles_used < 1000) {
+              score_str = '[cycles: ' + cycles_used + ']';
+            } else if (cycles_used < 10000) {
+              score_str = '[cycles: ' + roundFloat(cycles_used/1000, 1) + ' k]';
+            } else if (cycles_used < 1000000) {
+              score_str = '[cycles: ' + Math.round(cycles_used/1000) + ' k]';
+            } else {
+              score_str = '[cycles: ' + roundFloat(cycles_used/1000000, 1) + ' M]';
             }
-
-            nvrgtr_data.result_links.run_descripts.push(desc);
-            desc += ' ['+roundFloat(score, 4)+']';
-            nvrgtr_data.result_links[run_id].link.html(desc);
+            running[run_id].score_span.html(score_str);
+          } else if (score == 'error') {  // Run ended in error
+            error_msg = data.num_clusts[i];
+            running[run_id].score = 'error';
+            running[run_id].link.attr('title', error_msg);
+            running[run_id].score_span.html('[error]');
+            errors[run_id] = running[run_id];
+            delete running[run_id];
+            errors.run_ids.push(run_id);
+            run_id_index = running.run_ids.indexOf(run_id);
+            running.run_ids.splice(run_id_index, 1);
+            error_list.append(errors[run_id].link.parent());
+          } else {  // Run ended normally
+            num_new_ended += 1;
+            num_clusts = data.num_clusts[i];
+            running[run_id].score = score;
+            running[run_id].num_clusters = num_clusts;
+            if (running[run_id].description.includes('%')) {
+              score_str = '('+num_clusts+') ';
+              running[run_id].description = score_str+running[run_id].description;
+              running[run_id].link.prepend(score_str);
+            }
+            running[run_id].score_span.html('['+roundFloat(score, 4)+']');
+            results[run_id] = running[run_id];
+            delete running[run_id];
+            results.run_ids.push(run_id);
+            run_id_index = running.run_ids.indexOf(run_id);
+            running.run_ids.splice(run_id_index, 1);
+            results_list.append(results[run_id].link.parent());
             max_dist = parseFloat(data.max_dists[i]);
             if (max_dist > max_var_dist) {
               max_var_dist = max_dist;
             }
           }
-        } else if (nvrgtr_data.result_links[run_id].score != score) {
-          showErrorPopup("Error: scores from the server don't match existing scores.");
         }
       }
       if (max_var_dist > 0) {
         calculateGlobalNormalization(max_var_dist); // So results are processed every 0.5 sec.
       }
-      if (draw_graph == false) {
-        nvrgtr_page.check_results_timer = setTimeout(checkIfProcessingDone, nvrgtr_page.check_results_interval);
-      } else {
-        nvrgtr_data.result_links.scores = data.scores;
+      if (num_new_ended > 0 && results.run_ids.length > 1) { // Draw/update the graph
         // Indices used to sort by descending result score
-        let sorted_inds = [...nvrgtr_data.result_links.run_ids.keys()];
-        sorted_inds.sort(function(ind1, ind2) { // Sorts errors to the end
-          let cmp = data.scores[ind2] - data.scores[ind1];
-          if (isNaN(cmp)) { // At least one score == 'error'
-            if (data.scores[ind2] == 'error') {
-              return -1;
-            } else {
-              return 1;
-            }
-          } else { // Regular scores
-            return cmp;
-          }
+        let sorted_inds = [...results.run_ids.keys()];
+        sorted_inds.sort(function(ind1, ind2) {
+          let rid1=results.run_ids[ind1], rid2=results.run_ids[ind2];
+          return results[rid2].score - results[rid1].score;
         });
-        let num_not_errors = 0;
-        for (let i=0; i<data.scores.length; ++i) {
-          if (data.scores[i] != 'error') {
-            num_not_errors += 1;
-          }
-        }
         // Sort backend
-        nvrgtr_data.result_links.run_ids = sorted_inds.map(function(ind) {
-          return nvrgtr_data.result_links.run_ids[ind];
+        results.run_ids = sorted_inds.map(function(ind) {
+          return results.run_ids[ind];
         });
-        nvrgtr_data.result_links.scores = sorted_inds.slice(0,num_not_errors).map(function(ind) {
-          return nvrgtr_data.result_links.scores[ind];
-        });
-        nvrgtr_data.result_links.run_descripts = sorted_inds.slice(0,num_not_errors).map(function(ind) {
-          return nvrgtr_data.result_links.run_descripts[ind];
-        });
-        // Sort frontend
-        let link, links_list = $("#resultsLinksList");
-        for (let i=0; i<nvrgtr_data.result_links.run_ids.length; ++i) {
-          link = nvrgtr_data.result_links[nvrgtr_data.result_links.run_ids[i]].link;
-          links_list.append(link.parent()); // Removes li from it's current position in links_list, adds it to the end.
+        // Sort graph data and frontend
+        nvrgtr_data.graph.x_labels = [], nvrgtr_data.graph.y_scores = [];
+        for (let i=0; i<results.run_ids.length; ++i) {
+          let rid = results.run_ids[i];
+          nvrgtr_data.graph.x_labels.push('R'+(i+1)+' ('+results[rid].num_clusters+')');
+          nvrgtr_data.graph.y_scores.push(results[rid].score);
+          results_list.append(results[rid].link.parent()); // Removes li from current position, adds it to end
         }
         updateScoreGraph();
+      }
+      // Update show/hide of links sections
+      if (num_running > 0) {
+        $("#newLinksListDiv").show();
+        nvrgtr_page.check_results_timer = setTimeout(checkIfProcessingDone, nvrgtr_page.check_results_interval);
+      } else {
+        $("#newLinksListDiv").hide();
+      }
+      if (results.run_ids.length > 0) {
+        $("#resultsLinksListDiv").show();
+      } else {
+        $("#resultsLinksListDiv").hide();
+      }
+      if (errors.run_ids.length > 0) {
+        $("#errLinksListDiv").show();
+      } else {
+        $("#errLinksListDiv").hide();
       }
     },
     error: function(error) { processError(error, "Error checking if the results have finished"); }
@@ -1369,6 +1401,7 @@ function updateThresholdIndicator(val, dist) {
 }
 
 function updateScoreGraph() {
+  console.log('start of updateScoreGraph');
   if (nvrgtr_settings.graph.total_width == 0) {
     nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
     nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
@@ -1377,17 +1410,17 @@ function updateScoreGraph() {
     setupScoresGraph();
   }
 
-  if (nvrgtr_data.result_links.run_ids.length == 1) {
+  if (nvrgtr_data.run_links.run_ids.length == 1) {
     // No action currently taken.
   } else {
     // Update x and y domains:
-    nvrgtr_data.graph.x_fxn.domain(nvrgtr_data.result_links.run_descripts);
+    nvrgtr_data.graph.x_fxn.domain(nvrgtr_data.graph.x_labels);
     nvrgtr_data.graph.y_fxn.domain(
-      [ Math.floor(d3.min(nvrgtr_data.result_links.scores)),
-        Math.ceil(d3.max(nvrgtr_data.result_links.scores)) ]
+      [ Math.floor(d3.min(nvrgtr_data.graph.y_scores)),
+        Math.ceil(d3.max(nvrgtr_data.graph.y_scores)) ]
     );
     // Update x and y axes with the new domains:
-    nvrgtr_data.graph.x_axis.tickValues(nvrgtr_data.result_links.var_nums);
+    nvrgtr_data.graph.x_axis.tickValues(nvrgtr_data.run_links.var_nums); // WHAT IS .VAR_NUMS????
     nvrgtr_data.graph.y_axis.tickValues(nvrgtr_data.graph.y_fxn.ticks(3));
     nvrgtr_data.graph.g.select(".x-axis").call(nvrgtr_data.graph.x_axis)
       .selectAll("text")
@@ -1398,6 +1431,7 @@ function updateScoreGraph() {
         .attr("transform", "rotate(55)");
     nvrgtr_data.graph.g.select(".y-axis").call(nvrgtr_data.graph.y_axis);
     // Calculate new margin values, apply to all relevant elements.
+    console.log('in updateScoreGraph, showing graph');
     $("#scoreGraphSvg").show();
     let margin = nvrgtr_settings.graph.margin,
       x_axis_bbox = nvrgtr_data.graph.g.select(".x-axis").node().getBBox(),
@@ -1425,7 +1459,7 @@ function updateScoreGraph() {
     // Update the graph line:
     nvrgtr_data.graph.g.select(".score-line")
       .transition()
-      .attr("d", function() { return nvrgtr_data.graph.line_fxn(nvrgtr_data.result_links.scores); });
+      .attr("d", function() { return nvrgtr_data.graph.line_fxn(nvrgtr_data.graph.y_scores); });
   }
 }
 function updateVariantColoursFollowup() {
@@ -1589,7 +1623,7 @@ function calculateGlobalNormalization(max_var_dist) {
     url: daemonURL('/calculate-global-normalization'),
     type: 'POST',
     contentType: "application/json",
-    data: JSON.stringify({...getPageBasicData(), 'run_ids':nvrgtr_data.result_links.run_ids, 'max_var_dist':max_var_dist, 'global_bins':bins}),
+    data: JSON.stringify({...getPageBasicData(), 'run_ids':nvrgtr_data.run_links.run_ids, 'max_var_dist':max_var_dist, 'global_bins':bins}),
     success: function(data_obj) {
       //var data = $.parseJSON(data_obj);
     },
