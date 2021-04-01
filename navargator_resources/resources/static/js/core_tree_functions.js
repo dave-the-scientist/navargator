@@ -688,6 +688,7 @@ function drawClusterObject(nodes) {
     cluster_obj = nvrgtr_data.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:nvrgtr_display_opts.colours.singleton_cluster_background});
     return [cluster_obj, false];
   }
+  console.log('drawClusterObject', points_list);
   var hull, path_str, mouseover_obj;
   if (points_list.length == 2) {
     hull = expandHull(points_list);
@@ -817,52 +818,65 @@ function convexHull(points_list) {
   return hull.slice(max_pos).concat(hull.slice(0, max_pos));
 }
 function expandHull(hull) {
-  var expand = nvrgtr_display_opts.sizes.cluster_expand;
-  if (hull.length == 2) {
+  let expand = nvrgtr_display_opts.sizes.cluster_expand;
+  if (hull.length <= 2) {
     expand = Math.max(nvrgtr_display_opts.sizes.small_marker_radius, expand, 1);
-  } else if (expand == 0) {
-    return hull;
   }
-  var p1=hull[hull.length-1],p2=hull[0],p3, l1_len,l2_len,l_ratio,shift,scale,angle_ratio, new_p,scaled_p1,perp,extra_p1,extra_p2,
+  //if (expand == 0) { return hull; } // Shouldn't be possible
+  let p1,p2,p3, l1_len,l2_len,l_ratio,shift,scale,angle_ratio, new_p,scaled_p1,perp,extra_p1,extra_p2,
     new_hull = [];
-  for (var i=0; i<hull.length; ++i) {
-    // The new coords are found for p2; p1 is the previous point, p3 is the next point.
-    if (i == hull.length - 1) {
-      p3 = hull[0];
-    } else {
-      p3 = hull[i+1];
+  if (hull.length == 1) {
+    expand *= 2;
+    p1 = moveAwayFromCentre([hull[0].x, hull[0].y], expand);
+    p1 = {'x':p1[0], 'y':p1[1]};
+    shift = {'x':p1.x-hull[0].x, 'y':p1.y-hull[0].y};
+    perp = {'x':-shift.y, 'y':shift.x};
+    new_hull.push(p1);
+    new_hull.push({'x':hull[0].x+perp.x, 'y':hull[0].y+perp.y});
+    new_hull.push({'x':hull[0].x-shift.x, 'y':hull[0].y-shift.y});
+    new_hull.push({'x':hull[0].x-perp.x, 'y':hull[0].y-perp.y});
+  } else {
+    p1 = hull[hull.length-1], p2 = hull[0];
+    for (let i=0; i<hull.length; ++i) {
+      // The new coords are found for p2; p1 is the previous point, p3 is the next point.
+      if (i == hull.length - 1) {
+        p3 = hull[0];
+      } else {
+        p3 = hull[i+1];
+      }
+      if (!l1_len) {
+        l1_len = Math.sqrt(distSquared(p1, p2));
+      } else {
+        l1_len = l2_len;
+      }
+      l2_len = Math.sqrt(distSquared(p2, p3));
+      l_ratio = l1_len / l2_len;
+      // Calculate the transformation for p2:
+      shift = {'x':(p2.x-p3.x+(p2.x-p1.x)/l_ratio)/2.0, 'y':(p2.y-p3.y+(p2.y-p1.y)/l_ratio)/2.0};
+      scale = expand / Math.sqrt(distSquared(shift));
+      shift.x *= scale;
+      shift.y *= scale;
+      new_p = {'x':p2.x+shift.x, 'y':p2.y+shift.y, 'name':p2.name, 'tree_index':p2.tree_index};
+      // Check if the 2 additional points need to be added:
+      scaled_p1 = {'x':(p1.x-p2.x)/l_ratio+p2.x, 'y':(p1.y-p2.y)/l_ratio+p2.y};
+      angle_ratio = Math.sqrt(distSquared(scaled_p1, p3)) / l2_len;
+      if (angle_ratio < 1.414214) { // If the angle between p1p2 and p2p3 is less than 90 degrees:
+        perp = {'x':-shift.y, 'y':shift.x};
+        new_hull.push({'x':p2.x-perp.x, 'y':p2.y-perp.y});
+        new_hull.push(new_p);
+        new_hull.push({'x':p2.x+perp.x, 'y':p2.y+perp.y});
+      } else {
+        new_hull.push(new_p);
+      }
+      p1 = p2;
+      p2 = p3;
     }
-    if (!l1_len) {
-      l1_len = Math.sqrt(distSquared(p1, p2));
-    } else {
-      l1_len = l2_len;
-    }
-    l2_len = Math.sqrt(distSquared(p2, p3));
-    l_ratio = l1_len / l2_len;
-    // Calculate the transformation for p2:
-    shift = {'x':(p2.x-p3.x+(p2.x-p1.x)/l_ratio)/2.0, 'y':(p2.y-p3.y+(p2.y-p1.y)/l_ratio)/2.0};
-    scale = expand / Math.sqrt(distSquared(shift));
-    shift.x *= scale;
-    shift.y *= scale;
-    new_p = {'x':p2.x+shift.x, 'y':p2.y+shift.y, 'name':p2.name, 'tree_index':p2.tree_index};
-    // Check if the 2 additional points need to be added:
-    scaled_p1 = {'x':(p1.x-p2.x)/l_ratio+p2.x, 'y':(p1.y-p2.y)/l_ratio+p2.y};
-    angle_ratio = Math.sqrt(distSquared(scaled_p1, p3)) / l2_len;
-    if (angle_ratio < 1.414214) { // If the angle between p1p2 and p2p3 is less than 90 degrees:
-      perp = {'x':-shift.y, 'y':shift.x};
-      new_hull.push({'x':p2.x-perp.x, 'y':p2.y-perp.y});
-      new_hull.push(new_p);
-      new_hull.push({'x':p2.x+perp.x, 'y':p2.y+perp.y});
-    } else {
-      new_hull.push(new_p);
-    }
-    p1 = p2;
-    p2 = p3;
   }
   return new_hull;
 }
 function bezierSplinePath(hull) {
   // Adapted from http://www.antigrain.com/research/bezier_interpolation/ I think it's essentially equating first derivatives of adjacent curves, not but the seconds. Looks better than an implementation that equates seconds. Calculates the 2 control points for p2.
+  console.log('bezierSplinePath', hull);
   var p1=hull[hull.length-1],p2=hull[0],p3, l1,l2,a1,a2,b,cp1,cp2, l_ratio,shift,
     scale = nvrgtr_display_opts.sizes.cluster_smooth, cp_sets=[];
   for (var i=0; i<hull.length; ++i) {
@@ -971,8 +985,12 @@ function secant(r, startAngle, endAngle, invSecant){
 function moveAwayFromCentre(point, distance) {
   // Given point=[x,y], coordinates on the tree svg, returns the coordinates of a point
   // on the line from that point to the centre, 'distance' further away. If a negative
-  // distance is given, the point will be closer to the centre.
+  // distance is given, the point will be closer to the centre. If the given point is
+  // already at the centre, the returned point will be moved up (have the y coord decreased).
   var v, len, u, centreX = treeDrawingParams.cx, centreY = treeDrawingParams.cy;
+  if (centreX == point[0] && centreY == point[1]) {
+    return [point[0], point[1]-distance];
+  }
   v = [centreX-point[0], centreY-point[1]];
   len = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
   u = [v[0]/len, v[1]/len];
