@@ -95,9 +95,7 @@
   column-width:185px;
 }
 .run-link-li {
-
 }
-
 #resultsLinksList {
   list-style-type:none;
   counter-reset:result-link-counter;
@@ -108,7 +106,13 @@
 #resultsLinksList > li::before {
   content:"Run " counter(result-link-counter) ": ";
 }
-
+.run-link-quit-button {
+  display:none;
+  position:absolute;
+}
+#newLinksList > li:hover .run-link-quit-button {
+  display:block;
+}
 
 
 /* Score graph settings:*/

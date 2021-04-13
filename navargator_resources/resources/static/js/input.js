@@ -4,8 +4,8 @@
 
 
 // TODO:
-// - Add a cancel button / hover to the <a> in updateResultsLinksPane(). remove it once it's out of "running".
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
+// - Make sure a run that was ended early still goes through the single pass optimization fxn
 // - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section. Also add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal.
 // - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
@@ -1144,7 +1144,7 @@ function clearHideResultsPane() {
   $(".run-link-li").remove();
 }
 function updateResultsLinksPane(run_ids, descriptions, tooltips) {
-  var run_id, score_span, results_url, result_link_obj, result_list_obj,
+  var run_id, score_span, results_url, result_link_obj, result_list_obj, quit_button,
     links_list = $("#newLinksList");
   // Add links for the new runs into the results pane:
   for (let i=0; i<run_ids.length; ++i) {
@@ -1159,6 +1159,20 @@ function updateResultsLinksPane(run_ids, descriptions, tooltips) {
     result_link_obj = $('<a href="'+results_url+'" title="'+tooltips[i]+'" target="_blank">'+descriptions[i]+' </a>');
     result_link_obj.append(score_span);
     result_list_obj = result_link_obj.wrap('<li class="run-link-li">').parent();
+
+    quit_button = $('<button class="run-link-quit-button">Quit early</button>');
+    quit_button.attr('run_id', run_id);
+    quit_button.click(function() {
+      $.ajax({
+        url: daemonURL('/quit-clustering-run'),
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({...getPageBasicData(), 'run_id':$(this).attr('run_id')}),
+        error: function(error) { processError(error, "Error ending a clustering run"); }
+      })
+    });
+    result_list_obj.prepend(quit_button);
+
     links_list.append(result_list_obj);
     nvrgtr_data.run_links.run_ids.push(run_id);
     nvrgtr_data.run_links.running.run_ids.push(run_id);
@@ -1219,6 +1233,7 @@ function checkIfProcessingDone() {
             running[run_id].score = 'error';
             running[run_id].link.attr('title', error_msg);
             running[run_id].score_span.html('[error]');
+            running[run_id].link.parent().find('.run-link-quit-button').remove();
             errors[run_id] = running[run_id];
             delete running[run_id];
             errors.run_ids.push(run_id);
@@ -1236,6 +1251,7 @@ function checkIfProcessingDone() {
               running[run_id].link.prepend(score_str);
             }
             running[run_id].score_span.html('['+roundFloat(score, 4)+']');
+            running[run_id].link.parent().find('.run-link-quit-button').remove();
             results[run_id] = running[run_id];
             delete running[run_id];
             results.run_ids.push(run_id);

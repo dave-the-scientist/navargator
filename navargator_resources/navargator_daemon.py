@@ -329,7 +329,6 @@ class NavargatorDaemon(object):
             cluster_method = request.json['cluster_method']
             arg_list = request.json['args']
             run_ids, run_descrs, run_tooltips = [], [], []
-            print('arglist', arg_list)
             if cluster_method in vf.k_cluster_methods:
                 num_vars, num_vars_range, tolerance = arg_list[1:4]
                 for num in range(num_vars, num_vars_range + 1):
@@ -346,14 +345,23 @@ class NavargatorDaemon(object):
                 params = (thresh, percent)
                 run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                 if to_run_clustering:
-                    #self.job_queue.addJob(vf.find_variants, args)
-                    vf.find_variants(*args)
+                    self.job_queue.addJob(vf.find_variants, args)
+                    #vf.find_variants(*args)
                 run_ids = [run_id]
                 run_descrs = [run_descr]
                 run_tooltips = [run_tooltip]
             else:
                 return ("error clustering, method '{}' not recognized for session ID '{}'".format(cluster_method, s_id), 5515)
             return json.dumps({'session_id':s_id, 'run_ids':run_ids, 'descriptions':run_descrs, 'tooltips':run_tooltips})
+        @self.server.route(self.daemonURL('/quit-clustering-run'), methods=['POST'])
+        def quit_clustering_run():
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            run_id = request.json['run_id']
+            vf.cache[run_id]['quit_now'] = True
+            print('called quit for', run_id)
+            return 'quitting clustering run {}'.format(run_id)
         @self.server.route(self.daemonURL('/check-results-done'), methods=['POST'])
         def check_results_done():
             vf, s_id, b_id, msg = self.get_instance()
