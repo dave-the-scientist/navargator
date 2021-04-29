@@ -1160,7 +1160,7 @@ function updateResultsLinksPane(run_ids, descriptions, tooltips) {
     result_link_obj.append(score_span);
     result_list_obj = result_link_obj.wrap('<li class="run-link-li">').parent();
 
-    quit_button = $('<button class="run-link-quit-button">Quit early</button>');
+    quit_button = $('<button class="run-link-quit-button">End run early</button>');
     quit_button.attr('run_id', run_id);
     quit_button.click(function() {
       $.ajax({

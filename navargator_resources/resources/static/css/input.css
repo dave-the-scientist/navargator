@@ -84,17 +84,19 @@
 .run-links-div > label {
   margin-left:3px;
 }
-.run-links-ul {
-  padding:0px 0px 0px 3px;
-  margin:0px;
-  column-width:185px;
-}
+.run-links-ul,
 .run-links-ol {
+  display:flex;
+  flex-wrap:wrap;
   padding:0px 0px 0px 3px;
   margin:0px;
   column-width:185px;
 }
 .run-link-li {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  margin:2px 8px 2px 0px;
 }
 #resultsLinksList {
   list-style-type:none;
@@ -104,7 +106,8 @@
   counter-increment:result-link-counter;
 }
 #resultsLinksList > li::before {
-  content:"Run " counter(result-link-counter) ": ";
+  content:"R" counter(result-link-counter) ": ";
+  margin:0px 5px 0px 0px;
 }
 .run-link-quit-button {
   display:none;
