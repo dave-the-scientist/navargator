@@ -6,12 +6,10 @@
 // TODO:
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
-// - Finish checkIfProcessingDone(). Add num clusters to thresh results, add a new hidable "Errors" section to add those links to instead of keeping them in the "Results page" section. Also add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal.
+// - Finish checkIfProcessingDone(). Add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal. Would have to return the runID to replace, requires more info being stored the vf.cache and returned to this.
 // - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
-// - Don't love the current result link format. Maybe "K=3 @T.0 [score]" & "C=3 @90%Th.0 [score]" or something? "[3] K@T.0 (score)" & "[3] 90%@Th.0 (score)"? When I have threshold clustering running try some different formats out. Also finish the bit in checkIfProcessingDone()
-//   - Better idea. Use "R1, R2, ..." for graph x-axis. Then in the Results pages section, can expand the parameters of that run: "R1 - [3] 100% within 0.02 (11.4213)". Re-order as necesary, so R1 is always the worst-scoring. If just one result, don't use the "R1 -" notation.
-//   - Though I want previously-visited links to indicate that; makes navigating new results easier.
+// - I think I want to move the results graph below the list of names again. When graph is visible, reduce the max height of the list of names by a fair bit (less likely for user to want to identify variant names at this point).
 
 // - Should be a button to clear the results pane. Should also clear vf.normalize, but not wipe the cache. This will allow the user to specify what graph is shown and the global normalization, without requiring the clustering to be re-done. Especially important once nvrgtr files actually save clustering results too.
 // - Profile (in chrome) opening a large tree. Can the loading/drawing be sped up?
@@ -54,6 +52,7 @@
 //     - Tree=487: k=2 1.7s, k=3 2.6s, k=4 5.6s, k=5 8.2s
 //     - Tree=1399: k=2 7s, k=3 14s, k=4 19s, k=5 25s
 //     - Tree=4173: k=2 34s, k=3 37s, k=4 63s, k=5 88s
+
 // - For FAQs or something:
 //   - If threshold is used to identify 4 clusters, that result will always have a worse Tree score than if a k- method was used. This is a consequences of threshold optimizing a different function, while k- all optimize the Tree score directly. (ensure this is actually true in practice)
 
@@ -1154,7 +1153,7 @@ function updateResultsLinksPane(run_ids, descriptions, tooltips) {
       nvrgtr_data.run_links.errors.run_ids.includes(run_id)) {
       continue;
     }
-    score_span = $('<span>[processing...]</span>');
+    score_span = $('<span>(processing...)</span>');
     results_url = nvrgtr_page.server_url + '/results?' + nvrgtr_page.session_id + '_' + run_id;
     result_link_obj = $('<a href="'+results_url+'" title="'+tooltips[i]+'" target="_blank">'+descriptions[i]+' </a>');
     result_link_obj.append(score_span);
@@ -1219,20 +1218,20 @@ function checkIfProcessingDone() {
             num_running += 1;
             cycles_used = data.num_clusts[i];
             if (cycles_used < 1000) {
-              score_str = '[cycles: ' + cycles_used + ']';
+              score_str = '(cycles: ' + cycles_used + ')';
             } else if (cycles_used < 10000) {
-              score_str = '[cycles: ' + roundFloat(cycles_used/1000, 1) + ' k]';
+              score_str = '(cycles: ' + roundFloat(cycles_used/1000, 1) + ' k)';
             } else if (cycles_used < 1000000) {
-              score_str = '[cycles: ' + Math.round(cycles_used/1000) + ' k]';
+              score_str = '(cycles: ' + Math.round(cycles_used/1000) + ' k)';
             } else {
-              score_str = '[cycles: ' + roundFloat(cycles_used/1000000, 1) + ' M]';
+              score_str = '(cycles: ' + roundFloat(cycles_used/1000000, 1) + ' M)';
             }
             running[run_id].score_span.html(score_str);
           } else if (score == 'error') {  // Run ended in error
             error_msg = data.num_clusts[i];
             running[run_id].score = 'error';
             running[run_id].link.attr('title', error_msg);
-            running[run_id].score_span.html('[error]');
+            running[run_id].score_span.html('(error)');
             running[run_id].link.parent().find('.run-link-quit-button').remove();
             errors[run_id] = running[run_id];
             delete running[run_id];
@@ -1246,11 +1245,11 @@ function checkIfProcessingDone() {
             running[run_id].score = score;
             running[run_id].num_clusters = num_clusts;
             if (running[run_id].description.includes('%')) {
-              score_str = '('+num_clusts+') ';
+              score_str = '['+num_clusts+'] ';
               running[run_id].description = score_str+running[run_id].description;
               running[run_id].link.prepend(score_str);
             }
-            running[run_id].score_span.html('['+roundFloat(score, 4)+']');
+            running[run_id].score_span.html('('+roundFloat(score, 4)+')');
             running[run_id].link.parent().find('.run-link-quit-button').remove();
             results[run_id] = running[run_id];
             delete running[run_id];
@@ -1283,7 +1282,7 @@ function checkIfProcessingDone() {
         nvrgtr_data.graph.x_labels = [], nvrgtr_data.graph.y_scores = [];
         for (let i=0; i<results.run_ids.length; ++i) {
           let rid = results.run_ids[i];
-          nvrgtr_data.graph.x_labels.push('R'+(i+1)+' ('+results[rid].num_clusters+')');
+          nvrgtr_data.graph.x_labels.push('R'+(i+1)+' ['+results[rid].num_clusters+']');
           nvrgtr_data.graph.y_scores.push(results[rid].score);
           results_list.append(results[rid].link.parent()); // Removes li from current position, adds it to end
         }

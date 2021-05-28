@@ -1124,7 +1124,7 @@ function parseClusteredData(data) {
   nvrgtr_data.max_variant_distance = data.max_variant_distance;
   nvrgtr_data.original_bins = calculateHistoTicks(data.max_variant_distance);
   // Update the page title and some attributes with clustering information
-  document.title = '('+nvrgtr_data.variants.length+') ' + document.title;
+  document.title = '['+nvrgtr_data.variants.length+'] ' + document.title;
   $("#numClustersH2Span").html(nvrgtr_data.variants.length + ' clusters');
   // Deal with the normalization
   if (data.normalization.value == null) {

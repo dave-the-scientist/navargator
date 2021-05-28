@@ -14,23 +14,14 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
-# - CoverManager() should not short-circuit even if max_cycles have been reached until the greedy solution has been found. Probably set a flag once num_covered reaches min_to_cluster
-#  - Is that further vectorizable?? Something like the code to find dominated sets? Something about element-wise multiplying of columns, so that 0s propagate; do that for cur_centres, then broadcast that one column against all considered columns, count num covered, break ties with score. Could be useful in finding the largest candidate for qt_greedy, and in CoverManager for finding next best ind
 # - Get the qt methods using _score_pattern() instead of the 2-step process.
 # - Finish / clean up _qt_radius_clustering().
-#   - The greedy implementation should also use the single_pass_optimize function. Can really make a quality difference for very low impact (time the impact; add it as a user-selectable option if it is significant on big trees).
 # - _brute_force_clustering() throws an awkward error if quit before finding a valid solution. Make this more graceful.
 
 # - Move _test_dominated_inds(). Working well, but put it in the cluster_subset fxn. it should also integrate with single_pass_optimize somehow
 
-# - Implement threshold clustering.
-#   - Holy shit I think it's deterministic. So single run is enough
-#   - Orig article: https://genome.cshlp.org/content/9/11/1106.full
-#   - Thesis describing optimizations on it: https://nsuworks.nova.edu/cgi/viewcontent.cgi?referer=https://www.google.ca/&httpsredir=1&article=1042&context=gscis_etd
 # - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
-# - Implement a max_cycles value for brute-force and k- methods (and I guess qt_greedy, though that'll never actually be used). On the input page, report this every second or whenever it checks for completion (a good indicator for the user that calculations are indeed ongoing, and gives them an idea of how long a cycle lasts for their tree and parameters).
-#   - On a related note, could be very useful to have a "kill" button (on the link?) that stops a run. Would have to end in error for brute force and qt_greedy (latter isn't a concern), but could just return the current best config for k-s and qt_minimal. To implement, maybe have an attribute in vf.cache[params] that is passed to the algorithms, and checked every so often. If set to False, have it return early.
-#   - If a run ended early, due to cycle cap or kill, would be nice if it could be re-started at the same spot in search space if run again with more permissive options.
+
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
@@ -655,7 +646,7 @@ class VariantFinder(object):
         return best_med_inds, best_scores
 
     def _qt_radius_clustering_greedy(self, min_to_cluster, reduced, cache, max_cycles):
-        """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to the single_pass_optimization, but also due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). I think I can probably fix those issues, as this speed is amazing."""
+        """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing."""
         centre_inds, clustered_inds = [], set()
         chsn_indices = [self.index[name] for name in self.chosen]
         avail_indices = set(self.index[name] for name in self.available)
@@ -669,7 +660,7 @@ class VariantFinder(object):
             clustered_inds.update(cluster_inds)
             # Remove chosen and their clusters from all future consideration
             reduced[:,cluster_inds] = np.inf
-            reduced[cluster_inds,:] = np.inf # This one may not be a great idea for the score
+            reduced[cluster_inds,:] = np.inf
         # Iteratively find the largest cluster, until enough variants are clustered
         cache['cycles_used'] = 0
         while len(clustered_inds) < min_to_cluster:
@@ -720,20 +711,17 @@ class VariantFinder(object):
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %)."""
         # Separating components and removing dominated indices reduced runtime on tbpb82 0.4@100% from 10s to 10ms.
         # Before removing dominated, tree_275 0.04@100% found a solution with score 4.0485 after 228k cycles. After, found it in 49k. After adding the second Counter to CoverManager, found it under 1k cycles. Each cycle was substantially slower, but the solution still was found ~1000x faster (ms instead of 20 min).
+        out_of_range = reduced.copy()
+        out_of_range[out_of_range != 0] = 1
         neighbors_of = {}
         for ind in self._not_ignored_inds:
             clstr_inds = np.nonzero(reduced[:,ind] == 0)[0]
             neighbors_of[ind] = set(clstr_inds)
-
-        out_of_range = reduced.copy()
-        out_of_range[out_of_range != 0] = 1
-
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
         num_not_ignored = len(self._not_ignored_inds)
-
         considered_nbrs, dominated_inds = self._remove_dominated_inds(neighbors_of, chsn_indices, avail_indices, out_of_range)
-
+        # #  Process depending on the run parameters
         cache['cycles_used'] = 0
         final_centre_inds, final_scores = [], []
         if min_to_cluster == num_not_ignored: # Critical percent equivalent to 100%
@@ -876,7 +864,7 @@ class VariantFinder(object):
         return best_centre_inds, best_score
 
     def _single_pass_optimize(self, best_centre_inds, best_score, min_to_cluster, nbrs):
-        """Quite fast (took 7 sec on tree_4173 with 7 centres)."""
+        """Quite fast (took 7 sec on tree_4173 with 7 centres), slows considerably as centres increase."""
         def score_inds(vals):
             inds, ind = vals
             other_best_inds.append(ind)
@@ -960,8 +948,8 @@ class VariantFinder(object):
         return dists
 
     def _remove_dominated_inds(self, neighbors_of, chsn_indices, avail_indices, out_of_range):
-        # Is not a "dominating set" from graph theory. Here, one variant dominates others if they all have identical neighbours under the threshold, and the one variant is the most central.
-        # Removing these dominated inds from consideration dramatically speeds up the algorithm, and still guarantees to find the optimal minimum set cover. In some cases the score may be slightly non-optimal, which is remedied by _test_dominated_inds().
+        # Is not a "dominating set" from graph theory. Here, one variant dominates others if they all have identical neighbours under the threshold, and the one variant is the most central (lowest summed distance to other variants).
+        # Removing these dominated inds from consideration dramatically speeds up the algorithm, and still guarantees to find the optimal minimum set cover. In some cases the score (but not the clustering pattern) may be slightly non-optimal, which is remedied by _test_dominated_inds().
         considered_nbrs, dominated_inds, repeated_inds = {}, {}, set()
         uniq_nbrs, count = np.unique(out_of_range.T, axis=0, return_counts=True)
         repeated_nbrs = uniq_nbrs[count > 1]

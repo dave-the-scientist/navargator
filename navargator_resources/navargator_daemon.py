@@ -35,7 +35,6 @@ else:
 
 
 # TODO:
-# - Finish implementing kill_clustering_run() (should just need the supporting js + html)
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
 # - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
@@ -336,7 +335,7 @@ class NavargatorDaemon(object):
                     run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                     if to_run_clustering:
                         self.job_queue.addJob(vf.find_variants, args)
-                        #vf.find_variants(*args)
+                        #vf.find_variants(*args) # For bug tracking
                     run_ids.append(run_id)
                     run_descrs.append(run_descr)
                     run_tooltips.append(run_tooltip)
@@ -400,7 +399,6 @@ class NavargatorDaemon(object):
             vf.selection_groups_order = request.json['selection_groups_order']
             vf.selection_groups_data = request.json['selection_groups_data']
             return "display options updated for {}".format(s_id)
-
         @self.server.route(self.daemonURL('/kill-clustering-run'), methods=['POST'])
         def kill_clustering_run():
             vf, s_id, b_id, msg = self.get_instance()
@@ -409,7 +407,6 @@ class NavargatorDaemon(object):
             run_id = request.json['run_id']
             vf.cache[run_id]['quit_now'] = True
             return "killed clusting run '{}' from sessionID {}".format(s_id, run_id)
-
         @self.server.route(self.daemonURL('/set-normalization-method'), methods=['POST'])
         def set_normalization_method():
             vf, s_id, b_id, msg = self.get_instance()
@@ -662,7 +659,7 @@ class NavargatorDaemon(object):
                             to_run_clustering = False
             args = [run_id, cluster_method, max_cycles, *params] + arg_list[4:]
             num_variants, tolerance = params
-            run_description = '({}) K@{:.2g}'.format(num_variants, tolerance)
+            run_description = '[{}] K@{:.2g}'.format(num_variants, tolerance)
             run_tooltip = '{} clusters at a tolerance of {}'.format(num_variants, tolerance)
         elif cluster_method in vf.threshold_cluster_methods:
             if params in vf.cache['params']:
