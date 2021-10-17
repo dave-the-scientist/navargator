@@ -4,10 +4,14 @@
 
 
 // TODO:
+// - If a user tries to upload an svg file instead of a tree/session, a generic 500 error is thrown. Probably not a rare thing, add a better check and return a more useful error.
+// - Increase the max-height of the selection groups div from 95px to 195px. Or split the difference but add handles so user can scale it themselves. Annoyingly small atm
+// - Would like an option to colour banner segment borders the same as the segment (to eliminate the borders visually). I think it would look quite good, especially for large trees.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
 // - Finish checkIfProcessingDone(). Add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal. Would have to return the runID to replace, requires more info being stored the vf.cache and returned to this.
 // - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
+// - Might be a very good idea to implement EM clustering. It's better at accommodating clusters of different sizes / stddevs.
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - I think I want to move the results graph below the list of names again. When graph is visible, reduce the max height of the list of names by a fair bit (less likely for user to want to identify variant names at this point).
 
