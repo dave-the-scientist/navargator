@@ -28,7 +28,9 @@
 }
 
 /* Tree manipulation settings:*/
-
+#truncateNamesSpinner {
+  width: 30px;
+}
 
 /* Save session options:*/
 #sessionIncludeDistancesLabel {
