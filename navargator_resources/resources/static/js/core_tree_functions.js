@@ -341,6 +341,7 @@ function drawTree(marker_tooltips=true) {
   if (nvrgtr_page.page == 'results' && sizes.bar_chart_height != 0) { // If a bar chart is going to be drawn:
     total_label_size += sizes.bar_chart_buffer + sizes.bar_chart_height;
   }
+
   // Modify total_label_size if any banners are to be drawn
   if (nvrgtr_display_opts.labels.banner_names.length > 0) {
     total_label_size += nvrgtr_display_opts.labels.banner_names.length * nvrgtr_display_opts.sizes.banner_height;
@@ -359,6 +360,7 @@ function drawTree(marker_tooltips=true) {
   nvrgtr_data.max_root_pixels = (canvas_size - total_label_size) / 2.0; // distance from the root to the furthest drawn node
   tree_params.Circular.bufferRadius = total_label_size/canvas_size;
   tree_params.Circular.bufferInnerLabels = sizes.inner_label_buffer + sizes.big_marker_radius + 1;
+
   var data_object = {phyloxml: nvrgtr_data.tree_data};
   var phylocanvas = new Smits.PhyloCanvas(
     data_object,

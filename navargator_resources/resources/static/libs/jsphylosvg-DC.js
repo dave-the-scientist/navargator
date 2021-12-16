@@ -1801,6 +1801,13 @@ Smits.PhyloCanvas.Render.Phylogram.prototype = {
 					)
 				);
 
+				// DAVE CURRAN EDITS BEGIN:
+				// Unsure why, but this became necessary in late 2021. Normally draw[1] contains the length of the element, but for some reason when font-size == 0, it contains the x-coordinate of the anchor point.
+				if (Smits.PhyloCanvas.Render.Style.text["font-size"] == 0) {
+					draw[1] = 0;
+				}
+				// DAVE CURRAN EDITS END.
+
 				// Background Style
 				if(node.bgStyle){
 					bgLabelsHold.push([node.bgStyle, y1]);
