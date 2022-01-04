@@ -6,7 +6,7 @@ from navargator_resources.variant_finder import VariantFinder, navargator_from_d
 from navargator_resources.curve_fitting import fit_to_sigmoid
 from navargator_resources.job_queue import JobQueue
 from navargator_resources.phylo import PhyloParseError, PhyloUniqueNameError
-from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError, NavargatorCapacityError
+from navargator_resources.navargator_common import NavargatorError, NavargatorRuntimeError, NavargatorValidationError, NavargatorCapacityError
 
 if sys.version_info >= (3,0): # Python 3.x imports
     from io import StringIO
@@ -204,6 +204,8 @@ class NavargatorDaemon(object):
                     new_s_id = self.add_variant_finder(vf, browser_id=b_id)
                 else:
                     new_s_id = self.new_variant_finder(file_data, file_format, file_name=file_name, browser_id=b_id)
+            except NavargatorValidationError as err:
+                return (str(err), 5505)
             except NavargatorCapacityError as err:
                 return (str(err), 5513)
             except PhyloParseError as err:

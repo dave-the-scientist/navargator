@@ -484,15 +484,17 @@ function drawSearchHighlight(var_name, start_radius, end_radius, start_angle, en
   nvrgtr_data.nodes[var_name].search_highlight = var_highlight_set;
 }
 function drawTreeBanners() {
-  var banner_sep = 0.2, banner_label_buff = 5;
+  var banner_label_buff = 5;
   nvrgtr_data.banner_labels.forEach(function(label_ele) {
     label_ele.remove();
   });
   nvrgtr_data.banner_labels = [];
   var total_banner_size = nvrgtr_display_opts.sizes.banner_height + nvrgtr_display_opts.sizes.banner_buffer,
-    angle_offset = treeDrawingParams.scaleAngle / 2 * 1.05;
+    angle_offset = treeDrawingParams.scaleAngle / 2 * 1.02;
   var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj, label_coords, label_obj,
-    init_rad_start = treeDrawingParams.barChartRadius;
+    init_rad_start = treeDrawingParams.barChartRadius,
+    banner_border = (nvrgtr_display_opts.show.banner_borders ? nvrgtr_display_opts.sizes.banner_borders : 0);
+  console.log('border', banner_border);
   for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; ++i) {
     // For each banner:
     rad_start = init_rad_start + i*total_banner_size;
@@ -502,7 +504,7 @@ function drawTreeBanners() {
       var_name = treeDrawingParams.seqs[j][0];
       var_angle = treeDrawingParams.seqs[j][1];
       banner_path_str = sectorPathString(rad_start, rad_end, var_angle-angle_offset, var_angle+angle_offset);
-      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':banner_sep});
+      banner_obj = nvrgtr_data.r_paper.path(banner_path_str).attr({fill:'white', stroke:'black', 'stroke-width':banner_border});
       nvrgtr_data.nodes[var_name].banners.push(banner_obj);
     }
     // Draw banner labels:
@@ -690,7 +692,6 @@ function drawClusterObject(nodes) {
     cluster_obj = nvrgtr_data.nodes[points_list[0].name].circle.attr({'r':singleton_radius, fill:nvrgtr_display_opts.colours.singleton_cluster_background});
     return [cluster_obj, false];
   }
-  console.log('drawClusterObject', points_list);
   var hull, path_str, mouseover_obj;
   if (points_list.length == 2) {
     hull = expandHull(points_list);

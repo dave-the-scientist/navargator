@@ -4,13 +4,10 @@
 
 
 // TODO:
-// - If a user tries to upload an svg file instead of a tree/session, a generic 500 error is thrown. Probably not a rare thing, add a better check and return a more useful error.
 // - Increase the max-height of the selection groups div from 95px to 195px. Or split the difference but add handles so user can scale it themselves. Annoyingly small atm
 // - For Input & Results, add a "Pairs distances" button. Accepts many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair.
 // - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
 //   - code into calcSpecificDefaultDisplayOpts()
-// - Would like an option to colour banner segment borders the same as the segment (to eliminate the borders visually). I think it would look quite good, especially for large trees.
-//   - If border colour is set by user, use for all segments. If colour is None (unset), border is same colour as fill colour.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
 // - Finish checkIfProcessingDone(). Add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal. Would have to return the runID to replace, requires more info being stored the vf.cache and returned to this.
@@ -131,7 +128,7 @@ function setupPage() {
   $("#sessionIncludeDistancesCheckbox").prop('disabled', true);
 
   if (nvrgtr_page.session_id != '') {
-    // The instance is from the local version of NaVARgator
+    // The instance is from the local version of Navargator
     if (nvrgtr_page.session_id != 'local_input_page') {
       $("#introMessageGroup").remove();
       treeIsLoading(); // A tree is being automatically loaded
@@ -150,7 +147,7 @@ function setupPage() {
       },
       error: function(error) { processError(error, "Error loading input data from the server"); }
     });
-  } else { // The instance is from the online version of NaVARgator
+  } else { // The instance is from the online version of Navargator
     processDisplayOptions(nvrgtr_default_display_opts); // Sets display options to default
     $("#loadInputHeader").click(); // Opens collapsible pane
   }
@@ -221,7 +218,7 @@ function setupUploadSaveButtons() {
           changeSessionID(data.session_id);
         }
         if (data.saved_locally == true) {
-          console.log('NaVARgator file saved locally');
+          console.log('Navargator file saved locally');
         } else {
           var filename = data.filename;
           saveDataString(data.nvrgtr_as_string, filename, 'text/plain');
@@ -1030,6 +1027,7 @@ function calcSpecificDefaultDisplayOpts(num_vars) {
     nvrgtr_display_opts.fonts.tree_font_size = 0;
     nvrgtr_display_opts.sizes.small_marker_radius = 1;
     nvrgtr_display_opts.sizes.big_marker_radius = 2;
+    nvrgtr_display_opts.show.banner_borders = false;
   }
   if (num_vars > 400) {
     nvrgtr_default_display_opts.sizes.small_marker_radius = 0.5;
@@ -1661,7 +1659,7 @@ function getValidateFindVariantsArgs() {
   }
   let num_avail = nvrgtr_data.available.length, num_chosen = nvrgtr_data.chosen.length;
   if (num_avail + num_chosen < 1) {
-    showErrorPopup("You must select 1 or more variants from your tree and assign them as 'available' or 'chosen' before NaVARgator can perform clustering.");
+    showErrorPopup("You must select 1 or more variants from your tree and assign them as 'available' or 'chosen' before Navargator can perform clustering.");
     return false;
   }
   let args = [];

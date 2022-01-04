@@ -36,10 +36,10 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree_font_size':13, 'banner_font_size':15, 'family':'Helvetica, Arial, sans-serif'
   },
   'sizes' : {
-    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_height':15, 'banner_buffer':2
+    'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_borders':0.5, 'banner_height':15, 'banner_buffer':2
   },
   'show' : {
-    'assigned_legend': true, 'chosen_beams':true, 'scalebar':true, 'banner_labels':true, 'banner_legend':false
+    'assigned_legend': true, 'chosen_beams':true, 'scalebar':true, 'banner_labels':true, 'banner_borders':true, 'banner_legend':false
   },
   'labels' : {
     'banner_names':[]
@@ -57,7 +57,7 @@ var nvrgtr_display_opts = $.extend(true, {}, nvrgtr_default_display_opts); // De
 function showErrorPopup(message, title) {
   $("#errorDialogText").text(message);
   if (!title) {
-    title = "NaVARgator error";
+    title = "Navargator error";
   }
   $("#errorDialog").dialog("option", "title", title);
   $("#errorDialog").dialog("open");
@@ -296,6 +296,28 @@ function setupDisplayOptionsPane() {
       }
     }
   });
+
+  $("#displayBannerBorderCheckbox").change(function() {
+    if ($("#displayBannerBorderCheckbox").is(':checked')) {
+      nvrgtr_display_opts.show.banner_borders = true;
+      if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+        for (var_name in nvrgtr_data.nodes) {
+          for (let i=0; i<nvrgtr_data.nodes[var_name].banners.length; ++i) {
+            nvrgtr_data.nodes[var_name].banners[i].attr('stroke-width', nvrgtr_display_opts.sizes.banner_borders);
+          }
+        }
+      }
+    } else {
+      nvrgtr_display_opts.show.banner_borders = false;
+      if (nvrgtr_display_opts.labels.banner_names.length > 0) {
+        for (var_name in nvrgtr_data.nodes) {
+          for (let i=0; i<nvrgtr_data.nodes[var_name].banners.length; ++i) {
+            nvrgtr_data.nodes[var_name].banners[i].attr('stroke-width', 0);
+          }
+        }
+      }
+    }
+  });
   $("#showLegendCheckbox").change(function() {
     if ($("#showLegendCheckbox").is(':checked')) {
       nvrgtr_display_opts.show.assigned_legend = true;
@@ -305,7 +327,6 @@ function setupDisplayOptionsPane() {
       $("#treeLegendLeftGroup").hide();
     }
   });
-
   $("#showChosenBeamsCheckbox").change(function() {
     if ($("#showChosenBeamsCheckbox").is(':checked')) {
       nvrgtr_display_opts.show.chosen_beams = true;
@@ -620,7 +641,7 @@ function drawBannerLegend() {
   // Draw box around legend
   legend_height += legend.header_top_margin - legend.label_y_margin;
   nvrgtr_data.banner_legend_paper.rect(1, 1, cur_x, legend_height)
-    .attr({'fill':nvrgtr_display_opts.colours.tree_background, 'stroke':'black', 'stroke-width':1})
+    .attr({'fill':'#FFFFFF', 'stroke':'black', 'stroke-width':1})
     .toBack();
   nvrgtr_data.banner_legend_paper.setSize(cur_x + 2, legend_height + 2);
   $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height + legend_height + legend.bl_top_margin + 2}); // The 2 accounts for the borders
@@ -681,6 +702,11 @@ function processDisplayOptions(display_opts) {
     $("#displayBannerLabelCheckbox").prop('checked', true).change();
   } else {
     $("#displayBannerLabelCheckbox").prop('checked', false).change();
+  }
+  if (nvrgtr_display_opts.show.banner_borders == true) {
+    $("#displayBannerBorderCheckbox").prop('checked', true).change();
+  } else {
+    $("#displayBannerBorderCheckbox").prop('checked', false).change();
   }
   if (nvrgtr_display_opts.show.assigned_legend == true) {
     $("#showLegendCheckbox").prop('checked', true);
@@ -766,7 +792,7 @@ function setColourPickers() {
   /*Updates the colour pickers to reflect the current values in nvrgtr_display_opts.colours*/
   //$("#element_ID")[0].jscolor.fromString('#aabbcc'); // Set colour
   //colour_str = '#' + $("#element_ID")[0].value; // Get colour
-  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'label_bg', 'label_text', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'bar_chart', 'selection', 'search'];
+  var key_list = ['available', 'chosen', 'ignored', 'default_node', 'label_bg', 'label_text', 'cluster_background', 'singleton_cluster_background', 'cluster_highlight', 'bar_chart', 'selection', 'search', 'tree_background'];
   var key, colour, picker_id;
   for (var i=0; i<key_list.length; ++i) {
     key = key_list[i];
@@ -790,8 +816,11 @@ function updateDisplayColour(key, jscolor) {
       // ^ This list must match that in updateClusterColours().
       updateClusterTransColour(key, colour);
     }
+    if (key == 'tree_background' && nvrgtr_data.tree_background != null) {
+      nvrgtr_data.tree_background.attr('fill', colour);
+    }
   } else {
-    showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the NaVARgator github page.", "NaVARgator colour picker");
+    showErrorPopup("Error setting colour; key '"+key+"' not recognized. Please report this issue on the Navargator github page.", "Navargator colour picker");
   }
 }
 function updateVariantColours() {

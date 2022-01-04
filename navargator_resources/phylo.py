@@ -157,15 +157,18 @@ def load_tree(tree_filename, internal_as_names=False, **kwargs):
         tree_string = f.read()
     return load_tree_string(tree_string, internal_as_names, **kwargs)
 def load_tree_string(tree_string, internal_as_names=False, **kwargs):
-    tree_init = tree_string.strip()[:60].lower()
-    if tree_init[:5].upper() == '#NEXUS':
+    tree_data_str = tree_string.strip().lower()
+    tree_init = tree_data_str[:100]
+    if tree_data_str[:5].upper() == '#NEXUS':
         return load_nexus_string(tree_string, internal_as_names, **kwargs)
     elif '<phyloxml ' in tree_init or ':phyloxml ' in tree_init:
         return load_phyloxml_string(tree_string, **kwargs)
     elif '<nexml ' in tree_init or ':nexml ' in tree_init:
         return load_nexml_string(tree_string, **kwargs)
-    else:
+    elif tree_data_str[0] == '(' and tree_data_str[-1] == ';':
         return load_newick_string(tree_string, internal_as_names, **kwargs)
+    else:
+        return None
 
 def load_newick(tree_filename, internal_as_names=False, **kwargs):
     with open(tree_filename) as f:
