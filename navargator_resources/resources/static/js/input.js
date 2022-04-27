@@ -1,13 +1,12 @@
 // core.js then core_tree_functions.js are loaded before this file.
 
 // BUGS:
-
+// - Viewing a tree image svg on mac does not display the legend. Likely some sort of grouping issue, or possibly opacity, should be solvable.
 
 // TODO:
 // - Increase the max-height of the selection groups div from 95px to 195px. Or split the difference but add handles so user can scale it themselves. Annoyingly small atm
+//   - Do the same to the Select by Name input box.
 // - For Input & Results, add a "Pairs distances" button. Accepts many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair.
-// - Upon loading a tree, the default threshold algorithms should be updated (pick greedy for big trees, minimal with max cycles for medium, unrestricted optimal for smaller trees).
-//   - code into calcSpecificDefaultDisplayOpts()
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
 // - Finish checkIfProcessingDone(). Add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal. Would have to return the runID to replace, requires more info being stored the vf.cache and returned to this.
@@ -27,7 +26,7 @@
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
-//   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree.
+//   - Common that a variant will have a different name in the tree, and in the reactivity data. Let user upload a "translation file". Format is pretty loose; name (comma,slash,space,tab,dash) name. File may contain many more names than are present in the data or tree. *Actually*, don't think I want this.
 // - The control elements are hiding internal borders between neighbouring buttons, and the toggle buttons do not. Neither is great. The toggle borders are too thick (they're doubled up), and the control elements only highlight on 3 sides (except some).
 //   - I think the best solution is to use an outline for the shared borders (as they don't take up space), and change the z-index of the button on hover (so all 4 sides are visible) in addition to darkening the colour.
 // - Resize the page logo image file to whatever size I decide on.
@@ -998,47 +997,42 @@ $(window).bind('beforeunload', function() {
 // =====  Page udating:
 function calcSpecificDefaultDisplayOpts(num_vars) {
   // Calculates new default values for certain options that are tree-specific. These will be overwritten by any loaded session values. Other display options will be taken from their current values on the page.
-  if (num_vars > 500) {
-    $("#kClustMethodSelect").val('k minibatch');
-    $("#kClustMethodSelect").change();
-  }
   nvrgtr_display_opts.sizes.scale_bar_distance = 0.0; // Resets the scale bar distance, so a default value will be calculated
   if (num_vars == 0) {
     return; // Happens for local version of the input page with no tree pre-loaded
   }
-  if (num_vars <= 150) {
-    nvrgtr_default_display_opts.fonts.tree_font_size = 13;
-    nvrgtr_default_display_opts.sizes.small_marker_radius = 2;
-    nvrgtr_default_display_opts.sizes.big_marker_radius = 3;
-    nvrgtr_display_opts.fonts.tree_font_size = 13;
-    nvrgtr_display_opts.sizes.small_marker_radius = 2;
-    nvrgtr_display_opts.sizes.big_marker_radius = 3;
-  } else if (num_vars > 150 && num_vars <= 250) {
-    nvrgtr_default_display_opts.fonts.tree_font_size = 8;
-    nvrgtr_default_display_opts.sizes.small_marker_radius = 1.5;
-    nvrgtr_default_display_opts.sizes.big_marker_radius = 2.5;
-    nvrgtr_display_opts.fonts.tree_font_size = 8;
-    nvrgtr_display_opts.sizes.small_marker_radius = 1.5;
-    nvrgtr_display_opts.sizes.big_marker_radius = 2.5;
-  } else if (num_vars > 250) {
-    nvrgtr_default_display_opts.fonts.tree_font_size = 0;
-    nvrgtr_default_display_opts.sizes.small_marker_radius = 1;
-    nvrgtr_default_display_opts.sizes.big_marker_radius = 2;
-    nvrgtr_display_opts.fonts.tree_font_size = 0;
-    nvrgtr_display_opts.sizes.small_marker_radius = 1;
-    nvrgtr_display_opts.sizes.big_marker_radius = 2;
+  let font_size = 13, small_radius = 2, big_radius = 3;
+  if (num_vars > 150) {
+    font_size = 8;
+    small_radius = 1.5;
+    big_radius = 2.5;
+  }
+  if (num_vars > 250) {
+    font_size = 0;
+    small_radius = 1;
+    big_radius = 2;
     nvrgtr_display_opts.show.banner_borders = false;
+    nvrgtr_default_display_opts.show.banner_borders = false;
   }
   if (num_vars > 400) {
-    nvrgtr_default_display_opts.sizes.small_marker_radius = 0.5;
-    nvrgtr_default_display_opts.sizes.big_marker_radius = 1;
-    nvrgtr_display_opts.sizes.small_marker_radius = 0.5;
-    nvrgtr_display_opts.sizes.big_marker_radius = 1;
+    small_radius = 0.5;
+    big_radius = 1;
+    $("#threshClustMethodSelect").val('qt greedy');
+    $("#threshClustMethodSelect").change();
+  }
+  if (num_vars > 500) {
+    $("#kClustMethodSelect").val('k minibatch');
+    $("#kClustMethodSelect").change();
   }
   if (num_vars > 1400) {
-    nvrgtr_default_display_opts.sizes.big_marker_radius = 0.5;
-    nvrgtr_display_opts.sizes.big_marker_radius = 0.5;
+    big_radius = 0.5;
   }
+  nvrgtr_default_display_opts.fonts.tree_font_size = font_size;
+  nvrgtr_display_opts.fonts.tree_font_size = font_size;
+  nvrgtr_default_display_opts.sizes.small_marker_radius = small_radius;
+  nvrgtr_display_opts.sizes.small_marker_radius = small_radius;
+  nvrgtr_default_display_opts.sizes.big_marker_radius = big_radius;
+  nvrgtr_display_opts.sizes.big_marker_radius = big_radius;
 }
 function newTreeLoaded(data_obj) {
   // Returns true if a tree was loaded, false otherwise.
