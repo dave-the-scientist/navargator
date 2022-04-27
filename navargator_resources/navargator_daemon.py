@@ -659,7 +659,8 @@ class NavargatorDaemon(object):
                         rand_starts, batch_size = arg_list[4:6]
                         if prev_rand_starts >= rand_starts and prev_batch >= batch_size:
                             to_run_clustering = False
-            args = [run_id, cluster_method, max_cycles, *params] + arg_list[4:]
+            # Can't use [..., *params] due to Python2 incompatibillity
+            args = [run_id, cluster_method, max_cycles] + [p for p in params] + arg_list[4:]
             num_variants, tolerance = params
             run_description = '[{}] K@{:.2g}'.format(num_variants, tolerance)
             run_tooltip = '{} clusters at a tolerance of {}'.format(num_variants, tolerance)
@@ -676,7 +677,8 @@ class NavargatorDaemon(object):
                 elif cluster_method == 'qt greedy':
                     if prev_method == 'qt minimal':
                         to_run_clustering = False
-            args = [run_id, cluster_method, max_cycles, *params] + arg_list[3:]
+            # Can't use [..., *params] due to Python2 incompatibillity
+            args = [run_id, cluster_method, max_cycles] + [p for p in params] + arg_list[3:]
             threshold, percent = params
             run_description = '{:.3g}@{:.3g}%'.format(threshold, percent)
             run_tooltip = '{}% of variants within distance {} of a cluster centre'.format(percent, threshold)
