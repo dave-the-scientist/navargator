@@ -624,7 +624,7 @@ button.control-element:active {
   display:flex;
   flex-direction:column;
   min-height:10px;
-  max-height:95px;
+  max-height:200px;
   overflow-y:auto;
 }
 .select-group-list-element {

@@ -4,8 +4,6 @@
 // - Viewing a tree image svg on mac does not display the legend. Likely some sort of grouping issue, or possibly opacity, should be solvable.
 
 // TODO:
-// - Increase the max-height of the selection groups div from 95px to 195px. Or split the difference but add handles so user can scale it themselves. Annoyingly small atm
-//   - Do the same to the Select by Name input box.
 // - For Input & Results, add a "Pairs distances" button. Accepts many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
@@ -23,6 +21,7 @@
 //   - Might be possible to build a big pathstring of the tree, then draw it once at the end. Instead of drawing each line segment one at a time. Not as a string though; as an array of arrays of strings to avoid Raphael's text parsing which is somewhat slow
 //   - Some other tips here https://inductive-kickback.com/2015/03/squeezing-the-most-out-of-raphael-js-for-svg-generation/
 // - When starting a run, the underlying vf doesn't start clustering until the tree has been drawn on the results page. At least it doesn't seem to be. Why is that? See if I can fix that.
+
 // - When designing the threshold input window/frame:
 //   - Should import an excel or csv/tsv file. Columns are the antigen, rows are the variants tested against.
 //   - It's also common to have populations; ie antigen A from mouse 1, mouse 2; antigen B from mouse 1, mouse 2, etc. So allow user to select several columns and assign one variant name (from list, or auto-completing input).
