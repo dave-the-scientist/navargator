@@ -25,6 +25,12 @@ phylo.verbose = False
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
+# TODO EM clustering
+# - Probably hold off until V2; can't use tree score as the sum of all points to their center. Because a point does not necessarily belong to the closest cluster center, but rather the cluster with the highest probability (based on stddev of each cluster). Could sum stddev * cluster size?
+# - Need to implement a form of EM medoids clustering, so not standard EM.
+# - In essence, start with random cluster centers, assign nodes to closest, calculate stddevs. Then E-step: compute responsibilities (probability of belonging to best/sum) for each point. Then M-step: use responsibilities as weights, re-calculate medoids (closest sum dist to all in cluster) & stddevs.
+# - This gives some details, but need to adapt: https://towardsdatascience.com/expectation-maximization-explained-c82f5ed438e5
+
 
 # NOTE:
 # - I originally had allowed comments in nvrgtr files, but large encoded distance matrices spawned too many random characters that duplicated it.
