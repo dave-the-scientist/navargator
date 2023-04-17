@@ -208,7 +208,7 @@ function validateSelectNamesFromText() {
   if (not_found.length > 0) {
     var message = not_found.length+' variant names were not found in the current tree and have been removed:\n';
     message += not_found.join(', ');
-    showErrorPopup(message, 'NaVARgator warning');
+    showErrorPopup(message, 'Navargator warning');
   }
   $("#selectNamesText").val(names.join(', '));
   return names;
