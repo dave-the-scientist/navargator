@@ -13,7 +13,7 @@ To read more about Navargator, check out the publication (coming soon, hopefully
 How can I run Navargator?
 -------------------------
 
-Navargator can be run as an online tool or by installing it and running it on your own computer. The online version has restrictions on the size of trees and the type of clustering it can do, and can be found [right here](http://www.compsysbio.org/navargator). The local version of the software has no limits, but does require you to install all relevant dependencies.
+Navargator can be run as an online tool or by installing it and running it on your own computer. The online version has restrictions on the size of trees and the type of clustering it can do, and can be found [right here](https://www.compsysbio.org/navargator). The local version of the software has no limits, but does require you to install all relevant dependencies.
 
 ### Installation instructions
 
