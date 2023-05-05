@@ -5,6 +5,7 @@
 // - Viewing a tree image svg on mac does not display the legend. Likely some sort of grouping issue, or possibly opacity, should be solvable.
 
 // TODO:
+// - Under display options, rename "Show legend" to "Assigned legend" or something. And turn it off by default.
 // - On the input page, remove the text "X total variants:" from the box, and change the section header ("Assigned variants") to contain that information.
 // - For Input & Results, add a "Pairs distances" button. Accepts many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
