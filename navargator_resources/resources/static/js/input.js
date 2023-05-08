@@ -7,11 +7,15 @@
 // TODO:
 // - Under display options, rename "Show legend" to "Assigned legend" or something. And turn it off by default.
 // - On the input page, remove the text "X total variants:" from the box, and change the section header ("Assigned variants") to contain that information.
-// - For Input & Results, add a "Pairs distances" button. Accepts many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair.
+// - Export Selection button should be moved onto the tree pane, next to "Select by name" button.
+// - For Input & Results, add a "Pairs distances" button. If no variants selected, it should accept many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair. If variants are selected, computes and displays all pairwise distances.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
 // - Finish checkIfProcessingDone(). Add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal. Would have to return the runID to replace, requires more info being stored the vf.cache and returned to this.
 // - Might be a very good idea to implement EM clustering. It's better at accommodating clusters of different sizes / stddevs.
+//   - I do like this, but since its objection fxn is not the sum of distances from each variant to closest centre, I think I'd have to re-write a fair bit of code to handle it. Maybe for V2 of the software.
+//   - For the algo: E phase is to calculate the responsibility of each node (soft prob of belonging to each cluster); M phase is to use these responsibilities to assign nodes to clusters, and to use them as weights to find new estimates for centroid (lowest sum dist to each node) and stddev.
+//   - Some relevant info: https://towardsdatascience.com/expectation-maximization-explained-c82f5ed438e5
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - I think I want to move the results graph below the list of names again. When graph is visible, reduce the max height of the list of names by a fair bit (less likely for user to want to identify variant names at this point).
 
