@@ -494,7 +494,6 @@ function drawTreeBanners() {
   var rad_start, rad_end, var_name, var_angle, banner_path_str, banner_obj, label_coords, label_obj,
     init_rad_start = treeDrawingParams.barChartRadius,
     banner_border = (nvrgtr_display_opts.show.banner_borders ? nvrgtr_display_opts.sizes.banner_borders : 0);
-  console.log('border', banner_border);
   for (let i=0; i<nvrgtr_display_opts.labels.banner_names.length; ++i) {
     // For each banner:
     rad_start = init_rad_start + i*total_banner_size;

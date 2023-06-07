@@ -584,7 +584,7 @@ button.control-element:active {
   text-align:right;
 }
 .display-options-table td.display-options-group-column {
-  text-align:center;
+  text-align:left;
 }
 .display-options-table .display-options-group-label {
   font-weight:bold;
@@ -598,8 +598,8 @@ button.control-element:active {
   padding:0px 1px;
   font-size:0.7em;
 }
-#legendBeamsRowDiv {
-  margin: 5px 0px;
+#legendRedrawButtonsRowDiv {
+  padding-top:7px;
 }
 
 /* ======  Selection groups  ====== */
@@ -888,9 +888,6 @@ input.select-group-node-spinner {
 }
 
 /* ======  Normalization and scale bar inputs  ====== */
-#scaleBarRowDiv {
-  padding-bottom:3px;
-}
 #normValInput,
 #scaleBarInput {
   padding:1px 3px;

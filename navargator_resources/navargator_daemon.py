@@ -30,7 +30,7 @@ elif sys.version_info >= (2,6): # Python 2.x imports
     def as_string(_string):
         return _string
 else:
-    print('\nError: NaVARgator requires Python version >= 2.6 to run.\n')
+    print('\nError: Navargator requires Python version >= 2.6 to run.\n')
     exit()
 
 
@@ -50,7 +50,7 @@ else:
 cli.show_server_banner = lambda *_: None
 
 class NavargatorDaemon(object):
-    """Background daemon to serve NaVARgator requests.
+    """Background daemon to serve Navargator requests.
 
       This class defines several custom HTTP status codes used to signal errors, which are also further defined in core.js:processError().
     550 - Specific error validating the user's tree.
@@ -697,7 +697,7 @@ class NavargatorDaemon(object):
                 del self.sessions[s_id]
         if not self.web_server: # if personal server with no live instances.
             if self.connections.all_dead():
-                print('Last NaVARgator instance closed, shutting down server.')
+                print('Last Navargator instance closed, shutting down server.')
                 self.should_quit.set()
     def close(self):
         """Careful with this; the web version should probably never have this

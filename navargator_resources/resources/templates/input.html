@@ -204,42 +204,43 @@
                 <tr>
                   <td><label class="display-options-label">Font</label></td>
                   <td><input id="displayBannerFontSpinner" class="display-opt-spinner" /></td>
-                  <td colspan="2"><label class="nvrgtr-checkbox-outer">
-                    <input id="displayBannerLabelCheckbox" type="checkbox" checked />
-                    <label class="nvrgtr-checkbox-label" for="displayBannerLabelCheckbox">Show labels</label>
-                  </label></td>
-                </tr>
-                <tr>
-                  <td colspan="2"><label class="nvrgtr-checkbox-outer">
-                    <input id="displayBannerBorderCheckbox" type="checkbox" checked />
-                    <label class="nvrgtr-checkbox-label" for="displayBannerBorderCheckbox">Show borders</label>
-                  </label></td>
                 </tr>
               </tbody></table>
-              <div class="horizontal-row-div">
-                <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
-                <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
+              <hr>
+              <div id="scaleBarRowDiv" class="horizontal-row-div">
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="showScaleBarCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Scale bar</label>
+                </label>
+                <div>
+                  <label style="font-size:0.8em;margin-left:10px">Scale distance:</label>
+                  <input id="scaleBarInput" autocomplete="off" placeholder="size" />
+                </div>
+                <button id="scaleBarInputGoButton" style="display:none;">Ok</button>
               </div>
               <div id="legendBeamsRowDiv" class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
-                  <input id="showLegendCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Show legend</label>
+                  <input id="showLegendCheckbox" type="checkbox"/>
+                  <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Assigned legend</label>
                 </label>
                 <label class="nvrgtr-checkbox-outer" title="Make cluster centers more obvious on the results page">
                   <input id="showChosenBeamsCheckbox" type="checkbox" checked />
                   <label class="nvrgtr-checkbox-label" for="showChosenBeamsCheckbox">Chosen beams</label>
                 </label>
               </div>
-              <div id="scaleBarRowDiv" class="horizontal-row-div">
+              <div class="horizontal-row-div">
                 <label class="nvrgtr-checkbox-outer">
-                  <input id="showScaleBarCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Show scale bar</label>
+                  <input id="displayBannerLabelCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="displayBannerLabelCheckbox">Banner labels</label>
                 </label>
-                <div>
-                  <label style="font-size:0.8em;margin-left:10px">Length:</label>
-                  <input id="scaleBarInput" autocomplete="off" placeholder="size" />
-                </div>
-                <button id="scaleBarInputGoButton" style="display:none;">Ok</button>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="displayBannerBorderCheckbox" type="checkbox" checked />
+                  <label class="nvrgtr-checkbox-label" for="displayBannerBorderCheckbox">Banner borders</label>
+                </label>
+              </div>
+              <div id="legendRedrawButtonsRowDiv" class="horizontal-row-div">
+                <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
+                <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
               </div>
             </div>
 

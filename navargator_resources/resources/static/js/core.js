@@ -39,7 +39,7 @@ var nvrgtr_default_display_opts = { // User-modifiable settings that persist bet
     'tree':700, 'max_variant_name_length':15, 'scale_bar_distance':0.0, 'small_marker_radius':2, 'big_marker_radius':3, 'bar_chart_height':30, 'labels_outline':0.5, 'cluster_expand':4, 'cluster_smooth':0.75, 'inner_label_buffer':5, 'bar_chart_buffer':2, 'search_buffer':7, 'banner_borders':0.5, 'banner_height':15, 'banner_buffer':2
   },
   'show' : {
-    'assigned_legend': true, 'chosen_beams':true, 'scalebar':true, 'banner_labels':true, 'banner_borders':true, 'banner_legend':false
+    'assigned_legend':false, 'chosen_beams':true, 'scalebar':true, 'banner_labels':true, 'banner_borders':true, 'banner_legend':false
   },
   'labels' : {
     'banner_names':[]
