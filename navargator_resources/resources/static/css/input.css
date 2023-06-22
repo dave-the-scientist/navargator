@@ -142,8 +142,8 @@
 }
 #varAssignTableDiv {
   float:left;
-  margin:5px 15px 10px 0px;
-  padding:0px 15px 10px 0px;
+  margin:2px 10px 7px 0px;
+  padding:0px 10px 7px 0px;
   border:1px solid var(--button-border-colour);
   border-top-style:none;
   border-left-style:none;
@@ -290,11 +290,6 @@
   max-height:calc(var(--tree-width) - var(--results-graph-height) - 52px + 4px);
   /*4px of space in mainTreeDiv under figureSvg, 52px lines up bottom of the column with the tree.*/
   overflow-y:auto;
-}
-#varSelectHeader {
-  display:inline-block;
-  margin:0px 0px 5px 0px;
-  font-size:1.2em;
 }
 .var-select-label { /* Element for each variant in the tree.*/
   display:inline-block;

@@ -575,6 +575,11 @@ button.control-element:active {
 }
 
 /* ======  Display options  ====== */
+#displayOptionsPanel .display-options-label,
+#displayOptionsPanel .nvrgtr-checkbox-label,
+#displayScaleDistLabel {
+  font-size:0.82em;
+}
 .display-options-table {
   width:100%;
   text-align:left;
@@ -586,20 +591,11 @@ button.control-element:active {
 .display-options-table td.display-options-group-column {
   text-align:left;
 }
-.display-options-table .display-options-group-label {
-  font-weight:bold;
-}
-.display-options-table .display-options-label {
-  font-size:0.85em;
-}
 .display-options-table .jscolor {
   width:45px;
   height:14px;
   padding:0px 1px;
   font-size:0.7em;
-}
-#legendRedrawButtonsRowDiv {
-  padding-top:7px;
 }
 
 /* ======  Selection groups  ====== */

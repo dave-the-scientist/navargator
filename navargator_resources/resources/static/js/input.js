@@ -5,8 +5,6 @@
 // - Viewing a tree image svg on mac does not display the legend. Likely some sort of grouping issue, or possibly opacity, should be solvable.
 
 // TODO:
-// - Under display options, rename "Show legend" to "Assigned legend" or something. And turn it off by default.
-// - On the input page, remove the text "X total variants:" from the box, and change the section header ("Assigned variants") to contain that information.
 // - Export Selection button should be moved onto the tree pane, next to "Select by name" button.
 // - For Input & Results, add a "Pairs distances" button. If no variants selected, it should accept many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair. If variants are selected, computes and displays all pairwise distances.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
@@ -1097,7 +1095,7 @@ function updateVarSelectList() {
   $("#chosenAssignedDiv").css('border-color', nvrgtr_display_opts.colours.chosen);
   $("#availAssignedDiv").css('border-color', nvrgtr_display_opts.colours.available);
   $("#ignoredAssignedDiv").css('border-color', nvrgtr_display_opts.colours.ignored);
-  $("#numVariantsSpan").html(nvrgtr_data.leaves.length);
+  $("#numVariantsSpan").html(nvrgtr_data.leaves.length + ' variants');
   $("#mainVariantSelectDiv").show();
 }
 function updateClusteringOptions() {

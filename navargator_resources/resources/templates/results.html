@@ -59,132 +59,139 @@
           <div id="coreOptionsDiv" class="style-box">
             <h2 class="collapsible-header">Display options<div id="displayOptsHelp" class="help-button"></div></h2>
             <div id="displayOptionsPanel" class="collapsible-panel">
-              <table class="display-options-table"><tbody>
-                <tr>
-                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Assigned colours</label></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Available</label></td>
-                  <td><input id="available_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('available',this.jscolor)"></td>
-                  <td><label class="display-options-label">Chosen</label></td>
-                  <td><input id="chosen_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('chosen',this.jscolor)"></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Ignored</label></td>
-                  <td><input id="ignored_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('ignored',this.jscolor)"></td>
-                  <td><label class="display-options-label">Unassigned</label></td>
-                  <td><input id="default_node_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('default_node',this.jscolor)"></td>
-                </tr>
-                <tr>
-                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree colours</label></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Clusters</label></td>
-                  <td><input id="cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_background',this.jscolor)"></td>
-                  <td><label class="display-options-label">Singletons</label></td>
-                  <td><input id="singleton_cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Highlight</label></td>
-                  <td><input id="cluster_highlight_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
-                  <td><label class="display-options-label">Radial bars</label></td>
-                  <td><input id="bar_chart_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('bar_chart',this.jscolor)"></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Selection</label></td>
-                  <td><input id="selection_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('selection',this.jscolor)"></td>
-                  <td><label class="display-options-label">Search</label></td>
-                  <td><input id="search_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('search',this.jscolor)"></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Label</label></td>
-                  <td><input id="label_bg_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_bg',this.jscolor)"></td>
-                  <td><label class="display-options-label">Text</label></td>
-                  <td><input id="label_text_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_text',this.jscolor)"></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Background</label></td>
-                  <td><input id="tree_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('tree_background',this.jscolor)"></td>
-                </tr>
-              </tbody></table>
-              <hr>
-              <table class="display-options-table"><tbody>
-                <tr>
-                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree sizes</label></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Font</label></td>
-                  <td><input id="displayTreeFontSizeSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Width</label></td>
-                  <td><input id="displayTreeWidthSpinner" class="display-opt-spinner" /></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Big node</label></td>
-                  <td><input id="displayTreeBigNodeSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Small node</label></td>
-                  <td><input id="displayTreeSmallNodeSpinner" class="display-opt-spinner" /></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Radial bars</label></td>
-                  <td><input id="displayTreeBarChartSizeSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Tree outline</label></td>
-                  <td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
-                </tr>
-                <tr>
-                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Tree angles</label></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Initial</label></td>
-                  <td><input id="displayTreeInitAngleSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Split</label></td>
-                  <td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
-                </tr>
-                <tr>
-                  <td class="display-options-group-column" colspan="4"><label class="display-options-group-label">Banners</label></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Height</label></td>
-                  <td><input id="displayBannerHeightSpinner" class="display-opt-spinner" /></td>
-                  <td><label class="display-options-label">Buffer</label></td>
-                  <td><input id="displayBannerBufferSpinner" class="display-opt-spinner" /></td>
-                </tr>
-                <tr>
-                  <td><label class="display-options-label">Font</label></td>
-                  <td><input id="displayBannerFontSpinner" class="display-opt-spinner" /></td>
-                </tr>
-              </tbody></table>
-              <hr>
-              <div id="scaleBarRowDiv" class="horizontal-row-div">
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="showScaleBarCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Scale bar</label>
-                </label>
-                <div>
-                  <label style="font-size:0.8em;margin-left:10px">Scale distance:</label>
-                  <input id="scaleBarInput" autocomplete="off" placeholder="size" />
-                </div>
-                <button id="scaleBarInputGoButton" style="display:none;">Ok</button>
-              </div>
-              <div id="legendBeamsRowDiv" class="horizontal-row-div">
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="showLegendCheckbox" type="checkbox"/>
-                  <label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Assigned legend</label>
-                </label>
-                <label class="nvrgtr-checkbox-outer" title="Make cluster centers more obvious on the results page">
-                  <input id="showChosenBeamsCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="showChosenBeamsCheckbox">Chosen beams</label>
-                </label>
-              </div>
-              <div class="horizontal-row-div">
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="displayBannerLabelCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="displayBannerLabelCheckbox">Banner labels</label>
-                </label>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="displayBannerBorderCheckbox" type="checkbox" checked />
-                  <label class="nvrgtr-checkbox-label" for="displayBannerBorderCheckbox">Banner borders</label>
-                </label>
-              </div>
+							<div class="labeled-group-div">
+                <label class="labeled-group-label">Tree sizes</label>
+								<table class="display-options-table"><tbody>
+									<tr>
+										<td><label class="display-options-label">Total width</label></td>
+										<td><input id="displayTreeWidthSpinner" class="display-opt-spinner" /></td>
+										<td><label class="display-options-label">Font</label></td>
+										<td><input id="displayTreeFontSizeSpinner" class="display-opt-spinner" /></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Big node</label></td>
+										<td><input id="displayTreeBigNodeSpinner" class="display-opt-spinner" /></td>
+										<td><label class="display-options-label">Small node</label></td>
+										<td><input id="displayTreeSmallNodeSpinner" class="display-opt-spinner" /></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Graph</label></td>
+										<td><input id="displayTreeBarChartSizeSpinner" class="display-opt-spinner" /></td>
+										<td><label class="display-options-label">Outline</label></td>
+										<td><input id="displayTreeLabelOutlineSpinner" class="display-opt-spinner" /></td>
+									</tr>
+								</tbody></table>
+							</div>
+							<div class="labeled-group-div">
+                <label class="labeled-group-label">Tree angles</label>
+								<table class="display-options-table"><tbody>
+									<tr>
+										<td><label class="display-options-label">Initial</label></td>
+										<td><input id="displayTreeInitAngleSpinner" class="display-opt-spinner" /></td>
+										<td><label class="display-options-label">Split</label></td>
+										<td><input id="displayTreeBufferAngleSpinner" class="display-opt-spinner" /></td>
+                	</tr>
+								</tbody></table>
+							</div>
+							<div class="labeled-group-div">
+                <label class="labeled-group-label">Banner sizes</label>
+								<table class="display-options-table"><tbody>
+									<tr>
+										<td><label class="display-options-label">Height</label></td>
+										<td><input id="displayBannerHeightSpinner" class="display-opt-spinner" /></td>
+										<td><label class="display-options-label">Buffer</label></td>
+										<td><input id="displayBannerBufferSpinner" class="display-opt-spinner" /></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Font</label></td>
+										<td><input id="displayBannerFontSpinner" class="display-opt-spinner" /></td>
+									</tr>
+								</tbody></table>
+							</div>
+							<div class="labeled-group-div">
+                <label class="labeled-group-label">Other options</label>
+								<div id="scaleBarRowDiv" class="horizontal-row-div">
+									<label class="nvrgtr-checkbox-outer">
+										<input id="showScaleBarCheckbox" type="checkbox" checked />
+										<label class="nvrgtr-checkbox-label" for="showScaleBarCheckbox">Scale bar</label>
+									</label>
+									<div>
+										<label id="displayScaleDistLabel">Scale distance:</label>
+										<input id="scaleBarInput" autocomplete="off" placeholder="size" />
+									</div>
+									<button id="scaleBarInputGoButton" style="display:none;">Ok</button>
+								</div>
+								<div id="legendBeamsRowDiv" class="horizontal-row-div">
+									<label class="nvrgtr-checkbox-outer">
+										<input id="showLegendCheckbox" type="checkbox"/>
+										<label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Variant legend</label>
+									</label>
+									<label class="nvrgtr-checkbox-outer" title="Make cluster centers more obvious on the results page">
+										<input id="showChosenBeamsCheckbox" type="checkbox" checked />
+										<label class="nvrgtr-checkbox-label" for="showChosenBeamsCheckbox">Chosen beams</label>
+									</label>
+								</div>
+								<div class="horizontal-row-div">
+									<label class="nvrgtr-checkbox-outer">
+										<input id="displayBannerLabelCheckbox" type="checkbox" checked />
+										<label class="nvrgtr-checkbox-label" for="displayBannerLabelCheckbox">Banner labels</label>
+									</label>
+									<label class="nvrgtr-checkbox-outer">
+										<input id="displayBannerBorderCheckbox" type="checkbox" checked />
+										<label class="nvrgtr-checkbox-label" for="displayBannerBorderCheckbox">Banner borders</label>
+									</label>
+								</div>
+							</div>
+							<div class="labeled-group-div">
+                <label class="labeled-group-label">Variant colours</label>
+								<table class="display-options-table"><tbody>
+									<tr>
+										<td><label class="display-options-label">Available</label></td>
+										<td><input id="available_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('available',this.jscolor)"></td>
+										<td><label class="display-options-label">Chosen</label></td>
+										<td><input id="chosen_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('chosen',this.jscolor)"></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Ignored</label></td>
+										<td><input id="ignored_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('ignored',this.jscolor)"></td>
+										<td><label class="display-options-label">Unassigned</label></td>
+										<td><input id="default_node_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('default_node',this.jscolor)"></td>
+									</tr>
+								</tbody></table>
+							</div>
+							<div class="labeled-group-div">
+                <label class="labeled-group-label">Tree colours</label>
+								<table class="display-options-table"><tbody>
+									<tr>
+										<td><label class="display-options-label">Clusters</label></td>
+										<td><input id="cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_background',this.jscolor)"></td>
+										<td><label class="display-options-label">Singles</label></td>
+										<td><input id="singleton_cluster_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('singleton_cluster_background',this.jscolor)"></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Highlight</label></td>
+										<td><input id="cluster_highlight_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('cluster_highlight',this.jscolor)"></td>
+										<td><label class="display-options-label">Graph</label></td>
+										<td><input id="bar_chart_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('bar_chart',this.jscolor)"></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Selection</label></td>
+										<td><input id="selection_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('selection',this.jscolor)"></td>
+										<td><label class="display-options-label">Search</label></td>
+										<td><input id="search_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('search',this.jscolor)"></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Label</label></td>
+										<td><input id="label_bg_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_bg',this.jscolor)"></td>
+										<td><label class="display-options-label">Text</label></td>
+										<td><input id="label_text_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('label_text',this.jscolor)"></td>
+									</tr>
+									<tr>
+										<td><label class="display-options-label">Background</label></td>
+										<td><input id="tree_background_colourPicker" class="jscolor" spellcheck="false" onchange="updateDisplayColour('tree_background',this.jscolor)"></td>
+									</tr>
+								</tbody></table>
+							</div>
               <div id="legendRedrawButtonsRowDiv" class="horizontal-row-div">
                 <button id="resetDisplayOptsButton" class="jq-ui-button">Reset options</button>
                 <button id="redrawTreeButton" class="jq-ui-button"><b>Redraw tree</b></button>
