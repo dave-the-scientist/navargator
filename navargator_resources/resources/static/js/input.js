@@ -292,27 +292,6 @@ function setupManipulationsPane() {
   });
 }
 function setupExportPane() {
-  var export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
-  export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
-  function formatDisplayExportNames() {
-    // Function to format the information based on the user's selection.
-    var delimiter, delimiter_type = $("#exportDelimiterSelect").val();
-    if (delimiter_type == 'tab') {
-      delimiter = '\t';
-    } else if (delimiter_type == 'comma') {
-      delimiter = ', ';
-    } else if (delimiter_type == 'space') {
-      delimiter = ' ';
-    } else if (delimiter_type == 'newline') {
-      delimiter = '\n';
-    }
-    var names = export_pane.data('names'),
-      new_text_val = names.join(delimiter);
-    export_text.val(new_text_val);
-    export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
-    export_text.css('height', export_text[0].scrollHeight+'px');
-    showFloatingPane(export_pane);
-  }
   // Button callbacks:
   $("#exportTreeFileButton").click(function() {
     let tree_type = $("#exportTreeFileTypeSelect").val();
@@ -362,16 +341,8 @@ function setupExportPane() {
     });
   });
   $("#exportTreeImageButton").click(function() {
-    //var svg_data = $("#figureSvg")[0].outerHTML; // This won't work in IE, but neither does the rest of navargator
-    //downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
-
     let svg_data = cleanSvg("#figureSvg");
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
-  });
-  $("#exportSelectionButton").click(function() {
-    // Sets 'names' to a list of the selected variants in selection order.
-    export_pane.data('names', [...nvrgtr_data.selected]);
-    formatDisplayExportNames();
   });
   $("#getSelectedDistancesButton").click(function() {
     if (nvrgtr_data.selected.size <= 1) {
@@ -402,22 +373,6 @@ function setupExportPane() {
       },
       error: function(error) { processError(error, "Error retrieving variant distances"); }
     });
-  });
-
-  // Functionality of the export pane:
-  $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
-    formatDisplayExportNames();
-  });
-  $("#exportDelimiterSelect").change(function() {
-    formatDisplayExportNames();
-  });
-  $("#exportNamesCopyButton").click(function() {
-    export_text.select();
-    document.execCommand("copy");
-  });
-  $("#exportNamesSaveButton").click(function() {
-    var text_data = export_text.val();
-    downloadData('navargator_selection.txt', text_data, "text/plain");
   });
 }
 function setupNormalizationPane() {
@@ -1736,6 +1691,10 @@ function getNormalizationSettings() {
     showErrorPopup("Error: could not retrieve normalization settings from the page.");
   }
   return ret;
+}
+// =====  Page-specific export functions:
+function formatExportNames(delimiter) {
+  return [...nvrgtr_data.selected].join(delimiter);
 }
 // =====  Misc methods:
 function focusScrollSelectInTextarea(textarea, start, end) {

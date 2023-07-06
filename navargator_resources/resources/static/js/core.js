@@ -1335,6 +1335,7 @@ function calculate90Percentile(orig_var_names) {
   return nvrgtr_data.variant_distance[var_names[ind]];
 }
 function cleanSvg(selector) {
+  // new_svg[0].outerHTML won't work in IE, but neither does the rest of navargator
   // Removes hidden elements. Returns the svg data ready to be passed to downloadData()
   let new_svg = $(selector).clone();
   new_svg.find("*").each(function() {

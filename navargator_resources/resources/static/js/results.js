@@ -63,6 +63,7 @@ function setupPage() {
   setupSelectionGroupsPane();
   setupExportPane();
   setupTreeElements();
+  setupResultsExportNamesElements();
   treeIsLoading();
 
   $.ajax({
@@ -270,36 +271,6 @@ function setupNormalizationPane() {
   });
 }
 function setupExportPane() {
-  var export_file, export_pane = $("#exportNamesPane"), export_text = $("#exportNamesText");
-  export_pane.data('names', []); // Stores the names, to be manipulated by the pane.
-  function formatDisplayExportNames() {
-    // Function to format the information based on the user's selection.
-    var delimiter, delimiter_type = $("#exportDelimiterSelect").val();
-    if (delimiter_type == 'tab') {
-      delimiter = '\t';
-    } else if (delimiter_type == 'comma') {
-      delimiter = ', ';
-    } else if (delimiter_type == 'space') {
-      delimiter = ' ';
-    } else if (delimiter_type == 'newline') {
-      delimiter = '\n';
-    }
-    var names = export_pane.data('names'),
-      include_scores = ($("#exportNamesCheckbox").is(':checked')) ? false : true,
-      new_text_val = '';
-    if (typeof names[0] === 'string' || names[0] instanceof String) { // If exporting chosen or selection:
-      new_text_val = formatExportNameGroup(names, delimiter, include_scores);
-    } else { // Else exporting clusters (names is a list of lists):
-      for (var i=0; i<names.length; ++i) {
-        new_text_val += formatExportNameGroup(names[i], delimiter, include_scores);
-        if (i < names.length - 1) { new_text_val += '\n\n'; }
-      }
-    }
-    export_text.val(new_text_val);
-    export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
-    export_text.css('height', export_text[0].scrollHeight+'px');
-    showFloatingPane(export_pane);
-  }
   // Button callbacks:
   $("#getSelectedDistancesButton").click(function() {
     if (nvrgtr_data.selected.size <= 1) {
@@ -331,35 +302,6 @@ function setupExportPane() {
       error: function(error) { processError(error, "Error retrieving variant distances"); }
     });
   });
-  $("#exportChosenButton").click(function() {
-    // Sets 'names' to a list of the chosen variants.
-    export_file = 'navargator_chosen.txt';
-    export_pane.data('names', nvrgtr_data.variants.slice());
-    formatDisplayExportNames();
-  });
-  $("#exportSelectionButton").click(function() {
-    // Sets 'names' to a list of the selected variants. The order is undefined.
-    export_file = 'navargator_selection.txt';
-    export_pane.data('names', [...nvrgtr_data.selected]);
-    formatDisplayExportNames();
-  });
-  $("#exportClustersButton").click(function() {
-    // Sets 'names' to a list of lists, each sublist begins with the chosen followed by the rest of the variants.
-    var clusters = [], chosen, names, vars, name;
-    for (var i=0; i<nvrgtr_data.variants.length; ++i) {
-      chosen = nvrgtr_data.variants[i];
-      names = [chosen];
-      vars = nvrgtr_data.clusters[chosen].nodes;
-      for (var j=0; j<vars.length; ++j) {
-        name = vars[j];
-        if (name != chosen) { names.push(name); }
-      }
-      clusters.push(names);
-    }
-    export_file = 'navargator_clusters.txt';
-    export_pane.data('names', clusters);
-    formatDisplayExportNames();
-  });
   $("#exportTreeImageButton").click(function() {
     let svg_data = cleanSvg("#figureSvg");
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
@@ -367,21 +309,6 @@ function setupExportPane() {
   $("#exportHistoImageButton").click(function() {
     let svg_data = cleanSvg("#histoSvg");
     downloadData("navargator_histogram.svg", svg_data, "image/svg+xml;charset=utf-8");
-  });
-  // Functionality of the export pane:
-  $("#exportNamesCheckbox, #exportNamesAndScoresCheckbox").change(function() {
-    formatDisplayExportNames();
-  });
-  $("#exportDelimiterSelect").change(function() {
-    formatDisplayExportNames();
-  });
-  $("#exportNamesCopyButton").click(function() {
-    export_text.select();
-    document.execCommand("copy");
-  });
-  $("#exportNamesSaveButton").click(function() {
-    var text_data = export_text.val();
-    downloadData(export_file, text_data, "text/plain");
   });
 }
 
@@ -1159,23 +1086,86 @@ function parseClusteredData(data) {
   }
 }
 
-// =====  Misc functions:
-function formatExportNameGroup(names, delimiter, include_scores) {
-  var text_val = '';
-  if (include_scores === false) {
-    text_val = names.join(delimiter);
-  } else {
-    var dist, val;
-    for (var i=0; i<names.length; ++i) {
-      dist = nvrgtr_data.variant_distance[names[i]];
-      if (dist === undefined) { dist = ''; }
-      val = names[i] + delimiter + dist;
-      if (i < names.length - 1) { val += '\n'; }
-      text_val += val;
+// =====  Page-specific export functions:
+function setupResultsExportNamesElements() {
+  var export_pane = $("#exportNamesPane");
+  export_pane.data('export_type', 'selection');
+  $("#exportSelectionNamesCheckbox").click(function() {
+    export_pane.data('export_type', 'selection');
+    export_pane.data('save_filename', 'navargator_selection.txt');
+    formatExportPaneText();
+  });
+  $("#exportChosenNamesCheckbox").click(function() {
+    export_pane.data('export_type', 'chosen');
+    export_pane.data('save_filename', 'navargator_variants.txt');
+    formatExportPaneText();
+  });
+  $("#exportClustersNamesCheckbox").click(function() {
+    export_pane.data('export_type', 'clusters');
+    export_pane.data('save_filename', 'navargator_clusters.txt');
+    formatExportPaneText();
+  });
+  export_pane.data('include_scores', false);
+  $("#exportNamesCheckbox").click(function() {
+    export_pane.data('include_scores', false);
+    formatExportPaneText();
+  });
+  $("#exportNamesAndScoresCheckbox").click(function() {
+    export_pane.data('include_scores', true);
+    formatExportPaneText();
+  });
+}
+function formatExportNames(delimiter) {
+  var export_pane = $("#exportNamesPane");
+  let export_type = export_pane.data('export_type'), names = [];
+  if (export_type == 'selection') {
+    names = [...nvrgtr_data.selected];
+  } else if (export_type == 'chosen') {
+    names = nvrgtr_data.variants.slice();
+  } else if (export_type == 'clusters') {
+    let clust_names = [];
+    for (let i=0; i<nvrgtr_data.variants.length; ++i) {
+      clust_names = [...nvrgtr_data.clusters[nvrgtr_data.variants[i]].nodes];
+      clust_names.sort((a,b) => nvrgtr_data.variant_distance[a]-nvrgtr_data.variant_distance[b]);
+      names.push(clust_names);
     }
   }
-  return text_val;
+  
+  //let include_scores = ($("#exportNamesCheckbox").is(':checked')) ? false : true;
+  let include_scores = export_pane.data('include_scores'), export_str = '';
+  if (include_scores === false) { // Return names only
+    if (export_type != 'clusters') { // For selection or chosen
+      export_str = names.join(delimiter);
+    } else { // For clusters
+      let clust_arr = [];
+      for (let i=0; i<names.length; ++i) {
+        clust_arr.push(names[i].join(delimiter));
+      }
+      export_str = clust_arr.join('\n\n');
+    }
+  } else { // Return names and distances
+    let dist_arr = [];
+    if (export_type != 'clusters') { // For selection or chosen
+      for (let i=0; i<names.length; ++i) {
+        dist_arr.push(names[i] + delimiter + nvrgtr_data.variant_distance[names[i]]);
+      }
+      export_str = dist_arr.join('\n');
+    } else { // For clusters
+      let dist_clust_arr;
+      for (let i=0; i<names.length; ++i) {
+        dist_clust_arr = [];
+        for (let j=0; j<names[i].length; ++j) {
+          dist_clust_arr.push(names[i][j] + delimiter + nvrgtr_data.variant_distance[names[i][j]]);
+        }
+        dist_arr.push(dist_clust_arr.join('\n'));
+      }
+      export_str = dist_arr.join('\n\n');
+    }
+  }
+  return export_str;
 }
+
+// =====  Misc functions:
 function setupSpecificHelpButtonText() {
   // Common elements' help messages defined in core.js:setupCoreHelpButtonText()
   // Export data help:

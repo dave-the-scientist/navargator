@@ -310,30 +310,6 @@
                   <p id="variantDistanceAvgP"><b>Average:</b> <span id="variantDistanceAvgSpan"></span></p>
                 </div>
               </div>
-
-              <div id="exportNamesPane" class="floating-pane">
-                <div>
-                  <h2 class="floating-pane-header">Export variant names</h2>
-                  <button class="floating-pane-close"></button>
-                </div>
-                <div id="exportNamesMainDiv">
-                  <div id="exportNamesLeftColumn">
-                    <textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
-                  </div>
-                  <div id="exportNamesRightColumn">
-                    <label id="exportDelimiterLabel">Delimiter:</label>
-                    <select id="exportDelimiterSelect">
-                      <option value="comma" selected>Comma</option>
-                      <option value="tab">Tab</option>
-                      <option value="space">Space</option>
-                      <option value="newline">New line</option>
-                    </select>
-                    <button id="exportNamesCopyButton">Copy to clipboard</button>
-                    <button id="exportNamesSaveButton">Save text file</button>
-                  </div>
-                </div>
-              </div>
-
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Save to file</label>
                 <div class="horizontal-row-div">
@@ -359,7 +335,7 @@
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Get variant data</label>
                 <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distance from the first variant selected to every other">Get distances</button>
-                <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
+                <button id="exportSelectionButtonOLD" class="jq-ui-button">Export selection</button>
               </div>
             </div>
 
@@ -558,6 +534,33 @@
                   </div>
                 </div>
               </div>
+							
+							<div id="exportNamesGroupDiv">
+								<button id="exportNamesButton" class="control-element">Export<br>names</button>
+								<div id="exportNamesPane" class="floating-pane">
+									<div>
+										<h2 class="floating-pane-header">Export variant names</h2>
+										<button class="floating-pane-close"></button>
+									</div>
+									<div id="exportNamesMainDiv">
+										<div id="exportNamesLeftColumn">
+											<textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
+										</div>
+										<div id="exportNamesRightColumn">
+											<label id="exportDelimiterLabel">Delimiter:</label>
+											<select id="exportDelimiterSelect">
+												<option value="comma" selected>Comma</option>
+												<option value="tab">Tab</option>
+												<option value="space">Space</option>
+												<option value="newline">New line</option>
+											</select>
+											<button id="exportNamesCopyButton">Copy to clipboard</button>
+											<button id="exportNamesSaveButton">Save text file</button>
+										</div>
+									</div>
+								</div>
+							</div>
+							
               <button id="selectAllButton" class="control-element control-pair-left">Select all</button>
               <button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
             </div>

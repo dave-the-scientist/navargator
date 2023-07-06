@@ -2,22 +2,6 @@
 
 // =====  Tree setup functions:
 function setupTreeElements() {
-  $("#selectAllButton").click(function() {
-    for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
-      nodeLabelMouseclickHandler(nvrgtr_data.leaves[i], false, true);
-    }
-    numSelectedCallback();
-  });
-  $("#clearSelectionButton").click(function() {
-    // De-select selection groups
-    $(".select-group-list-element").removeClass('select-group-list-element-active');
-    $("#selectGroupNameInput").val('');
-    // De-select any selected variatns
-    nvrgtr_data.selected.forEach(function(var_name) {
-      nodeLabelMouseclickHandler(var_name, false, false);
-    });
-    numSelectedCallback();
-  });
   nvrgtr_data.pan_zoom = svgPanZoom('#figureSvg', {
     fit: false,
     center: false,
@@ -26,7 +10,12 @@ function setupTreeElements() {
     zoomScaleSensitivity: 0.4, // Default is 0.2
     onPan: preventSelections
   });
-
+  // Prevent selection on pan:
+  $("#figureSvg").mousedown(function(e) {
+    nvrgtr_data.allow_select = true;
+  }).mouseleave(function() {
+    nvrgtr_data.allow_select = true;
+  });
   // The search input and associated buttons and labels:
   var search_input = $("#varSearchInput"), search_button = $("#varSearchButton"), search_hits_div = $("#varSearchHitsDiv"), search_select_button = $('#searchToSelectButton');
   var search_select_add_title = "Add these hits to the current selection",
@@ -35,7 +24,6 @@ function setupTreeElements() {
   var tree_div_pad_str = $("#mainTreeDiv").css('paddingRight'),
     tree_div_pad = parseInt(tree_div_pad_str.slice(0,-2)),
     search_input_size = $("#treeSearchDiv")[0].scrollWidth;
-
   function setSearchSelectToAdd() {
     search_select_button.removeClass('tree-search-cut-hits');
     search_select_button.attr('title', search_select_add_title);
@@ -125,6 +113,7 @@ function setupTreeElements() {
       nvrgtr_data.search_results.add_to_selection = false;
     }
   });
+  
   // The zoom buttons:
   $('#treeZoomOutButton').click(function() {
     nvrgtr_data.pan_zoom.zoomOut();
@@ -145,6 +134,29 @@ function setupTreeElements() {
       nvrgtr_data.pan_zoom.enableMouseWheelZoom();
     }
   });
+  
+  // The selection buttons:
+  $("#selectAllButton").click(function() {
+    for (var i=0; i<nvrgtr_data.leaves.length; ++i) {
+      nodeLabelMouseclickHandler(nvrgtr_data.leaves[i], false, true);
+    }
+    numSelectedCallback();
+  });
+  $("#clearSelectionButton").click(function() {
+    // De-select selection groups
+    $(".select-group-list-element").removeClass('select-group-list-element-active');
+    $("#selectGroupNameInput").val('');
+    // De-select any selected variatns
+    nvrgtr_data.selected.forEach(function(var_name) {
+      nodeLabelMouseclickHandler(var_name, false, false);
+    });
+    numSelectedCallback();
+  });
+  var select_pane = $("#selectNamesPane");
+  $("#selectNamesButton").click(function() {
+    setSelectNamesButtonToAdd();
+    showFloatingPane(select_pane);
+  });
   // The select by name pane:
   $("#selectNamesAddButton").data('state', 'add');
   function setSelectNamesButtonToAdd() {
@@ -155,11 +167,6 @@ function setupTreeElements() {
     $("#selectNamesAddButton").html('Cut from selection');
     $("#selectNamesAddButton").data('state', 'cut');
   }
-  var select_pane = $("#selectNamesPane");
-  $("#selectNamesButton").click(function() {
-    setSelectNamesButtonToAdd();
-    showFloatingPane(select_pane);
-  });
   $("#selectNamesValidateButton").click(function() {
     validateSelectNamesFromText();
     setSelectNamesButtonToAdd();
@@ -186,13 +193,45 @@ function setupTreeElements() {
     }
     numSelectedCallback();
   });
-  // Prevent selection on pan:
-  $("#figureSvg").mousedown(function(e) {
-    nvrgtr_data.allow_select = true;
-  }).mouseleave(function() {
-    nvrgtr_data.allow_select = true;
+  
+  // Export names button
+  var export_pane = $("#exportNamesPane");
+  $("#exportNamesButton").click(function() {
+    formatExportPaneText();
+    showFloatingPane(export_pane);
+  });
+  // Export names pane
+  var export_text = $("#exportNamesText");
+  export_pane.data('save_filename', 'navargator_selection.txt');
+  $("#exportDelimiterSelect").change(function() {
+    formatExportPaneText();
+  });
+  $("#exportNamesCopyButton").click(function() {
+    export_text.select();
+    document.execCommand("copy");
+  });
+  $("#exportNamesSaveButton").click(function() {
+    let text_data = export_text.val(), filename = export_pane.data('save_filename');
+    downloadData(filename, text_data, "text/plain");
   });
 }
+function formatExportPaneText() {
+  let export_text = $("#exportNamesText"), delimiter, delimiter_type = $("#exportDelimiterSelect").val();
+  if (delimiter_type == 'tab') {
+    delimiter = '\t';
+  } else if (delimiter_type == 'comma') {
+    delimiter = ', ';
+  } else if (delimiter_type == 'space') {
+    delimiter = ' ';
+  } else if (delimiter_type == 'newline') {
+    delimiter = '\n';
+  }
+  let names_str = formatExportNames(delimiter);
+  export_text.val(names_str);
+  export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
+  export_text.css('height', export_text[0].scrollHeight+'px');
+}
+
 function validateSelectNamesFromText() {
   var raw_names = getSelectNamesFromText(),
     names = [], not_found = [], name, true_name;

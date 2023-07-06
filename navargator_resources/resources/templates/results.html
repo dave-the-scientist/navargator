@@ -258,35 +258,6 @@
                 </div>
               </div>
 
-              <div id="exportNamesPane" class="floating-pane">
-                <div>
-                  <h2 class="floating-pane-header">Export variant names</h2>
-                  <button class="floating-pane-close"></button>
-                </div>
-                <div id="exportNamesToggleDiv" class="toggle-button-container">
-                  <input type="radio" id="exportNamesCheckbox" name="export-choice" class="toggle-button-input" checked>
-                  <label for="exportNamesCheckbox" class="toggle-button-label toggle-button-label-left">Names</label>
-                  <input type="radio" id="exportNamesAndScoresCheckbox" name="export-choice" class="toggle-button-input">
-                  <label for="exportNamesAndScoresCheckbox" class="toggle-button-label toggle-button-label-right">Names and scores</label>
-                </div>
-                <div id="exportNamesMainDiv">
-                  <div id="exportNamesLeftColumn">
-                    <textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
-                  </div>
-                  <div id="exportNamesRightColumn">
-                    <label id="exportDelimiterLabel">Delimiter:</label>
-                    <select id="exportDelimiterSelect">
-                      <option value="comma" selected>Comma</option>
-                      <option value="tab">Tab</option>
-                      <option value="space">Space</option>
-                      <option value="newline">New line</option>
-                    </select>
-                    <button id="exportNamesCopyButton">Copy to clipboard</button>
-                    <button id="exportNamesSaveButton">Save text file</button>
-                  </div>
-                </div>
-              </div>
-
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Save to file</label>
                 <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
@@ -295,9 +266,6 @@
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Get variant data</label>
                 <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distance from the first variant selected to every other">Get distances</button>
-                <button id="exportSelectionButton" class="jq-ui-button">Export selection</button>
-                <button id="exportChosenButton" class="jq-ui-button">Export chosen</button>
-                <button id="exportClustersButton" class="jq-ui-button">Export clusters</button>
               </div>
             </div>
 
@@ -379,6 +347,47 @@
                   </div>
                 </div>
               </div>
+							
+							<div id="exportNamesGroupDiv">
+								<button id="exportNamesButton" class="control-element">Export<br>names</button>
+								<div id="exportNamesPane" class="floating-pane">
+									<div>
+										<h2 class="floating-pane-header">Export variant names</h2>
+										<button class="floating-pane-close"></button>
+									</div>
+									<div id="exportNamesTypeToggleDiv" class="toggle-button-container">
+										<input type="radio" id="exportSelectionNamesCheckbox" name="export-type" class="toggle-button-input" checked>
+										<label for="exportSelectionNamesCheckbox" class="toggle-button-label toggle-button-label-left">Selection</label>
+										<input type="radio" id="exportChosenNamesCheckbox" name="export-type" class="toggle-button-input">
+										<label for="exportChosenNamesCheckbox" class="toggle-button-label">Chosen</label>
+										<input type="radio" id="exportClustersNamesCheckbox" name="export-type" class="toggle-button-input">
+										<label for="exportClustersNamesCheckbox" class="toggle-button-label toggle-button-label-right">Clusters</label>
+									</div>
+									<div id="exportNamesToggleDiv" class="toggle-button-container">
+										<input type="radio" id="exportNamesCheckbox" name="export-choice" class="toggle-button-input" checked>
+										<label for="exportNamesCheckbox" class="toggle-button-label toggle-button-label-left">Names</label>
+										<input type="radio" id="exportNamesAndScoresCheckbox" name="export-choice" class="toggle-button-input">
+										<label for="exportNamesAndScoresCheckbox" class="toggle-button-label toggle-button-label-right">Names and scores</label>
+									</div>
+									<div id="exportNamesMainDiv">
+										<div id="exportNamesLeftColumn">
+											<textarea id="exportNamesText" autocomplete="off" spellcheck="false"></textarea>
+										</div>
+										<div id="exportNamesRightColumn">
+											<label id="exportDelimiterLabel">Delimiter:</label>
+											<select id="exportDelimiterSelect">
+												<option value="comma" selected>Comma</option>
+												<option value="tab">Tab</option>
+												<option value="space">Space</option>
+												<option value="newline">New line</option>
+											</select>
+											<button id="exportNamesCopyButton">Copy to clipboard</button>
+											<button id="exportNamesSaveButton">Save text file</button>
+										</div>
+									</div>
+								</div>	
+							</div>
+							
               <button id="selectAllButton" class="control-element control-pair-left">Select all</button>
               <button id="clearSelectionButton" class="control-element control-pair-right">Clear</button>
             </div>

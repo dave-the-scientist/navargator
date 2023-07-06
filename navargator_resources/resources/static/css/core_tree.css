@@ -7,7 +7,7 @@
   display:flex;
   flex-direction:column;
   margin:0px;
-  padding:0px 4px 5px 4px;
+  padding:0px 4px 4px 4px;
   border:1px solid var(--major-accent-colour);
   border-top:none;
 }
@@ -21,7 +21,7 @@
 }
 .tree-control-div-title {
   position:absolute;
-  bottom:-9px;
+  bottom:-10px;
   font-size:14px;
   color:var(--dark-background-colour);
   background:white;
@@ -215,10 +215,12 @@
   top:30px;
   right:10px;
 }
+#exportNamesGroupDiv,
 #selectNamesGroupDiv {
   display:flex;
   position:relative;
 }
+#exportNamesButton,
 #selectNamesButton {
   margin:0px;
   width:55px;
