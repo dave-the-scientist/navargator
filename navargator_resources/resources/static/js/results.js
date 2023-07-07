@@ -1130,8 +1130,6 @@ function formatExportNames(delimiter) {
       names.push(clust_names);
     }
   }
-  
-  //let include_scores = ($("#exportNamesCheckbox").is(':checked')) ? false : true;
   let include_scores = export_pane.data('include_scores'), export_str = '';
   if (include_scores === false) { // Return names only
     if (export_type != 'clusters') { // For selection or chosen

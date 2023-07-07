@@ -230,6 +230,7 @@ function formatExportPaneText() {
   export_text.val(names_str);
   export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
   export_text.css('height', export_text[0].scrollHeight+'px');
+  $('#exportNamesPane').css('maxHeight', $('#exportNamesPane')[0].scrollHeight + 'px');
 }
 
 function validateSelectNamesFromText() {

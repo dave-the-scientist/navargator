@@ -5,7 +5,6 @@
 // - Viewing a tree image svg on mac does not display the legend. Likely some sort of grouping issue, or possibly opacity, should be solvable.
 
 // TODO:
-// - Export Selection button should be moved onto the tree pane, next to "Select by name" button.
 // - For Input & Results, add a "Pairs distances" button. If no variants selected, it should accept many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair. If variants are selected, computes and displays all pairwise distances.
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn

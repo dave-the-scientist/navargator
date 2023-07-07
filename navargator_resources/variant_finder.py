@@ -882,7 +882,6 @@ class VariantFinder(object):
             other_best_inds.pop()
             return (score, ind)
         #dists = self.orig_dists.copy() If I zero out rows I don't need, I don't have to use ix_() which is 2x as fast. Probably doesn't matter, fast enough.
-        print('pre optimize', best_score); t0=time.time() # # #  TESTING
         best_centre_inds = best_centre_inds[::]
         inds_to_try = list(nbrs)
         for i in range(len(best_centre_inds)):
@@ -893,7 +892,6 @@ class VariantFinder(object):
             score_vals = map(score_inds, valid_cvrd_inds)
             best_score, best_ind = min(score_vals)
             best_centre_inds[i] = best_ind
-        print('post optimize', best_score, 'took', time.time()-t0) # # #  TESTING
         return best_centre_inds
 
     def _identify_components(self, neighbors_of):
