@@ -1,7 +1,7 @@
 /*Styling for the shared phylogenetic tree and supporting elements*/
 
 /* ======  Tree pane controls  ====== */
-/*         Common elements:*/
+/*  Common elements:*/
 .tree-control-div {
   position:absolute;
   display:flex;
@@ -179,7 +179,7 @@
   transform:translate3d(1px, 6.5px, 0) rotate(45deg);
 }
 
-/*         Top left panel/buttons:*/
+/*  Top left panel/buttons:*/
 #treeControlsDiv {
   top:30px;
   left:10px;
@@ -210,7 +210,7 @@
 #zoomGroupText {
   left:5px;
 }
-/*         Top right panel:*/
+/*  Top right panel:*/
 #treeSelectionDiv {
   top:30px;
   right:10px;
@@ -227,9 +227,11 @@
   line-height:9px;
   font-size:10px;
 }
+/*  Select names pane:*/
 #selectNamesPane {
-  top:0px;
-  right:0px;
+  /*top:0px;
+  right:0px;*/
+  z-index:10;
 }
 #selectNamesMainDiv {
   display:inline-flex;
@@ -263,4 +265,57 @@
 }
 #selectionGroupText {
   right:5px;
+}
+/*  Export names pane:*/
+#exportNamesPane {
+  /*top:0px;
+  right:0px;*/
+  z-index:10;
+}
+#exportNamesTypeToggleDiv {
+  margin:10px 10px 2px 10px;
+  width:calc(100% - 20px);
+  flex-shrink:0;
+}
+#exportNamesToggleDiv {
+  margin:2px 10px 5px 10px;
+  width:calc(100% - 20px);
+  flex-shrink:0;
+}
+#exportNamesMainDiv {
+  display:inline-flex;
+  position:relative;
+  padding:5px 0px 0px 0px;
+}
+#exportNamesLeftColumn, #exportNamesRightColumn {
+  display:inline-flex;
+  flex-direction:column;
+  padding:0px 5px;
+}
+#exportNamesLeftColumn {
+  padding-left:10px;
+}
+#exportNamesRightColumn {
+  padding-right:10px;
+}
+#exportNamesLeftColumn > *, #exportNamesRightColumn > * {
+  flex-shrink:0;
+}
+#exportNamesText {
+  width:370px;
+  min-height:140px;
+  max-height:300px;
+  resize:none;
+  overflow:auto;
+  margin-bottom:10px;
+  transition:all .25s;
+}
+#exportDelimiterLabel {
+  margin:0px;
+}
+#exportDelimiterSelect {
+  margin:0px 0px 10px 0px;
+}
+#exportNamesCopyButton, #exportNamesSaveButton {
+  margin:10px 0px;
 }

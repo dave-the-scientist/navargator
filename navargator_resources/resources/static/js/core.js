@@ -153,14 +153,20 @@ function initializeFloatingPanes() {
   });
 }
 function showFloatingPane(pane) {
-  var pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
+  // Assumes the floating pane
+  let pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
   pane.css('maxWidth', pane_width+"px");
   pane.css('maxHeight', pane_height+"px");
-  var outline_width = getComputedStyle(document.documentElement)
+  let outline_width = getComputedStyle(document.documentElement)
     .getPropertyValue('--control-element-border-width');
   pane.css('outline-width', outline_width);
-  var pane_left = pane.offset().left, pane_right = pane_left + pane_width, doc_width = $(document).width();
-  if (pane_left < 0) { // Unsure if this aspect is working.
+  
+  // At runtime, pane.offset().left is the left of the invisible pane. so it is not respecting any right:x formatting. Maybe store the initial left? Use for dynamic resizing if user changes window size?
+  let pane_left = pane.offset().left, pane_right = pane_left + pane_width, doc_width = $(document).width();
+  console.log('page', doc_width, 'lr', pane_left, pane_right);
+  console.log('pos', pane.position().left);
+  // The below assumes the pane is styled with left:0. If I really want to use right, have to redesign this to have some att indicating left- or right-anchored, and resize appropriately.
+  if (pane_left < 0) {
     pane.offset({'left': 0});
   } else if (pane_right > doc_width) {
     pane.offset({'left': doc_width - pane_width});
