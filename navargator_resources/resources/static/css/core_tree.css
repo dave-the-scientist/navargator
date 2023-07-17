@@ -269,7 +269,8 @@
 /*  Export names pane:*/
 #exportNamesPane {
   /*top:0px;
-  right:0px;*/
+  right:0px;
+  left:auto;*/
   z-index:10;
 }
 #exportNamesTypeToggleDiv {

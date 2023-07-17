@@ -382,9 +382,12 @@ div.collapsible-panel > hr {
   box-shadow:1px 1px 2px var(--shadow-colour);
 }
 .help-button > .floating-pane {
-  z-index:20;
-  left:-5%;
-  top:-5%;
+  right:unset !important;
+  /*z-index:20;*/
+  /*left:auto;
+  right:auto;*/
+  /*left:-5%;
+  top:-5%;*/
 }
 .help-text-div {
   width:300px;
@@ -413,6 +416,9 @@ div.collapsible-panel > hr {
   outline-offset:-1px;
   box-shadow:1px 1px 2px var(--shadow-colour);
   transition:.25s all;
+  
+  left:0px;
+  right:unset;
 }
 .floating-pane > div > .floating-pane-header { /*Long selector needed for priority.*/
   width:unset;

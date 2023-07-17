@@ -139,6 +139,15 @@ function initializeHelpButtons() {
 }
 function initializeFloatingPanes() {
   // This must be called after initializeHelpButtons()
+  $(".floating-pane").each(function() {
+    
+    // Some help panes are still getting a pre-computed 'right', one is not.
+    let css_left = window.getComputedStyle(this, null).left, css_right = window.getComputedStyle(this, null).right;
+    console.log(this, 'lr '+css_left+' '+css_right+' '+$(this).css('right'));
+    $(this).data('init_left', css_left);
+    $(this).data('init_right', css_right);
+  });
+  
   $(".floating-pane-header").addClass("prevent-text-selection");
   $(".floating-pane-close").each(function() {
     $(this).append('<span class="floating-pane-close-span1">');
@@ -148,6 +157,11 @@ function initializeFloatingPanes() {
       pane.css('maxWidth', "0px");
       pane.css('maxHeight', "0px");
       pane.css('outline-width', '0px');
+      
+      pane.css('left', pane.data('init_left'));
+      pane.css('right', pane.data('init_right'));
+      //pane.css('left', 'initial');
+      //pane.css('right', 'initial');
       return false;
     });
   });
@@ -157,19 +171,21 @@ function showFloatingPane(pane) {
   let pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
   pane.css('maxWidth', pane_width+"px");
   pane.css('maxHeight', pane_height+"px");
-  let outline_width = getComputedStyle(document.documentElement)
-    .getPropertyValue('--control-element-border-width');
+  let outline_width = getComputedStyle(document.documentElement).getPropertyValue('--control-element-border-width');
   pane.css('outline-width', outline_width);
   
   // At runtime, pane.offset().left is the left of the invisible pane. so it is not respecting any right:x formatting. Maybe store the initial left? Use for dynamic resizing if user changes window size?
   let pane_left = pane.offset().left, pane_right = pane_left + pane_width, doc_width = $(document).width();
-  console.log('page', doc_width, 'lr', pane_left, pane_right);
-  console.log('pos', pane.position().left);
+  
   // The below assumes the pane is styled with left:0. If I really want to use right, have to redesign this to have some att indicating left- or right-anchored, and resize appropriately.
-  if (pane_left < 0) {
-    pane.offset({'left': 0});
-  } else if (pane_right > doc_width) {
-    pane.offset({'left': doc_width - pane_width});
+  if (pane.data('init_right') == 'auto') {
+    if (pane_right > doc_width) {
+      pane.offset({'left': doc_width - pane_width});
+    }
+  } else {
+    if (pane_left < 0) {
+      pane.offset({'left': 0});
+    }
   }
 }
 function setupDisplayOptionsPane() {
