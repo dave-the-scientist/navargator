@@ -140,12 +140,11 @@ function initializeHelpButtons() {
 function initializeFloatingPanes() {
   // This must be called after initializeHelpButtons()
   $(".floating-pane").each(function() {
-    
-    // Some help panes are still getting a pre-computed 'right', one is not.
-    let css_left = window.getComputedStyle(this, null).left, css_right = window.getComputedStyle(this, null).right;
-    console.log(this, 'lr '+css_left+' '+css_right+' '+$(this).css('right'));
+    let pane_styles = window.getComputedStyle(this, null), css_left = pane_styles.left, css_right = pane_styles.right, css_top = pane_styles.top, css_bottom = pane_styles.bottom;
     $(this).data('init_left', css_left);
     $(this).data('init_right', css_right);
+    $(this).data('init_top', css_top);
+    $(this).data('init_bottom', css_bottom);
   });
   
   $(".floating-pane-header").addClass("prevent-text-selection");
@@ -157,36 +156,48 @@ function initializeFloatingPanes() {
       pane.css('maxWidth', "0px");
       pane.css('maxHeight', "0px");
       pane.css('outline-width', '0px');
-      
+      // Reset the positioning, in case the user changes the screen size or moves elements.
       pane.css('left', pane.data('init_left'));
       pane.css('right', pane.data('init_right'));
-      //pane.css('left', 'initial');
-      //pane.css('right', 'initial');
+      pane.css('top', pane.data('init_top'));
+      pane.css('bottom', pane.data('init_bottom'));
       return false;
     });
   });
 }
 function showFloatingPane(pane) {
-  // Assumes the floating pane
+  // Makes the pane visible. Dynamically ensures the pane will not be pushed off-screen.
+  let edge_margin = 5; // Minimum space between pane and screen edges
   let pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
   pane.css('maxWidth', pane_width+"px");
   pane.css('maxHeight', pane_height+"px");
   let outline_width = getComputedStyle(document.documentElement).getPropertyValue('--control-element-border-width');
   pane.css('outline-width', outline_width);
-  
-  // At runtime, pane.offset().left is the left of the invisible pane. so it is not respecting any right:x formatting. Maybe store the initial left? Use for dynamic resizing if user changes window size?
-  let pane_left = pane.offset().left, pane_right = pane_left + pane_width, doc_width = $(document).width();
-  
-  // The below assumes the pane is styled with left:0. If I really want to use right, have to redesign this to have some att indicating left- or right-anchored, and resize appropriately.
-  if (pane.data('init_right') == 'auto') {
-    if (pane_right > doc_width) {
-      pane.offset({'left': doc_width - pane_width});
-    }
-  } else {
-    if (pane_left < 0) {
-      pane.offset({'left': 0});
-    }
+  // At runtime, pane.offset().left is the left of the invisible pane. If left-justified it will be the left side of parent, if right-justified it will be the right side of the parent. It does not account for the width of the pane.
+  // Likewise, pane.offset().top is the top of the invisible pane, placed either at the top or bottom of the parent, if top- or bottom-justified, respectively.
+  let pane_left = pane.offset().left, pane_top = pane.offset().top, doc_width = $(document).width(), doc_height = $(document).height(), pane_right, pane_bottom;
+  if (pane.data('init_left') == 'auto') { // If right-justified
+    pane_right = pane_left, pane_left -= pane_width;
+  } else { // If left-justified
+    pane_right = pane_left + pane_width;
   }
+  if (pane.data('init_top') == 'auto') { // If bottom-justified
+    pane_bottom = pane_top, pane_top -= pane_height;
+  } else { // If top-justified
+    pane_bottom = pane_top + pane_height;
+  }
+  let left_offset = 'auto', top_offset = 'auto';
+  if (pane_left < edge_margin) {
+    left_offset = edge_margin;
+  } else if (pane_right > (doc_width - edge_margin)) {
+    left_offset = pane_left - (pane_right - doc_width) - edge_margin;
+  }
+  if (pane_top < edge_margin) {
+    top_offset = edge_margin;
+  } else if (pane_bottom > (doc_height - edge_margin)) {
+    top_offset = pane_top - (pane_bottom - doc_height) - edge_margin;
+  }
+  pane.offset({'left': left_offset, 'top': top_offset});
 }
 function setupDisplayOptionsPane() {
   $("#displayTreeFontSizeSpinner").spinner({

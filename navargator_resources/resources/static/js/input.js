@@ -1728,4 +1728,6 @@ function setupSpecificHelpButtonText() {
   $("#assignedVarsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Export data help:
   $("#exportDataHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
+  // Clustering options help:
+  $("#clusteringOptsHelp .help-text-div").append("<p>Help and information text to be added soon.</p><p>Here's another paragraph, with a little more text. And some more.</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p><p>And even a third paragraph!</p><p>And now, for something completely different...</p>");
 }
