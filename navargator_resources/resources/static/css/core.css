@@ -115,7 +115,7 @@ span {
 }
 #headerInnerDiv {
   margin:0px;
-  display:inline-flex;
+  display:flex;
   align-items:center;
 }
 #headerLogoImg {
@@ -360,7 +360,7 @@ div.collapsible-panel > hr {
 /* ======  Help buttons and panes  ====== */
 .help-button {
   position:absolute;
-  display:inline-flex;
+  display:flex;
   right:26px;
   width:16px;
   height:16px;
@@ -384,7 +384,7 @@ div.collapsible-panel > hr {
 .help-button > .floating-pane {
   z-index:20;
   top:0px;
-  /*right:auto !important; This did work to prevent 'right' being automatically set, but is clunky.*/
+  /*right:auto !important; This did work to prevent 'right' being automatically set, but is clunkier than setting .floating-pane width:max-content.*/
 }
 .help-text-div {
   width:300px;
@@ -399,7 +399,7 @@ div.collapsible-panel > hr {
 
 /* ======  Floating slide-out panes  ====== */
 .floating-pane {
-  display:inline-flex;
+  display:flex;
   flex-direction:column;
   position:absolute;
   max-width:0px;
@@ -485,7 +485,7 @@ div.collapsible-panel > hr {
 /* ======  Horizontal toggle-able button bar  ====== */
 .toggle-button-container {
   /* To use, the input elements of a group must all share the same name property.*/
-  display:inline-flex;
+  display:flex;
   justify-content:center;
   width:100%;
   margin:5px 0px;
@@ -715,7 +715,7 @@ input.select-group-node-spinner {
   text-align:center;
 }
 
-/* ======  Export pane  ====== */
+/* ======  Distances pane  ====== */
 #variantDistancesPane {
   margin-top:-36px;
   z-index:9;
@@ -723,20 +723,54 @@ input.select-group-node-spinner {
 #variantDistancesMainDiv {
   display:flex;
   flex-direction:column;
-  padding:10px;
+  padding:5px 10px;
 }
 .var-dist-p {
-  margin:0px 0px 15px 0px !important;
-  min-width:350px;
+  /*margin:0px 0px 15px 0px !important;
+  padding-right:10px;
+  width:390px;*/
 }
+#variantDistancesToDiv {
+  width:480px;
+  max-height:120px;
+  margin:5px 0px;
+  padding-right:5px;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+
+#variantDistancesTextButtonsDiv {
+  display:flex;
+  justify-content:space-between;
+  margin:10px 0px;
+}
+
+#variantDistancesButtonColumn > * {
+  flex-shrink:0;
+}
+#variantDistancesButtonColumn {
+  display:flex;
+  flex-direction:column;
+  width:min-content;
+  padding:0px;
+}
+
 #variantDistanceAvgP {
-  margin:15px 0px 10px 0px;
+  /*margin:15px 0px 10px 0px;*/
 }
 #variantDistancesText {
+  min-width:375px;
   min-height:35px;
   max-height:120px;
   resize:none;
   overflow:auto;
+}
+
+#variantDistancesDelimiterLabel {
+  margin:0px;
+}
+#variantDistancesDelimiterSelect {
+  margin:0px 0px 10px 0px;
 }
 
 /* ======  Distance threshold  ====== */

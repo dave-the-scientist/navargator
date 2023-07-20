@@ -61,6 +61,7 @@ function setupPage() {
   setupNormalizationPane();
   setupDisplayOptionsPane();
   setupSelectionGroupsPane();
+  setupDistancesPanes();
   setupExportPane();
   setupTreeElements();
   setupResultsExportNamesElements();
@@ -272,36 +273,6 @@ function setupNormalizationPane() {
 }
 function setupExportPane() {
   // Button callbacks:
-  $("#getSelectedDistancesButton").click(function() {
-    if (nvrgtr_data.selected.size <= 1) {
-      showErrorPopup("Error: you must select 2 or more variants. Returns the distance from the first variant selected to every other.");
-      return;
-    }
-    let selected_vars = [...nvrgtr_data.selected];
-    $.ajax({
-      url: daemonURL('/get-distances'),
-      type: 'POST',
-      contentType: "application/json",
-      data: JSON.stringify({...getPageBasicData(), 'selected_vars':selected_vars}),
-      success: function(data_obj) {
-        let data = $.parseJSON(data_obj);
-        $("#variantDistanceFromSpan").text(selected_vars[0]);
-        $("#variantDistanceToSpan").text(selected_vars.slice(1).join(', '));
-        $("#variantDistancesText").text(data.distances.join(', '));
-        $("#variantDistancesText").css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
-        $("#variantDistancesText").css('height', $("#variantDistancesText")[0].scrollHeight+'px');
-        if (data.distances.length > 1) {
-          let dist_avg = data.distances.reduce((a,b) => a + b, 0) / data.distances.length;
-          $("#variantDistanceAvgP").show();
-          $("#variantDistanceAvgSpan").text(dist_avg.toPrecision(4));
-        } else {
-          $("#variantDistanceAvgP").hide();
-        }
-        showFloatingPane($("#variantDistancesPane"));
-      },
-      error: function(error) { processError(error, "Error retrieving variant distances"); }
-    });
-  });
   $("#exportTreeImageButton").click(function() {
     let svg_data = cleanSvg("#figureSvg");
     downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");

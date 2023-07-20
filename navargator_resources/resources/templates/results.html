@@ -245,16 +245,39 @@
 
             <h2 class="collapsible-header">Export data<div id="exportDataHelp" class="help-button"></div></h2>
             <div class="collapsible-panel">
+              
               <div id="variantDistancesPane" class="floating-pane">
                 <div>
-                  <h2 class="floating-pane-header">Variant distances</h2>
+                  <h2 class="floating-pane-header">Phylogenetic distances</h2>
                   <button class="floating-pane-close"></button>
                 </div>
                 <div id="variantDistancesMainDiv">
                   <p class="var-dist-p"><b>From:</b> <span id="variantDistanceFromSpan"></span></p>
-                  <p class="var-dist-p"><b>To:</b> <span id="variantDistanceToSpan"></span></p>
-                  <textarea id="variantDistancesText" autocomplete="off" spellcheck="false"></textarea>
-                  <p id="variantDistanceAvgP"><b>Average:</b> <span id="variantDistanceAvgSpan"></span></p>
+                  <div id="variantDistancesToDiv">
+                    <p class="var-dist-p"><b>To:</b> <span id="variantDistanceToSpan"></span></p>
+                  </div>
+                  <p id="variantDistanceAvgP"><b>Average distance:</b> <span id="variantDistanceAvgSpan"></span></p>
+                  <div id="variantDistancesTextButtonsDiv">
+                    <textarea id="variantDistancesText" autocomplete="off" spellcheck="false"></textarea>
+                    <div id="variantDistancesButtonColumn">
+                      <label id="variantDistancesDelimiterLabel">Delimiter:</label>
+                      <select id="variantDistancesDelimiterSelect">
+                        <option value=", " selected>Comma</option>
+                        <option value="&#9">Tab</option>
+                        <option value=" ">Space</option>
+                        <option value="&#10">New line</option>
+                      </select>
+                      <button id="variantDistancesCopyButton">Copy to clipboard</button>
+                      <button id="variantDistancesSaveButton">Save text file</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="variantPairwiseDistancesPane" class="floating-pane">
+                <div>
+                  <h2 class="floating-pane-header">Pairwise distances</h2>
+                  <button class="floating-pane-close"></button>
                 </div>
               </div>
 
@@ -264,8 +287,11 @@
                 <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
               </div>
               <div class="labeled-group-div">
-                <label class="labeled-group-label">Get variant data</label>
-                <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distance from the first variant selected to every other">Get distances</button>
+                <label class="labeled-group-label">Get phylogenetic distances</label>
+                <div class="horizontal-row-div">
+                  <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distances from the first variant selected to the others">From selected</button>
+                  <button id="getPairwiseDistancesButton" class="jq-ui-button" title="Returns the pairwise distances between variants in the user's input">Pairwise</button>
+                </div>
               </div>
             </div>
 
@@ -376,10 +402,10 @@
 										<div id="exportNamesRightColumn">
 											<label id="exportDelimiterLabel">Delimiter:</label>
 											<select id="exportDelimiterSelect">
-												<option value="comma" selected>Comma</option>
-												<option value="tab">Tab</option>
-												<option value="space">Space</option>
-												<option value="newline">New line</option>
+												<option value=", " selected>Comma</option>
+												<option value="&#9">Tab</option>
+												<option value=" ">Space</option>
+												<option value="&#10">New line</option>
 											</select>
 											<button id="exportNamesCopyButton">Copy to clipboard</button>
 											<button id="exportNamesSaveButton">Save text file</button>

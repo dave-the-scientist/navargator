@@ -156,7 +156,7 @@ function initializeFloatingPanes() {
       pane.css('maxWidth', "0px");
       pane.css('maxHeight', "0px");
       pane.css('outline-width', '0px');
-      // Reset the positioning, in case the user changes the screen size or moves elements.
+      // Reset the positioning, in case the user changes the screen size or moves elements:
       pane.css('left', pane.data('init_left'));
       pane.css('right', pane.data('init_right'));
       pane.css('top', pane.data('init_top'));
@@ -329,7 +329,6 @@ function setupDisplayOptionsPane() {
       }
     }
   });
-
   $("#displayBannerBorderCheckbox").change(function() {
     if ($("#displayBannerBorderCheckbox").is(':checked')) {
       nvrgtr_display_opts.show.banner_borders = true;
@@ -379,7 +378,6 @@ function setupDisplayOptionsPane() {
       }
     }
   });
-
   $("#showScaleBarCheckbox").change(function() {
     if ($("#showScaleBarCheckbox").is(':checked')) {
       nvrgtr_display_opts.show.scalebar = true;
@@ -502,7 +500,6 @@ function setupSelectionGroupsPane() {
       });
     }
   });
-
   $("#bannerLegendDiv").hide();
   $("#selectGroupBannerLegendButton").click(function() {
     if (nvrgtr_display_opts.labels.banner_names.length == 0) {
@@ -527,7 +524,6 @@ function setupSelectionGroupsPane() {
       $("#figureSvg").attr({'height':nvrgtr_data.figure_svg_height});
     }
   }).prop('disabled', true);
-
   $("#selectGroupApplyButton").click(function() {
     applySelectionGroupFormat();
   });
@@ -575,7 +571,6 @@ function setupSelectionGroupsPane() {
       updateSelectionGroupNodeSize(parseFloat(this.value));
     }
   });
-
   var sg_old_index;
   $("#selectGroupListDiv").sortable({
     start: function(event, ui) {
@@ -594,7 +589,6 @@ function setupSelectionGroupsPane() {
       nvrgtr_data.selection_groups = new_sg_map;
     }
   });
-
   $("#selectGroupNameInput").keydown(function(event) {
     if (event.which == 13) {
       $("#selectGroupSaveButton").click();
@@ -612,6 +606,57 @@ function setupSelectionGroupsPane() {
     addNewSelectionGroup(group_name, null, true);
     $("#selectionGroupsDiv").css('maxHeight', $("#selectionGroupsDiv")[0].scrollHeight+"px");
   });
+}
+
+function setupDistancesPanes() {
+  var variant_distances_text = $("#variantDistancesText");
+  $("#getSelectedDistancesButton").click(function() {
+    if (nvrgtr_data.selected.size <= 1) {
+      showErrorPopup("Error: you must select 2 or more variants. Returns the distance from the first variant selected to every other.");
+      return;
+    }
+    let selected_vars = [...nvrgtr_data.selected];
+    $.ajax({
+      url: daemonURL('/get-distances'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({...getPageBasicData(), 'selected_vars':selected_vars}),
+      success: function(data_obj) {
+        let data = $.parseJSON(data_obj);
+        $("#variantDistanceFromSpan").text(selected_vars[0]);
+        $("#variantDistanceToSpan").text(selected_vars.slice(1).join(', '));
+        variant_distances_text.data('raw_distances', data.distances);
+        formatDistancesPaneText();
+        if (data.distances.length > 1) {
+          let dist_avg = data.distances.reduce((a,b) => a + b, 0) / data.distances.length;
+          $("#variantDistanceAvgP").show();
+          $("#variantDistanceAvgSpan").text(dist_avg.toPrecision(4));
+        } else {
+          $("#variantDistanceAvgP").hide();
+        }
+        showFloatingPane($("#variantDistancesPane"));
+      },
+      error: function(error) { processError(error, "Error retrieving variant distances"); }
+    });
+  });
+  
+  $("#variantDistancesDelimiterSelect").change(function() {
+    formatDistancesPaneText();
+  });
+  $("#variantDistancesCopyButton").click(function() {
+    variant_distances_text.select();
+    document.execCommand("copy");
+  });
+  $("#variantDistancesSaveButton").click(function() {
+    let text_data = variant_distances_text.val();
+    downloadData('navargator_distances.txt', text_data, "text/plain");
+  });
+}
+function formatDistancesPaneText() {
+  let vd_text = $("#variantDistancesText"), delimiter = $("#variantDistancesDelimiterSelect").val();
+  vd_text.text(vd_text.data('raw_distances').join(delimiter));
+  vd_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
+  vd_text.css('height', vd_text[0].scrollHeight+'px');
 }
 
 function drawBannerLegend() {

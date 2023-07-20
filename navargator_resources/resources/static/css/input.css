@@ -8,7 +8,7 @@
   align-items:flex-start;
 }
 #mainLeftDiv {
-  display:inline-flex;
+  display:flex;
   flex-direction:column;
 }
 #inputOptionsDiv, #coreOptionsDiv, #runOptionsDiv {
@@ -155,7 +155,7 @@
   --var-assigned-el-mo-colour:#757575; /* Colour of button elements on mouseover of parent div.*/
   --var-assigned-el-rem-colour:red; /* Colour of button elements when removing variants.*/
   position:relative;
-  display:inline-flex;
+  display:flex;
   width:100%;
   box-sizing:border-box;
   flex-wrap:nowrap;

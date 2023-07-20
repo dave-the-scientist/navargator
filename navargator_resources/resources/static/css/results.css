@@ -5,7 +5,7 @@
   align-items:flex-start;
 }
 #mainLeftDiv {
-  display:inline-flex;
+  display:flex;
   flex-direction:column;
 }
 #coreOptionsDiv, #resultsNormalizationDiv {

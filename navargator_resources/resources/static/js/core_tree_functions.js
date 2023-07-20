@@ -216,16 +216,7 @@ function setupTreeElements() {
   });
 }
 function formatExportPaneText() {
-  let export_text = $("#exportNamesText"), delimiter, delimiter_type = $("#exportDelimiterSelect").val();
-  if (delimiter_type == 'tab') {
-    delimiter = '\t';
-  } else if (delimiter_type == 'comma') {
-    delimiter = ', ';
-  } else if (delimiter_type == 'space') {
-    delimiter = ' ';
-  } else if (delimiter_type == 'newline') {
-    delimiter = '\n';
-  }
+  let export_text = $("#exportNamesText"), delimiter = $("#exportDelimiterSelect").val();
   let names_str = formatExportNames(delimiter);
   export_text.val(names_str);
   export_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.

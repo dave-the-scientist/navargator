@@ -13,7 +13,7 @@
 }
 .tree-control-row, .tree-control-row-rj {
   position:relative;
-  display:inline-flex;
+  display:flex;
   align-items:center;
 }
 .tree-control-row-rj { /* Right-justified row.*/
@@ -30,7 +30,7 @@
 #treeSearchDiv {
   --tree-search-button-height:23px;
   position:absolute;
-  display:inline-flex;
+  display:flex;
   align-items:center;
   top:2px;
   right:40px; /*Was 15px*/
@@ -228,7 +228,6 @@
   font-size:10px;
 }
 /*  Select names pane:*/
-#exportNamesPane,
 #selectNamesPane {
   top:0px;
   right:0px;
@@ -236,12 +235,12 @@
   z-index:10;
 }
 #selectNamesMainDiv {
-  display:inline-flex;
+  display:flex;
   position:relative;
   padding:5px 0px 0px 0px;
 }
 #selectNamesLeftColumn, #selectNamesRightColumn {
-  display:inline-flex;
+  display:flex;
   flex-direction:column;
   padding:0px 5px;
 }
@@ -269,6 +268,12 @@
   right:5px;
 }
 /*  Export names pane:*/
+#exportNamesPane {
+  top:0px;
+  right:0px;
+  left:auto;
+  z-index:10;
+}
 #exportNamesTypeToggleDiv {
   margin:10px 10px 2px 10px;
   width:calc(100% - 20px);
@@ -280,12 +285,12 @@
   flex-shrink:0;
 }
 #exportNamesMainDiv {
-  display:inline-flex;
+  display:flex;
   position:relative;
   padding:5px 0px 0px 0px;
 }
 #exportNamesLeftColumn, #exportNamesRightColumn {
-  display:inline-flex;
+  display:flex;
   flex-direction:column;
   padding:0px 5px;
 }
