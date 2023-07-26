@@ -141,10 +141,7 @@ function initializeFloatingPanes() {
   // This must be called after initializeHelpButtons()
   $(".floating-pane").each(function() {
     let pane_styles = window.getComputedStyle(this, null), css_left = pane_styles.left, css_right = pane_styles.right, css_top = pane_styles.top, css_bottom = pane_styles.bottom;
-    $(this).data('init_left', css_left);
-    $(this).data('init_right', css_right);
-    $(this).data('init_top', css_top);
-    $(this).data('init_bottom', css_bottom);
+    $(this).data({'init_left':css_left, 'init_right':css_right, 'init_top':css_top, 'init_bottom':css_bottom});
   });
   
   $(".floating-pane-header").addClass("prevent-text-selection");
@@ -153,14 +150,9 @@ function initializeFloatingPanes() {
     $(this).append('<span class="floating-pane-close-span2">');
     var pane = $(this).parent().parent();
     $(this).click(function() {
-      pane.css('maxWidth', "0px");
-      pane.css('maxHeight', "0px");
-      pane.css('outline-width', '0px');
-      // Reset the positioning, in case the user changes the screen size or moves elements:
-      pane.css('left', pane.data('init_left'));
-      pane.css('right', pane.data('init_right'));
-      pane.css('top', pane.data('init_top'));
-      pane.css('bottom', pane.data('init_bottom'));
+      // Resets the positioning, in case the user changes the screen size or moves elements
+      let pane_data = pane.data(), new_css = {'maxWidth':'0px', 'maxHeight':'0px', 'outline-width':'0px', 'left':pane_data.init_left, 'right':pane_data.init_right, 'top':pane_data.init_top, 'bottom':pane_data.init_bottom};
+      pane.css(new_css);
       return false;
     });
   });
@@ -168,11 +160,9 @@ function initializeFloatingPanes() {
 function showFloatingPane(pane) {
   // Makes the pane visible. Dynamically ensures the pane will not be pushed off-screen.
   let edge_margin = 5; // Minimum space between pane and screen edges
-  let pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight;
-  pane.css('maxWidth', pane_width+"px");
-  pane.css('maxHeight', pane_height+"px");
-  let outline_width = getComputedStyle(document.documentElement).getPropertyValue('--control-element-border-width');
-  pane.css('outline-width', outline_width);
+  let pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight, outline_width = getComputedStyle(document.documentElement).getPropertyValue('--control-element-border-width');
+  let new_css = {'maxWidth':pane_width+'px', 'maxHeight':pane_height+'px', 'outline-width':outline_width};
+  pane.css(new_css);
   // At runtime, pane.offset().left is the left of the invisible pane. If left-justified it will be the left side of parent, if right-justified it will be the right side of the parent. It does not account for the width of the pane.
   // Likewise, pane.offset().top is the top of the invisible pane, placed either at the top or bottom of the parent, if top- or bottom-justified, respectively.
   let pane_left = pane.offset().left, pane_top = pane.offset().top, doc_width = $(document).width(), doc_height = $(document).height(), pane_right, pane_bottom;
@@ -197,7 +187,7 @@ function showFloatingPane(pane) {
   } else if (pane_bottom > (doc_height - edge_margin)) {
     top_offset = pane_top - (pane_bottom - doc_height) - edge_margin;
   }
-  pane.offset({'left': left_offset, 'top': top_offset});
+  pane.offset({'left':left_offset, 'top':top_offset});
 }
 function setupDisplayOptionsPane() {
   $("#displayTreeFontSizeSpinner").spinner({
@@ -609,6 +599,7 @@ function setupSelectionGroupsPane() {
 }
 
 function setupDistancesPanes() {
+  // Selected distances pane
   var variant_distances_text = $("#variantDistancesText");
   $("#getSelectedDistancesButton").click(function() {
     if (nvrgtr_data.selected.size <= 1) {
@@ -639,7 +630,6 @@ function setupDistancesPanes() {
       error: function(error) { processError(error, "Error retrieving variant distances"); }
     });
   });
-  
   $("#variantDistancesDelimiterSelect").change(function() {
     formatDistancesPaneText();
   });
@@ -650,6 +640,10 @@ function setupDistancesPanes() {
   $("#variantDistancesSaveButton").click(function() {
     let text_data = variant_distances_text.val();
     downloadData('navargator_distances.txt', text_data, "text/plain");
+  });
+  // Pairwise distances pane
+  $("#getPairwiseDistancesButton").click(function() {
+    showFloatingPane($("#pairwiseDistancesPane"));
   });
 }
 function formatDistancesPaneText() {
@@ -1479,4 +1473,5 @@ function setupCoreHelpButtonText() {
   $("#selectionGroupsHelp .help-text-div").append("<p>Help and information text to be added soon.</p>");
   // Tree help:
   $("#treeHelp .help-text-div").append("<p>Click on a node or label and then shift-click another to (de)select all variants between them.</p>");
+  $("#pairwiseDistancesHelp .help-text-div").append("<p>Enter two variant names per line, separated by a tab character.</p>");
 }

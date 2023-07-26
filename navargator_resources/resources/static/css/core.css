@@ -1,7 +1,7 @@
 /* Z indices:
  - On the input page, .var-assigned-div and related elements use 0, -1, -2.
- - Many .floating-pane have an index of 5.
- - The help panes get an index of 10.
+ - Floating panes have an index of 10.
+ - The help panes have an index of 20.
 */
 
 /* ======  CSS variables  ====== */
@@ -402,22 +402,24 @@ div.collapsible-panel > hr {
   display:flex;
   flex-direction:column;
   position:absolute;
-  max-width:0px;
-  max-height:0px;
-  overflow:hidden;
   margin:0px;
   padding:0px;
+  max-width:0px;
+  max-height:0px;
+  z-index:10;
+  left:0px;
+  right:auto;
+  
+  width:max-content;  /*Required to override the 'right' being automatically set sometimes.*/
+  height:max-content; /*Ditto for 'bottom'.*/
+  
+  overflow:hidden;
   background-color:var(--style-box-background-colour);
   border:none;
   outline:0px solid var(--dark-background-colour);;
   outline-offset:-1px;
   box-shadow:1px 1px 2px var(--shadow-colour);
   transition:.25s all;
-  
-  left:0px;
-  right:unset;
-  width:max-content;  /*Required to override the 'right' being automatically set sometimes.*/
-  height:max-content; /*Ditto for 'bottom'.*/
 }
 .floating-pane > div > .floating-pane-header { /*Long selector needed for priority.*/
   width:unset;
@@ -715,20 +717,15 @@ input.select-group-node-spinner {
   text-align:center;
 }
 
-/* ======  Distances pane  ====== */
-#variantDistancesPane {
+/* ======  Distances panes  ====== */
+#variantDistancesPane,
+#pairwiseDistancesPane {
   margin-top:-36px;
-  z-index:9;
 }
 #variantDistancesMainDiv {
   display:flex;
   flex-direction:column;
   padding:5px 10px;
-}
-.var-dist-p {
-  /*margin:0px 0px 15px 0px !important;
-  padding-right:10px;
-  width:390px;*/
 }
 #variantDistancesToDiv {
   width:480px;
@@ -738,13 +735,11 @@ input.select-group-node-spinner {
   overflow-x:hidden;
   overflow-y:auto;
 }
-
 #variantDistancesTextButtonsDiv {
   display:flex;
   justify-content:space-between;
   margin:10px 0px;
 }
-
 #variantDistancesButtonColumn > * {
   flex-shrink:0;
 }
@@ -754,10 +749,6 @@ input.select-group-node-spinner {
   width:min-content;
   padding:0px;
 }
-
-#variantDistanceAvgP {
-  /*margin:15px 0px 10px 0px;*/
-}
 #variantDistancesText {
   min-width:375px;
   min-height:35px;
@@ -765,19 +756,39 @@ input.select-group-node-spinner {
   resize:none;
   overflow:auto;
 }
-
 #variantDistancesDelimiterLabel {
   margin:0px;
 }
 #variantDistancesDelimiterSelect {
   margin:0px 0px 10px 0px;
 }
+/* The pairwise pane: */
+#pairwiseDistancesMainDiv {
+  display:flex;
+  padding:5px 10px;
+}
+#pairwiseDistancesInputText,
+#pairwiseDistancesOutputText {
+  resize:none;
+  overflow:auto;
+}
+#pairwiseDistancesInputText {
+  min-width:400px;
+  min-height:100px;
+}
+#pairwiseDistancesOutputText {
+  min-width:400px;
+  min-height:100px;
+}
+#pairwiseDistancesHelp > .floating-pane {
+  left:auto;
+  right:0px;
+}
 
 /* ======  Distance threshold  ====== */
 /* The floating box:*/
 #thresholdOutsideDiv {
   position:relative;
-  z-index:5;
 }
 #thresholdInput {
   width:85px;

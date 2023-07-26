@@ -917,6 +917,7 @@ function setupVariantSelection() {
 $(document).ready(function(){
   // Called once the document has loaded.
   setTimeout(setupPage, 10);
+  //setupPage();
 });
 $(window).bind('beforeunload', function() {
   // Lets the background server know this instance has been closed.

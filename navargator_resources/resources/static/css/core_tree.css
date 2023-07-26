@@ -232,7 +232,6 @@
   top:0px;
   right:0px;
   left:auto;
-  z-index:10;
 }
 #selectNamesMainDiv {
   display:flex;
@@ -272,7 +271,6 @@
   top:0px;
   right:0px;
   left:auto;
-  z-index:10;
 }
 #exportNamesTypeToggleDiv {
   margin:10px 10px 2px 10px;
