@@ -139,55 +139,60 @@ function initializeHelpButtons() {
 }
 function initializeFloatingPanes() {
   // This must be called after initializeHelpButtons()
-  $(".floating-pane").each(function() {
-    let pane_styles = window.getComputedStyle(this, null), css_left = pane_styles.left, css_right = pane_styles.right, css_top = pane_styles.top, css_bottom = pane_styles.bottom;
-    $(this).data({'init_left':css_left, 'init_right':css_right, 'init_top':css_top, 'init_bottom':css_bottom});
-  });
-  
   $(".floating-pane-header").addClass("prevent-text-selection");
   $(".floating-pane-close").each(function() {
     $(this).append('<span class="floating-pane-close-span1">');
     $(this).append('<span class="floating-pane-close-span2">');
     var pane = $(this).parent().parent();
     $(this).click(function() {
-      // Resets the positioning, in case the user changes the screen size or moves elements
-      let pane_data = pane.data(), new_css = {'maxWidth':'0px', 'maxHeight':'0px', 'outline-width':'0px', 'left':pane_data.init_left, 'right':pane_data.init_right, 'top':pane_data.init_top, 'bottom':pane_data.init_bottom};
+      // Minimizes the pane and resets the positioning, in case the user changes the screen size or moves elements
+      let new_css = {'maxWidth':'0px', 'maxHeight':'0px', 'outline-width':'0px', 'translate':'none'};
       pane.css(new_css);
       return false;
     });
   });
 }
 function showFloatingPane(pane) {
-  // Makes the pane visible. Dynamically ensures the pane will not be pushed off-screen.
+  // Makes the pane visible and dynamically ensures the pane will not be pushed off-screen. Pane elements should contain the attribute 'expandanchor' which indicates how the pane will expand; should be ('t' or 'b' or neither) and ('l' or 'r' or neither). 'tl' means the top left corner stays put and the pane expands down and right, 'r' means the right side stays put and the pane expands left and up and down. 'tl' is the default if nothing is specified. This doesn't set the actual positioning, but is used to prevent going off-screen.
   let edge_margin = 5; // Minimum space between pane and screen edges
   let pane_width = pane[0].scrollWidth, pane_height = pane[0].scrollHeight, outline_width = getComputedStyle(document.documentElement).getPropertyValue('--control-element-border-width');
   let new_css = {'maxWidth':pane_width+'px', 'maxHeight':pane_height+'px', 'outline-width':outline_width};
-  pane.css(new_css);
   // At runtime, pane.offset().left is the left of the invisible pane. If left-justified it will be the left side of parent, if right-justified it will be the right side of the parent. It does not account for the width of the pane.
   // Likewise, pane.offset().top is the top of the invisible pane, placed either at the top or bottom of the parent, if top- or bottom-justified, respectively.
-  let pane_left = pane.offset().left, pane_top = pane.offset().top, doc_width = $(document).width(), doc_height = $(document).height(), pane_right, pane_bottom;
-  if (pane.data('init_left') == 'auto') { // If right-justified
-    pane_right = pane_left, pane_left -= pane_width;
-  } else { // If left-justified
+  let pane_offset = pane.offset(), pane_left = pane_offset.left, pane_top = pane_offset.top, screen_left = edge_margin, screen_right = $(document).width() - edge_margin, screen_top = edge_margin, screen_bottom = $(document).height() - edge_margin, pane_right, pane_bottom;
+  // Calculate the new coordinates of the pane after being expanded:
+  var expand_anchor = pane.attr('expandanchor') || 'tl';
+  if (expand_anchor.includes('l')) {
     pane_right = pane_left + pane_width;
+  } else if (expand_anchor.includes('r')) {
+    pane_right = pane_left, pane_left -= pane_width;
+  } else {
+    pane_left -= pane_width/2, pane_right = pane_left + pane_width;
   }
-  if (pane.data('init_top') == 'auto') { // If bottom-justified
-    pane_bottom = pane_top, pane_top -= pane_height;
-  } else { // If top-justified
+  if (expand_anchor.includes('t')) {
     pane_bottom = pane_top + pane_height;
+  } else if (expand_anchor.includes('b')) {
+    pane_bottom = pane_top, pane_top -= pane_height;
+  } else {
+    pane_top -= pane_height/2, pane_bottom = pane_top + pane_height;
   }
-  let left_offset = 'auto', top_offset = 'auto';
-  if (pane_left < edge_margin) {
-    left_offset = edge_margin;
-  } else if (pane_right > (doc_width - edge_margin)) {
-    left_offset = pane_left - (pane_right - doc_width) - edge_margin;
+  // Calculate any translations required to keep the pane visible:
+  let x_trans = 0, y_trans = 0;
+  if (pane_left < screen_left) {
+    x_trans = screen_left - pane_left;
+  } else if (pane_right > screen_right) {
+    x_trans = Math.max(screen_left - pane_left, screen_right - pane_right);
   }
-  if (pane_top < edge_margin) {
-    top_offset = edge_margin;
-  } else if (pane_bottom > (doc_height - edge_margin)) {
-    top_offset = pane_top - (pane_bottom - doc_height) - edge_margin;
+  if (pane_top < screen_top) {
+    y_trans = screen_top - pane_top;
+  } else if (pane_bottom > screen_bottom) {
+    y_trans = Math.max(screen_top - pane_top, screen_bottom - pane_bottom);
   }
-  pane.offset({'left':left_offset, 'top':top_offset});
+  // Add translation to the css call if needed:
+  if (x_trans != 0 || y_trans != 0) {
+    new_css['translate'] = x_trans+'px '+y_trans+'px';
+  }
+  pane.css(new_css);
 }
 function setupDisplayOptionsPane() {
   $("#displayTreeFontSizeSpinner").spinner({
