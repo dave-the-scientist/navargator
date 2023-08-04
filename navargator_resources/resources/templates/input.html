@@ -335,11 +335,36 @@
                 <div id="pairwiseDistancesMainDiv">
                   <div id="pairwiseDistancesLeftColumn">
                     <p><b>Variant names</b></p>
-                    <textarea id="pairwiseDistancesInputText" autocomplete="off" spellcheck="false"></textarea>
+                    <div id="pairwiseDistancesVariantTextButtonsDiv">
+                      <textarea id="pairwiseDistancesVariantText" autocomplete="off" spellcheck="false"></textarea>
+                      <div id="pairwiseDistancesVariantButtonColumn">
+                        <label id="pairwiseDistancesVariantDelimiterLabel">Variant delimiter:</label>
+                        <select id="pairwiseDistancesVariantDelimiter">
+                          <option value=", ">Comma</option>
+                          <option value="&#9" selected>Tab</option>
+                          <option value=" ">Space</option>
+                        </select>
+                        <button id="pairwiseDistancesFilterButton">Remove invalid</button>
+                        <button id="pairwiseDistancesGetButton"><b>Get distances</b></button>
+                      </div>
+                    </div>
                   </div>
                   <div id="pairwiseDistancesRightColumn">
                     <p><b>Distances</b></p>
-                    <textarea id="pairwiseDistancesOutputText" autocomplete="off" spellcheck="false"></textarea>
+                    <div id="pairwiseDistancesOutputTextButtonsDiv">
+                      <textarea id="pairwiseDistancesOutputText" autocomplete="off" spellcheck="false"></textarea>
+                      <div id="pairwiseDistancesOutputButtonColumn">
+                        <label id="pairwiseDistancesOutputDelimiterLabel">Distance delimiter:</label>
+                        <select id="pairwiseDistancesOutputDelimiter">
+                          <option value=", ">Comma</option>
+                          <option value="&#9">Tab</option>
+                          <option value=" ">Space</option>
+                          <option value="&#10" selected>New line</option>
+                        </select>
+                        <button id="pairwiseDistancesOutputCopyButton">Copy to clipboard</button>
+                        <button id="pairwiseDistancesOutputSaveButton">Save text file</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

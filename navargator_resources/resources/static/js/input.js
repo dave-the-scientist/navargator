@@ -3,6 +3,7 @@
 // BUGS:
 // - Opening one nvrgtr file, then opening a second one; banners don't display and bunch of errors. See this with the pmslp + pmslp_ceva files.
 // - Viewing a tree image svg on mac does not display the legend. Likely some sort of grouping issue, or possibly opacity, should be solvable.
+// - I need to add some kind of useful error if the user attempts to load a malformed tree (test with name including space, quotes; polytomy; results/problem_cladogram.nwk; results_badname_cladogram_supports.nwk has no distances, the 'outgroup' name is malformed)
 
 // TODO:
 // - For Input & Results, add a "Pairs distances" button. If no variants selected, it should accept many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair. If variants are selected, computes and displays all pairwise distances.

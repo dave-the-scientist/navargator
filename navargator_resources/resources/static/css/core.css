@@ -767,18 +767,39 @@ input.select-group-node-spinner {
   display:flex;
   padding:5px 10px;
 }
-#pairwiseDistancesInputText,
+#pairwiseDistancesLeftColumn,
+#pairwiseDistancesRightColumn {
+  margin-right:25px;
+  display:flex;
+  flex-direction:column;
+}
+#pairwiseDistancesVariantTextButtonsDiv,
+#pairwiseDistancesOutputTextButtonsDiv {
+  display:flex;
+  justify-content:space-between;
+}
+#pairwiseDistancesVariantText,
 #pairwiseDistancesOutputText {
+  margin-right:10px;
   resize:none;
   overflow:auto;
 }
-#pairwiseDistancesInputText {
+#pairwiseDistancesVariantText {
   min-width:400px;
   min-height:100px;
 }
 #pairwiseDistancesOutputText {
-  min-width:400px;
+  min-width:150px;
   min-height:100px;
+}
+#pairwiseDistancesVariantButtonColumn,
+#pairwiseDistancesOutputButtonColumn {
+  display:flex;
+  flex-direction:column;
+  width:min-content;
+}
+#pairwiseDistancesOutputButtonColumn {
+  margin-right:10px;
 }
 #pairwiseDistancesHelp > .floating-pane {
   left:auto;

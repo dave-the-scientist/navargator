@@ -647,9 +647,54 @@ function setupDistancesPanes() {
     downloadData('navargator_distances.txt', text_data, "text/plain");
   });
   // Pairwise distances pane
+  var pair_input_text = $("#pairwiseDistancesVariantText");
+  function validatePairwiseVariants() {
+    let var_delim = $("#pairwiseDistancesVariantDelimiter").val(), variant_lines = $.trim(pair_input_text.val()).split('\n');
+    let valid_pairs = [], err_msg = '', variant_line, line_variants, variant1, variant2;
+    if (!variant_lines[0]) {
+      err_msg = "Error: no valid variants. To get pairwise distances, enter two variant names per line separated by the indicated delimiter character.";
+      return [[], err_msg];
+    }
+    for (let i=0; i<variant_lines.length; ++i) {
+      variant_line = $.trim(variant_lines[i]);
+      line_variants = variant_line.split(var_delim);
+      if (line_variants.length != 2) {
+        err_msg = err_msg || "Error: cannot parse line '"+variant_line+"'. It should contain two variant names separated by the 'Variant delimiter' character. Ensure the delimiter is not found in the variant names.";
+        continue;
+      }
+      variant1 = line_variants[0], variant2 = line_variants[1];
+      if (!nvrgtr_data.leaves.includes(variant1)) {
+        err_msg = err_msg || "Error: variant '"+variant1+"' was not found in the tree.";
+        continue;
+      } else if (!nvrgtr_data.leaves.includes(variant2)) {
+        err_msg = err_msg || "Error: variant '"+variant2+"' was not found in the tree.";
+        continue;
+      } else {
+        valid_pairs.push([variant1, variant2]);
+      }
+    }
+    return [valid_pairs, err_msg];
+  }
   $("#getPairwiseDistancesButton").click(function() {
     showFloatingPane($("#pairwiseDistancesPane"));
   });
+  $("#pairwiseDistancesFilterButton").click(function() {
+    let ret = validatePairwiseVariants(), variant_pairs = ret[0], err_msg = ret[1];
+    let var_delim = $("#pairwiseDistancesVariantDelimiter").val(), valid_pairs = [];
+    for (let i=0; i<variant_pairs.length; ++i) {
+      valid_pairs.push(variant_pairs[i].join(var_delim));
+    }
+    pair_input_text.val(valid_pairs.join('\n'));
+  });
+  $("#pairwiseDistancesGetButton").click(function() {
+    let ret = validatePairwiseVariants(), variant_pairs = ret[0], err_msg = ret[1];
+    if (err_msg) {
+      showErrorPopup(err_msg);
+      return;
+    }
+    console.log('validate passed', variant_pairs);
+  });
+  
 }
 function formatDistancesPaneText() {
   let vd_text = $("#variantDistancesText"), delimiter = $("#variantDistancesDelimiterSelect").val();

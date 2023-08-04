@@ -274,23 +274,46 @@
                 </div>
               </div>
               
-              <div id="variantPairwiseDistancesPane" class="floating-pane">
+              <div id="pairwiseDistancesPane" class="floating-pane">
                 <div>
-                  <h2 class="floating-pane-header">Pairwise distances</h2>
+                  <h2 class="floating-pane-header">Pairwise distances<div id="pairwiseDistancesHelp" class="help-button"></div></h2>
                   <button class="floating-pane-close"></button>
                 </div>
-              </div>
-
-              <div class="labeled-group-div">
-                <label class="labeled-group-label">Save to file</label>
-                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
-                <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
-              </div>
-              <div class="labeled-group-div">
-                <label class="labeled-group-label">Get phylogenetic distances</label>
-                <div class="horizontal-row-div">
-                  <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distances from the first variant selected to the others">From selected</button>
-                  <button id="getPairwiseDistancesButton" class="jq-ui-button" title="Returns the pairwise distances between variants in the user's input">Pairwise</button>
+                <div id="pairwiseDistancesMainDiv">
+                  <div id="pairwiseDistancesLeftColumn">
+                    <p><b>Variant names</b></p>
+                    <div id="pairwiseDistancesVariantTextButtonsDiv">
+                      <textarea id="pairwiseDistancesVariantText" autocomplete="off" spellcheck="false"></textarea>
+                      <div id="pairwiseDistancesVariantButtonColumn">
+                        <label id="pairwiseDistancesVariantDelimiterLabel">Variant delimiter:</label>
+                        <select id="pairwiseDistancesVariantDelimiter">
+                          <option value=", ">Comma</option>
+                          <option value="&#9" selected>Tab</option>
+                          <option value=" ">Space</option>
+                          <option value="&#10">New line</option>
+                        </select>
+                        <button id="pairwiseDistancesFilterButton">Filter invalid</button>
+                        <button id="pairwiseDistancesGetButton"><b>Get distances</b></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="pairwiseDistancesRightColumn">
+                    <p><b>Distances</b></p>
+                    <div id="pairwiseDistancesOutputTextButtonsDiv">
+                      <textarea id="pairwiseDistancesOutputText" autocomplete="off" spellcheck="false"></textarea>
+                      <div id="pairwiseDistancesOutputButtonColumn">
+                        <label id="pairwiseDistancesOutputDelimiterLabel">Distance delimiter:</label>
+                        <select id="pairwiseDistancesOutputDelimiter">
+                          <option value=", ">Comma</option>
+                          <option value="&#9">Tab</option>
+                          <option value=" ">Space</option>
+                          <option value="&#10" selected>New line</option>
+                        </select>
+                        <button id="pairwiseDistancesOutputCopyButton">Copy to clipboard</button>
+                        <button id="pairwiseDistancesOutputSaveButton">Save text file</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
