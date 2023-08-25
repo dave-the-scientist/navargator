@@ -252,9 +252,9 @@
                   <button class="floating-pane-close"></button>
                 </div>
                 <div id="variantDistancesMainDiv">
-                  <p class="var-dist-p"><b>From:</b> <span id="variantDistanceFromSpan"></span></p>
+                  <p><b>From:</b> <span id="variantDistanceFromSpan"></span></p>
                   <div id="variantDistancesToDiv">
-                    <p class="var-dist-p"><b>To:</b> <span id="variantDistanceToSpan"></span></p>
+                    <p><b>To:</b> <span id="variantDistanceToSpan"></span></p>
                   </div>
                   <p id="variantDistanceAvgP"><b>Average distance:</b> <span id="variantDistanceAvgSpan"></span></p>
                   <div id="variantDistancesTextButtonsDiv">
@@ -290,9 +290,8 @@
                           <option value=", ">Comma</option>
                           <option value="&#9" selected>Tab</option>
                           <option value=" ">Space</option>
-                          <option value="&#10">New line</option>
                         </select>
-                        <button id="pairwiseDistancesFilterButton">Filter invalid</button>
+                        <button id="pairwiseDistancesFilterButton">Remove invalid</button>
                         <button id="pairwiseDistancesGetButton"><b>Get distances</b></button>
                       </div>
                     </div>
@@ -316,8 +315,20 @@
                   </div>
                 </div>
               </div>
+              
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Save to file</label>
+                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
+                <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
+              </div>
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Get phylogenetic distances</label>
+                <div class="horizontal-row-div">
+                  <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distances from the first variant selected to the others">From selected</button>
+                  <button id="getPairwiseDistancesButton" class="jq-ui-button" title="Returns the pairwise distances between variants in the user's input">Pairwise</button>
+                </div>
+              </div>
             </div>
-
           </div>
 
           <div id="resultsNormalizationDiv" class="style-box">
