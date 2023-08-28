@@ -37,7 +37,7 @@ else:
 # TODO:
 # - Some kind of 'calculating' attribute for a vfinder instance. Does nothing on local, but for server allows it to kill jobs that have been calculating for too long (I think I can kill threads in JobQueue).
 # - Probably a good idea to have js fetch local_input_session_id and input_browser_id from this, instead of relying on them matching.
-# - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_diagnostics()).
+# - Logging should be saved to file, at least for the web server. Both errors as well as requests for diagnostic reports (in get_connections_report()).
 
 
 # BUG:
@@ -185,6 +185,14 @@ class NavargatorDaemon(object):
                 return ('must select at least 2 variants to get distances.', 5514)
             name1 = selected_vars[0]
             distances = [vf.get_distance(name1, name2) for name2 in selected_vars[1:]]
+            return json.dumps({'distances':distances})
+        @self.server.route(self.daemonURL('/get-pairwise-distances'), methods=['POST'])
+        def get_pairwise_distances():
+            vf, s_id, b_id, msg = self.get_instance()
+            if s_id == None:
+                return msg
+            variant_pairs = request.json['variant_pairs']
+            distances = [vf.get_distance(name1, name2) for (name1,name2) in variant_pairs]
             return json.dumps({'distances':distances})
         # # #  Input page listening routes:
         @self.server.route(self.daemonURL('/upload-tree-file'), methods=['POST'])
@@ -467,8 +475,8 @@ class NavargatorDaemon(object):
         def render_results_page():
             return render_template('results.html')
         # # #  Diagnostics function
-        @self.server.route(self.daemonURL('/get-diagnostics'), methods=['POST'])
-        def get_diagnostics():
+        @self.server.route(self.daemonURL('/get-connections-report'), methods=['POST'])
+        def get_connections_report():
             s_id = request.json.get('session_id')
             b_id = request.json.get('browser_id') # Log these?
             t0 = time.time()

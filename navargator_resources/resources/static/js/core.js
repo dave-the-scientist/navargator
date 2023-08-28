@@ -647,7 +647,7 @@ function setupDistancesPanes() {
     downloadData('navargator_distances.txt', text_data, "text/plain");
   });
   // Pairwise distances pane
-  var pair_input_text = $("#pairwiseDistancesVariantText");
+  var pair_input_text = $("#pairwiseDistancesVariantText"), pair_output_text = $("#pairwiseDistancesOutputText");
   function validatePairwiseVariants() {
     let var_delim = $("#pairwiseDistancesVariantDelimiter").val(), variant_lines = $.trim(pair_input_text.val()).split('\n');
     let valid_pairs = [], err_msg = '', variant_line, line_variants, variant1, variant2;
@@ -692,7 +692,20 @@ function setupDistancesPanes() {
       showErrorPopup(err_msg);
       return;
     }
-    console.log('validate passed', variant_pairs);
+    
+    $.ajax({
+      url: daemonURL('/get-pairwise-distances'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({...getPageBasicData(), 'variant_pairs':variant_pairs}),
+      success: function(data_obj) {
+        let data = $.parseJSON(data_obj);
+        pair_output_text.data('raw_distances', data.distances);
+        formatPairwiseDistancesPaneText();
+      },
+      error: function(error) { processError(error, "Error retrieving pairwise distances"); }
+    });
+    
   });
   
 }
@@ -701,6 +714,12 @@ function formatDistancesPaneText() {
   vd_text.text(vd_text.data('raw_distances').join(delimiter));
   vd_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
   vd_text.css('height', vd_text[0].scrollHeight+'px');
+}
+function formatPairwiseDistancesPaneText() {
+  let pd_text = $("#pairwiseDistancesOutputText"), delimiter = $("#pairwiseDistancesOutputDelimiter").val();
+  pd_text.text(pd_text.data('raw_distances').join(delimiter));
+  pd_text.css('height', ''); // Need to unset before setting, otherwise it cannot shrink.
+  pd_text.css('height', pd_text[0].scrollHeight+'px');
 }
 
 function drawBannerLegend() {
@@ -1326,15 +1345,15 @@ function closeInstance(s_id=null) {
   nvrgtr_page.instance_closed = true;
   clearInterval(nvrgtr_page.maintain_interval_obj);
 }
-function getDiagnostics() {
+function getReport() {
   $.ajax({
-    url: daemonURL('/get-diagnostics'),
+    url: daemonURL('/get-connections-report'),
     type: 'POST',
     contentType: "application/json",
     data: JSON.stringify(getPageBasicData()),
     success: function(data_obj) {
       let active = $.parseJSON(data_obj);
-      console.log('DIAGNOSTIC REPORT\n=================');
+      console.log('ACTIVE CONNECTIONS REPORT\n=================');
       console.log('Currently '+active.length+' active sessions');
       active.forEach(function(session, index) {
         console.log('Session '+index+':');
@@ -1351,12 +1370,12 @@ function getDiagnostics() {
               return parseInt(age) + 's';
             }
           });
-          console.log('  Open connections: '+session.ages.length+'; Last active: '+ages.join(', '));
+          console.log('  Open connections: '+session.ages.length+'; Ages: '+ages.join(', '));
         }
       });
     },
     error: function(error) {
-      console.log('Could not retrieve the diagnostic report.');
+      console.log('Could not retrieve the report.');
       console.log('The error code: '+error.status+'; The text: '+error.responseText);
     }
   });
