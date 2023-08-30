@@ -245,7 +245,7 @@
 
             <h2 class="collapsible-header">Analyze &amp; export<div id="exportDataHelp" class="help-button"></div></h2>
             <div class="collapsible-panel">
-              
+              <!-- Variant distances floating pane -->
               <div id="variantDistancesPane" class="floating-pane">
                 <div>
                   <h2 class="floating-pane-header">Phylogenetic distances</h2>
@@ -273,7 +273,7 @@
                   </div>
                 </div>
               </div>
-              
+              <!-- Pairwise distances floating pane -->
               <div id="pairwiseDistancesPane" class="floating-pane">
                 <div>
                   <h2 class="floating-pane-header">Pairwise distances<div id="pairwiseDistancesHelp" class="help-button"></div></h2>
@@ -315,18 +315,18 @@
                   </div>
                 </div>
               </div>
-              
-              <div class="labeled-group-div">
-                <label class="labeled-group-label">Save to file</label>
-                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
-                <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
-              </div>
+              <!-- Analyze & export visible content -->
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Get phylogenetic distances</label>
                 <div class="horizontal-row-div">
                   <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distances from the first variant selected to the others">From selected</button>
                   <button id="getPairwiseDistancesButton" class="jq-ui-button" title="Returns the pairwise distances between variants in the user's input">Pairwise</button>
                 </div>
+              </div>
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Save to file</label>
+                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
+                <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
               </div>
             </div>
           </div>

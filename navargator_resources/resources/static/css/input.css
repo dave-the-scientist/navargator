@@ -37,7 +37,93 @@
   font-size:15px;
 }
 
+/* ======  Distance correlations  ====== */
+/* Change ALL references to "threshold" in these elements (html and js)*/
+#thresholdComputePane {
+  margin-top:-36px;
+}
+#thresholdPaneMainDiv {
+  display:flex;
+}
+#thresholdPaneDataColumn,
+#thresholdPaneGraphColumn {
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+}
+#thresholdPaneDataColumn {
+  align-items:flex-start;
+}
+#thresholdPaneGraphColumn {
 
+}
+#thresholdPaneDataColumn > button, #thresholdPaneGraphColumn > button {
+  margin:2px 10px 5px 0px;
+}
+#thresholdDataText {
+  min-width:320px;
+  min-height:120px;
+}
+#thresholdErrorLabel {
+  margin-left:15px;
+}
+#thresholdFitCurveButton {
+  padding:1px 16px;
+}
+#thresholdPaneParamsDiv {
+  display:flex;
+  flex-direction:column;
+  margin-top:15px;
+}
+.threshold-max-modified {
+  font-weight:bold;
+}
+.threshold-param-label {
+  margin-top:5px;
+  margin-bottom:5px;
+  font-size:16px;
+  white-space:nowrap;
+}
+.threshold-param-label:last-child {
+  margin-bottom:0px;
+}
+#thresholdMaxValInput,
+#thresholdCritValInput {
+  padding:0px;
+  width:100px;
+  font-size:16px;
+  outline:none;
+  border:1px solid transparent;
+  transition:border-color 0.1s ease-in-out;
+}
+#thresholdMaxValInput:hover, #thresholdMaxValInput:focus,
+#thresholdCritValInput:hover, #thresholdCritValInput:focus {
+  border-color:var(--shadow-colour);
+}
+#thresholdGraphRowDiv {
+  display:flex;
+}
+#thresholdSlider {
+  margin-right:5px;
+}
+#thresholdSvgLabel {
+  margin-left:55px;
+}
+#thresholdSvg {
+  flex-shrink:0;
+  width:300px;
+  height:250px;
+}
+#thresholdCritValLabel {
+  margin:5px 0px 5px 20px;
+}
+#thresholdCritDistDiv {
+  margin-left:20px;
+}
+#thresholdOkButton {
+  margin:0px;
+  padding:1px 10px;
+}
 
 /* Clustering options:*/
 .clust-type-opts-table td {
@@ -51,6 +137,16 @@
 }
 #clustBatchSizeSpinner {
   width:45px;
+}
+#thresholdInput {
+  width:85px;
+  padding:1px 3px;
+  outline:none;
+  border:1px solid transparent;
+  transition:border-color 0.1s ease-in-out;
+}
+#thresholdInput:hover, #thresholdInput:focus {
+  border-color:var(--shadow-colour);
 }
 #threshPercentSpinner {
   width:35px;
@@ -118,7 +214,6 @@
 #newLinksList > li:hover .run-link-quit-button {
   display:block;
 }
-
 
 /* Score graph settings:*/
 #scoreGraphSvg {

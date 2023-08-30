@@ -3,6 +3,11 @@
 
 // TODO:
 // - Need a way to save nvrgtr session files from the Results page too.
+
+// - Label HTML files to delineate floating pane boundaries
+// - Move result normalization to be by the graph.
+// - Change "select by names" to match paradigm in variant distances: get rid of the validate button; the "submit" button alerts if names aren't found (and which) but doesn't proceed; add button to "remove invalid"
+
 // - Want to change how selection groups behave. Don't like that you have to press "save" after making every change, should save changes semi-intelligently in real time.
 //   - Also currently buggy when clicking one SG then a second one. Maybe have an "active" SG? So all edits are auto saved as long as it's "active"? Could also allow a second SG to be clicked without deactivating the first, allowing the choice of selection of the first SG to be modified.
 // - Stress test fitSigmoidCurve(), especially if the y-values are logarithmic, or if there are data from 2 curves.

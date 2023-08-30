@@ -298,7 +298,7 @@
 
             <h2 class="collapsible-header">Analyze &amp; export<div id="exportDataHelp" class="help-button"></div></h2>
             <div class="collapsible-panel">
-              
+              <!-- Variant distances floating pane -->
               <div id="variantDistancesPane" class="floating-pane">
                 <div>
                   <h2 class="floating-pane-header">Phylogenetic distances</h2>
@@ -326,7 +326,7 @@
                   </div>
                 </div>
               </div>
-              
+              <!-- Pairwise distances floating pane -->
               <div id="pairwiseDistancesPane" class="floating-pane">
                 <div>
                   <h2 class="floating-pane-header">Pairwise distances<div id="pairwiseDistancesHelp" class="help-button"></div></h2>
@@ -368,73 +368,7 @@
                   </div>
                 </div>
               </div>
-              
-              <div class="labeled-group-div">
-                <label class="labeled-group-label">Save to file</label>
-                <div class="horizontal-row-div">
-                  <button id="exportTreeFileButton" class="jq-ui-button">Save tree as</button>
-                  <select id="exportTreeFileTypeSelect">
-                    <option selected value="newick">Newick tree</option>
-                    <option value="nexus">NEXUS tree</option>
-                    <option value="phyloxml">PhyloXML tree</option>
-                    <option value="nexml">NeXML tree</option>
-                  </select>
-                </div>
-                <div class="horizontal-row-div">
-                  <button id="exportSubtreeFileButton" class="jq-ui-button">Save subtree as</button>
-                  <select id="exportSubtreeFileTypeSelect">
-                    <option selected value="newick">Newick tree</option>
-                    <option value="nexus">NEXUS tree</option>
-                    <option value="phyloxml">PhyloXML tree</option>
-                    <option value="nexml">NeXML tree</option>
-                  </select>
-                </div>
-                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
-              </div>
-              <div class="labeled-group-div">
-                <label class="labeled-group-label">Get phylogenetic distances</label>
-                <div class="horizontal-row-div">
-                  <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distances from the first variant selected to the others">From selected</button>
-                  <button id="getPairwiseDistancesButton" class="jq-ui-button" title="Returns the pairwise distances between variants in the user's input">Pairwise</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="runOptionsDiv" class="style-box">
-            <h2>Results normalization</h2>
-            <table><tbody>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
-                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
-                </label>
-              </td></tr>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
-                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
-                </label>
-              </td></tr>
-              <tr><td>
-                <label class="nvrgtr-checkbox-outer">
-                  <input id="normValRadio" type="radio" name="normalizeRadios" />
-                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
-                </label>
-                <input id="normValInput" placeholder="value" />
-                <button id="normValGoButton" style="display:none">Ok</button>
-              </td></tr>
-            </tbody></table>
-            
-            <h2>Clustering options<div id="clusteringOptsHelp" class="help-button"></div></h2>
-            <div class="toggle-button-container">
-              <input type="radio" id="clustMethodNumberCheckbox" name="run-type-choice" class="toggle-button-input" checked>
-              <label for="clustMethodNumberCheckbox" class="toggle-button-label toggle-button-label-left">By number</label>
-              <input type="radio" id="clustMethodThresholdCheckbox" name="run-type-choice" class="toggle-button-input">
-              <label for="clustMethodThresholdCheckbox" class="toggle-button-label toggle-button-label-right">By threshold</label>
-            </div>
-
-            <div id="thresholdOutsideDiv">
+              <!-- Distance correlations floating pane -->
               <div id="thresholdComputePane" class="floating-pane">
                 <div>
                   <h2 class="floating-pane-header">Compute distance threshold</h2>
@@ -473,8 +407,78 @@
                   </div>
                 </div>
               </div>
+              <!-- Analyze & export visible content -->
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Get phylogenetic distances</label>
+                <div class="horizontal-row-div">
+                  <button id="getSelectedDistancesButton" class="jq-ui-button" title="Returns the distances from the first variant selected to the others">From selected</button>
+                  <button id="getPairwiseDistancesButton" class="jq-ui-button" title="Returns the pairwise distances between variants in the user's input">Pairwise</button>
+                </div>
+              </div>
+              
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Fit distance model</label>
+                <button id="thresholdComputeButton" class="jq-ui-button" title="Model the relationship between phylogenetic distance and some other interaction score">To variant interactions</button>
+              </div>
+              
+              <div class="labeled-group-div">
+                <label class="labeled-group-label">Save to file</label>
+                <div class="horizontal-row-div">
+                  <button id="exportTreeFileButton" class="jq-ui-button">Save tree as</button>
+                  <select id="exportTreeFileTypeSelect">
+                    <option selected value="newick">Newick tree</option>
+                    <option value="nexus">NEXUS tree</option>
+                    <option value="phyloxml">PhyloXML tree</option>
+                    <option value="nexml">NeXML tree</option>
+                  </select>
+                </div>
+                <div class="horizontal-row-div">
+                  <button id="exportSubtreeFileButton" class="jq-ui-button">Save subtree as</button>
+                  <select id="exportSubtreeFileTypeSelect">
+                    <option selected value="newick">Newick tree</option>
+                    <option value="nexus">NEXUS tree</option>
+                    <option value="phyloxml">PhyloXML tree</option>
+                    <option value="nexml">NeXML tree</option>
+                  </select>
+                </div>
+                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
+              </div>
             </div>
+          </div>
 
+          <div id="runOptionsDiv" class="style-box">
+            <h2>Results normalization</h2>
+            <table><tbody>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normSelfRadio" type="radio" name="normalizeRadios" checked />
+                  <label class="nvrgtr-checkbox-label" for="normSelfRadio">Self-normalized</label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normGlobalRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normGlobalRadio">Normalize across runs <span id="normGlobalValSpan"></span></label>
+                </label>
+              </td></tr>
+              <tr><td>
+                <label class="nvrgtr-checkbox-outer">
+                  <input id="normValRadio" type="radio" name="normalizeRadios" />
+                  <label class="nvrgtr-checkbox-label" for="normValRadio">Normalize to</label>
+                </label>
+                <input id="normValInput" placeholder="value" />
+                <button id="normValGoButton" style="display:none">Ok</button>
+              </td></tr>
+            </tbody></table>
+            
+            <h2>Clustering options<div id="clusteringOptsHelp" class="help-button"></div></h2>
+            <div class="toggle-button-container">
+              <input type="radio" id="clustMethodNumberCheckbox" name="run-type-choice" class="toggle-button-input" checked>
+              <label for="clustMethodNumberCheckbox" class="toggle-button-label toggle-button-label-left">By number</label>
+              <input type="radio" id="clustMethodThresholdCheckbox" name="run-type-choice" class="toggle-button-input">
+              <label for="clustMethodThresholdCheckbox" class="toggle-button-label toggle-button-label-right">By threshold</label>
+            </div>
+            
             <table class="clust-type-opts-table clust-type-number-ele"><tbody>
               <tr><td>
                 <label for="kClustMethodSelect">Algorithm</label>
@@ -521,9 +525,6 @@
               <tr><td>
                 <label>Critical threshold:</label>
                 <input id="thresholdInput" placeholder="Distance" autocomplete="off" spellcheck="false" />
-              </td></tr>
-              <tr><td>
-                <button id="thresholdComputeButton" class="jq-ui-button">Get threshold from data</button>
               </td></tr>
               <tr><td>
                 <label for="threshPercentSpinner">Critical percentage:</label>
