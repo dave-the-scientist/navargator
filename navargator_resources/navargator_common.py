@@ -1,4 +1,4 @@
-# # #  Errors used by NaVARgator
+# # #  Errors used by Navargator
 class NavargatorError(Exception):
     """Base class for errors originating from this software."""
     def __init__(self, msg=None):

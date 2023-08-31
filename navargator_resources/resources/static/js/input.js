@@ -553,7 +553,9 @@ function setupClusteringOptions() {
 }
 function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
-  var compute_pane = $("#thresholdComputePane"), threshold_text = $("#thresholdDataText"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
+  var modint_pane = $("#modelInteractionsPane"), batch_text = $("#modintBatchText"), var1_text = $("#modintVar1Text"), var2_text = $("#modintVar2Text"), int_text = $("#modintInteractionText");
+
+  var compute_pane = $("#modelInteractionsPane"), threshold_text = $("#modintVar1Text"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
   threshold_text.data('data', []); // The data to be graphed
   function validateThresholdData() {
     var cur_ind = 0, data = [], line, line_data, name1, name2, value;
@@ -598,26 +600,29 @@ function setupThresholdPane() {
   }
   // End of function validateThresholdData()
   $("#thresholdComputeButton").click(function() {
-    showFloatingPane(compute_pane);
+    showFloatingPane(modint_pane);
   });
   // Floating pane element setup
-  $("#thresholdDataText").keydown(function(e) {
-    if (e.which == 9) { // Causes tab to insert \t instead of switching focus
-      var sel_start = this.selectionStart, sel_end = this.selectionEnd,
-        cur_val = $(this).val();
-      $(this).val(cur_val.slice(0, sel_start) + "\t" + cur_val.slice(sel_end));
-      this.selectionStart = this.selectionEnd = sel_start + 1;
-      return false;
-    }
-  });
   $("#thresholdLoadDataButton").click(function() {
-    threshold_text.val("Hps.Strain5.Unk\tHps.540.SV4\t1.0\nHps.Strain5.Unk\tHps.nx63.Unk\t0.85\nHps.Strain5.Unk\tApp.h87.Unk\t0.21\nHps.Strain5.Unk\tApp.h167.Unk\t0.03\nA.suis.h57.Unk\tA.suis.h58.Unk\t0.99\nA.suis.h57.Unk\tApp.h49.SV7\t0.05\nA.suis.h57.Unk\tHps.h384.Unk\t0.46");
+    var1_text.val("NEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN");
+    var2_text.val("NEIS1690_1763_GN\nNEIS1690_1920_GN\nNEIS1690_2517_GN\nNEIS1690_715_GN\nNEIS1690_2130_GN\nNEIS1690_2522_GN\nNEIS1690_4440_GN\nNEIS1690_1894_GN");
+    int_text.val("1.0\n0.95\n0.86\n0.8\n0.65\n0.35\n0.15\n0.04");
   });
+  $("#modintSaveDataButton").click(function() {
+    console.log('save data');
+  });
+
+  /*OBSOLETE*/
   $("#thresholdValidateButton").click(function() {
     var data = validateThresholdData();
     if (data != false) {
       error_label.html('Data are valid');
     }
+  });
+  /*OBSOLETE*/
+
+  $("#modintFilterInvalidButton").click(function() {
+    console.log('filter');
   });
   $("#thresholdFitCurveButton").click(function() {
     var data = validateThresholdData();
@@ -693,7 +698,7 @@ function setupThresholdPane() {
   $("#thresholdOkButton").click(function() {
     if (isFinite(nvrgtr_data.threshold)) {
       $("#thresholdInput").val(nvrgtr_data.threshold);
-      $("#thresholdComputePane .floating-pane-close").click();
+      $("#modelInteractionsPane .floating-pane-close").click();
     }
   });
   setupThresholdGraph();

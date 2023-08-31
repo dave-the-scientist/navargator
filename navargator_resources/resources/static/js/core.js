@@ -4,7 +4,6 @@
 // TODO:
 // - Need a way to save nvrgtr session files from the Results page too.
 
-// - Label HTML files to delineate floating pane boundaries
 // - Move result normalization to be by the graph.
 // - Change "select by names" to match paradigm in variant distances: get rid of the validate button; the "submit" button alerts if names aren't found (and which) but doesn't proceed; add button to "remove invalid"
 

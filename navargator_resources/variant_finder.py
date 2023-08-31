@@ -9,7 +9,8 @@ from copy import deepcopy
 from collections import Counter
 import numpy as np
 from navargator_resources import phylo
-from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError, NavargatorRuntimeError
+from navargator_resources.navargator_common import NavargatorValidationError, NavargatorValueError
+#from navargator_resources.navargator_common import NavargatorRuntimeError
 
 phylo.verbose = False
 

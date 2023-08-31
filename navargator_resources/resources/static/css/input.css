@@ -37,33 +37,42 @@
   font-size:15px;
 }
 
-/* ======  Distance correlations  ====== */
+/* ======  Distance interactions  ====== */
 /* Change ALL references to "threshold" in these elements (html and js)*/
-#thresholdComputePane {
+#modelInteractionsPane {
   margin-top:-36px;
 }
-#thresholdPaneMainDiv {
+#modelInteractionsPaneMainDiv {
   display:flex;
 }
-#thresholdPaneDataColumn,
+#modelInteractionsPaneInputColumn,
 #thresholdPaneGraphColumn {
   display:flex;
   flex-direction:column;
   padding:10px;
 }
-#thresholdPaneDataColumn {
+#modelInteractionsPaneInputColumn {
   align-items:flex-start;
 }
-#thresholdPaneGraphColumn {
 
+#modintInputsRowDiv {
+  display:flex;
 }
-#thresholdPaneDataColumn > button, #thresholdPaneGraphColumn > button {
-  margin:2px 10px 5px 0px;
+.modint-input-col {
+  display:flex;
+  flex-direction:column;
+  align-items:center
 }
-#thresholdDataText {
-  min-width:320px;
-  min-height:120px;
+.modint-input-text {
+  width:100px;
+  height:200px;
+  resize:none;
+  white-space:nowrap;
 }
+#modintBatchText {
+  width:50px;
+}
+
 #thresholdErrorLabel {
   margin-left:15px;
 }

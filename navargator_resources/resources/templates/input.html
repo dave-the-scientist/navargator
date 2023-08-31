@@ -368,22 +368,45 @@
                   </div>
                 </div>
               </div>
-              <!-- Distance correlations floating pane -->
-              <div id="thresholdComputePane" class="floating-pane">
+              <!-- Distance interactions floating pane -->
+              <div id="modelInteractionsPane" class="floating-pane">
                 <div>
-                  <h2 class="floating-pane-header">Compute distance threshold</h2>
+                  <h2 class="floating-pane-header">Model distance interactions</h2>
                   <button class="floating-pane-close"></button>
                 </div>
-                <div id="thresholdPaneMainDiv">
-                  <div id="thresholdPaneDataColumn">
-                    <label><b>Variant interaction data</b></label>
-                    <textarea id="thresholdDataText" autocomplete="off" spellcheck="false"></textarea>
+                <div id="modelInteractionsPaneMainDiv">
+                  <div id="modelInteractionsPaneInputColumn">
+                    <div id="modintInputsRowDiv">
+                      <div class="modint-input-col">
+                        <label>Batch</label>
+                        <textarea id="modintBatchText" class="modint-input-text" autocomplete="off" spellcheck="false"></textarea>
+                      </div>
+                      <div class="modint-input-col">
+                        <label>Variant 1</label>
+                        <textarea id="modintVar1Text" class="modint-input-text" autocomplete="off" spellcheck="false"></textarea>
+                      </div>
+                      <div class="modint-input-col">
+                        <label>Variant 2</label>
+                        <textarea id="modintVar2Text" class="modint-input-text" autocomplete="off" spellcheck="false"></textarea>
+                      </div>
+                      <div class="modint-input-col">
+                        <label>Interaction</label>
+                        <textarea id="modintInteractionText" class="modint-input-text" autocomplete="off" spellcheck="false"></textarea>
+                      </div>
+                    </div>
+                    <label class="nvrgtr-checkbox-outer">
+                      <input id="modintBatchCheckbox" type="checkbox" />
+                      <label class="nvrgtr-checkbox-label" for="modintBatchCheckbox">Normalize batches</label>
+                    </label>
+
                     <div>
-                      <button id="thresholdLoadDataButton">Load file</button>
-                      <button id="thresholdValidateButton">Validate data</button>
+                      <button id="thresholdLoadDataButton">Load data</button>
+                      <button id="modintSaveDataButton">Save data</button>
+                      <button id="modintFilterInvalidButton">Remove invalid</button>
                       <label id="thresholdErrorLabel"></label>
                     </div>
                     <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
+
                     <div id="thresholdPaneParamsDiv" style="display:none;">
                       <label><b>Graph parameters</b></label>
                       <label class="threshold-param-label">Max value: <input id="thresholdMaxValInput" placeholder="Re-calculate" title="Enter a custom value and click 'Fit curve' to constrain the maximum value of the curve." /></label>
@@ -576,6 +599,7 @@
 
           <div id="treeSelectionDiv" class="tree-control-div" style="display:none">
             <div class="tree-control-row-rj">
+              <!-- Select by names floating pane -->
               <div id="selectNamesGroupDiv">
                 <button id="selectNamesButton" class="control-element">Select<br>by name</button>
                 <div id="selectNamesPane" class="floating-pane" expandanchor="tr">
@@ -595,7 +619,7 @@
                   </div>
                 </div>
               </div>
-							
+							<!-- Export names floating pane -->
 							<div id="exportNamesGroupDiv">
 								<button id="exportNamesButton" class="control-element">Export<br>names</button>
 								<div id="exportNamesPane" class="floating-pane" expandanchor="tr">
