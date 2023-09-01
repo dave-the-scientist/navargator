@@ -208,7 +208,7 @@ function setupTreeElements() {
   });
   $("#exportNamesCopyButton").click(function() {
     export_text.select();
-    document.execCommand("copy");
+    navigator.clipboard.writeText(export_text.val());
   });
   $("#exportNamesSaveButton").click(function() {
     let text_data = export_text.val(), filename = export_pane.data('save_filename');

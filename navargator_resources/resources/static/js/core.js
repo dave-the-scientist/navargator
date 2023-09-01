@@ -644,7 +644,7 @@ function setupDistancesPanes() {
   });
   $("#variantDistancesCopyButton").click(function() {
     variant_distances_text.select();
-    document.execCommand("copy");
+    navigator.clipboard.writeText(variant_distances_text.val());
   });
   $("#variantDistancesSaveButton").click(function() {
     let text_data = variant_distances_text.val();
@@ -683,7 +683,7 @@ function setupDistancesPanes() {
     showFloatingPane($("#pairwiseDistancesPane"));
   });
   $("#pairwiseDistancesFilterButton").click(function() {
-    let ret = validatePairwiseVariants(), variant_pairs = ret[0], err_msg = ret[1];
+    let ret = validatePairwiseVariants(), variant_pairs = ret[0];
     let var_delim = $("#pairwiseDistancesVariantDelimiter").val(), valid_pairs = [];
     for (let i=0; i<variant_pairs.length; ++i) {
       valid_pairs.push(variant_pairs[i].join(var_delim));

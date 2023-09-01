@@ -555,9 +555,55 @@ function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
   var modint_pane = $("#modelInteractionsPane"), batch_text = $("#modintBatchText"), var1_text = $("#modintVar1Text"), var2_text = $("#modintVar2Text"), int_text = $("#modintInteractionText");
 
-  var compute_pane = $("#modelInteractionsPane"), threshold_text = $("#modintVar1Text"), error_label = $("#thresholdErrorLabel"), max_val_input = $("#thresholdMaxValInput");
-  threshold_text.data('data', []); // The data to be graphed
-  function validateThresholdData() {
+  var max_val_input = $("#thresholdMaxValInput"); // This should be grouped with the "normalize batches" checkbox
+  function validateInteractionsData() {
+    let data = [], err_msg = '', use_batches = false, batch, name1, name2, value;
+    let batches = batch_text.val().trim().split('\n'), name1s = var1_text.val().trim().split('\n'), name2s = var2_text.val().trim().split('\n'), values = int_text.val().trim().split('\n');
+    let ints_len = Math.max(batches.length, name1s.length, name2s.length, values.length);
+    if (ints_len < 2) {
+      err_msg = "Error: cannot model fewer than 2 variant interactions. Ideally you would want at least 5 to model the interactions with any certainty.";
+      return [[], err_msg];
+    }
+    if (name1s.length != ints_len) {
+      err_msg = err_msg || "Error: too few entries provided in the 'Variant 1' field.";
+    }
+    if (name2s.length != ints_len) {
+      err_msg = err_msg || "Error: too few entries provided in the 'Variant 2' field.";
+    }
+    if (values.length != ints_len) {
+      err_msg = err_msg || "Error: too few entries provided in the 'Interaction' field.";
+    }
+    if (batches.length == ints_len) {
+      use_batches = true;
+    } else if (batches.length > 1) {
+      err_msg = err_msg || "Error: to use batch identifiers, one must be provided for every interaction entry.";
+    }
+    for (let i=0; i<ints_len; ++i) {
+      name1 = name1s[i], name2 = name2s[i], value = values[i];
+      if (!nvrgtr_data.leaves.includes(name1)) {
+        err_msg = err_msg || "Error: '"+name1+"' in the 'Variant 1' field was not found in the tree.";
+        continue;
+      } else if (!nvrgtr_data.leaves.includes(name2)) {
+        err_msg = err_msg || "Error: '"+name2+"' in the 'Variant 2' field was not found in the tree.";
+        continue;
+      } else if (isNaN(value) || parseFloat(value) < 0) {
+        err_msg = err_msg || "Error: '"+value+"' at position "+i+" in the 'Interaction' field is an invalid. Interactions must be non-negative numbers.";
+      } else {
+        data.push({'name1':name1, 'name2':name2, 'value':parseFloat(value)});
+      }
+      batch = batches[i];
+      if (use_batches && !batch) {
+        use_batches = false;
+      }
+    }
+    if (use_batches == true) {
+      for (let i=0; i<batches.length; ++i) {
+        data[i]['batch'] = batches[i];
+      }
+    }
+    return [data, err_msg];
+  }
+  function OLD_VALIDATE() {
     var cur_ind = 0, data = [], line, line_data, name1, name2, value;
     var lines = threshold_text.val().trim().split('\n');
     if (lines.length < 2) {
@@ -598,7 +644,7 @@ function setupThresholdPane() {
     }
     return data;
   }
-  // End of function validateThresholdData()
+  // End of function validateInteractionsData()
   $("#thresholdComputeButton").click(function() {
     showFloatingPane(modint_pane);
   });
@@ -606,29 +652,23 @@ function setupThresholdPane() {
   $("#thresholdLoadDataButton").click(function() {
     var1_text.val("NEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN");
     var2_text.val("NEIS1690_1763_GN\nNEIS1690_1920_GN\nNEIS1690_2517_GN\nNEIS1690_715_GN\nNEIS1690_2130_GN\nNEIS1690_2522_GN\nNEIS1690_4440_GN\nNEIS1690_1894_GN");
-    int_text.val("1.0\n0.95\n0.86\n0.8\n0.65\n0.35\n0.15\n0.04");
+    int_text.val("1.0\n0.95\n0.96\n0.9\n0.65\n0.35\n0.15\n0.04");
   });
   $("#modintSaveDataButton").click(function() {
     console.log('save data');
   });
-
-  /*OBSOLETE*/
-  $("#thresholdValidateButton").click(function() {
-    var data = validateThresholdData();
-    if (data != false) {
-      error_label.html('Data are valid');
-    }
-  });
-  /*OBSOLETE*/
-
   $("#modintFilterInvalidButton").click(function() {
-    console.log('filter');
+    let ret = validateInteractionsData(), data = ret[0];
+    let batches = [], name1s = [], name2s = [], values = [];
+    // iterate through data, fill out lists, set text vals
   });
   $("#thresholdFitCurveButton").click(function() {
-    var data = validateThresholdData();
-    if (data == false) {
-      return false;
+    let ret = validateInteractionsData(), data = ret[0], err_msg = ret[1];
+    if (err_msg) {
+      showErrorPopup(err_msg);
+      return;
     }
+
     var max_val = max_val_input.val();
     if (!max_val_input.hasClass("threshold-max-modified")) {
       max_val = null;
@@ -645,12 +685,11 @@ function setupThresholdPane() {
         $("#thresholdMidlineValue").text(roundFloat(thresh_data.m, 6));
         $("#thresholdSteepnessValue").text(roundFloat(thresh_data.b, 6));
         nvrgtr_data.thresh.data = thresh_data.data;
-        error_label.html('');
         if (nvrgtr_data.thresh.sigmoid_inv == null) {
           // Expand the panel to show the graph
           $("#thresholdPaneGraphColumn").show();
           $("#thresholdPaneParamsDiv").show();
-          showFloatingPane(compute_pane);
+          showFloatingPane(modint_pane);
         }
         updateThresholdGraph();
         updateThresholdSlider($("#thresholdSlider").slider('value'));
@@ -1675,6 +1714,7 @@ function formatExportNames(delimiter) {
 }
 // =====  Misc methods:
 function focusScrollSelectInTextarea(textarea, start, end) {
+  // CURRENTLY UNUSED OBSOLETE
   // textarea is the jquery object, start and end are integers representing character counts. Will select the given range, and attempt to scroll the textarea so that the selected text is on the bottom of the view.
   textarea.focus();
   var full_text = textarea.val();
