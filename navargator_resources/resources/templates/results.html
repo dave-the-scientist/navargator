@@ -325,8 +325,15 @@
               </div>
               <div class="labeled-group-div">
                 <label class="labeled-group-label">Save to file</label>
-                <button id="exportTreeImageButton" class="jq-ui-button">Save tree image</button>
-                <button id="exportHistoImageButton" class="jq-ui-button">Save histogram image</button>
+                <div class="horizontal-row-div">
+                  <button id="saveSessionButton" class="jq-ui-button" title="Save the current session, which includes visual features as well as clustering results.">Tree session</button>
+                  <label id="sessionIncludeDistancesLabel" class="nvrgtr-checkbox-outer" title="Including the distance matrix in a session file speeds up loading times but can dramatically increase the file size, especially for trees with over 500 leaves (90MB file for a tree with 4,000 leaves).">
+                    <input id="sessionIncludeDistancesCheckbox" type="checkbox" />
+                    <label class="nvrgtr-checkbox-label" for="sessionIncludeDistancesCheckbox">with distances</label>
+                  </label>
+                </div>
+                <button id="exportTreeImageButton" class="jq-ui-button">Tree image</button>
+                <button id="exportHistoImageButton" class="jq-ui-button">Histogram image</button>
               </div>
             </div>
           </div>

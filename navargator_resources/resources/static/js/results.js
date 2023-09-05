@@ -272,6 +272,9 @@ function setupNormalizationPane() {
   });
 }
 function setupExportPane() {
+  // TODO: Make sure the saving session code can just be dropped in here; check into how the input page fxn can return a new s_id. I don't think that can happen on the results page, but make sure.
+  // and put the results buttons into a column
+  
   // Button callbacks:
   $("#exportTreeImageButton").click(function() {
     let svg_data = cleanSvg("#figureSvg");

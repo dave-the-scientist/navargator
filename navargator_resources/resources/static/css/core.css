@@ -717,6 +717,11 @@ input.select-group-node-spinner {
   text-align:center;
 }
 
+/* Save session options:*/
+#sessionIncludeDistancesLabel {
+  font-size:15px;
+}
+
 /* ======  Distances panes  ====== */
 #variantDistancesPane,
 #pairwiseDistancesPane {

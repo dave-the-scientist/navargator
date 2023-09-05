@@ -32,11 +32,6 @@
   width: 30px;
 }
 
-/* Save session options:*/
-#sessionIncludeDistancesLabel {
-  font-size:15px;
-}
-
 /* ======  Distance interactions  ====== */
 /* Change ALL references to "threshold" in these elements (html and js)*/
 #modelInteractionsPane {
