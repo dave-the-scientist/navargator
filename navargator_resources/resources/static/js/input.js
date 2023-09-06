@@ -129,8 +129,6 @@ function setupPage() {
   setupManipulationsPane();
   setupThresholdPane();
 
-  $("#sessionIncludeDistancesCheckbox").prop('disabled', true);
-
   if (nvrgtr_page.session_id != '') {
     // The instance is from the local version of Navargator
     if (nvrgtr_page.session_id != 'local_input_page') {
@@ -157,9 +155,8 @@ function setupPage() {
   }
 }
 function setupUploadSaveButtons() {
-  var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect"), save_button = $("#saveSessionButton");
+  var file_input = $("#uploadFileInput"), upload_button = $("#uploadFileButton"), upload_type_select = $("#uploadFileTypeSelect");
   upload_button.button('disable');
-  save_button.button('disable');
   file_input.change(function() {
     var file_obj = file_input[0].files[0];
     if (file_obj) {
@@ -207,28 +204,6 @@ function setupUploadSaveButtons() {
         treeHasLoaded();
         processError(error, "Error uploading the input file");
       }
-    });
-  });
-  save_button.click(function() {
-    var inc_dists = $("#sessionIncludeDistancesCheckbox").is(':checked');
-    $.ajax({
-      url: daemonURL('/save-nvrgtr-file'),
-      type: 'POST',
-      contentType: "application/json",
-      data: JSON.stringify({...getPageAssignedData(), 'include_distances':inc_dists}),
-      success: function(data_obj) {
-        var data = $.parseJSON(data_obj);
-        if (nvrgtr_page.session_id != data.session_id) {
-          changeSessionID(data.session_id);
-        }
-        if (data.saved_locally == true) {
-          console.log('Navargator file saved locally');
-        } else {
-          var filename = data.filename;
-          saveDataString(data.nvrgtr_as_string, filename, 'text/plain');
-        }
-      },
-      error: function(error) { processError(error, "Error saving session file"); }
     });
   });
 }
@@ -293,6 +268,9 @@ function setupManipulationsPane() {
   });
 }
 function setupExportPane() {
+  setupCoreExports();
+  $("#saveSessionButton").button('disable');
+  $("#sessionIncludeDistancesCheckbox").prop('disabled', true);
   // Button callbacks:
   $("#exportTreeFileButton").click(function() {
     let tree_type = $("#exportTreeFileTypeSelect").val();
@@ -340,10 +318,6 @@ function setupExportPane() {
       },
       error: function(error) { processError(error, "Error saving tree file"); }
     });
-  });
-  $("#exportTreeImageButton").click(function() {
-    let svg_data = cleanSvg("#figureSvg");
-    downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
   });
 }
 function setupNormalizationPane() {
@@ -561,16 +535,14 @@ function setupThresholdPane() {
     let batches = batch_text.val().trim().split('\n'), name1s = var1_text.val().trim().split('\n'), name2s = var2_text.val().trim().split('\n'), values = int_text.val().trim().split('\n');
     let ints_len = Math.max(batches.length, name1s.length, name2s.length, values.length);
     if (ints_len < 2) {
-      err_msg = "Error: cannot model fewer than 2 variant interactions. Ideally you would want at least 5 to model the interactions with any certainty.";
+      err_msg = "Error: cannot model fewer than 2 variant interactions. Ideally you would want at least a few interactions, perhaps 5, to model them with any certainty.";
       return [[], err_msg];
     }
     if (name1s.length != ints_len) {
       err_msg = err_msg || "Error: too few entries provided in the 'Variant 1' field.";
-    }
-    if (name2s.length != ints_len) {
+    } else if (name2s.length != ints_len) {
       err_msg = err_msg || "Error: too few entries provided in the 'Variant 2' field.";
-    }
-    if (values.length != ints_len) {
+    } else if (values.length != ints_len) {
       err_msg = err_msg || "Error: too few entries provided in the 'Interaction' field.";
     }
     if (batches.length == ints_len) {
@@ -579,7 +551,7 @@ function setupThresholdPane() {
       err_msg = err_msg || "Error: to use batch identifiers, one must be provided for every interaction entry.";
     }
     for (let i=0; i<ints_len; ++i) {
-      name1 = name1s[i], name2 = name2s[i], value = values[i];
+      name1 = name1s[i].trim(), name2 = name2s[i].trim(), value = values[i].trim();
       if (!nvrgtr_data.leaves.includes(name1)) {
         err_msg = err_msg || "Error: '"+name1+"' in the 'Variant 1' field was not found in the tree.";
         continue;
@@ -587,62 +559,22 @@ function setupThresholdPane() {
         err_msg = err_msg || "Error: '"+name2+"' in the 'Variant 2' field was not found in the tree.";
         continue;
       } else if (isNaN(value) || parseFloat(value) < 0) {
-        err_msg = err_msg || "Error: '"+value+"' at position "+i+" in the 'Interaction' field is an invalid. Interactions must be non-negative numbers.";
+        err_msg = err_msg || "Error: '"+value+"' at position "+i+" in the 'Interaction' field is invalid. Interactions must be non-negative numbers.";
       } else {
         data.push({'name1':name1, 'name2':name2, 'value':parseFloat(value)});
       }
-      batch = batches[i];
+      batch = batches[i] && batches[i].trim();
       if (use_batches && !batch) {
         use_batches = false;
+        err_msg = err_msg || "Error: to use batch identifiers, one must be provided for every interaction entry.";
       }
     }
     if (use_batches == true) {
       for (let i=0; i<batches.length; ++i) {
-        data[i]['batch'] = batches[i];
+        data[i]['batch'] = batches[i].trim();
       }
     }
     return [data, err_msg];
-  }
-  function OLD_VALIDATE() {
-    var cur_ind = 0, data = [], line, line_data, name1, name2, value;
-    var lines = threshold_text.val().trim().split('\n');
-    if (lines.length < 2) {
-      error_label.html('<b>Invalid data</b>');
-      return false;
-    }
-    for (var i=0; i<lines.length; ++i) {
-      line = lines[i];
-      line_data = line.split('\t');
-      if (line_data.length != 3 || line_data[0].length == 0 || line_data[1].length == 0 || line_data[2].length == 0) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + line.length);
-        error_label.html('<b>Invalid line</b>');
-        return false;
-      }
-      name1 = line_data[0], name2 = line_data[1], value = line_data[2];
-      if (!nvrgtr_data.leaves.includes(name1)) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name1.length);
-        error_label.html('<b>Invalid variant</b>');
-        return false;
-      } else {
-        cur_ind += name1.length + 1; // +1 for the removed \t
-      }
-      if (!nvrgtr_data.leaves.includes(name2)) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + name2.length);
-        error_label.html('<b>Invalid variant</b>');
-        return false;
-      } else {
-        cur_ind += name2.length + 1; // +1 for the removed \t
-      }
-      if (isNaN(value) || parseFloat(value) < 0) {
-        focusScrollSelectInTextarea(threshold_text, cur_ind, cur_ind + value.length);
-        error_label.html('<b>Invalid number</b>');
-        return false;
-      } else {
-        cur_ind += value.length + 1; // +1 for the removed \n
-      }
-      data.push({'name1':name1, 'name2':name2, 'value':parseFloat(value)});
-    }
-    return data;
   }
   // End of function validateInteractionsData()
   $("#thresholdComputeButton").click(function() {
@@ -655,12 +587,45 @@ function setupThresholdPane() {
     int_text.val("1.0\n0.95\n0.96\n0.9\n0.65\n0.35\n0.15\n0.04");
   });
   $("#modintSaveDataButton").click(function() {
-    console.log('save data');
+    let ret = validateInteractionsData(), data = ret[0], err_msg = ret[1];
+    if (err_msg) {
+      showErrorPopup(err_msg);
+      return;
+    }
+    let data_buff = [], line_buff, datum;
+    for (let i=0; i<data.length; ++i) {
+      line_buff = [];
+      datum = data[i];
+      if ('batch' in datum) {
+        line_buff.push(datum['batch']);
+      }
+      line_buff.push(datum['name1']);
+      line_buff.push(datum['name2']);
+      line_buff.push(datum['value'].toString());
+      data_buff.push(line_buff.join('\t'));
+    }
+    downloadData('navargator_interactions.txt', data_buff.join('\n'), "text/plain");
   });
   $("#modintFilterInvalidButton").click(function() {
     let ret = validateInteractionsData(), data = ret[0];
-    let batches = [], name1s = [], name2s = [], values = [];
-    // iterate through data, fill out lists, set text vals
+    let batches = [], name1s = [], name2s = [], values = [], datum;
+    for (let i=0; i<data.length; ++i) {
+      datum = data[i];
+      if ('batch' in datum) {
+        batches.push(datum['batch']);
+      }
+      name1s.push(datum['name1']);
+      name2s.push(datum['name2']);
+      values.push(datum['value'].toString());
+    }
+    if (batches.length > 0) {
+      batch_text.val(batches.join('\n'));
+    } else {
+      batch_text.val('');
+    }
+    var1_text.val(name1s.join('\n'));
+    var2_text.val(name2s.join('\n'));
+    int_text.val(values.join('\n'));
   });
   $("#thresholdFitCurveButton").click(function() {
     let ret = validateInteractionsData(), data = ret[0], err_msg = ret[1];
@@ -668,7 +633,6 @@ function setupThresholdPane() {
       showErrorPopup(err_msg);
       return;
     }
-
     var max_val = max_val_input.val();
     if (!max_val_input.hasClass("threshold-max-modified")) {
       max_val = null;

@@ -179,17 +179,8 @@ table.sortable th span,
 table.sortable th:after {
   font-size:12px;
 }
-/*table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {*/
-table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
-  /*content:" \25B4\25BE";*/
-  content:" \25B4";
-}
-table.sortable th.sorttable_sorted:after {
-  /*content:"\25B4";*/
-}
-table.sortable th.sorttable_sorted_reverse:after {
-  /*content:"\25BE";*/
-}
+/* To show sorting icons by default to indicate to user that headers can be sorted, put content:" \25B4\25BE"; under the below rule:
+/*table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after */
 
 /* ======  Main styled div  ====== */
 .style-box {
@@ -472,6 +463,9 @@ div.collapsible-panel > hr {
 /* ======  Labeled divs for groups of elements  ====== */
 .labeled-group-div {
   position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
   margin:10px 0px;
   padding:10px 5px 5px 5px;
   border:1px solid var(--button-border-colour);
@@ -482,6 +476,9 @@ div.collapsible-panel > hr {
   left:0px;
   padding:0px 10px 0px 5px;
   background:var(--style-box-background-colour);
+}
+.labeled-group-div > div {
+  align-self:stretch;
 }
 
 /* ======  Horizontal toggle-able button bar  ====== */

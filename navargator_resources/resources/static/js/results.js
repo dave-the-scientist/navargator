@@ -272,14 +272,8 @@ function setupNormalizationPane() {
   });
 }
 function setupExportPane() {
-  // TODO: Make sure the saving session code can just be dropped in here; check into how the input page fxn can return a new s_id. I don't think that can happen on the results page, but make sure.
-  // and put the results buttons into a column
-  
+  setupCoreExports();
   // Button callbacks:
-  $("#exportTreeImageButton").click(function() {
-    let svg_data = cleanSvg("#figureSvg");
-    downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
-  });
   $("#exportHistoImageButton").click(function() {
     let svg_data = cleanSvg("#histoSvg");
     downloadData("navargator_histogram.svg", svg_data, "image/svg+xml;charset=utf-8");
@@ -403,8 +397,7 @@ function updateNormalizationPane() {
   $("#normSelfValSpan").html('['+roundFloat(nvrgtr_data.max_variant_distance, 4)+']');
 }
 function drawClusters() {
-  var var_names;
-  var_names = nvrgtr_data.variants.slice();
+  var var_names = nvrgtr_data.variants.slice();
   var_names.sort(function(a,b) {
     return nvrgtr_data.clusters[a].nodes.length - nvrgtr_data.clusters[b].nodes.length;
   });
@@ -432,6 +425,8 @@ function drawClusters() {
   for (var i=to_front.length-1; i>=0; --i) {
     to_front[i].toFront(); // Puts the smallest invisible mouseover objects in front of the larger ones.
   }
+  let size_header = $("#clustersListTable > thead > tr").children()[1];
+  sorttable.innerSortFunction.apply(size_header, []); // Apply column sort so indicator shows up
   nvrgtr_data.tree_background.toBack();
 }
 function createClusterRow(var_name, table_body) {

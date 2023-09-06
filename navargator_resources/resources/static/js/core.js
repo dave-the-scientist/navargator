@@ -2,8 +2,6 @@
 // - If I want a "real" draggable icon, can make one in pure CSS similar to https://codepen.io/citylims/pen/ogEoXe
 
 // TODO:
-// - Need a way to save nvrgtr session files from the Results page too.
-
 // - Move result normalization to be by the graph.
 // - Change "select by names" to match paradigm in variant distances: get rid of the validate button; the "submit" button alerts if names aren't found (and which) but doesn't proceed; add button to "remove invalid"
 
@@ -933,6 +931,35 @@ function updateDisplayOptions(display_opts) {
   });
   nvrgtr_display_opts = new_opts;
 }
+function setupCoreExports() {
+  $("#saveSessionButton").click(function() {
+    let inc_dists = $("#sessionIncludeDistancesCheckbox").is(':checked');
+    $.ajax({
+      url: daemonURL('/save-nvrgtr-file'),
+      type: 'POST',
+      contentType: "application/json",
+      data: JSON.stringify({...getPageAssignedData(), 'include_distances':inc_dists}),
+      success: function(data_obj) {
+        var data = $.parseJSON(data_obj);
+        if (nvrgtr_page.session_id != data.session_id) {
+          changeSessionID(data.session_id);
+        }
+        if (data.saved_locally == true) {
+          console.log('Navargator file saved locally');
+        } else {
+          var filename = data.filename;
+          saveDataString(data.nvrgtr_as_string, filename, 'text/plain');
+        }
+      },
+      error: function(error) { processError(error, "Error saving session file"); }
+    });
+  });
+
+  $("#exportTreeImageButton").click(function() {
+    let svg_data = cleanSvg("#figureSvg");
+    downloadData("navargator_tree.svg", svg_data, "image/svg+xml;charset=utf-8");
+  });
+}
 function setColourPickers() {
   /*Updates the colour pickers to reflect the current values in nvrgtr_display_opts.colours*/
   //$("#element_ID")[0].jscolor.fromString('#aabbcc'); // Set colour
@@ -1502,6 +1529,7 @@ function saveDataString(data_str, file_name, file_type) {
   document.body.removeChild(download_link); // while others do not. Keep em.
 }
 function downloadData(filename, data, blob_type) {
+  // The append followed by remove is needed in some browsers but not all.
   var blob = new Blob([data], {type:blob_type}),
     blob_url = URL.createObjectURL(blob),
     download_link = document.createElement("a");
@@ -1510,7 +1538,7 @@ function downloadData(filename, data, blob_type) {
   document.body.appendChild(download_link);
   download_link.click();
   document.body.removeChild(download_link);
-  download_link = null; // Removes the element
+  download_link = null;
 }
 function calculateHistoTicks(max_var_dist) {
   // Given the current settings on the page, this calculates the ticks that would be used in the histogram on results.js.
