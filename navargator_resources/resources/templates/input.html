@@ -391,17 +391,19 @@
                     </label>
 
                     <div>
-                      <button id="thresholdLoadDataButton">Load data</button>
+                      <input id="modintLoadDataInput" type="file" style="display:none;" />
+                      <button id="modintLoadDataButton">Load data</button>
                       <button id="modintSaveDataButton">Save data</button>
                       <button id="modintFilterInvalidButton">Remove invalid</button>
+                      <button id="modintClearDataButton">Clear data</button>
                     </div>
-                    <button id="thresholdFitCurveButton"><b>Fit curve</b></button>
+                    <button id="modintFitCurveButton"><b>Fit curve</b></button>
 
-                    <div id="thresholdPaneParamsDiv" style="display:none;">
+                    <div id="modintParamsDiv" style="display:none;">
                       <label><b>Graph parameters</b></label>
-                      <label class="threshold-param-label">Max value: <input id="thresholdMaxValInput" placeholder="Re-calculate" title="Enter a custom value and click 'Fit curve' to constrain the maximum value of the curve." /></label>
-                      <label class="threshold-param-label">Midline: <span id="thresholdMidlineValue">--</span></label>
-                      <label class="threshold-param-label">Steepness: <span id="thresholdSteepnessValue">--</span></label>
+                      <label class="modint-param-label">Max value: <input id="modintMaxValInput" placeholder="Re-calculate" title="Enter a custom value and click 'Fit curve' to constrain the maximum value of the curve." /></label>
+                      <label class="modint-param-label">Midline: <span id="modintMidlineValue">--</span></label>
+                      <label class="modint-param-label">Steepness: <span id="modintSteepnessValue">--</span></label>
                     </div>
                   </div>
                   <div id="thresholdPaneGraphColumn" style="display:none;">
@@ -415,7 +417,6 @@
                     <label id="thresholdCritValLabel">Critical interaction value: <input id="thresholdCritValInput" title="Enter a value here to exactly specify the critical interaction value." /></label>
                     <div id="thresholdCritDistDiv" class="horizontal-row-div">
                       <label>Critical distance threshold: <span id="thresholdCritDistSpan">--</span></label>
-                      <button id="thresholdOkButton">OK</button>
                     </div>
                   </div>
                 </div>

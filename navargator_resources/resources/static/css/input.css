@@ -49,7 +49,6 @@
 #modelInteractionsPaneInputColumn {
   align-items:flex-start;
 }
-
 #modintInputsRowDiv {
   display:flex;
 }
@@ -67,14 +66,10 @@
 #modintBatchText {
   width:50px;
 }
-
-#thresholdErrorLabel {
-  margin-left:15px;
-}
-#thresholdFitCurveButton {
+#modintFitCurveButton {
   padding:1px 16px;
 }
-#thresholdPaneParamsDiv {
+#modintParamsDiv {
   display:flex;
   flex-direction:column;
   margin-top:15px;
@@ -82,16 +77,16 @@
 .threshold-max-modified {
   font-weight:bold;
 }
-.threshold-param-label {
+.modint-param-label {
   margin-top:5px;
   margin-bottom:5px;
   font-size:16px;
   white-space:nowrap;
 }
-.threshold-param-label:last-child {
+.modint-param-label:last-child {
   margin-bottom:0px;
 }
-#thresholdMaxValInput,
+#modintMaxValInput,
 #thresholdCritValInput {
   padding:0px;
   width:100px;
@@ -100,7 +95,7 @@
   border:1px solid transparent;
   transition:border-color 0.1s ease-in-out;
 }
-#thresholdMaxValInput:hover, #thresholdMaxValInput:focus,
+#modintMaxValInput:hover, #modintMaxValInput:focus,
 #thresholdCritValInput:hover, #thresholdCritValInput:focus {
   border-color:var(--shadow-colour);
 }
@@ -123,10 +118,6 @@
 }
 #thresholdCritDistDiv {
   margin-left:20px;
-}
-#thresholdOkButton {
-  margin:0px;
-  padding:1px 10px;
 }
 
 /* Clustering options:*/

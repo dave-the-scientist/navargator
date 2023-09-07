@@ -6,7 +6,10 @@
 // - I need to add some kind of useful error if the user attempts to load a malformed tree (test with name including space, quotes; polytomy; results/problem_cladogram.nwk; results_badname_cladogram_supports.nwk has no distances, the 'outgroup' name is malformed)
 
 // TODO:
-// - For Input & Results, add a "Pairs distances" button. If no variants selected, it should accept many lines of the form "name1\tname2\n" (check if that's the easiest form from the cross-reactivity data), gets the distances between each pair. If variants are selected, computes and displays all pairwise distances.
+// - Finish updateThreshGraph, incorporating batch colours. Generates legend
+//   - Make it ready to scale data by individual maxes.
+//   - Button to save graph. Maybe another button to open yet another pane to adjust things like batch colours, title, axis title, display batch scale factor, etc.
+
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
 // - Make sure a run that was ended early still goes through the single pass optimization fxn
 // - Finish checkIfProcessingDone(). Add a "Replaced" or something section, to store runs that have been replaced by more stringent calls. IE the greedy results are replaced by optimal. Would have to return the runID to replace, requires more info being stored the vf.cache and returned to this.
@@ -529,7 +532,7 @@ function setupThresholdPane() {
   // When implemented, make sure the truncation doesn't affect validation (because names will be validated by client and server).
   var modint_pane = $("#modelInteractionsPane"), batch_text = $("#modintBatchText"), var1_text = $("#modintVar1Text"), var2_text = $("#modintVar2Text"), int_text = $("#modintInteractionText");
 
-  var max_val_input = $("#thresholdMaxValInput"); // This should be grouped with the "normalize batches" checkbox
+  var max_val_input = $("#modintMaxValInput"); // This should be grouped with the "normalize batches" checkbox
   function validateInteractionsData() {
     let data = [], err_msg = '', use_batches = false, batch, name1, name2, value;
     let batches = batch_text.val().trim().split('\n'), name1s = var1_text.val().trim().split('\n'), name2s = var2_text.val().trim().split('\n'), values = int_text.val().trim().split('\n');
@@ -581,10 +584,36 @@ function setupThresholdPane() {
     showFloatingPane(modint_pane);
   });
   // Floating pane element setup
-  $("#thresholdLoadDataButton").click(function() {
-    var1_text.val("NEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN\nNEIS1690_1763_GN");
-    var2_text.val("NEIS1690_1763_GN\nNEIS1690_1920_GN\nNEIS1690_2517_GN\nNEIS1690_715_GN\nNEIS1690_2130_GN\nNEIS1690_2522_GN\nNEIS1690_4440_GN\nNEIS1690_1894_GN");
-    int_text.val("1.0\n0.95\n0.96\n0.9\n0.65\n0.35\n0.15\n0.04");
+  let file_input = $("#modintLoadDataInput");
+  function parse_interactions_file(event) {
+    let data_str = event.target.result, lines = data_str.split('\n'), line_data;
+    let batches = [], name1s = [], name2s = [], values = [];
+    for (let i=0; i<lines.length; ++i) {
+      line_data = lines[i].split('\t');
+      if (line_data.length == 3) {
+        name1s.push(line_data[0].trim());
+        name2s.push(line_data[1].trim());
+        values.push(line_data[2].trim());
+      } else if (line_data.length == 4) {
+        batches.push(line_data[0].trim());
+        name1s.push(line_data[1].trim());
+        name2s.push(line_data[2].trim());
+        values.push(line_data[3].trim());
+      }
+    }
+    batch_text.val(batches.join('\n'));
+    var1_text.val(name1s.join('\n'));
+    var2_text.val(name2s.join('\n'));
+    int_text.val(values.join('\n'));
+  }
+  file_input.on("change", function() {
+    let file = file_input[0].files[0];
+    let reader = new FileReader();
+    reader.readAsText(file);
+    reader.onload = parse_interactions_file;
+  });
+  $("#modintLoadDataButton").click(function() {
+    file_input.click(); // As the actual input element is hidden
   });
   $("#modintSaveDataButton").click(function() {
     let ret = validateInteractionsData(), data = ret[0], err_msg = ret[1];
@@ -627,7 +656,18 @@ function setupThresholdPane() {
     var2_text.val(name2s.join('\n'));
     int_text.val(values.join('\n'));
   });
-  $("#thresholdFitCurveButton").click(function() {
+  $("#modintClearDataButton").click(function() {
+    batch_text.val('');
+    var1_text.val('');
+    var2_text.val('');
+    int_text.val('');
+    file_input[0].value = '';
+    nvrgtr_data.thresh.sigmoid_inv = null; // Used to indicate no graph to show
+    $("#thresholdPaneGraphColumn").hide();
+    $("#modintParamsDiv").hide();
+    showFloatingPane(modint_pane);
+  });
+  $("#modintFitCurveButton").click(function() {
     let ret = validateInteractionsData(), data = ret[0], err_msg = ret[1];
     if (err_msg) {
       showErrorPopup(err_msg);
@@ -646,13 +686,13 @@ function setupThresholdPane() {
         var thresh_data = $.parseJSON(data_obj);
         nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
         max_val_input.val(roundFloat(thresh_data.r, 6));
-        $("#thresholdMidlineValue").text(roundFloat(thresh_data.m, 6));
-        $("#thresholdSteepnessValue").text(roundFloat(thresh_data.b, 6));
+        $("#modintMidlineValue").text(roundFloat(thresh_data.m, 6));
+        $("#modintSteepnessValue").text(roundFloat(thresh_data.b, 6));
         nvrgtr_data.thresh.data = thresh_data.data;
         if (nvrgtr_data.thresh.sigmoid_inv == null) {
           // Expand the panel to show the graph
           $("#thresholdPaneGraphColumn").show();
-          $("#thresholdPaneParamsDiv").show();
+          $("#modintParamsDiv").show();
           showFloatingPane(modint_pane);
         }
         updateThresholdGraph();
@@ -676,7 +716,7 @@ function setupThresholdPane() {
   max_val_input.on("keydown", function(event) {
     if (event.which == 13) { // 'Enter' key
       max_val_input.blur();
-      $("#thresholdFitCurveButton").click();
+      $("#modintFitCurveButton").click();
     }
   });
   var val_input = $("#thresholdCritValInput");
@@ -696,12 +736,6 @@ function setupThresholdPane() {
   val_input.on("keydown", function(event) {
     if (event.which == 13) { // 'Enter' key
       val_input.blur();
-    }
-  });
-  $("#thresholdOkButton").click(function() {
-    if (isFinite(nvrgtr_data.threshold)) {
-      $("#thresholdInput").val(nvrgtr_data.threshold);
-      $("#modelInteractionsPane .floating-pane-close").click();
     }
   });
   setupThresholdGraph();
@@ -1261,7 +1295,6 @@ function updateThreshData() {
   nvrgtr_data.thresh.sigmoid_fxn = generateSigmoidFunction(params.b, params.m, params.r);
   nvrgtr_data.thresh.sigmoid_inv = generateSigmoidInverse(params.b, params.m, params.r);
   var graph_y_intcpt = nvrgtr_data.thresh.sigmoid_fxn(0);
-
   // Update the axis domains:
   var max_dist = 0, max_value = 0;
   for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
@@ -1276,7 +1309,6 @@ function updateThreshData() {
   nvrgtr_data.thresh.x_fxn.domain([0, max_x_val]).nice();
   nvrgtr_data.thresh.y_fxn.domain([0, max_y_val]).nice();
   max_x_val = nvrgtr_data.thresh.x_fxn.ticks()[nvrgtr_data.thresh.x_fxn.ticks().length-1];
-
   // Update the data used to draw the sigmoid line:
   var num_sigmoid_points = 20;
   nvrgtr_data.thresh.sigmoid_data = [];
@@ -1284,7 +1316,6 @@ function updateThreshData() {
     nvrgtr_data.thresh.sigmoid_data.push(i * max_x_val / (num_sigmoid_points-1));
   }
   nvrgtr_data.thresh.sigmoid_data.push(max_x_val);
-
   // Update the slider range:
   if ($("#thresholdSlider").slider("value") > graph_y_intcpt) {
     $("#thresholdSlider").slider("value", graph_y_intcpt);
@@ -1302,6 +1333,9 @@ function updateThreshGraph() {
     .transition()
     .attr("d", nvrgtr_data.thresh.line_fxn);
   // The scatter plot:
+
+  // batch colour = .attr("fill", function(d) { color_fxn(d.batch); })
+  // color_fxn(batch) = returned by a generateColourFunction; gets the number of batches on instanciation, associates 1 per batch. if no batches, returns nvrgtr_settings.thresh.scatter_fill
   var scatter_circles = nvrgtr_data.thresh.g.selectAll(".thresh-circle")
     .data(nvrgtr_data.thresh.data);
   scatter_circles.enter().append("circle")
