@@ -156,24 +156,33 @@ class NavargatorDaemon(object):
                 data = request.json['data']
             except Exception as err:
                 return ("could not get the data for fit_curve() from the client.", 5514)
-            xvals, yvals = [], []
-            for datum in data:
-                name1 = datum.get('name1')
-                name2 = datum.get('name2')
-                if name1 not in vf.leaves or name2 not in vf.leaves:
-                    return ("malformed data for fit_curve() from the client.", 5514)
-                dist = vf.orig_dists[vf.index[name1], vf.index[name2]]
-                datum['distance'] = dist
-                xvals.append(dist)
-                yvals.append(float(datum['value']))
             try:
                 max_val = float(request.json['max_val'])
                 if max_val <= 0:
                     max_val = None
             except:
                 max_val = None
-            b, r, m = fit_to_sigmoid(xvals, yvals, r_value=max_val)
-            ret = {'data':data, 'b':b, 'r':r, 'm':m}
+            norm_batches = request.json['norm_batches']
+
+            # TESTING
+            print('norm is', norm_batches)
+            norm_batches = False
+            
+            if not norm_batches:
+                xvals, yvals = [], []
+                for datum in data:
+                    name1 = datum.get('name1')
+                    name2 = datum.get('name2')
+                    if name1 not in vf.leaves or name2 not in vf.leaves:
+                        return ("malformed data for fit_curve() from the client.", 5514)
+                    dist = vf.orig_dists[vf.index[name1], vf.index[name2]]
+                    datum['distance'] = dist
+                    xvals.append(dist)
+                    yvals.append(float(datum['value']))
+                b, r, m = fit_to_sigmoid(xvals, yvals, r_value=max_val)
+                ret = {'data':data, 'b':b, 'r':r, 'm':m}
+            else:
+                print('do batch normalization')
             return json.dumps(ret)
         @self.server.route(self.daemonURL('/get-distances'), methods=['POST'])
         def get_distances():

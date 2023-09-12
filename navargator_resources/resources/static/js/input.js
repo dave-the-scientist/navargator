@@ -7,7 +7,9 @@
 
 // TODO:
 // - Finish updateThreshGraph, incorporating batch colours. Generates legend
+//   - Ensure updateModintBatches() is complete, deals with normalizations, integrates with display options
 //   - Make it ready to scale data by individual maxes.
+//   - Make interactions textareas scroll together, to emulate a spreadsheet
 //   - Button to save graph. Maybe another button to open yet another pane to adjust things like batch colours, title, axis title, display batch scale factor, etc.
 
 // - Make sure the result links can handle new runs with a more stringent algorithm. Would be good to add the method to the tooltip at least.
@@ -84,7 +86,7 @@ $.extend(nvrgtr_data, {
   },
   'assigned_selected':'', 'assigned_added':'', 'threshold':null,
   'thresh':{
-    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null
+    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null, 'batches':{}
   },
   'graph':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null, 'x_labels':[], 'y_scores':[]
@@ -538,7 +540,7 @@ function setupThresholdPane() {
     let batches = batch_text.val().trim().split('\n'), name1s = var1_text.val().trim().split('\n'), name2s = var2_text.val().trim().split('\n'), values = int_text.val().trim().split('\n');
     let ints_len = Math.max(batches.length, name1s.length, name2s.length, values.length);
     if (ints_len < 2) {
-      err_msg = "Error: cannot model fewer than 2 variant interactions. Ideally you would want at least a few interactions, perhaps 5, to model them with any certainty.";
+      err_msg = "Error: cannot model fewer than 2 variant interactions. 5 interactions may be considered a minimal reasonable number, though ideally there would be 10 or more to model them with any certainty.";
       return [[], err_msg];
     }
     if (name1s.length != ints_len) {
@@ -584,10 +586,17 @@ function setupThresholdPane() {
     showFloatingPane(modint_pane);
   });
   // Floating pane element setup
-  let file_input = $("#modintLoadDataInput");
   function parse_interactions_file(event) {
-    let data_str = event.target.result, lines = data_str.split('\n'), line_data;
-    let batches = [], name1s = [], name2s = [], values = [];
+    let data_str = event.target.result, lines = data_str.split('\n');
+    if (lines.length < 2) {
+      showErrorPopup("Error: the given interactions file was invalid or too short.");
+      return;
+    }
+
+    // Check if last line indicates batch colours. If so, remove line, fill out batch display colours, and set nvrgtr_data.thresh.batches.
+    // Check if somewhere indicates custom max value. If so, remove line, fill out element.
+
+    let batches = [], name1s = [], name2s = [], values = [], line_data;
     for (let i=0; i<lines.length; ++i) {
       line_data = lines[i].split('\t');
       if (line_data.length == 3) {
@@ -601,11 +610,26 @@ function setupThresholdPane() {
         values.push(line_data[3].trim());
       }
     }
-    batch_text.val(batches.join('\n'));
-    var1_text.val(name1s.join('\n'));
-    var2_text.val(name2s.join('\n'));
-    int_text.val(values.join('\n'));
+    if (name1s.length == name2s.length && name2s.length == values.length) {
+      var1_text.val(name1s.join('\n'));
+      var2_text.val(name2s.join('\n'));
+      int_text.val(values.join('\n'));
+      if (batches.length == values.length) {
+        batch_text.val(batches.join('\n'));
+      } else {
+        batch_text.val('');
+        showErrorPopup("Error: to use batch identifiers, one must be provided for every interaction entry.");
+      }
+      // Fill out batch elements here.
+    } else {
+      batch_text.val('');
+      var1_text.val('');
+      var2_text.val('');
+      int_text.val('');
+      showErrorPopup("Error: the given interactions file was invalid. Manually enter your data into the text boxes, and use the 'Save data' button to ensure the format is valid.");
+    }
   }
+  let file_input = $("#modintLoadDataInput");
   file_input.on("change", function() {
     let file = file_input[0].files[0];
     let reader = new FileReader();
@@ -613,6 +637,7 @@ function setupThresholdPane() {
     reader.onload = parse_interactions_file;
   });
   $("#modintLoadDataButton").click(function() {
+    file_input[0].value = ''; // Clear without triggering onchange
     file_input.click(); // As the actual input element is hidden
   });
   $("#modintSaveDataButton").click(function() {
@@ -663,6 +688,7 @@ function setupThresholdPane() {
     int_text.val('');
     file_input[0].value = '';
     nvrgtr_data.thresh.sigmoid_inv = null; // Used to indicate no graph to show
+    nvrgtr_data.thresh.batches = {};
     $("#thresholdPaneGraphColumn").hide();
     $("#modintParamsDiv").hide();
     showFloatingPane(modint_pane);
@@ -673,17 +699,22 @@ function setupThresholdPane() {
       showErrorPopup(err_msg);
       return;
     }
-    var max_val = max_val_input.val();
+    let max_val = max_val_input.val();
     if (!max_val_input.hasClass("threshold-max-modified")) {
       max_val = null;
+    }
+    let norm_batches = $("#modintBatchCheckbox").is(':checked');
+    if (norm_batches && !('batch' in data[0])) {
+      norm_batches = false;
+      $("#modintBatchCheckbox").prop('checked', false);
     }
     $.ajax({
       url: daemonURL('/fit-curve'),
       type: 'POST',
       contentType: "application/json",
-      data: JSON.stringify({...getPageAssignedData(), 'data':data, 'max_val':max_val}),
+      data: JSON.stringify({...getPageAssignedData(), 'data':data, 'max_val':max_val, 'norm_batches':norm_batches}),
       success: function(data_obj) {
-        var thresh_data = $.parseJSON(data_obj);
+        let thresh_data = $.parseJSON(data_obj);
         nvrgtr_data.thresh.params = {'b':thresh_data.b, 'm':thresh_data.m, 'r':thresh_data.r};
         max_val_input.val(roundFloat(thresh_data.r, 6));
         $("#modintMidlineValue").text(roundFloat(thresh_data.m, 6));
@@ -695,6 +726,7 @@ function setupThresholdPane() {
           $("#modintParamsDiv").show();
           showFloatingPane(modint_pane);
         }
+        updateModintBatches();
         updateThresholdGraph();
         updateThresholdSlider($("#thresholdSlider").slider('value'));
       },
@@ -1282,6 +1314,31 @@ function checkIfProcessingDone() {
     error: function(error) { processError(error, "Error checking if the results have finished"); }
   });
 }
+function updateModintBatches() {
+  // Fill out nvrgtr_data.thresh.batches = {'batchname':{'colour':x, 'normalization':y}}
+  
+  if (!'batch' in nvrgtr_data.thresh.data[0]) {
+    nvrgtr_data.thresh.batches = {};
+    // clear batch display colours
+    return;
+  }
+  let colours = ["gold", "blue", "green", "yellow", "black", "grey", "darkgreen", "pink", "brown", "slateblue", "grey1", "orange"];
+  // modifying rgb to get iteratively more desaturated versions of the same base colours, depending on how many batches we have: https://css-tricks.com/using-javascript-to-adjust-saturation-and-brightness-of-rgb-colors/
+  let batch_names = [], batch, colour;
+  for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
+    batch = nvrgtr_data.thresh.data[i].batch;
+    if (batch && !(batch in nvrgtr_data.thresh.batches)) {
+      colour = colours[batch_names.length % colours.length];
+      // num desat iterations = Math.floor(batch_names.length / colours.length);
+      nvrgtr_data.thresh.batches[batch] = {'colour':colour};
+      batch_names.push(batch);
+    }
+  }
+  if (nvrgtr_data.thresh.batches.length != batch_names.length) {
+    // remove batches present in nvrgtr_data.thresh.batches but not in batch_names
+    // if (batch_names.indexOf(batch) != -1)
+  }
+}
 function updateThresholdGraph() {
   // Called when the graph is first drawn, and when the graph parameters are changed.
   updateThreshData();
@@ -1328,32 +1385,31 @@ function updateThreshData() {
   }, 250);
 }
 function updateThreshGraph() {
+  let modint = nvrgtr_data.thresh, mi_set = nvrgtr_settings.thresh;
   // The sigmoid line:
-  nvrgtr_data.thresh.line_graph.datum(nvrgtr_data.thresh.sigmoid_data)
+  modint.line_graph.datum(modint.sigmoid_data)
     .transition()
-    .attr("d", nvrgtr_data.thresh.line_fxn);
+    .attr("d", modint.line_fxn);
   // The scatter plot:
-
-  // batch colour = .attr("fill", function(d) { color_fxn(d.batch); })
-  // color_fxn(batch) = returned by a generateColourFunction; gets the number of batches on instanciation, associates 1 per batch. if no batches, returns nvrgtr_settings.thresh.scatter_fill
-  var scatter_circles = nvrgtr_data.thresh.g.selectAll(".thresh-circle")
-    .data(nvrgtr_data.thresh.data);
+  var scatter_circles = modint.g.selectAll(".thresh-circle")
+    .data(modint.data);
   scatter_circles.enter().append("circle")
     .attr("class", "thresh-circle")
-    .attr("stroke-width", nvrgtr_settings.thresh.scatter_stroke_width)
-    .attr("stroke", nvrgtr_settings.thresh.scatter_stroke)
-    .attr("fill", nvrgtr_settings.thresh.scatter_fill)
-    .attr("r", nvrgtr_settings.thresh.scatter_radius)
-    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
-    .attr("cy", nvrgtr_settings.thresh.height)
+    .attr("stroke-width", mi_set.scatter_stroke_width)
+    .attr("stroke", mi_set.scatter_stroke)
+    .attr("fill", function(d) { return d.batch && modint.batches[d.batch].colour || mi_set.scatter_fill; })
+    .attr("r", mi_set.scatter_radius)
+    .attr("cx", function(d) { return modint.x_fxn(d.distance); })
+    .attr("cy", mi_set.height)
     .transition()
-    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
-    .attr("cy", function(d) { return nvrgtr_data.thresh.y_fxn(d.value); });
+    .attr("cx", function(d) { return modint.x_fxn(d.distance); })
+    .attr("cy", function(d) { return modint.y_fxn(d.value); });
   scatter_circles.transition()
-    .attr("cx", function(d) { return nvrgtr_data.thresh.x_fxn(d.distance); })
-    .attr("cy", function(d) { return nvrgtr_data.thresh.y_fxn(d.value); });
+    .attr("fill", function(d) { return d.batch && modint.batches[d.batch].colour || mi_set.scatter_fill; })
+    .attr("cx", function(d) { return modint.x_fxn(d.distance); })
+    .attr("cy", function(d) { return modint.y_fxn(d.value); });
   scatter_circles.exit().transition()
-    .attr("cy", nvrgtr_settings.thresh.height)
+    .attr("cy", mi_set.height)
     .remove();
 }
 function updateThreshAxes() {
