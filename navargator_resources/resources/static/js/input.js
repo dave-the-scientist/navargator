@@ -586,6 +586,15 @@ function setupThresholdPane() {
     showFloatingPane(modint_pane);
   });
   // Floating pane element setup
+  var last_scroll_top = null; // Used to throttle the many scroll events being generated
+  $(".modint-input-text").on("scroll", function(e) {
+    // Sort of emulates spreadsheet behaviour, scrolling all textareas at the same time
+    let cur_top = $(this).scrollTop();
+    if (cur_top != last_scroll_top) {
+      last_scroll_top = cur_top;
+      $(".modint-input-text").scrollTop(cur_top);
+    }
+  });
   function parse_interactions_file(event) {
     let data_str = event.target.result, lines = data_str.split('\n');
     if (lines.length < 2) {
@@ -1322,21 +1331,33 @@ function updateModintBatches() {
     // clear batch display colours
     return;
   }
-  let colours = ["gold", "blue", "green", "yellow", "black", "grey", "darkgreen", "pink", "brown", "slateblue", "grey1", "orange"];
+  //let colours = ["gold", "blue", "green", "yellow", "black", "grey", "darkgreen", "pink", "brown", "slateblue", "grey1", "orange"];
+  
+  //let colours = ['#FFE800', '#FF9200', '#FF0000', '#FF005A', '#FF00FE', '#8400FF'];
+  //colournames = [ yellow,    orange,    red,       magenta,   pink,      purple];
+  //old modifiers: s = 0.36; l = 0.21
+  // show batch legend (below graph?), will help in selecting colours
+  // once i'm happy with colours, intersperce the similar ones, give better contrast with low numbers of batches
+
+  let colours = ['#FF005A', '#FF00FE', '#8400FF'];
   // modifying rgb to get iteratively more desaturated versions of the same base colours, depending on how many batches we have: https://css-tricks.com/using-javascript-to-adjust-saturation-and-brightness-of-rgb-colors/
-  let batch_names = [], batch, colour;
+  let batch_names = [], batch, colour, desats;
   for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
     batch = nvrgtr_data.thresh.data[i].batch;
     if (batch && !(batch in nvrgtr_data.thresh.batches)) {
-      colour = colours[batch_names.length % colours.length];
-      // num desat iterations = Math.floor(batch_names.length / colours.length);
+      colour = d3.hsl(colours[batch_names.length % colours.length]);
+      console.log(batch, colour);
+      desats = Math.floor(batch_names.length / colours.length);
+      colour.s = Math.max(colour.s - (desats*0.24), 0.0);
+      colour.l = Math.min(colour.l + (desats*0.14), 1.0);
+      console.log('modified to', colour);
       nvrgtr_data.thresh.batches[batch] = {'colour':colour};
       batch_names.push(batch);
     }
   }
   if (nvrgtr_data.thresh.batches.length != batch_names.length) {
     // remove batches present in nvrgtr_data.thresh.batches but not in batch_names
-    // if (batch_names.indexOf(batch) != -1)
+    // if (batch_names.indexOf(batch) == -1)
   }
 }
 function updateThresholdGraph() {
@@ -1386,18 +1407,28 @@ function updateThreshData() {
 }
 function updateThreshGraph() {
   let modint = nvrgtr_data.thresh, mi_set = nvrgtr_settings.thresh;
+  function get_datum_colour(batch) {
+    if (!batch) {
+      return mi_set.scatter_fill;
+    } else if (batch in modint.batches) {
+      return modint.batches[batch].colour;
+    } else {
+      showErrorPopup("Error: batch name '"+batch+"' not recognized.");
+    }
+  }
   // The sigmoid line:
   modint.line_graph.datum(modint.sigmoid_data)
     .transition()
     .attr("d", modint.line_fxn);
   // The scatter plot:
+  // .attr("fill", function(d) { return d.batch && modint.batches[d.batch].colour || mi_set.scatter_fill; })
   var scatter_circles = modint.g.selectAll(".thresh-circle")
     .data(modint.data);
   scatter_circles.enter().append("circle")
     .attr("class", "thresh-circle")
     .attr("stroke-width", mi_set.scatter_stroke_width)
     .attr("stroke", mi_set.scatter_stroke)
-    .attr("fill", function(d) { return d.batch && modint.batches[d.batch].colour || mi_set.scatter_fill; })
+    .attr("fill", function(d) { return get_datum_colour(d.batch); })
     .attr("r", mi_set.scatter_radius)
     .attr("cx", function(d) { return modint.x_fxn(d.distance); })
     .attr("cy", mi_set.height)
@@ -1405,7 +1436,7 @@ function updateThreshGraph() {
     .attr("cx", function(d) { return modint.x_fxn(d.distance); })
     .attr("cy", function(d) { return modint.y_fxn(d.value); });
   scatter_circles.transition()
-    .attr("fill", function(d) { return d.batch && modint.batches[d.batch].colour || mi_set.scatter_fill; })
+    .attr("fill", function(d) { return get_datum_colour(d.batch); })
     .attr("cx", function(d) { return modint.x_fxn(d.distance); })
     .attr("cy", function(d) { return modint.y_fxn(d.value); });
   scatter_circles.exit().transition()

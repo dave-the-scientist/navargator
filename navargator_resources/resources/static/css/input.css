@@ -58,13 +58,15 @@
   align-items:center
 }
 .modint-input-text {
-  width:100px;
+  width:120px;
   height:200px;
   resize:none;
   white-space:nowrap;
+  overflow-x:scroll;
+  overscroll-behavior:contain;
 }
 #modintBatchText {
-  width:50px;
+  width:70px;
 }
 #modintFitCurveButton {
   padding:1px 16px;
