@@ -86,7 +86,7 @@ $.extend(nvrgtr_data, {
   },
   'assigned_selected':'', 'assigned_added':'', 'threshold':null,
   'thresh':{
-    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'params':null, 'data':null, 'batches':{}
+    'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'sigmoid_fxn':null, 'sigmoid_inv':null, 'sigmoid_data':null, 'line_graph':null, 'indicator':null, 'indicator_line_v':null, 'indicator_line_h':null, 'x_axis':null, 'y_axis':null, 'modint_legend_paper':null, 'params':null, 'data':null, 'batches':{}
   },
   'graph':{
     'g':null, 'x_fxn':null, 'y_fxn':null, 'line_fxn':null, 'x_axis':null, 'y_axis':null, 'x_labels':[], 'y_scores':[]
@@ -733,11 +733,11 @@ function setupThresholdPane() {
           // Expand the panel to show the graph
           $("#thresholdPaneGraphColumn").show();
           $("#modintParamsDiv").show();
-          showFloatingPane(modint_pane);
         }
         updateModintBatches();
         updateThresholdGraph();
         updateThresholdSlider($("#thresholdSlider").slider('value'));
+        showFloatingPane(modint_pane); // Called to resize due to new elements becoming visible
       },
       error: function(error) { processError(error, "Error fitting the data to a curve"); }
     });
@@ -1324,33 +1324,25 @@ function checkIfProcessingDone() {
   });
 }
 function updateModintBatches() {
-  // Fill out nvrgtr_data.thresh.batches = {'batchname':{'colour':x, 'normalization':y}}
-  
+  // TODO Fill out nvrgtr_data.thresh.batches = {'batchname':{'colour':x, 'normalization':y}}
+  // The colours were chosen by starting with pink (hue 300|s 100|l 50) and iteratively subtracting 29 from the hue. Some colours were tweaked from there, and I removed one of the greens that was too similar to the others. Colours were interspersed and re-ordered them into a pleasing order.
+  //old modifiers: s/l = 0.36/0.21; 0.24/0.14
+
   if (!'batch' in nvrgtr_data.thresh.data[0]) {
     nvrgtr_data.thresh.batches = {};
     // clear batch display colours
     return;
   }
-  //let colours = ["gold", "blue", "green", "yellow", "black", "grey", "darkgreen", "pink", "brown", "slateblue", "grey1", "orange"];
-  
-  //let colours = ['#FFE800', '#FF9200', '#FF0000', '#FF005A', '#FF00FE', '#8400FF'];
-  //colournames = [ yellow,    orange,    red,       magenta,   pink,      purple];
-  //old modifiers: s = 0.36; l = 0.21
-  // show batch legend (below graph?), will help in selecting colours
-  // once i'm happy with colours, intersperce the similar ones, give better contrast with low numbers of batches
-
-  let colours = ['#FF005A', '#FF00FE', '#8400FF'];
-  // modifying rgb to get iteratively more desaturated versions of the same base colours, depending on how many batches we have: https://css-tricks.com/using-javascript-to-adjust-saturation-and-brightness-of-rgb-colors/
+  let colours = ['#62FF00', '#DDFF00', '#FFE800', '#FF9200', '#FF0000', '#FF00FE', '#8400FF', '#0800FF', '#0073FF', '#00EEFF', '#00FF95'];
+  //colnames = [green,    lightyellow, yellow,   orange,     red,       pink,      purple,    blue,       lightblue, cyan,      lightgreen];
   let batch_names = [], batch, colour, desats;
   for (let i=0; i<nvrgtr_data.thresh.data.length; ++i) {
     batch = nvrgtr_data.thresh.data[i].batch;
     if (batch && !(batch in nvrgtr_data.thresh.batches)) {
       colour = d3.hsl(colours[batch_names.length % colours.length]);
-      console.log(batch, colour);
       desats = Math.floor(batch_names.length / colours.length);
-      colour.s = Math.max(colour.s - (desats*0.24), 0.0);
-      colour.l = Math.min(colour.l + (desats*0.14), 1.0);
-      console.log('modified to', colour);
+      colour.s = Math.max(colour.s - (desats*0.27), 0.0);
+      colour.l = Math.min(colour.l + (desats*0.1575), 1.0);
       nvrgtr_data.thresh.batches[batch] = {'colour':colour};
       batch_names.push(batch);
     }
@@ -1421,7 +1413,6 @@ function updateThreshGraph() {
     .transition()
     .attr("d", modint.line_fxn);
   // The scatter plot:
-  // .attr("fill", function(d) { return d.batch && modint.batches[d.batch].colour || mi_set.scatter_fill; })
   var scatter_circles = modint.g.selectAll(".thresh-circle")
     .data(modint.data);
   scatter_circles.enter().append("circle")
@@ -1442,6 +1433,34 @@ function updateThreshGraph() {
   scatter_circles.exit().transition()
     .attr("cy", mi_set.height)
     .remove();
+  // The batch legend
+  if ('batch' in modint.data[0]) {
+    // I might want to move this all into a g inside threshsvg, to allow for easier downloading, but would require that i do not set threshsvg width ever(?), and instead apply that code to the g holding the graph.
+    // .attr('transform', 'translate(100, 0)')
+    if (modint.modint_legend_paper == null) {
+      modint.modint_legend_paper = new Raphael('modintGraphLegendDiv', 100, 200);
+    } else {
+      modint.modint_legend_paper.clear();
+    }
+    $("#modintGraphLegendDiv").show();
+    let m_paper = modint.modint_legend_paper;
+    let legend_margin = 5, col_box_size = 8, label_font_size = 12;
+    let cur_y = legend_margin+col_box_size/2, legend_width = 0, leg_label, label_size;
+    for (let batch in modint.batches) {
+      m_paper.rect(legend_margin, cur_y-col_box_size/2, col_box_size, col_box_size).attr({'fill':get_datum_colour(batch), 'stroke':'black', 'stroke-width':0.5});
+      leg_label = m_paper.text(legend_margin+col_box_size+5, cur_y, batch).attr({'font-size':label_font_size, 'font-family':nvrgtr_display_opts.fonts.family, 'text-anchor':'start'});
+      label_size = leg_label.getBBox();
+      legend_width = Math.max(legend_width, label_size.width + col_box_size+5);
+      cur_y += (Math.max(label_size.height, col_box_size) + legend_margin);
+    }
+    legend_width += (2 * legend_margin);
+    let legend_height = cur_y - Math.max(label_size.height, col_box_size) + col_box_size/2;
+    m_paper.rect(0, 0, legend_width, legend_height).attr({'fill':'white', 'stroke':'black', 'stroke-width':0.5}).toBack();
+    m_paper.setSize(legend_width+1, legend_height+1);
+    
+  } else {
+    $("#modintGraphLegendDiv").hide();
+  }
 }
 function updateThreshAxes() {
   nvrgtr_data.thresh.x_axis.tickFormat(d3.format(".3")); // trims trailing zeros
@@ -1476,7 +1495,6 @@ function updateThresholdIndicator(val, dist) {
 }
 
 function updateScoreGraph() {
-  console.log('start of updateScoreGraph');
   if (nvrgtr_settings.graph.total_width == 0) {
     nvrgtr_settings.graph.total_width = $("#scoreGraphSvg").width();
     nvrgtr_settings.graph.total_height = $("#scoreGraphSvg").height();
