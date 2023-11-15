@@ -354,7 +354,7 @@ class NavargatorDaemon(object):
                     run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                     if to_run_clustering:
                         self.job_queue.addJob(vf.find_variants, args)
-                        #vf.find_variants(*args) # For bug tracking
+                        #vf.find_variants(*args) # DEV: For bug tracking
                     run_ids.append(run_id)
                     run_descrs.append(run_descr)
                     run_tooltips.append(run_tooltip)
@@ -364,7 +364,7 @@ class NavargatorDaemon(object):
                 run_id, args, run_descr, run_tooltip, to_run_clustering = self.process_args_for_find_variants(vf, cluster_method, params, arg_list)
                 if to_run_clustering:
                     self.job_queue.addJob(vf.find_variants, args)
-                    #vf.find_variants(*args)
+                    #vf.find_variants(*args) # DEV: For bug tracking
                 run_ids = [run_id]
                 run_descrs = [run_descr]
                 run_tooltips = [run_tooltip]

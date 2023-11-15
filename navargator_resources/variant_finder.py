@@ -23,6 +23,10 @@ phylo.verbose = False
 
 # - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
 
+# - I'd like a hierarchical clustering method that generates k monophyletic groups. 
+#   - Should be easy and blazingly fast; start at root with 2 clusters, test effect of splitting each cluster, pick the one that results in lowest tree score, repeat until done. Is this guaranteed optimal?
+#   - Also include a critical % (so 90% of nodes are contained in k=4 clusters)? Maybe not, that would definitely mean this greedy approach is non-optimal. 
+
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
