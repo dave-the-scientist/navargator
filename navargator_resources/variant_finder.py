@@ -30,6 +30,10 @@ phylo.verbose = False
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
 
+# TODO alternate clustering
+# - Right now k- based clustering gets biased if there are many sequences that are identical or extremely close together. Centers are attracted to these groups, though they are not really giving a representative variant for the whole tree.
+# - Instead of working with the distance from each similar sequence to a center, maybe something with the cumulative branch lengths? Does the Clustering Tolerance touch this? Hierarchical? Some method of weighting leaves based on how similar they are to their nearest (phylo distance) node(s)?
+
 # TODO EM clustering
 # - Probably hold off until V2; can't use tree score as the sum of all points to their center. Because a point does not necessarily belong to the closest cluster center, but rather the cluster with the highest probability (based on stddev of each cluster). Could sum stddev * cluster size?
 # - Need to implement a form of EM medoids clustering, so not standard EM.
