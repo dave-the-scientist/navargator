@@ -22,6 +22,11 @@
 // - Once nvrgtr files store cluster results, have the page load and display the last-used clustering method and params (including num_replicates, tolerance, etc).
 // - I think I want to move the results graph below the list of names again. When graph is visible, reduce the max height of the list of names by a fair bit (less likely for user to want to identify variant names at this point).
 
+// - If the assigned/ignored legend is not shown, but a banner legend is, it's placed awkardly low. Should be placed dynamically
+
+// - I want to be able to have multiple selection groups with the same name. Should be easy, just change the internal representation to some hidden ID. Will also simplify loading settings from a different nvrgtr file.
+// - I would really like a way to load the selection groups from one nvrgtr file into the current tree, even if they contain different sequences. Apply regular display options. Create selection groups (ignoring any missed sequences), etc.
+
 // - I would really like to implement additional tree formats.
 //   - The standard 'rectangular' format is already supported by the drawing library. Banners could be implemented as blocks down the right side.
 //   - I would really like to implement the 'radial' or 'freeform' format as well, as I do believe it's the most intuitive to parse. I think most elements, including banners, would be able to work basically as they are. But I think I would have to write the drawing code myself.
