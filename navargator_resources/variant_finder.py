@@ -23,9 +23,12 @@ phylo.verbose = False
 
 # - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
 
-# - I'd like a hierarchical clustering method that generates k monophyletic groups. 
-#   - Should be easy and blazingly fast; start at root with 2 clusters, test effect of splitting each cluster, pick the one that results in lowest tree score, repeat until done. Is this guaranteed optimal?
-#   - Also include a critical % (so 90% of nodes are contained in k=4 clusters)? Maybe not, that would definitely mean this greedy approach is non-optimal. 
+# - I'd like a hierarchical k-clustering method that generates k monophyletic groups. 
+#   - Should be easy and blazingly fast; start at root with 2 clusters, test effect of splitting each cluster, pick the one that results in lowest tree score, repeat until reaching the user's k. 
+#     - Is this guaranteed optimal? How do I handle it when one sibling is a terminal node and the other is a large subtree? If I have to find a centroid on each check, maybe it won't be so fast. Possibly I can use something like the variance / average distance in a subgroup instead of finding a single centroid (well, given a set of inds, finding the centroid is just summing the distance matrix along 1 dimension and then identifying the min, probably will be fast).
+#     - The range of k in real world work is going to be pretty small. There are not going to be very many possible ways to partition a tree into that many clusters, at least, not many that are even remotely feasible (probably easy to identify many prohibited branches in the decision tree). A brute-force evaluation might be pretty reasonable, and would then certainly be guaranteed optimal.
+#   - k-medoids is basically agnostic to the root, and even the branching pattern; it only operates on the distances. Besides speed, this method would respect the choice of root and cannot violate the branching pattern (would also prevent one cluster nested in another).
+#   - Also include a critical % (so 90% of nodes are contained in k=4 clusters)? Maybe would help deal with "orphan" singletons, maybe would mean the analysis cannot rely on purely local information and would require dynamic programming (would definitely mean this greedy approach is non-optimal).
 
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
@@ -44,6 +47,10 @@ phylo.verbose = False
 # NOTE:
 # - I originally had allowed comments in nvrgtr files, but large encoded distance matrices spawned too many random characters that duplicated it.
 # - Calculating the distance matrix for a tree of 4173 leaves took around 67 seconds, while loading it's nvrgtr file took 4. The file was 94MB though.
+#   - I feel like I must be able to vectorize / parallelize that calculation. Right now, I think I'm re-calculating the distances between various internal nodes a ton of times. I think I can more efficiently build the distance matrix while parsing the tree file the first time. Keep track of distance from each terminal node read so far to internal nodes, when encountering new terminal nodes finalize their distances as I go.
+#   - Should work. I've sketched out a plan in the Steno book in my drawer
+
+# - Check out the methods in Treeswift (https://github.com/niemasd/TreeSwift), they may have solved some of the optimized algorithms I'm thinking about. Not sure if their distance_matrix calculation is as efficient as what I'm looking for, but it's most likely better than my current implementation.
 
 
 # # # # #  Session file strings  # # # # #
