@@ -143,8 +143,8 @@ function setupHistoSliderPane() {
   });
   add_sub.attr('title', histo_add_title).hide();
   var toggle_label = $("#histoToggleLabel"),
-    highlight_below_title = 'Highlight variants closer to their center than this distance',
-    highlight_above_title = 'Highlight variants further from their center than this distance';
+    highlight_below_title = 'Highlight variants closer to their medoid than this distance',
+    highlight_above_title = 'Highlight variants further from their medoid than this distance';
   toggle_dir.click(function() {
     let slider_val = slider.slider('value');
     if (select_below) { // Switch to above

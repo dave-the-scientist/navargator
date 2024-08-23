@@ -126,7 +126,7 @@
 										<input id="showLegendCheckbox" type="checkbox"/>
 										<label class="nvrgtr-checkbox-label" for="showLegendCheckbox">Variant legend</label>
 									</label>
-									<label class="nvrgtr-checkbox-outer" title="Make cluster centers more obvious on the results page">
+									<label class="nvrgtr-checkbox-outer" title="Make cluster medoids more obvious on the results page">
 										<input id="showChosenBeamsCheckbox" type="checkbox" checked />
 										<label class="nvrgtr-checkbox-label" for="showChosenBeamsCheckbox">Chosen beams</label>
 									</label>
@@ -495,7 +495,7 @@
 
         <div id="mainRightDiv">
           <div id="selectionDiv" class="style-box">
-            <h2>Distance to nearest cluster center</h2>
+            <h2>Distance to nearest cluster medoid</h2>
             <svg id="histoSvg" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
             <div id="histoSlider">
               <div id="histoSliderHandle" class="ui-slider-handle"></div>
@@ -520,7 +520,7 @@
 
           <div id="clustersListDiv" class="style-box">
             <h2>Summary statistics</h2>
-            <p>Total distance from all <span id="numNodesSpan"></span> variants to their nearest cluster center: <b><span id="distTotalSpan">calculating...</span></b></p>
+            <p>Total distance from all <span id="numNodesSpan"></span> variants to their nearest cluster medoid: <b><span id="distTotalSpan">calculating...</span></b></p>
             <p>Average total distance per cluster: <b><span id="distClustersSpan">calculating...</span></b></p>
             <p>Average distance per variant: <b><span id="distNodesSpan">calculating...</span></b></p>
 
@@ -529,7 +529,7 @@
               <table id="clustersListTable" class="sortable">
                 <thead>
                   <tr>
-                    <th>Cluster center</th>
+                    <th>Cluster medoid</th>
                     <th class="sorttable_numeric">Size</th>
                     <th class="sorttable_numeric">Average<br>distance</th>
                     <th class="sorttable_numeric">90th<br>percentile</th>

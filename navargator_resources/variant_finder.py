@@ -15,6 +15,7 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
+# - Change all instances calling something a "center"/"centre" into a "medoid". It's a more correct term, and what I use in the paper.
 # - Get the qt methods using _score_pattern() instead of the 2-step process.
 # - Finish / clean up _qt_radius_clustering().
 # - _brute_force_clustering() throws an awkward error if quit before finding a valid solution. Make this more graceful.
@@ -733,7 +734,8 @@ class VariantFinder(object):
         return best_center, best_clstr
 
     def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, cache, max_cycles):
-        """This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy.
+        """In the case where all sequences are classified as available, finding cluster centers is equivalent to the dominating set problem. It is similar to the vertex cover problem, and every vertex cover is a dominating set, but dominating sets don't need to include every edge in the graph.
+        This implementation is a little different than a typical one, because of the available & unassigned variants. In a normal implementation, every variant is always guaranteed to be able to be placed into a cluster, to form a singleton if nothing else. But there may be no available variant within threshold distance of some unassigned variant. Or worse, the nearest available variant may be assigned to some other cluster, stranding some unassigned variants. This one is greedy(? what do i mean).
         Use constraint propagation with branch/bound; once we find a valid solution, any configuration that yields the same number/more clusters can be pruned. Don't think I can use the total score to prune, but I can prune if too many unassigned are stranded (more than the allowed miss %)."""
         # Separating components and removing dominated indices reduced runtime on tbpb82 0.4@100% from 10s to 10ms.
         # Before removing dominated, tree_275 0.04@100% found a solution with score 4.0485 after 228k cycles. After, found it in 49k. After adding the second Counter to CoverManager, found it under 1k cycles. Each cycle was substantially slower, but the solution still was found ~1000x faster (ms instead of 20 min).
@@ -972,6 +974,8 @@ class VariantFinder(object):
         return dists
 
     def _remove_dominated_inds(self, neighbors_of, chsn_indices, avail_indices, out_of_range):
+        # I need to change the "dominated" terms. Since qt is doing real dominated sets. This function is actually identifying cliques! Mostly. All members of a clique will have the same set of neighbours, except for the nodes in the clique connected to the rest of the graph. We collapse the identical ones.
+
         # Is not a "dominating set" from graph theory. Here, one variant dominates others if they all have identical neighbours under the threshold, and the one variant is the most central (lowest summed distance to other variants).
         # Removing these dominated inds from consideration dramatically speeds up the algorithm, and still guarantees to find the optimal minimum set cover. In some cases the score (but not the clustering pattern) may be slightly non-optimal, which is remedied by _test_dominated_inds().
         considered_nbrs, dominated_inds, repeated_inds = {}, {}, set()
