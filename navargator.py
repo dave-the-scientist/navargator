@@ -23,6 +23,11 @@ def new_random_port():
 #   - When done, edit the IE warning message at the top of input.html to include the correct command line flag.
 # - Ensure that a message is printed indicating the server may occasionally hang, but ctrl-c can be used to stop the program at any time.
 
+# BIG TODO: move all general todo statements from all other files here. stop the duplication. leave file-specific todo lists only for smaller things specific to that file.
+
+# Feature requests:
+# - Sort of like selection groups, add the ability to indicate specific sequences on the tree. Use the existing beams (in place for searching / chosen), add the sequence name floating horizontally at the end. Would be good to have all of these in a svg group on the top of the tree, to allow for easy editing of the labels & their positioning (something i probably don't want to deal with).
+
 # BUG reports:
 
 # NOTE:
