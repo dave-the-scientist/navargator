@@ -23,6 +23,7 @@ phylo.verbose = False
 # - Move _test_dominated_inds(). Working well, but put it in the cluster_subset fxn. it should also integrate with single_pass_optimize somehow
 
 # - In the K- cluster methods (and at least the final_optimize step in qt_minimal) I have a set of inds and try swapping out one at a time with a set of avails to see if there is any improvement. I'm pretty sure that whole bit should be vectorizable; it's possible I have to set self dists to inf or something.
+#   - The original author of k-medoids recently published a pretty substantial improvement to the algorithm (https://www.sciencedirect.com/science/article/pii/S0306437921000557#b4) I need to incorporate these.
 
 # - I'd like a hierarchical k-clustering method that generates k monophyletic groups. 
 #   - Should be easy and blazingly fast; start at root with 2 clusters, test effect of splitting each cluster, pick the one that results in lowest tree score, repeat until reaching the user's k. 
