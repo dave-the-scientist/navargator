@@ -512,12 +512,6 @@ function setupClusteringOptions() {
     } else {
       cluster_method = $("#threshClustMethodSelect").val();
     }
-    var auto_open = ($("#clustMethodNumberCheckbox").is(':checked') && !$("#varRangeCheckbox").is(':checked')),
-      auto_result_page = null;
-    if (auto_open == true) {
-      // Have to open the page directly from the user's click to avoid popup blockers.
-      auto_result_page = window.open('', '_blank');
-    }
     $.ajax({
       url: daemonURL('/find-variants'),
       type: 'POST',
@@ -531,9 +525,6 @@ function setupClusteringOptions() {
           clearHideResultsPane();
         }
         updateResultsLinksPane(data.run_ids, data.descriptions, data.tooltips);
-        if (auto_open == true && auto_result_page != null) {
-          auto_result_page.location.href = nvrgtr_data.run_links[data.run_ids[0]].url;
-        }
       },
       error: function(error) { processError(error, "Server error in finding variants"); }
     });

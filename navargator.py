@@ -16,14 +16,19 @@ def new_random_port():
         return prt
 
 
+# BIG TODO: move all general todo statements from all other files here. stop the duplication. leave file-specific todo lists only for smaller things specific to that file.
+
 # TODO:
+# - Move some of the running options for clustering to a pop-out "Advanced options" window.
+#   - Clustering tolerance, random starts, batch size (probably make that scale; maybe sqrt(num) * 12)
 # - When I design the GUI-free version, ensure it makes good use of threading (brute force can split up the list of combinations; medoids+minibatch can split replicates; threshold might split up computation of cluster size?). Threadpool should work.
 #   - Can even use the same command line option for threads. If using GUI it's the number of whole runs that can be processed at once; if not using GUI it's the number of threads a single run makes use of.
 # - Actually put this together with the option menus.
 #   - When done, edit the IE warning message at the top of input.html to include the correct command line flag.
 # - Ensure that a message is printed indicating the server may occasionally hang, but ctrl-c can be used to stop the program at any time.
+# - Should remove mentions of "variants", replace with "medoids" or "clusters".
 
-# BIG TODO: move all general todo statements from all other files here. stop the duplication. leave file-specific todo lists only for smaller things specific to that file.
+
 
 # Feature requests:
 # - Sort of like selection groups, add the ability to indicate specific sequences on the tree. Use the existing beams (in place for searching / chosen), add the sequence name floating horizontally at the end. Would be good to have all of these in a svg group on the top of the tree, to allow for easy editing of the labels & their positioning (something i probably don't want to deal with).
