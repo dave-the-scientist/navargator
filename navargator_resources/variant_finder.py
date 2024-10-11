@@ -311,7 +311,15 @@ class VariantFinder(object):
         elif method in self.threshold_cluster_methods:
             threshold, thresh_percent = args[:2]
             params = (threshold, thresh_percent)
+
+            t0 = time.time()
+            nbrs = self.orig_dists <= threshold  # Boolean array where nbrs[:,ind] gives you a mask for all neighbours of ind
+            # nbrs takes 15ms to calc, 17MB for 4173 tree
+            print('nbrs', nbrs.nbytes, time.time()-t0)
             reduced, unassigned_orphans = self._reduce_distances(threshold)
+            # TODO: Calculate unassigned_orphans from nbrs. Get rid of reduced. Remove 'threshold' as arg to _qt_radius_clustering_greedy. Make sure trying different medoids doesn't change variant assignments when checking ties; ensure everything is temporary or not applied.
+            # Change _qt_radius_clustering_minimal so it uses nbrs instead of reduced. probably some other improvements too
+
             min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
             num_allowed_orphans = len(self._not_ignored_inds) - min_to_cluster
             if len(unassigned_orphans) > num_allowed_orphans:
@@ -673,7 +681,8 @@ class VariantFinder(object):
         return best_med_inds, best_scores
 
     def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, reduced, cache, max_cycles):
-        """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing."""
+        """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing.
+        Now breaks ties by the effect each would have on the whole tree so far. Somewhat of a global measurement, as it will re-assign variants that have already been assigned if a new medoid is being tested."""
         centre_inds, clustered_inds = [], set()
         chsn_indices = [self.index[name] for name in self.chosen]
         avail_indices = set(self.index[name] for name in self.available)
@@ -689,13 +698,14 @@ class VariantFinder(object):
             reduced[:,cluster_inds] = np.inf
             reduced[cluster_inds,:] = np.inf
         # Track each leaf's current closest medoid, and the distance to it
-        cur_state = np.zeros((len(self.leaves), 2))
-        cur_state[:,0] = -1
-        cur_state[:,1] = np.inf
+        claimed_inds = np.zeros((len(self.leaves), 2))
+        claimed_inds[:,0] = -1
+        claimed_inds[:,1] = np.inf
+
         # Iteratively find the largest cluster, until enough variants are clustered
         cache['cycles_used'] = 0
         while len(clustered_inds) < min_to_cluster:
-            centre_ind, cluster_inds = self._find_largest_candidate(reduced, threshold, cur_state)
+            centre_ind, cluster_inds = self._find_largest_candidate(reduced, threshold, claimed_inds)
             if centre_ind == None:
                 percent_placed = len(clustered_inds)*100.0/float(len(self._not_ignored_inds))
                 error_msg = 'Error: clustering finished prematurely ({:.2f}% placed). To fix this, you may increase the critical threshold, lower the critical percent, or add more available variants.'.format(percent_placed)
@@ -712,7 +722,7 @@ class VariantFinder(object):
         alt_variants = []
         return centre_inds, final_scores, alt_variants
 
-    def _find_largest_candidate(self, reduced, threshold, cur_state):
+    def _find_largest_candidate(self, reduced, threshold, claimed_inds):
         """Identifies the index of the variant with the most close neighbours. Assumes all distances below the threshold of interest have already been set to 0. Returns the index of the cluster centre, and an array of indices representing the variants in that cluster (including the cluster centre)."""
         nbr_counts = np.count_nonzero(reduced == 0, axis=0) # = [1, 1, 4, 2,...] where each value is the number of neighbours for the variant at that index.
         count_max = nbr_counts.max()
@@ -722,24 +732,27 @@ class VariantFinder(object):
         if len(max_inds) == 1: # A single largest cluster
             best_medoid = max_inds[0]
             best_clstr = np.nonzero(reduced[:,best_medoid] == 0)[0]
-            cur_state[best_clstr,0] = best_medoid
-            cur_state[best_clstr,1] = self.orig_dists[best_clstr,best_medoid]
+            claimed_inds[best_clstr,0] = best_medoid
+            claimed_inds[best_clstr,1] = self.orig_dists[best_clstr,best_medoid]
         else: # A tie for largest cluster. Broken by smallest tree score
             best_medoid, best_clstr_mask, best_score = None, [], np.inf
-            cur_initialized = cur_state[:,0] != -1
+            cur_initialized = claimed_inds[:,0] != -1
             for max_ind in max_inds:
                 ind_dists = self.orig_dists[:,max_ind]
-                ind_clstr_mask = (ind_dists <= threshold) & (ind_dists < cur_state[:,1])
+                ind_clstr_mask = (ind_dists <= threshold) & (ind_dists < claimed_inds[:,1])
                 improved_mask = ind_clstr_mask & (cur_initialized)
                 new_mask = ind_clstr_mask & (~cur_initialized)
-                improvement = np.sum(cur_state[improved_mask,1] - ind_dists[improved_mask])
+                improvement = np.sum(claimed_inds[improved_mask,1] - ind_dists[improved_mask])
                 score = np.sum(ind_dists[new_mask]) - improvement
                 if score < best_score:
                     best_score, best_medoid, best_clstr_mask = score, max_ind, ind_clstr_mask
-            cur_state[best_clstr_mask,0] = best_medoid
-            cur_state[best_clstr_mask,1] = self.orig_dists[best_clstr_mask,max_ind]
+            claimed_inds[best_clstr_mask,0] = best_medoid
+            claimed_inds[best_clstr_mask,1] = self.orig_dists[best_clstr_mask,max_ind]
             best_clstr = np.nonzero(reduced[:,best_medoid] == 0)[0]
         return best_medoid, best_clstr
+    def _find_largest_candidate2(self, threshold, claimed_inds):
+        unclaimed = claimed_inds[:,0] == -1  # Variants not yet assigned to a cluster
+
 
     def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, cache, max_cycles):
         """In the case where all sequences are classified as available, finding cluster centers is equivalent to the dominating set problem. It is similar to the vertex cover problem, and every vertex cover is a dominating set, but dominating sets don't need to include every edge in the graph.
@@ -870,7 +883,7 @@ class VariantFinder(object):
         # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N formed by swapping one index. Assuming N-1 indices as optimal, the greedy choice of the last index is guaranteed optimal.
 
         if cover_manager.cycle % 1000 == 0:
-            print(cover_manager.cycle, len(best_centre_inds), best_centre_inds, best_score)
+            print(cover_manager.cycle, len(best_centre_inds), best_centre_inds, best_score) # TESTING
 
         if len(cover_manager.centre_inds) >= len(best_centre_inds):
             # Already have a guaranteed better solution. Using ">=" as the new centre hasn't been added yet
