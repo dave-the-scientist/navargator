@@ -32,6 +32,11 @@ def new_random_port():
 
 # Feature requests:
 # - Sort of like selection groups, add the ability to indicate specific sequences on the tree. Use the existing beams (in place for searching / chosen), add the sequence name floating horizontally at the end. Would be good to have all of these in a svg group on the top of the tree, to allow for easy editing of the labels & their positioning (something i probably don't want to deal with).
+# - Consider adding parsers for JPLACE (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0031009) to the phylo package
+# - The ability to draw radial (unrooted) trees. May play well with my existing drawing functions.
+#   - Look into the "equal angle" algorithm for drawing them (introduced in https://pubmed.ncbi.nlm.nih.gov/10547839/) and the "equal daylight" algorithm which is an improvement (introduced in https://currentprotocols.onlinelibrary.wiley.com/doi/10.1002/0471250953.bi0604s00)
+# - The ability to use rectangular trees. 
+# - Improved drawing of cluster blobs. Especially those that include leaves from all over; I'd like them to try and avoid each other, maybe go concave to wrap around the root, etc.
 
 # BUG reports:
 
