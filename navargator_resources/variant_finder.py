@@ -31,6 +31,8 @@ phylo.verbose = False
 #     - The range of k in real world work is going to be pretty small. There are not going to be very many possible ways to partition a tree into that many clusters, at least, not many that are even remotely feasible (probably easy to identify many prohibited branches in the decision tree). A brute-force evaluation might be pretty reasonable, and would then certainly be guaranteed optimal.
 #   - k-medoids is basically agnostic to the root, and even the branching pattern; it only operates on the distances. Besides speed, this method would respect the choice of root and cannot violate the branching pattern (would also prevent one cluster nested in another).
 #   - Also include a critical % (so 90% of nodes are contained in k=4 clusters)? Maybe would help deal with "orphan" singletons, maybe would mean the analysis cannot rely on purely local information and would require dynamic programming (would definitely mean this greedy approach is non-optimal).
+#     - Another approach would be for the user to select k as the number of non-singleton clusters. Then don't think I need DP.
+#   - If this method is super fast, use it as one of the initializations when running k-medoids
 
 # - Save the vf.cache to the nvrgtr file, load all options, show graph, etc on load.
 #   - Not until I've implemented the enhanced summary stats info; need to know what's useful to save.
@@ -556,7 +558,8 @@ class VariantFinder(object):
         final_scores = self._sum_dist_scores(best_med_inds, final_clusters, self.orig_dists) # Untransformed distances
         return best_med_inds, final_scores, alt_variants
     def _heuristic_rand_starts(self, fxn, args, num_replicates, cache, max_cycles):
-        # Run num_replicates times and find the best score
+        # 'num_replicates' times, initialize with LAB (from FastPAM2) / random chunking, run fxn(), and find the best score
+        # IMPLEMENT LAB
         optima = {}
         cache['cycles_used'] = 0
         replicate_cycles = None
