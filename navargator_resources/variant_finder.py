@@ -15,6 +15,9 @@ from navargator_resources.navargator_common import NavargatorValidationError, Na
 phylo.verbose = False
 
 # TODO:
+
+# FINISH _find_largest_candidate2()
+
 # - Change all instances calling something a "center"/"centre" into a "medoid". It's a more correct term, and what I use in the paper.
 # - Get the qt methods using _score_pattern() instead of the 2-step process.
 # - Finish / clean up _qt_radius_clustering().
@@ -883,7 +886,7 @@ class VariantFinder(object):
 
 
     def _recursive_qt_cluster(self, min_to_cluster, cover_manager, best_centre_inds, best_score):
-        # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N formed by swapping one index. Assuming N-1 indices as optimal, the greedy choice of the last index is guaranteed optimal.
+        # Once a valid solution of length N is encountered, optimal or not, there is no reason to check all other possible solutions of length N formed by swapping the most recent index. Assuming N-1 indices was optimal, the greedy choice of the last index is guaranteed optimal. If this solution is not optimal, then you'd have to go back in the recursive stack to change the N-1 index, if not further.
 
         if cover_manager.cycle % 1000 == 0:
             print(cover_manager.cycle, len(best_centre_inds), best_centre_inds, best_score) # TESTING
@@ -907,6 +910,7 @@ class VariantFinder(object):
             # We already have a valid solution of this size, this one isn't valid and can't get any better.
             continue_recursion = False
         else:
+            # Current set of inds not yet valid, and is smaller than the current best solution
             best_centre_inds, best_score = self._recursive_qt_cluster(min_to_cluster, cover_manager, best_centre_inds, best_score)
         cover_manager.remove_centre(next_ind) # Then assume next_ind is excluded from centres
         # Prune the branch if we got to a valid config, as it can't be improved
