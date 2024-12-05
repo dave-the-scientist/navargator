@@ -17,6 +17,7 @@ phylo.verbose = False
 # TODO:
 
 # FINISH _find_largest_candidate2()
+# In find_variants() calculate unassigned_orphans from nbrs. Get rid of reduced. Remove 'threshold' as arg to _qt_radius_clustering_greedy. Make sure trying different medoids doesn't change variant assignments when checking ties; ensure everything is temporary or not applied. Change _qt_radius_clustering_minimal so it uses nbrs instead of reduced. Make sure it's using claimed_inds from the greedy; this is the large speedup from the k-medoids authors. Might be a good idea to run the greedy algo first (without refinement) to get an initial upper bound on the solution size (check if this is faster / better than the average time needed to get the first solution in the current implementation).
 
 # - Change all instances calling something a "center"/"centre" into a "medoid". It's a more correct term, and what I use in the paper.
 # - Get the qt methods using _score_pattern() instead of the 2-step process.
@@ -317,13 +318,9 @@ class VariantFinder(object):
             threshold, thresh_percent = args[:2]
             params = (threshold, thresh_percent)
 
-            t0 = time.time()
             nbrs = self.orig_dists <= threshold  # Boolean array where nbrs[:,ind] gives you a mask for all neighbours of ind
-            # nbrs takes 15ms to calc, 17MB for 4173 tree
-            print('nbrs', nbrs.nbytes, time.time()-t0)
+            # nbrs very fast to calculate, 17MB for a tree of 4173
             reduced, unassigned_orphans = self._reduce_distances(threshold)
-            # TODO: Calculate unassigned_orphans from nbrs. Get rid of reduced. Remove 'threshold' as arg to _qt_radius_clustering_greedy. Make sure trying different medoids doesn't change variant assignments when checking ties; ensure everything is temporary or not applied.
-            # Change _qt_radius_clustering_minimal so it uses nbrs instead of reduced. probably some other improvements too
 
             min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
             num_allowed_orphans = len(self._not_ignored_inds) - min_to_cluster
@@ -757,6 +754,10 @@ class VariantFinder(object):
             best_clstr = np.nonzero(reduced[:,best_medoid] == 0)[0]
         return best_medoid, best_clstr
     def _find_largest_candidate2(self, threshold, claimed_inds):
+        # Instead of this as a separate function, edit _qt_radius_clustering_greedy() to get the 2D map where dists[d <= t]. That should be the expensive part, and I shouldn't recreate it every iteration. Since it's a map of booleans, the np.sum functions should be usable and fast to identify max neighbours. Then modify the map each iteration.
+        # - An example where I'm recalculating it: ind_clstr_mask = (ind_dists <= threshold)...
+        # One idea is to not try and break ties, then have an arg 'refinement=True' that by default runs the single-pass optimizer (which should be much faster if using claimed_inds) at the end (how much worse is the score if ties broken randomly?).
+        # - Actually, it doesn't need the full single-pass; to test improvements for some medoid, you just need to check its immediate nbrs. That should be a tiny fraction of the checks.
         unclaimed = claimed_inds[:,0] == -1  # Variants not yet assigned to a cluster
 
 
@@ -910,7 +911,7 @@ class VariantFinder(object):
             # We already have a valid solution of this size, this one isn't valid and can't get any better.
             continue_recursion = False
         else:
-            # Current set of inds not yet valid, and is smaller than the current best solution
+            # Current set of inds not yet valid, is smaller than the current best solution, so keep building it.
             best_centre_inds, best_score = self._recursive_qt_cluster(min_to_cluster, cover_manager, best_centre_inds, best_score)
         cover_manager.remove_centre(next_ind) # Then assume next_ind is excluded from centres
         # Prune the branch if we got to a valid config, as it can't be improved
