@@ -17,6 +17,7 @@ phylo.verbose = False
 # TODO:
 
 # FINISH _find_largest_candidate2()
+# Implement LAB in _heuristic_rand_starts()
 # In find_variants() calculate unassigned_orphans from nbrs. Get rid of reduced. Remove 'threshold' as arg to _qt_radius_clustering_greedy. Make sure trying different medoids doesn't change variant assignments when checking ties; ensure everything is temporary or not applied. Change _qt_radius_clustering_minimal so it uses nbrs instead of reduced. Make sure it's using claimed_inds from the greedy; this is the large speedup from the k-medoids authors. Might be a good idea to run the greedy algo first (without refinement) to get an initial upper bound on the solution size (check if this is faster / better than the average time needed to get the first solution in the current implementation).
 
 # - Change all instances calling something a "center"/"centre" into a "medoid". It's a more correct term, and what I use in the paper.
@@ -220,6 +221,7 @@ class VariantFinder(object):
         self.verbose = bool(verbose)
         self.leaves = []
         self.ordered_names = []
+        self.tree_size = 0
         self._clear_cache(reset_normalize=False) # self.cache = {}
         self.normalize = self._empty_normalize()
         self.k_cluster_methods = set(['k minibatch', 'k medoids', 'brute force'])
@@ -234,6 +236,7 @@ class VariantFinder(object):
         else:
             self.selection_groups_order = []
             self.selection_groups_data = {}
+        # Load tree data
         if not _blank_init:
             tree_format = tree_format.lower().strip()
             if tree_format == 'auto':
@@ -254,13 +257,15 @@ class VariantFinder(object):
             self.tree.clear_negative_branches()
             if distance_matrix is not None:
                 self.leaves = self.tree.get_named_leaves()
+                self.tree_size = len(self.leaves)
                 if type(distance_matrix) != type(np.zeros(1)):
                     raise NavargatorValueError("Error: cannot initiate VariantFinder with the given 'distance_matrix' as it is the incorrect object type")
-                elif distance_matrix.shape != (len(self.leaves), len(self.leaves)):
-                    raise NavargatorValueError("Error: cannot initiate VariantFinder with the given 'distance_matrix' as its shape '{}' is incompatible with the  given tree of length {}".format(distance_matrix.shape, len(self.leaves)))
+                elif distance_matrix.shape != (self.tree_size, self.tree_size):
+                    raise NavargatorValueError("Error: cannot initiate VariantFinder with the given 'distance_matrix' as its shape '{}' is incompatible with the  given tree of length {}".format(distance_matrix.shape, self.tree_size))
                 self.orig_dists = distance_matrix
             else:
                 self.leaves, self.orig_dists = self.tree.get_distance_matrix()
+                self.tree_size = len(self.leaves)
             self.ordered_names = self.tree.get_ordered_names()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             max_name_length = self.display_options.setdefault('sizes', {}).get('max_variant_name_length', None)
@@ -273,7 +278,7 @@ class VariantFinder(object):
         self._available = set() # Accessible as self.available
         self._chosen = set() # Accessible as self.chosen
         # # #  Private attributes # # #
-        self._not_ignored_inds = set(range(len(self.leaves)))
+        self._not_ignored_inds = set(range(self.tree_size))
         self._max_brute_force_attempts = 1000000 # Under 1 minute for 1 million.
         self._private_display_opts = set(['cluster_background_trans', 'cluster_highlight_trans'])
 
@@ -318,8 +323,7 @@ class VariantFinder(object):
             threshold, thresh_percent = args[:2]
             params = (threshold, thresh_percent)
 
-            nbrs = self.orig_dists <= threshold  # Boolean array where nbrs[:,ind] gives you a mask for all neighbours of ind
-            # nbrs very fast to calculate, 17MB for a tree of 4173
+            nbrs = self._threshold_neighbours_mask(threshold)
             reduced, unassigned_orphans = self._reduce_distances(threshold)
 
             min_to_cluster = ceil(thresh_percent/100.0 * len(self._not_ignored_inds))
@@ -332,7 +336,7 @@ class VariantFinder(object):
             elif method == 'qt minimal':
                 variants, scores, alt_variants = self._qt_radius_clustering_minimal(min_to_cluster, reduced, unassigned_orphans, self.cache[run_id], max_cycles)
             elif method == 'qt greedy':
-                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, threshold, reduced, self.cache[run_id], max_cycles)
+                variants, scores, alt_variants = self._qt_radius_clustering_greedy(min_to_cluster, threshold, nbrs, reduced, self.cache[run_id], max_cycles)
         else:
             raise NavargatorValueError('Error: clustering method "{}" is not recognized'.format(method))
         self._calculate_cache_values(run_id, params, variants, scores, alt_variants)
@@ -369,7 +373,7 @@ class VariantFinder(object):
             print('\nRe-ordered the tree nodes')
 
     def truncate_names(self, truncation):
-        """Truncates the names of the leaf nodes. This is a VariantFinder-specific change, as the self.tree object will alway contain the full node names."""
+        """Truncates the names of the leaf nodes. This is a VariantFinder-specific change, as the self.tree object will always contain the full node names."""
         self.update_tree_data(truncation=truncation)
         # Update leaf names in relevant variables:
         new_leaves = [name[:truncation] for name in self.tree.get_named_leaves()]
@@ -559,7 +563,6 @@ class VariantFinder(object):
         return best_med_inds, final_scores, alt_variants
     def _heuristic_rand_starts(self, fxn, args, num_replicates, cache, max_cycles):
         # 'num_replicates' times, initialize with LAB (from FastPAM2) / random chunking, run fxn(), and find the best score
-        # IMPLEMENT LAB
         optima = {}
         cache['cycles_used'] = 0
         replicate_cycles = None
@@ -683,7 +686,7 @@ class VariantFinder(object):
         best_scores = self._sum_dist_scores(best_med_inds, best_clusters, dists)
         return best_med_inds, best_scores
 
-    def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, reduced, cache, max_cycles):
+    def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, nbrs, reduced, cache, max_cycles):
         """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing.
         Now breaks ties by the effect each would have on the whole tree so far. Somewhat of a global measurement, as it will re-assign variants that have already been assigned if a new medoid is being tested."""
         centre_inds, clustered_inds = [], set()
@@ -700,8 +703,10 @@ class VariantFinder(object):
             # Remove chosen and their clusters from all future consideration
             reduced[:,cluster_inds] = np.inf
             reduced[cluster_inds,:] = np.inf
+        
         # Track each leaf's current closest medoid, and the distance to it
-        claimed_inds = np.zeros((len(self.leaves), 2))
+        # TODO: add any chosen and their nbrs
+        claimed_inds = np.zeros((self.tree_size, 2))
         claimed_inds[:,0] = -1
         claimed_inds[:,1] = np.inf
 
@@ -709,6 +714,7 @@ class VariantFinder(object):
         cache['cycles_used'] = 0
         while len(clustered_inds) < min_to_cluster:
             centre_ind, cluster_inds = self._find_largest_candidate(reduced, threshold, claimed_inds)
+            #centre_ind, cluster_inds = self._find_largest_candidate2(nbrs, claimed_inds)
             if centre_ind == None:
                 percent_placed = len(clustered_inds)*100.0/float(len(self._not_ignored_inds))
                 error_msg = 'Error: clustering finished prematurely ({:.2f}% placed). To fix this, you may increase the critical threshold, lower the critical percent, or add more available variants.'.format(percent_placed)
@@ -753,12 +759,38 @@ class VariantFinder(object):
             claimed_inds[best_clstr_mask,1] = self.orig_dists[best_clstr_mask,max_ind]
             best_clstr = np.nonzero(reduced[:,best_medoid] == 0)[0]
         return best_medoid, best_clstr
-    def _find_largest_candidate2(self, threshold, claimed_inds):
+    def _find_largest_candidate2(self, nbrs, claimed_inds):
         # Instead of this as a separate function, edit _qt_radius_clustering_greedy() to get the 2D map where dists[d <= t]. That should be the expensive part, and I shouldn't recreate it every iteration. Since it's a map of booleans, the np.sum functions should be usable and fast to identify max neighbours. Then modify the map each iteration.
         # - An example where I'm recalculating it: ind_clstr_mask = (ind_dists <= threshold)...
         # One idea is to not try and break ties, then have an arg 'refinement=True' that by default runs the single-pass optimizer (which should be much faster if using claimed_inds) at the end (how much worse is the score if ties broken randomly?).
-        # - Actually, it doesn't need the full single-pass; to test improvements for some medoid, you just need to check its immediate nbrs. That should be a tiny fraction of the checks.
-        unclaimed = claimed_inds[:,0] == -1  # Variants not yet assigned to a cluster
+        # - Actually, it doesn't need the full single-pass; to test improvements for some medoid, you just need to check its immediate nbrs. That should be a tiny fraction of the checks. See how the quality is affected.
+        
+        #unclaimed = claimed_inds[:,0] == -1  # Variants not yet assigned to a cluster probably not usefl
+
+        # improved = np.argmin(claimed_inds[:,1], dists[:,new_med], axis=0)
+        # will be 0 where existing medoid is closer, 1 where the new medoid is closer
+
+        # To not break ties, centre_ind = nbrs_rem.sum(axis=0).argmax()
+
+        # Actually, I don't think I need claimed_inds. Instead of tracking that at all, just break ties by the smallest summed dists from NEW neighbours. As I'm updating nbrs dynamically, I get that info. I think it might be more useful than my previous method.
+
+        new_nbrs = nbrs.sum(axis=0) - 1 # to be exact, as it will show up as its own nbr. Useful? Does it get messed up when I False out the picked nbrs?
+        max_nbrs = new_nbrs.max()
+        if max_nbrs == 0:
+            return None, []
+        max_inds = np.flatnonzero(new_nbrs == max_nbrs)
+
+        if len(max_inds) == 1:
+            pass
+        else:
+            #for max_ind in max_inds:
+                #deltas = np.zeros(self.tree_size)
+                #np.subtract(self.orig_dists[:,max_ind], claimed_inds[:,1], where=nbrs[:,max_ind])
+                # Not sure I can use subtract, as claimed_inds has a dist of inf before a medoid is picked.
+            max_ind = np.where(nbrs, self.orig_dists, 0)[max_inds,:].sum(axis=1).argmin()
+            # Test this, but I think it should work
+
+        return centre_ind, cluster_inds
 
 
     def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, cache, max_cycles):
@@ -982,6 +1014,13 @@ class VariantFinder(object):
             avail_in_range = np.count_nonzero(reduced[np.ix_(unassigned_indices,ca_indices)] == 0, axis=1)
             unassigned_orphans = unassigned_indices[avail_in_range == 0]
         return reduced, unassigned_orphans
+    
+    def _threshold_neighbours_mask(self, threshold):
+        """Boolean array where nbrs[:,ind] gives you a mask for all neighbours of ind."""
+        nbrs = self.orig_dists <= threshold  # very fast to calculate; 17MB for a tree of 4173
+        # handle the ignored / avail / chosen. Set one axis of non-avail to False; set both axes to False for ignored
+        # chosen AND all of their neighbours should be False in both axes
+        return nbrs
 
     def _transform_distances(self, tolerance):
         """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances. Also sets all ignored rows and columns to 0."""
@@ -1165,7 +1204,7 @@ class VariantFinder(object):
     @ignored.setter
     def ignored(self, names):
         new_ignored = set()
-        new_ingroup_inds = set(range(len(self.leaves)))
+        new_ingroup_inds = set(range(self.tree_size))
         for node in names:
             node = self._validate_node_name(node)
             if node in self.available:
