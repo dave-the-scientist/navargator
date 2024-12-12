@@ -711,12 +711,13 @@ class VariantFinder(object):
         claimed_inds[:,1] = np.inf
 
         nbrs_remain = nbrs.copy()
+        claimed_inds2 = claimed_inds.copy()
 
         # Iteratively find the largest cluster, until enough variants are clustered
         cache['cycles_used'] = 0
         while len(clustered_inds) < min_to_cluster:
             #centre_ind, cluster_inds = self._find_largest_candidate(reduced, threshold, claimed_inds)
-            centre_ind, cluster_inds = self._find_largest_candidate2(nbrs, nbrs_remain, claimed_inds)
+            centre_ind, cluster_inds = self._find_largest_candidate2(nbrs, nbrs_remain, claimed_inds2)
             
             if centre_ind == None:
                 percent_placed = len(clustered_inds)*100.0/float(len(self._not_ignored_inds))
@@ -729,6 +730,9 @@ class VariantFinder(object):
             cache['cycles_used'] += 1
             if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
+        
+        print(sorted(centre_inds))
+
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
         alt_variants = []
@@ -742,7 +746,7 @@ class VariantFinder(object):
             return None, [] # to the remaining unassigned. Usually raises an error.
         max_inds = np.nonzero(nbr_counts == count_max)[0] # Array containing the indices of all variants with the max number of neighbours.
 
-        print('one', count_max, max_inds) # TEST
+        #print('one', count_max, max_inds) # TEST
 
         if len(max_inds) == 1: # A single largest cluster
             best_medoid = max_inds[0]
@@ -765,51 +769,63 @@ class VariantFinder(object):
             claimed_inds[best_clstr_mask,1] = self.orig_dists[best_clstr_mask,best_medoid]
             best_clstr = np.flatnonzero(reduced[:,best_medoid] == 0)
         
-        print('one best', best_medoid, best_clstr[:5]) # TEST
+        #print('one best', best_medoid, best_clstr[:5]) # TEST
+
         return best_medoid, best_clstr
     def _find_largest_candidate2(self, nbrs, nbrs_remain, claimed_inds):
+
+        # THIS ONE WINS
+        # Clean up the code. Get rid of 'reduced'; get the minimal using nbrs as well.
+
         # Return max_ind, and clstr_inds. Note that clstr_inds is an array of indices representing the NEW leaves covered by this medoid, not necessarily the leaves that are closest to this medoid.
 
-        # improved = np.argmin(claimed_inds[:,1], dists[:,new_med], axis=0)
-        # will be 0 where existing medoid is closer, 1 where the new medoid is closer
-
-        # Why is this performing worse than v1??
 
         new_nbrs = nbrs_remain.sum(axis=0)
         max_nbrs = new_nbrs.max()
         if max_nbrs == 0:
             return None, []
-        max_inds = np.flatnonzero(new_nbrs == max_nbrs)
+        med_inds = np.flatnonzero(new_nbrs == max_nbrs)
+        
+        #print('two', max_nbrs, med_inds) # TEST
 
-        print('two', max_nbrs, max_inds) # TEST
-
-        if len(max_inds) == 1:
-            biggest_medoid = max_inds[0]
-            # find improved, set claimed_inds for them.
-            clstr_inds = np.flatnonzero((self.orig_dists[:,biggest_medoid] < claimed_inds[:,1]) & nbrs[:,biggest_medoid])
+        if len(med_inds) == 1:
+            new_medoid = med_inds[0]
+            clstr_inds = np.flatnonzero((self.orig_dists[:,new_medoid] < claimed_inds[:,1]) & nbrs[:,new_medoid])
         else:
             # np.where grabs the dists, only where nbrs is True. I take the max_ind rows, and sum to get total dist sum
-            #best_sum_ind = np.where(nbrs_remain, self.orig_dists, 0)[:,max_inds].sum(axis=0).argmin()
-            #max_ind = max_inds[best_sum_ind]
+            #best_sum_ind = np.where(nbrs_remain, self.orig_dists, 0)[:,med_inds].sum(axis=0).argmin()
+            #max_ind = med_inds[best_sum_ind]
 
             # For each max_ind, find improved, which are claimed_ind that are actually closer to max_ind. Need to find the distsum of that set to their old medoid, minus the distsum to the new medoid, equals delta. The score for each max_ind is the distsum to their new leaves (clstr_inds), minus delta (sure it could maybe get negative, shouldn't matter tho).
-            new_dists = self.orig_dists[:,max_inds]
-            improved = np.less(new_dists, claimed_inds[:,[1]]) # Calculated for all leaves, not just the nbrs
-            best_score_ind = np.where(improved, new_dists, claimed_inds[:,[1]]).sum(axis=0, where=nbrs[:,max_inds]).argmin()
-            biggest_medoid = max_inds[best_score_ind]
-            # Update claimed_inds
-            clstr_inds = np.flatnonzero(improved[:,best_score_ind] & nbrs[:,biggest_medoid])
-            np.put(claimed_inds[:,0], clstr_inds, biggest_medoid)
-            np.put(claimed_inds[:,1], clstr_inds, self.orig_dists[clstr_inds,biggest_medoid])
+            new_dists = self.orig_dists[:,med_inds]
 
+            nearest = np.less(new_dists, claimed_inds[:,[1]]) # Calculated for all leaves, not just the nbrs
+            # nearest can ONLY be True where a leaf is a nbr of the med, or when that leaf is unclaimed. Because when a leaf is claimed, its dist must be <= threshold; if med is closer, then the leaf must be a nbr of med.
+
+            # So if I replace inf with 0, don't think I need to mask. The mask is multi-D, claimed_dists is 1D.
+            #best_score_ind = np.where(nearest, new_dists, claimed_inds[:,[1]]).sum(axis=0, where=nbrs[:,med_inds]).argmin()
+
+            existing_dists = np.nan_to_num(claimed_inds[:,[1]], posinf=0.0)
+            old_dists = np.where(nearest, existing_dists, 0).sum(axis=0)
+            med_scores = np.where(nearest, new_dists, 0).sum(axis=0) - old_dists
+
+            #improvements = np.nan_to_num(np.where(nearest, claimed_inds[:,[1]], 0), copy=False, posinf=0.0).sum(axis=0) # Gets existing dists that the new medoids will be improving; setting inf to 0 removes the unclaimed
+            #med_scores = np.where(nearest, new_dists, claimed_inds[:,[1]]).sum(axis=0, where=nbrs[:,med_inds])
+
+            best_score_ind = med_scores.argmin()
+            new_medoid = med_inds[best_score_ind]
+            clstr_inds = np.flatnonzero(nearest[:,best_score_ind] & nbrs[:,new_medoid])
         
-        #clstr_inds = np.flatnonzero(nbrs_remain[:,biggest_medoid])
-        nbrs_remain[:,biggest_medoid] = False
+        # Update claimed_inds
+        np.put(claimed_inds[:,0], clstr_inds, new_medoid)
+        np.put(claimed_inds[:,1], clstr_inds, self.orig_dists[clstr_inds,new_medoid])
+
+        nbrs_remain[:,new_medoid] = False
         nbrs_remain[clstr_inds,:] = False
 
-        print('two best', biggest_medoid, clstr_inds[:5]) # TEST
+        #print('two best', new_medoid, clstr_inds[:5]) # TEST
 
-        return biggest_medoid, clstr_inds
+        return new_medoid, clstr_inds
 
 
     def _qt_radius_clustering_minimal(self, min_to_cluster, reduced, unassigned_orphans, cache, max_cycles):
