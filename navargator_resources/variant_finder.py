@@ -730,8 +730,22 @@ class VariantFinder(object):
             cache['cycles_used'] += 1
             if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
-        
-        print(sorted(centre_inds))
+
+        # Trying a single pass optimizer. Doesn't seem to be working; results page is blank?
+        new_meds = []
+        for med_ind in centre_inds:
+            test_nbrs = np.flatnonzero(nbrs[:,med_ind])
+
+            i = np.where(test_nbrs == med_ind)[0]
+            print(med_ind, i)
+
+            test_dists = self.orig_dists[:,test_nbrs]
+            test_nearest = np.less(test_dists, claimed_inds2[:,[1]])
+            test_old = np.where(test_nearest, claimed_inds2[:,[1]], 0).sum(axis=0)
+            test_scores = np.where(test_nearest, test_dists, 0).sum(axis=0) - test_old
+            best_test = test_scores.argmin()
+            new_meds.append(test_nbrs[best_test])
+        #centre_inds = new_meds
 
         final_cluster_inds = self._partition_nearest(centre_inds, self.orig_dists)
         final_scores = self._sum_dist_scores(centre_inds, final_cluster_inds, self.orig_dists)
@@ -785,32 +799,19 @@ class VariantFinder(object):
         if max_nbrs == 0:
             return None, []
         med_inds = np.flatnonzero(new_nbrs == max_nbrs)
-        
-        #print('two', max_nbrs, med_inds) # TEST
 
         if len(med_inds) == 1:
             new_medoid = med_inds[0]
             clstr_inds = np.flatnonzero((self.orig_dists[:,new_medoid] < claimed_inds[:,1]) & nbrs[:,new_medoid])
         else:
-            # np.where grabs the dists, only where nbrs is True. I take the max_ind rows, and sum to get total dist sum
-            #best_sum_ind = np.where(nbrs_remain, self.orig_dists, 0)[:,med_inds].sum(axis=0).argmin()
-            #max_ind = med_inds[best_sum_ind]
-
-            # For each max_ind, find improved, which are claimed_ind that are actually closer to max_ind. Need to find the distsum of that set to their old medoid, minus the distsum to the new medoid, equals delta. The score for each max_ind is the distsum to their new leaves (clstr_inds), minus delta (sure it could maybe get negative, shouldn't matter tho).
-            new_dists = self.orig_dists[:,med_inds]
-
-            nearest = np.less(new_dists, claimed_inds[:,[1]]) # Calculated for all leaves, not just the nbrs
+            new_dists = self.orig_dists[:,med_inds] # Reduce the size of the working object
+            claimed_dists = claimed_inds[:,[1]] # Reshaped view
+            nearest = np.less(new_dists, claimed_dists) # Calculated for all leaves, not just the nbrs
             # nearest can ONLY be True where a leaf is a nbr of the med, or when that leaf is unclaimed. Because when a leaf is claimed, its dist must be <= threshold; if med is closer, then the leaf must be a nbr of med.
 
-            # So if I replace inf with 0, don't think I need to mask. The mask is multi-D, claimed_dists is 1D.
-            #best_score_ind = np.where(nearest, new_dists, claimed_inds[:,[1]]).sum(axis=0, where=nbrs[:,med_inds]).argmin()
-
-            existing_dists = np.nan_to_num(claimed_inds[:,[1]], posinf=0.0)
-            old_dists = np.where(nearest, existing_dists, 0).sum(axis=0)
+            existing_dists = np.nan_to_num(claimed_dists, posinf=0.0) # Convert unclaimed to 0
+            old_dists = np.where(nearest, existing_dists, 0).sum(axis=0) # Previously claimed where med is closer
             med_scores = np.where(nearest, new_dists, 0).sum(axis=0) - old_dists
-
-            #improvements = np.nan_to_num(np.where(nearest, claimed_inds[:,[1]], 0), copy=False, posinf=0.0).sum(axis=0) # Gets existing dists that the new medoids will be improving; setting inf to 0 removes the unclaimed
-            #med_scores = np.where(nearest, new_dists, claimed_inds[:,[1]]).sum(axis=0, where=nbrs[:,med_inds])
 
             best_score_ind = med_scores.argmin()
             new_medoid = med_inds[best_score_ind]
@@ -819,11 +820,9 @@ class VariantFinder(object):
         # Update claimed_inds
         np.put(claimed_inds[:,0], clstr_inds, new_medoid)
         np.put(claimed_inds[:,1], clstr_inds, self.orig_dists[clstr_inds,new_medoid])
-
+        # Update nbr tracker 
         nbrs_remain[:,new_medoid] = False
         nbrs_remain[clstr_inds,:] = False
-
-        #print('two best', new_medoid, clstr_inds[:5]) # TEST
 
         return new_medoid, clstr_inds
 
