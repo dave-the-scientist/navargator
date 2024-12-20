@@ -39,6 +39,9 @@ def new_random_port():
 # - Improved drawing of cluster blobs. Especially those that include leaves from all over; I'd like them to try and avoid each other, maybe go concave to wrap around the root, etc.
 
 # BUG reports:
+# - Load one nvgtr file, then load a different one (pm_slam, then pm_slp_mature_annotated). Error. Maybe they both need to have banners, maybe need different number of banners.
+#   - Uncaught TypeError: Cannot set properties of undefined (setting 'node_rest_colour') at changeSelectionGroupNodeColour
+
 
 # NOTE:
 # - After re-rooting the tree (via midpoint, but probably outgroup as well) and saving a nvrgtr session, the saved distance matrix will be slightly different from a newly-calculated distance matrix. It's down to floating point errors, and the difference is ~1E-6 or 1E-16 in either direction.
