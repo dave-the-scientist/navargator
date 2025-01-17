@@ -688,6 +688,9 @@ class VariantFinder(object):
     def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, cache, max_cycles):
         """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing.
         Now breaks ties by the effect each would have on the whole tree so far. Not a global measurement, but not stupidly local either, as it will re-assign variants that have already been assigned if a new medoid is being tested."""
+
+        # NEED TO ENSURE ALL DISTANCES ARE FILTERED BY self._not_ignored_inds, OR THEY WON'T REALLY BE IGNORED WILL THEY?
+
         nbrs, chsn_indices = self._get_threshold_objects(threshold)
         # nbrs is the object giving the information about chosen/avail/ignored/unassigned.
         nbrs_remain = nbrs.copy() # This object modified iteratively
@@ -746,7 +749,6 @@ class VariantFinder(object):
 
         # TEST METHOD
         # Testing on test_tree_487.nvrgtr, @ 0.04, 0.07, 0.1
-        # self._not_ignored_inds # useful? maybe
         # new_meds = []
         # for i, med_ind in enumerate(medoids):
         #     if med_ind in chsn_indices:
@@ -758,10 +760,17 @@ class VariantFinder(object):
         #         continue
         #     other_meds = medoids[:i] + medoids[i+1:]
 
+        #     print('\n', med_ind, self.leaves[med_ind], cur_clstr_mask.sum(), other_meds)
+
         #     cur_min_dists = self.orig_dists[:,other_meds].min(axis=1)
-        #     must_cover = np.flatnonzero((cur_min_dists > threshold) & cur_clstr_mask)
-        #     valid_meds = np.flatnonzero(nbrs[must_cover,:].all(axis=0)) # These cover all needed leaves.
-        #     # evaluate options
+        #     must_cover = np.flatnonzero((cur_min_dists > threshold) & cur_clstr_mask) # Leaves not covered by another medoid
+        #     if len(must_cover) > 0: # This should cut down on computations, but does it actually have an impact?
+        #         valid_meds = np.flatnonzero(nbrs[must_cover,:].all(axis=0) & nbrs[:,med_ind]) # These cover all of needed leaves.
+        #         print(must_cover, valid_meds)
+        #     else:
+        #         valid_meds = np.flatnonzero(nbrs[:,med_ind])
+        #     np.less()
+            
 
         #     # or is it easier to just make a copy of claimed_inds dists, replace cur_clstr values with next nearest (or inf), then do some np.less comparisons? That might be better
         # medoids = new_meds
