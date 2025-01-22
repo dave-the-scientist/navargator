@@ -690,26 +690,13 @@ class VariantFinder(object):
     def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, cache, max_cycles):
         """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing.
         Now breaks ties by the effect each would have on the whole tree so far. Not a global measurement, but not stupidly local either, as it will re-assign variants that have already been assigned if a new medoid is being tested."""
+        
         # NEED TO ENSURE ALL DISTANCES ARE FILTERED BY self._not_ignored_inds, OR THEY WON'T REALLY BE IGNORED WILL THEY?
 
-        nbrs, chsn_indices = self._get_nbrs(threshold) # the object with the information about chosen/avail/ignored/unassigned.
-        nbrs_remain = nbrs.copy() # This object modified iteratively
-        # claimed_inds is a tree_size x 2 array, where the first column holds -1, or the medoid ind once that row has been claimed; the second column holds the distance to that medoid. Note that because it is one array, the first column holds floats of the indices, will need to convert to int if used as an index
-        claimed_inds = np.zeros((self.tree_size, 2))
-        claimed_inds[:,0] = -1
-        claimed_inds[:,1] = np.inf
-        # Fill out the chosen
-        clustered_inds = set()
-        for chsn_ind in chsn_indices:
-            cur_clstr = np.flatnonzero(nbrs[:,chsn_ind])
-            clustered_inds.update(cur_clstr)
-            # Remove chosen and their clusters from consideration
-            nbrs_remain[:,chsn_ind] = False # Remove chosen from consideration as medoids
-            nbrs_remain[cur_clstr,:] = False # Remove cluster from counting as unclaimed
-            # Record the relations in claimed_inds
-            to_claim = np.less(self.orig_dists[:,chsn_ind], claimed_inds[:,1], where=nbrs[:,chsn_ind])
-            np.putmask(claimed_inds[:,0], to_claim, chsn_ind)
-            np.putmask(claimed_inds[:,1], to_claim, self.orig_dists[:,chsn_ind])
+        chsn_indices = set(self.index[name] for name in self.chosen)
+        avail_indices = set(self.index[name] for name in self.available)
+        ignrd_indices = [self.index[name] for name in self.ignored]
+        nbrs, nbrs_remain, clustered_inds, claimed_inds = self._get_nbrs(threshold, chsn_indices, avail_indices, ignrd_indices)
 
         # Iteratively find the largest cluster, until enough variants are clustered
         medoids = []
@@ -719,7 +706,7 @@ class VariantFinder(object):
             if new_medoid == None:
                 percent_placed = len(clustered_inds)*100.0/float(len(self._not_ignored_inds))
                 error_msg = 'Error: clustering finished prematurely ({:.2f}% placed). To fix this, you may increase the critical threshold, lower the critical percent, or add more available variants.'.format(percent_placed)
-                return [], error_msg, [list(chsn_inds)+medoids, self._not_ignored_inds-clustered_inds]
+                return [], error_msg, [list(chsn_indices)+medoids, self._not_ignored_inds-clustered_inds]
             medoids.append(new_medoid)
             clustered_inds.update(cur_clstr)
             cache['cycles_used'] += 1
@@ -727,14 +714,10 @@ class VariantFinder(object):
                 break
         medoids = list(chsn_indices) + medoids
         
-        # Testing on test_tree_487.nvrgtr, @ 0.04, 0.07, 0.1
-        # A local single-pass optimization, typically improves scores by ~5-10%. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
+        print('initial', medoids) #TEST
+        # A local single-pass optimization, typically improves scores by ~5-15%; doubles or triples the runtime, though it's still only ~3s for a tree of 4173. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
         cur_total, improved = claimed_inds[:,1].sum(), True
-
-        print('pre', cur_total)
-
         while improved:
-            
             improved = False
             new_meds = []
             for i, med_ind in enumerate(medoids):
@@ -746,32 +729,39 @@ class VariantFinder(object):
                 other_dists = self.orig_dists[:,other_meds]
                 other_min_dists = other_dists.min(axis=1, keepdims=True) # For each leaf, dist to nearest other medoid
                 other_best_meds = np.take(other_meds, other_dists.argmin(axis=1)) # Index of that medoid
-                
-                cur_nbrs = np.fromiter((x for x in np.flatnonzero(nbrs[:,med_ind]) if x not in other_meds), dtype=np.dtype('int64')) # Indices of potential new medoids
+
+                # WIP set ignored in claimed_inds to dist 0 just before the optimization?. Then here copy claimed_inds, reset med_inds dists to nearest other, continue.
+                #cur_clstr_mask = claimed_inds[:,0] == med_ind
+                #other_min_dists = claimed_inds[:,[1]]
+                #self.orig_dists[:,other_meds].min(axis=1, out=other_min_dists, where=cur_clstr_mask)
+
+                cur_nbrs = np.fromiter((x for x in np.flatnonzero(nbrs[:,med_ind]) if x not in other_meds and x in avail_indices), dtype=np.dtype('int64')) # Indices of potential new medoids
                 nbr_dists = self.orig_dists[:,cur_nbrs]
                 nbr_is_closest = nbr_dists < other_min_dists
-
                 min_dists = np.where(nbr_is_closest, nbr_dists, other_min_dists) # Dist to nearest medoid (other / nbr / med_ind)
+
                 min_dists[min_dists > threshold] = np.inf
                 best_nbr_ind = min_dists.sum(axis=0).argmin()
                 best_med = cur_nbrs[best_nbr_ind]
-
+                # Record new medoid
                 new_meds.append(best_med)
-                np.copyto(claimed_inds[:,0], np.where(nbr_is_closest[:,best_nbr_ind], best_med, other_best_meds))
-                np.copyto(claimed_inds[:,1], min_dists[:,best_nbr_ind])
-
+                if best_med != med_ind:
+                    np.copyto(claimed_inds[:,0], np.where(nbr_is_closest[:,best_nbr_ind], best_med, other_best_meds))
+                    np.copyto(claimed_inds[:,1], min_dists[:,best_nbr_ind])
             new_total = claimed_inds[:,1].sum()
             if new_total < cur_total:
                 cur_total, improved = new_total, True
                 medoids = new_meds
-                print('imp', cur_total)
             cache['cycles_used'] += 1
             if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
 
-
-        final_cluster_inds = self._partition_nearest(medoids, self.orig_dists)
-        final_scores = self._sum_dist_scores(medoids, final_cluster_inds, self.orig_dists)
+        print('opt', medoids) #TEST
+        medoid_scores = {med:0 for med in medoids}
+        for ind in self._not_ignored_inds:
+            med = int(claimed_inds[ind,0])
+            medoid_scores[med] += claimed_inds[ind,1]
+        final_scores = [medoid_scores[med] for med in medoids]
         alt_variants = []
         return medoids, final_scores, alt_variants
 
@@ -1027,21 +1017,37 @@ class VariantFinder(object):
             unassigned_orphans = unassigned_indices[avail_in_range == 0]
         return reduced, unassigned_orphans
     
-    def _get_nbrs(self, threshold):
+    def _get_nbrs(self, threshold, chsn_indices, avail_indices, ignrd_indices):
         """nbrs is a 2D boolean array where a column nbrs[:,ind] gives you a mask for all neighbours of ind. Setting a column to all False removes that index from consideration as a medoid. Setting a row to all False removes that index from counting as unclaimed."""
         nbrs = self.orig_dists <= threshold  # very fast to calculate; 17MB for a tree of 4173
-        chsn_indices = set(self.index[name] for name in self.chosen)
-        avail_indices = set(self.index[name] for name in self.available)
         unassigned_indices = list(self._not_ignored_inds - avail_indices - chsn_indices)
         if unassigned_indices:
             # Remove unassigned from centre consideration
             nbrs[:,unassigned_indices] = False
-        ignrd_indices = [self.index[name] for name in self.ignored]
         if ignrd_indices:
             # Remove ignored from all consideration so they have zero impact.
             nbrs[ignrd_indices,:] = False
             nbrs[:,ignrd_indices] = False
-        return nbrs, chsn_indices
+        nbrs_remain = nbrs.copy() # Working copy of nbrs
+        
+        # claimed_inds is a tree_size x 2 array, where the first column holds -1, or the medoid ind once that row has been claimed; the second column holds the distance to that medoid. Note that because it is one array, the first column holds floats of the indices, will need to convert to int if used as an index
+        claimed_inds = np.zeros((self.tree_size, 2))
+        claimed_inds[:,0] = -1
+        claimed_inds[:,1] = np.inf
+
+        # Fill out the chosen
+        clustered_inds = set()
+        for chsn_ind in chsn_indices:
+            cur_clstr = np.flatnonzero(nbrs[:,chsn_ind])
+            clustered_inds.update(cur_clstr)
+            # Remove chosen and their clusters from consideration
+            nbrs_remain[:,chsn_ind] = False # Remove chosen from consideration as medoids
+            nbrs_remain[cur_clstr,:] = False # Remove cluster from counting as unclaimed
+            # Record the relations in claimed_inds
+            to_claim = np.less(self.orig_dists[:,chsn_ind], claimed_inds[:,1], where=nbrs[:,chsn_ind])
+            np.putmask(claimed_inds[:,0], to_claim, chsn_ind)
+            np.putmask(claimed_inds[:,1], to_claim, self.orig_dists[:,chsn_ind])
+        return nbrs, nbrs_remain, clustered_inds, claimed_inds
 
     def _transform_distances(self, tolerance):
         """A parameter used to make the k-based clustering methods less sensitive to outliers. When tolerance=1 it has no effect; when tolerance>1 clusters are more accepting of large branches, and cluster sizes tend to be more similar; when tolerance<1 clusters are less accepting of large branches, and cluster sizes tend to vary more. The transformed distances are then normalized to the max value of the untransformed distances. Also sets all ignored rows and columns to 0."""
@@ -1137,7 +1143,7 @@ class VariantFinder(object):
         """Fills out the self.cache entry for the given clustering run. 'variant_inds'=np.array(variant_indices_1); 'scores'=[clust_1_score, clust_2_score,...]; 'alt_variants'=[np.array(variant_indices_2), np.array(variant_indices_3),...]. If the clustering run terminated with an error, variant_inds=[] and scores is the given error message."""
         self.cache['params'][params] = run_id
         run_length = time.time() - self.cache[run_id]['run_time']
-        print('run time', self.cache[run_id]['method'], run_length)
+        print('run time', self.cache[run_id]['method'], run_length) # TEST
         if len(variant_inds) == 0:
             self.cache[run_id].update( {'status':'error', 'error_message':scores, 'run_time':run_length} )
             return
