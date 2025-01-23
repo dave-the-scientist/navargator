@@ -268,7 +268,6 @@ class VariantFinder(object):
             else:
                 self.leaves, self.orig_dists = self.tree.get_distance_matrix()
                 self.tree_size = len(self.leaves)
-            self.ordered_names = self.tree.get_ordered_names()
             self.index = {name:index for index, name in enumerate(self.leaves)}
             max_name_length = self.display_options.setdefault('sizes', {}).get('max_variant_name_length', None)
             if max_name_length == None:
@@ -519,8 +518,10 @@ class VariantFinder(object):
         # dict.copy() works if all values are immutable, deepcopy(dict) otherwise.
         vf = VariantFinder(tree_input='', verbose=self.verbose, _blank_init=True)
         vf.tree = self.tree.copy()
+        vf.tree_size = self.tree_size
         vf.leaves = self.leaves[::]
         vf.index = self.index.copy()
+        vf.ordered_names = self.ordered_names[::]
         vf.orig_dists = self.orig_dists.copy()
         vf.newick_tree_data = self.newick_tree_data
         vf.phyloxml_tree_data = self.phyloxml_tree_data
@@ -713,10 +714,13 @@ class VariantFinder(object):
             if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
         medoids = list(chsn_indices) + medoids
+        if ignrd_indices:
+            claimed_inds[ignrd_indices,1] = 0.0 # Set ignored entries to [-1, 0.0]
         
-        print('initial', medoids) #TEST
+        print('initial', medoids, claimed_inds[455]) #TEST
+
         # A local single-pass optimization, typically improves scores by ~5-15%; doubles or triples the runtime, though it's still only ~3s for a tree of 4173. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
-        cur_total, improved = claimed_inds[:,1].sum(), True
+        improved = True
         while improved:
             improved = False
             new_meds = []
@@ -725,39 +729,53 @@ class VariantFinder(object):
                     new_meds.append(med_ind)
                     continue
                 other_meds = new_meds + medoids[i+1:]
+                other_raw_dists = self.orig_dists[:,other_meds]
 
-                other_dists = self.orig_dists[:,other_meds]
-                other_min_dists = other_dists.min(axis=1, keepdims=True) # For each leaf, dist to nearest other medoid
-                other_best_meds = np.take(other_meds, other_dists.argmin(axis=1)) # Index of that medoid
+                # Calculate data in claimed_inds if med_ind wasn't used
+                cur_clstr_mask = claimed_inds[:,0]==med_ind
+                other_dists = np.fromiter((other_raw_dists[ind,:].min() if cur_clstr_mask[ind] else claimed_inds[ind,1] for ind in range(self.orig_dists.shape[0])), dtype=np.dtype('float64'))
+                other_best_meds = np.fromiter((other_meds[other_raw_dists[ind,:].argmin()] if cur_clstr_mask[ind] else claimed_inds[ind,0] for ind in range(self.orig_dists.shape[0])), dtype=np.dtype('float64'))
 
-                # WIP set ignored in claimed_inds to dist 0 just before the optimization?. Then here copy claimed_inds, reset med_inds dists to nearest other, continue.
-                #cur_clstr_mask = claimed_inds[:,0] == med_ind
-                #other_min_dists = claimed_inds[:,[1]]
-                #self.orig_dists[:,other_meds].min(axis=1, out=other_min_dists, where=cur_clstr_mask)
-
-                cur_nbrs = np.fromiter((x for x in np.flatnonzero(nbrs[:,med_ind]) if x not in other_meds and x in avail_indices), dtype=np.dtype('int64')) # Indices of potential new medoids
+                if not np.any(other_dists > threshold): # This medoid can be removed entirely
+                    np.copyto(claimed_inds[:,0], other_best_meds)
+                    np.copyto(claimed_inds[:,1], other_dists)
+                    improved = True
+                    continue
+                
+                # Check nbrs of med_ind to see if any improve the clustering
+                cur_nbrs = np.fromiter((x for x in np.flatnonzero(nbrs[:,med_ind]) if x not in other_meds and x in avail_indices), dtype=np.dtype('int64'))
                 nbr_dists = self.orig_dists[:,cur_nbrs]
-                nbr_is_closest = nbr_dists < other_min_dists
-                min_dists = np.where(nbr_is_closest, nbr_dists, other_min_dists) # Dist to nearest medoid (other / nbr / med_ind)
-
+                other_dists = np.expand_dims(other_dists, 1)
+                nbr_is_closest = nbr_dists < other_dists
+                min_dists = np.where(nbr_is_closest, nbr_dists, other_dists) # Dist to nearest medoid (other or nbr or med_ind)
                 min_dists[min_dists > threshold] = np.inf
+
                 best_nbr_ind = min_dists.sum(axis=0).argmin()
                 best_med = cur_nbrs[best_nbr_ind]
-                # Record new medoid
-                new_meds.append(best_med)
-                if best_med != med_ind:
+
+                scores = min_dists.sum(axis=0)
+                best_nbrs = np.take(cur_nbrs, np.flatnonzero(scores == scores.min()))
+                if med_ind in best_nbrs: # Prevents swapping between equivalent medoids
+                    new_meds.append(med_ind)
+                else:
+                    best_nbr_ind = scores.argmin()
+                    best_med = cur_nbrs[best_nbr_ind]
+                    new_meds.append(best_med)
+                    improved = True
                     np.copyto(claimed_inds[:,0], np.where(nbr_is_closest[:,best_nbr_ind], best_med, other_best_meds))
                     np.copyto(claimed_inds[:,1], min_dists[:,best_nbr_ind])
-            new_total = claimed_inds[:,1].sum()
-            if new_total < cur_total:
-                cur_total, improved = new_total, True
+
+            if improved:
                 medoids = new_meds
+            
             cache['cycles_used'] += 1
             if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
 
-        print('opt', medoids) #TEST
+        print('opt', medoids, claimed_inds[455]) #TEST
+
         medoid_scores = {med:0 for med in medoids}
+        print(medoids, medoid_scores, claimed_inds.shape)
         for ind in self._not_ignored_inds:
             med = int(claimed_inds[ind,0])
             medoid_scores[med] += claimed_inds[ind,1]
