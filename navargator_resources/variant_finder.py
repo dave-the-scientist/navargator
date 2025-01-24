@@ -16,8 +16,7 @@ phylo.verbose = False
 
 # TODO:
 
-# FINISH _qt_radius_clustering_greedy(), clean up a bit, document, test all assigned catagories
-# CRASH on test_fhbp.nvrgtr when selecting chosen and making them avail. throws an error in the ignored fxn here.
+# FINISH _qt_radius_clustering_greedy() documentation. Clean up the fxn that calls it
 
 # Implement LAB in _heuristic_rand_starts()
 # In find_variants() calculate unassigned_orphans from nbrs. Get rid of reduced. Change _qt_radius_clustering_minimal so it uses nbrs instead of reduced. Make sure it's using claimed_inds from the greedy; this is the large speedup from the k-medoids authors. Might be a good idea to run the greedy algo first (without refinement) to get an initial upper bound on the solution size (check if this is faster / better than the average time needed to get the first solution in the current implementation; I bet it's way faster).
@@ -691,9 +690,6 @@ class VariantFinder(object):
     def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, cache, max_cycles):
         """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing.
         Now breaks ties by the effect each would have on the whole tree so far. Not a global measurement, but not stupidly local either, as it will re-assign variants that have already been assigned if a new medoid is being tested."""
-        
-        # NEED TO ENSURE ALL DISTANCES ARE FILTERED BY self._not_ignored_inds, OR THEY WON'T REALLY BE IGNORED WILL THEY?
-
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
         ignrd_indices = [self.index[name] for name in self.ignored]
@@ -715,11 +711,10 @@ class VariantFinder(object):
                 break
         medoids = list(chsn_indices) + medoids
         if ignrd_indices:
-            claimed_inds[ignrd_indices,1] = 0.0 # Set ignored entries to [-1, 0.0]
-        
-        print('initial', medoids, claimed_inds[455]) #TEST
+            claimed_inds[ignrd_indices,1] = 0.0
 
-        # A local single-pass optimization, typically improves scores by ~5-15%; doubles or triples the runtime, though it's still only ~3s for a tree of 4173. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
+        # A local single-pass optimization, typically improves scores by ~5-15%. Doubles or triples the runtime, though it's still only 300ms for a tree of 1399, and ~3s for a tree of 4173. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
+        allowed_to_miss = self.tree_size - min_to_cluster - len(ignrd_indices) # Comes from the Critical percentage
         improved = True
         while improved:
             improved = False
@@ -730,55 +725,57 @@ class VariantFinder(object):
                     continue
                 other_meds = new_meds + medoids[i+1:]
                 other_raw_dists = self.orig_dists[:,other_meds]
-
-                # Calculate data in claimed_inds if med_ind wasn't used
+                # Calculate data in claimed_inds as if med_ind wasn't used
                 cur_clstr_mask = claimed_inds[:,0]==med_ind
-                other_dists = np.fromiter((other_raw_dists[ind,:].min() if cur_clstr_mask[ind] else claimed_inds[ind,1] for ind in range(self.orig_dists.shape[0])), dtype=np.dtype('float64'))
-                other_best_meds = np.fromiter((other_meds[other_raw_dists[ind,:].argmin()] if cur_clstr_mask[ind] else claimed_inds[ind,0] for ind in range(self.orig_dists.shape[0])), dtype=np.dtype('float64'))
-
-                if not np.any(other_dists > threshold): # This medoid can be removed entirely
+                other_dists = np.fromiter((other_raw_dists[ind,:].min() if cur_clstr_mask[ind] else claimed_inds[ind,1] for ind in range(self.tree_size)), dtype=np.dtype('float64')) # Doing it this complex way to avoid recalculations
+                other_best_meds = np.fromiter((other_meds[other_raw_dists[ind,:].argmin()] if cur_clstr_mask[ind] else claimed_inds[ind,0] for ind in range(self.tree_size)), dtype=np.dtype('float64'))
+                # Check if the medoid can be entirely removed
+                if np.sum(other_dists > threshold) <= allowed_to_miss:
                     np.copyto(claimed_inds[:,0], other_best_meds)
                     np.copyto(claimed_inds[:,1], other_dists)
                     improved = True
                     continue
-                
                 # Check nbrs of med_ind to see if any improve the clustering
                 cur_nbrs = np.fromiter((x for x in np.flatnonzero(nbrs[:,med_ind]) if x not in other_meds and x in avail_indices), dtype=np.dtype('int64'))
                 nbr_dists = self.orig_dists[:,cur_nbrs]
-                other_dists = np.expand_dims(other_dists, 1)
+                other_dists = np.expand_dims(other_dists, 1) # Creates a view for broadcasting
                 nbr_is_closest = nbr_dists < other_dists
                 min_dists = np.where(nbr_is_closest, nbr_dists, other_dists) # Dist to nearest medoid (other or nbr or med_ind)
-                min_dists[min_dists > threshold] = np.inf
-
-                best_nbr_ind = min_dists.sum(axis=0).argmin()
-                best_med = cur_nbrs[best_nbr_ind]
-
-                scores = min_dists.sum(axis=0)
+                # Deal with distances beyond the threshold
+                beyond_threshold = min_dists > threshold
+                if allowed_to_miss == 0:
+                    min_dists[beyond_threshold] = np.inf
+                    scores = min_dists.sum(axis=0)
+                else:
+                    scores = min_dists.sum(axis=0)
+                    for ind in range(len(cur_nbrs)):
+                        nbr_beyond = beyond_threshold[:,ind]
+                        if nbr_beyond.sum() > allowed_to_miss:
+                            scores[ind] = np.inf
+                        else:
+                            scores[ind] -= min_dists[nbr_beyond,ind].sum() # If a leaf can be skipped, it no longer affects the choice of medoid
+                # Identify best new medoid
                 best_nbrs = np.take(cur_nbrs, np.flatnonzero(scores == scores.min()))
-                if med_ind in best_nbrs: # Prevents swapping between equivalent medoids
+                if med_ind in best_nbrs: # Prevents endless swapping between equivalent medoids
                     new_meds.append(med_ind)
                 else:
                     best_nbr_ind = scores.argmin()
                     best_med = cur_nbrs[best_nbr_ind]
                     new_meds.append(best_med)
-                    improved = True
                     np.copyto(claimed_inds[:,0], np.where(nbr_is_closest[:,best_nbr_ind], best_med, other_best_meds))
                     np.copyto(claimed_inds[:,1], min_dists[:,best_nbr_ind])
-
+                    improved = True
             if improved:
                 medoids = new_meds
-            
             cache['cycles_used'] += 1
             if cache['quit_now'] or max_cycles != None and cache['cycles_used'] >= max_cycles:
                 break
-
-        print('opt', medoids, claimed_inds[455]) #TEST
-
         medoid_scores = {med:0 for med in medoids}
-        print(medoids, medoid_scores, claimed_inds.shape)
         for ind in self._not_ignored_inds:
             med = int(claimed_inds[ind,0])
-            medoid_scores[med] += claimed_inds[ind,1]
+            if med == -1:
+                med = medoids[self.orig_dists[ind,medoids].argmin()]
+            medoid_scores[med] += self.orig_dists[ind,med]
         final_scores = [medoid_scores[med] for med in medoids]
         alt_variants = []
         return medoids, final_scores, alt_variants
@@ -1036,7 +1033,7 @@ class VariantFinder(object):
         return reduced, unassigned_orphans
     
     def _get_nbrs(self, threshold, chsn_indices, avail_indices, ignrd_indices):
-        """nbrs is a 2D boolean array where a column nbrs[:,ind] gives you a mask for all neighbours of ind. Setting a column to all False removes that index from consideration as a medoid. Setting a row to all False removes that index from counting as unclaimed."""
+        """nbrs is a 2D boolean array where a column nbrs[:,ind] gives you a boolean mask for all neighbours of ind. Setting a column to all False removes that index from consideration as a medoid. Setting a row to all False removes that index from counting as unclaimed."""
         nbrs = self.orig_dists <= threshold  # very fast to calculate; 17MB for a tree of 4173
         unassigned_indices = list(self._not_ignored_inds - avail_indices - chsn_indices)
         if unassigned_indices:
