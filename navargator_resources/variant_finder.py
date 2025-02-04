@@ -16,8 +16,6 @@ phylo.verbose = False
 
 # TODO:
 
-# FINISH _qt_radius_clustering_greedy() documentation. Clean up the fxn that calls it
-
 # Implement LAB in _heuristic_rand_starts()
 # In find_variants() calculate unassigned_orphans from nbrs. Get rid of reduced. Change _qt_radius_clustering_minimal so it uses nbrs instead of reduced. Make sure it's using claimed_inds from the greedy; this is the large speedup from the k-medoids authors. Might be a good idea to run the greedy algo first (without refinement) to get an initial upper bound on the solution size (check if this is faster / better than the average time needed to get the first solution in the current implementation; I bet it's way faster).
 
@@ -688,8 +686,7 @@ class VariantFinder(object):
         return best_med_inds, best_scores
 
     def _qt_radius_clustering_greedy(self, min_to_cluster, threshold, cache, max_cycles):
-        """This is CRAZY fast, even compared to minimal qt with a cap of 1 cycle (70ms vs 3s on tree_1399; 0.5s vs 30s on tree_4173). Consistently produces solutions 10-50% worse than minimal; mostly due to a better score function (this one scores all variants within threshold distance, regardless of whether another centre is closer). Using _single_pass_optimize() does improve the score but can make this faaaar slower, so isn't used as the native speed is amazing.
-        Now breaks ties by the effect each would have on the whole tree so far. Not a global measurement, but not stupidly local either, as it will re-assign variants that have already been assigned if a new medoid is being tested."""
+        """Implementation of an adaptation of the QT clustering algorithm. A greedy heuristic, picking new medoids based on the number of unclaimed leaves they cover, with ties broken by the effect each would have on the entire tree score. Then runs a local iterative optimization that I've never seen run for more than 3 cycles. Typically improves overall scores by 5-15%, though it can also drop the number of clusters. Generally doubles or triples the runtime of this function; still extremely fast at 300ms for tree of 1399 and 3s for tree of 4173 (tho it takes 20s when yielding 240 clusters)."""
         chsn_indices = set(self.index[name] for name in self.chosen)
         avail_indices = set(self.index[name] for name in self.available)
         ignrd_indices = [self.index[name] for name in self.ignored]
@@ -713,7 +710,7 @@ class VariantFinder(object):
         if ignrd_indices:
             claimed_inds[ignrd_indices,1] = 0.0
 
-        # A local single-pass optimization, typically improves scores by ~5-15%. Doubles or triples the runtime, though it's still only 300ms for a tree of 1399, and ~3s for a tree of 4173. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
+        # A local iterative optimization. When considering replacing a medoid, ensures that the leaves all remain covered by the new medoid, or one of the existing ones.
         allowed_to_miss = self.tree_size - min_to_cluster - len(ignrd_indices) # Comes from the Critical percentage
         improved = True
         while improved:
